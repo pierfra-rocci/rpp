@@ -1,2 +1,2 @@
 # photometria
-Photometric Pipeline for RAPAS project
+Photometric Pipeline for the RAPAS Pro/Am project
