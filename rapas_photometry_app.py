@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from astropy.visualization import ZScaleInterval, ImageNormalize
 from astropy.wcs import WCS
+from io import StringIO
 
 from astrometry_lite import astrometry_script
 
@@ -788,7 +789,7 @@ if science_file is not None:
             header_to_process = st.session_state['calibrated_header']
         
         st.info("Doing astrometry refinement with GAIA DR3...")
-        wcs = astrometry_script(image_to_process, header_to_process, catalog="GAIA", FWHM=mean_fwhm_pixel)
+        # wcs = astrometry_script(image_to_process, header_to_process, catalog="GAIA", FWHM=mean_fwhm_pixel)
         # header_to_process.update(wcs.to_header())
 
         if image_to_process is not None:
@@ -815,8 +816,18 @@ if science_file is not None:
                         if zero_point_value is not None:
                             st.pyplot(zp_plot)
                     
+                            
+                            # CSV download button after zero point calculation
+                            csv_buffer = StringIO()
                             st.session_state['final_phot_table'].drop(columns=['sky_center.ra', 'sky_center.dec']).to_csv(catalog_name, index=False) # Save to file
-                            st.download_button('Download catalog', file_name=catalog_name, mime='text/csv')
+                            csv_data = csv_buffer.getvalue()
+
+                            st.download_button(
+                                label="Download Photometry Table as CSV",
+                                data=csv_data,
+                                file_name=catalog_name,
+                                mime='text/csv',
+                                )
                             
                             st.link_button("Open Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
                             st.write("After Aladin Lite opens in a new tab, you can manually upload the photometry_table.csv file into Aladin Lite for visualization.")
