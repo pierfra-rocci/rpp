@@ -816,6 +816,7 @@ if science_file is not None:
                             st.pyplot(zp_plot)
                     
                             st.session_state['final_phot_table'].drop(columns=['sky_center.ra', 'sky_center.dec']).to_csv(catalog_name, index=False) # Save to file
+                            st.download_button('Download catalog', file_name=catalog_name, mime='text/csv')
                             
                             st.link_button("Open Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
                             st.write("After Aladin Lite opens in a new tab, you can manually upload the photometry_table.csv file into Aladin Lite for visualization.")
