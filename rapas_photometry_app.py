@@ -20,11 +20,6 @@ from astropy.coordinates import get_sun
 from typing import Union, Optional, Dict, Tuple
 from astropy.modeling import models, fitting
 
-import time
-import keyboard
-import os
-import psutil
-
 
 st.title("Image Calibration and Zero Point", anchor="center")
 
@@ -852,13 +847,13 @@ else:
 # Exit Application Button
 # ------------------------------------------------------------------------------
 
-exit_app = st.button("Shut Down")
-if exit_app:
-    # Give a bit of delay for user experience
-    time.sleep(1)
-    # Close streamlit browser tab
-    keyboard.press_and_release('ctrl+w')
-    # Terminate streamlit python process
-    pid = os.getpid()
-    p = psutil.Process(pid)
-    p.terminate()
+# exit_app = st.button("Shut Down")
+# if exit_app:
+#     # Give a bit of delay for user experience
+#     time.sleep(1)
+#     # Close streamlit browser tab
+#     keyboard.press_and_release('ctrl+w')
+#     # Terminate streamlit python process
+#     pid = os.getpid()
+#     p = psutil.Process(pid)
+#     p.terminate()
