@@ -11,7 +11,7 @@ dependencies = [
   "django>2.1; os_name != 'nt'",
   "django>2.0; os_name == 'nt'",
 ]
-requires-python = ">=3.8"
+requires-python = "==3.11"
 authors = [
   {name = "Pradyun Gedam", email = "pradyun@example.com"},
   {name = "Tzu-Ping Chung", email = "tzu-ping@example.com"},
