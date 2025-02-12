@@ -813,59 +813,47 @@ if science_file is not None:
                         zero_point_value, zero_point_std, zp_plot = calculate_zero_point_streamlit(
                             phot_table_df, matched_table, gaia_band, air
                         )
+                    
                         if zero_point_value is not None:
-                            st.pyplot(zp_plot)
+                                st.pyplot(zp_plot)
                     
                             
-                            # CSV download button after zero point calculation
-                            csv_buffer = StringIO()
-                            st.session_state['final_phot_table'].drop(columns=['sky_center.ra', 'sky_center.dec']).to_csv(catalog_name, index=False) # Save to file
-                            csv_data = csv_buffer.getvalue()
+                    # CSV download button after zero point calculation
+                    csv_buffer = StringIO()
+                
+                    st.session_state['final_phot_table'].drop(columns=['sky_center.ra', 'sky_center.dec']).to_csv(catalog_name, index=False) # Save to file
+                    csv_data = csv_buffer.getvalue()
 
-                            st.download_button(
-                                label="Download Photometry Table as CSV",
-                                data=csv_data,
-                                file_name=catalog_name,
-                                mime='text/csv',
-                                )
-                            
-                            st.link_button("Open Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
-                            st.write("After Aladin Lite opens in a new tab, you can manually upload the photometry_table.csv file into Aladin Lite for visualization.")
-                            
-                            if st.button("Open in DS9 [NOT WORKING]"): # Add Open in DS9 Button here
-                                if science_file and st.session_state['final_phot_table'] is not None:
-                                    st.info("Opening DS9...")
-                                    try:
-                                        ds9_command_list = [
-                                            "ds9",
-                                            science_file.name, # Use filename as DS9 argument
-                                            "-zscale",
-                                            "-frame", "fit",
-                                            "-wcs", "load",
-                                            "-catalog", "csv", # Open CSV catalog
-                                        ]
+                    st.download_button(
+                        label="Download Photometry Table as CSV",
+                        data=csv_data,
+                        file_name=catalog_name,
+                        mime='text/csv'
+                        )
+                    
+                    st.link_button("Open Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
+                    st.write("After Aladin Lite opens in a new tab, you can manually upload the photometry_table.csv file into Aladin Lite for visualization.")
+                    
+                    if st.button("Open in DS9 [NOT WORKING]"): # Add Open in DS9 Button here
+                        if science_file and st.session_state['final_phot_table'] is not None:
+                            st.info("Opening DS9...")
+                            try:
+                                ds9_command_list = [
+                                    "ds9",
+                                    science_file.name, # Use filename as DS9 argument
+                                    "-zscale",
+                                    "-frame", "fit",
+                                    "-wcs", "load",
+                                    "-catalog", "csv", # Open CSV catalog
+                                ]
 
-                                    except Exception as e:
-                                        st.error(f"Error opening DS9: {e}")
-                                else:
-                                    st.warning("Science image and/or photometry table not available. Run Zero Point Calibration first and upload science image.")
+                            except Exception as e:
+                                st.error(f"Error opening DS9: {e}")
+                        else:
+                            st.warning("Science image and/or photometry table not available. Run Zero Point Calibration first and upload science image.")
+
         else:
             st.error("Please upload a science image and run calibration (or upload science image to skip calibration) to proceed with zero point calculation.")
 
 else:
     st.info("Please upload a science image to start.")
-
-# ------------------------------------------------------------------------------
-# Exit Application Button
-# ------------------------------------------------------------------------------
-
-# exit_app = st.button("Shut Down")
-# if exit_app:
-#     # Give a bit of delay for user experience
-#     time.sleep(1)
-#     # Close streamlit browser tab
-#     keyboard.press_and_release('ctrl+w')
-#     # Terminate streamlit python process
-#     pid = os.getpid()
-#     p = psutil.Process(pid)
-#     p.terminate()
