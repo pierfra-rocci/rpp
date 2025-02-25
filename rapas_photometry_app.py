@@ -58,6 +58,8 @@ gaia_band = st.sidebar.selectbox("Gaia Band", ['phot_g_mean_mag', 'phot_bp_mean_
 gaia_max_mag = st.sidebar.number_input("Gaia Max Magnitude (filtering)", value=19.0)
 gaia_min_mag = st.sidebar.number_input("Gaia Min Magnitude (filtering)", value=12.0)
 
+st.sidebar.link_button("Open Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
+
 # ------------------------------------------------------------------------------
 # Streamlit Caching Functions
 # ------------------------------------------------------------------------------
@@ -461,7 +463,7 @@ def fwhm_fit(
             raise ValueError(msg)
 
         # Définition du rayon d'analyse (en pixels) pour la *boîte* (carrée NxN)
-        box_size = int(6 * round(fwhm)) # Box size is ~ 2 * analysis_radius from previous method, make it larger for marginal sums maybe? Make box_size an even number for // 2
+        box_size = int(3 * round(fwhm)) # Box size is ~ 2 * analysis_radius from previous method, make it larger for marginal sums maybe? Make box_size an even number for // 2
         if box_size % 2 == 0: # Ensure box_size is odd
             box_size += 1
 
@@ -482,7 +484,7 @@ def fwhm_fit(
                 fwhm_row, fwhm_col, _, _ = fwhm_results # Get FWHM_row and FWHM_col, ignore fitted centers
 
                 # Using the average of FWHM_row and FWHM_col as the FWHM estimate for this source
-                fwhm_source = np.mean([fwhm_row, fwhm_col])
+                fwhm_source = np.median([fwhm_row, fwhm_col])
                 fwhm_values.append(fwhm_source)
 
 
@@ -507,9 +509,9 @@ def fwhm_fit(
             raise ValueError(msg)
 
         mean_fwhm = np.median(fwhm_values_arr[valid])
-        st.info(f"Estimation médiane de la FWHM basée sur les sommes marginales et modèle Gaussien: {round(mean_fwhm, 2)} pixels")
+        st.info(f"Estimation médiane de la FWHM basée sur les sommes marginales et modèle Gaussien: {round(mean_fwhm/pixel_scale, 2)} pixels")
 
-        return round(mean_fwhm, 2)
+        return round(mean_fwhm/pixel_scale, 2)
     except ValueError as e: # Catch ValueError from DAOStarFinder if no sources are found initially
         raise e
     except Exception as e: # Catch any other exceptions during the process
@@ -528,8 +530,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
                        filter_size=5,
                        mask=None,
                        sigma_clip=sigma_clip,
-                       bkg_estimator=bkg_estimator,
-                       exclude_percentile=25.0
+                       bkg_estimator=bkg_estimator
         )
     
     mask = make_border_mask(image_data, border=detection_mask)
@@ -540,7 +541,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
     fwhm_estimate = fwhm_fit(image_data - bkg.background, mean_fwhm_pixel, pixel_size_arcsec, mask)
     
     # Source detection using DAOStarFinder
-    daofind = DAOStarFinder(fwhm=2.5*fwhm_estimate, threshold=threshold_sigma * np.std(image_data - bkg.background))
+    daofind = DAOStarFinder(fwhm=1.5*fwhm_estimate, threshold=threshold_sigma * np.std(image_data - bkg.background))
     sources = daofind(image_data - bkg.background, mask=mask)
     if sources is None:
         st.warning("No sources found!")
@@ -548,7 +549,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
 
     # Aperture photometry
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
-    apertures = CircularAperture(positions, r=2.5*fwhm_estimate)
+    apertures = CircularAperture(positions, r=1.5*fwhm_estimate)
     apers = [apertures]
 
     phot_table = aperture_photometry(image_data - bkg.background, apers, 
@@ -601,11 +602,11 @@ def cross_match_with_gaia_streamlit(_phot_table, _science_header, pixel_size, ga
 
     # Query Gaia
     image_center_ra_dec = w.pixel_to_world(science_header['NAXIS1']//2, science_header['NAXIS2']//2)
-    gaia_search_radius_arcsec = science_header['NAXIS1']*pixel_size/2.0 # Use half the image diagonal as search radius
+    gaia_search_radius_arcsec = max(science_header['NAXIS1'],science_header['NAXIS2'])*pixel_size/2.0 # Use half the image diagonal as search radius
     radius_query = gaia_search_radius_arcsec * u.arcsec
 
     try:
-        st.info(f"Querying Gaia DR3...in a radius of {round(radius_query/60.,2)} arcmin.")
+        st.info(f"Querying Gaia DR3...in a radius of {round(radius_query.value/60.,2)} arcmin.")
         job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
         gaia_table = job.get_results()
     except Exception as e:
@@ -683,7 +684,7 @@ def calculate_zero_point_streamlit(_phot_table, matched_table, gaia_band, air):
         phot_table = phot_table.to_pandas()
 
     phot_table['calib_mag'] = phot_table['instrumental_mag'] + zero_point_value + 0.1*air
-    phot_table['calib_mag_err'] = (2.5/np.log(10) * phot_table['aperture_sum_err_0'] / phot_table['aperture_sum_0']) * header_to_process['CVF']/10
+    phot_table['calib_mag_err'] = (2.5/np.log(10) * phot_table['aperture_sum_err_0'] / phot_table['aperture_sum_0']) + zero_point_std
 
     st.session_state['final_phot_table'] = phot_table # Store final phot_table in session state
 
@@ -789,7 +790,7 @@ if science_file is not None:
             header_to_process = st.session_state['calibrated_header']
         
         st.info("Doing astrometry refinement with GAIA DR3...")
-        # wcs = astrometry_script(image_to_process, header_to_process, catalog="GAIA", FWHM=mean_fwhm_pixel)
+        wcs = astrometry_script(image_to_process, header_to_process, catalog="GAIA", FWHM=mean_fwhm_pixel)
         # header_to_process.update(wcs.to_header())
 
         if image_to_process is not None:
@@ -816,44 +817,29 @@ if science_file is not None:
                     
                         if zero_point_value is not None:
                                 st.pyplot(zp_plot)
-                    
-                            
-                    # CSV download button after zero point calculation
+                                        # Create a StringIO buffer
                     csv_buffer = StringIO()
-                
-                    st.session_state['final_phot_table'].drop(columns=['sky_center.ra', 'sky_center.dec']).to_csv(catalog_name, index=False) # Save to file
+
+                    # Write the DataFrame to the buffer
+                    st.session_state['final_phot_table'].drop(columns=['sky_center.ra', 'sky_center.dec']).to_csv(csv_buffer, index=False)
+
+                    # Get the value from the buffer
                     csv_data = csv_buffer.getvalue()
 
+                    # Save to file (if you still need this)
+                    with open(catalog_name, 'w') as f:
+                        f.write(csv_data)
+
+                    # Create download button
                     st.download_button(
                         label="Download Photometry Table as CSV",
                         data=csv_data,
                         file_name=catalog_name,
                         mime='text/csv'
-                        )
+                    )                    
                     
-                    st.link_button("Open Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
-                    st.write("After Aladin Lite opens in a new tab, you can manually upload the photometry_table.csv file into Aladin Lite for visualization.")
-                    
-                    if st.button("Open in DS9 [NOT WORKING]"): # Add Open in DS9 Button here
-                        if science_file and st.session_state['final_phot_table'] is not None:
-                            st.info("Opening DS9...")
-                            try:
-                                ds9_command_list = [
-                                    "ds9",
-                                    science_file.name, # Use filename as DS9 argument
-                                    "-zscale",
-                                    "-frame", "fit",
-                                    "-wcs", "load",
-                                    "-catalog", "csv", # Open CSV catalog
-                                ]
-
-                            except Exception as e:
-                                st.error(f"Error opening DS9: {e}")
-                        else:
-                            st.warning("Science image and/or photometry table not available. Run Zero Point Calibration first and upload science image.")
-
+                  
         else:
             st.error("Please upload a science image and run calibration (or upload science image to skip calibration) to proceed with zero point calculation.")
-
 else:
     st.info("Please upload a science image to start.")
