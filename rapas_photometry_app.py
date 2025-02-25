@@ -790,7 +790,7 @@ if science_file is not None:
             header_to_process = st.session_state['calibrated_header']
         
         st.info("Doing astrometry refinement with GAIA DR3...")
-        wcs = astrometry_script(image_to_process, header_to_process, catalog="GAIA", FWHM=mean_fwhm_pixel)
+        # wcs = astrometry_script(image_to_process, header_to_process, catalog="GAIA", FWHM=mean_fwhm_pixel)
         # header_to_process.update(wcs.to_header())
 
         if image_to_process is not None:
