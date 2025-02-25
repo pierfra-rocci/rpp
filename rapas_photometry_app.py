@@ -22,7 +22,7 @@ from typing import Union, Optional, Dict, Tuple
 from astropy.modeling import models, fitting
 
 
-st.title("Image Calibration and Zero Point", anchor="center")
+st.title("RAPAS Image Calibration", anchor="center")
 
 # Initialize session state to store calibrated data
 if 'calibrated_data' not in st.session_state:
@@ -37,10 +37,10 @@ if 'final_phot_table' not in st.session_state:
 # ------------------------------------------------------------------------------
 
 st.sidebar.header("File Uploads")
-bias_file = st.sidebar.file_uploader("Upload Bias Frame (bias.fits)", type=['fits'])
-dark_file = st.sidebar.file_uploader("Upload Dark Frame (dark.fits)", type=['fits'])
-flat_file = st.sidebar.file_uploader("Upload Flat Frame (flat.fits)", type=['fits'])
-science_file = st.sidebar.file_uploader("Upload Science Image (science.fits)", type=['fits'], key="science_upload")
+bias_file = st.sidebar.file_uploader("Upload Bias Frame", type=['fits'])
+dark_file = st.sidebar.file_uploader("Upload Dark Frame", type=['fits'])
+flat_file = st.sidebar.file_uploader("Upload Flat Frame", type=['fits'])
+science_file = st.sidebar.file_uploader("Upload Science Image", type=['fits'], key="science_upload")
 
 st.sidebar.header("Calibration Options")
 calibrate_bias = st.sidebar.checkbox("Apply Master Bias", value=True)
@@ -51,7 +51,7 @@ st.sidebar.header("Source Detection & Photometry")
 seeing = st.sidebar.number_input("Estimated Seeing (arcsec)", value=3.5)
 threshold_sigma = st.sidebar.number_input("Detection Threshold (sigma)", value=3.0)
 detection_mask = st.sidebar.number_input("Border Mask (pixels)", value=100)
-catalog_name = st.sidebar.text_input("Catalog Name", value="sources_cat.csv")
+catalog_name = st.sidebar.text_input("Catalog Name", value="rapas_sources_cat.csv")
 
 st.sidebar.header("Gaia DR3 Query")
 gaia_band = st.sidebar.selectbox("Gaia Band", ['phot_g_mean_mag', 'phot_bp_mean_mag', 'phot_rp_mean_mag'], index=0)
@@ -59,6 +59,7 @@ gaia_max_mag = st.sidebar.number_input("Gaia Max Magnitude (filtering)", value=1
 gaia_min_mag = st.sidebar.number_input("Gaia Min Magnitude (filtering)", value=12.0)
 
 st.sidebar.link_button("Open Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
+st.sidebar.link_button("Open ESA Sky", "https://sky.esa.int/")
 
 # ------------------------------------------------------------------------------
 # Streamlit Caching Functions
@@ -691,9 +692,9 @@ def calculate_zero_point_streamlit(_phot_table, matched_table, gaia_band, air):
     fig, ax = plt.subplots()
     ax.scatter(matched_table[gaia_band], matched_table['calib_mag'], alpha=0.75, label='Matched sources')
     ax.axhline(y=zero_point_value, color='blue', linestyle='dashed', linewidth=1, label=f'zero_point = {zero_point_value:.3f}')
-    ax.set_xlabel("Calibrated mag")
-    ax.set_ylabel(f"Gaia {gaia_band}")
-    ax.set_title("Calibrated mag vs. Gaia mag") 
+    ax.set_xlabel("rapas mag")
+    ax.set_ylabel(f"gaia {gaia_band}")
+    ax.set_title("RAPAS mag vs. Gaia mag") 
     ax.legend()
     ax.grid(True, alpha=0.5)
     st.success(f"Calculated Zero Point ({gaia_band}): {zero_point_value:.3f} +/- {zero_point_std:.3f}")
@@ -717,7 +718,7 @@ if science_file is not None:
     fig_preview, ax_preview = plt.subplots()
     im = ax_preview.imshow(science_data, norm=norm, origin='lower', cmap="viridis")
     fig_preview.colorbar(im, ax=ax_preview, label='pixel value')
-    ax_preview.set_title("zscale_stretch")
+    ax_preview.set_title("zscale stretching")
     ax_preview.axis('off') 
     st.pyplot(fig_preview, clear_figure=True)
 
@@ -775,7 +776,7 @@ if science_file is not None:
                 im_calibrated = ax_calibrated_preview.imshow(st.session_state['calibrated_data'], norm=norm_calibrated,
                                                              origin='lower', cmap="viridis")
                 fig_calibrated_preview.colorbar(im_calibrated, ax=ax_calibrated_preview, label='pixel value')
-                ax_calibrated_preview.set_title("zscale_stretch)")
+                ax_calibrated_preview.set_title("zscale stretching)")
                 ax_calibrated_preview.axis('off')
                 st.pyplot(fig_calibrated_preview)
 
@@ -790,7 +791,7 @@ if science_file is not None:
             header_to_process = st.session_state['calibrated_header']
         
         st.info("Doing astrometry refinement with GAIA DR3...")
-        # wcs = astrometry_script(image_to_process, header_to_process, catalog="GAIA", FWHM=mean_fwhm_pixel)
+        wcs = astrometry_script(image_to_process, header_to_process, catalog="GAIA", FWHM=mean_fwhm_pixel)
         # header_to_process.update(wcs.to_header())
 
         if image_to_process is not None:
