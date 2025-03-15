@@ -149,11 +149,11 @@ def airmass(
         }
 
         # Affichage des informations
-        st.info("Observation details:")
-        st.info(f"Date & Local Time: {obstime.iso}")
-        st.info(f"Target position: RA={details['target_coords']['ra']}, "
+        st.write("Observation details:")
+        st.write(f"Date & Local Time: {obstime.iso}")
+        st.write(f"Target position: RA={details['target_coords']['ra']}, "
               f"DEC={details['target_coords']['dec']}")
-        st.info(f"Altitude: {details['altaz']['altitude']}°, "
+        st.write(f"Altitude: {details['altaz']['altitude']}°, "
               f"Azimuth: {details['altaz']['azimuth']}°")
 
         if return_details:
@@ -188,7 +188,7 @@ def calibrate_image_streamlit(science_data, science_header, bias_data, dark_data
                            apply_bias, apply_dark, apply_flat):
     """Calibrates a science image using bias, dark, and flat frames according to user selections."""
     if not apply_bias and not apply_dark and not apply_flat:
-        st.info("Calibration steps are disabled. Returning raw science data.")
+        st.write("Calibration steps are disabled. Returning raw science data.")
         return science_data, science_header
 
     calibrated_science = science_data.copy()
@@ -226,7 +226,7 @@ def calibrate_image_streamlit(science_data, science_header, bias_data, dark_data
         steps_applied.append("Correction du Flat Field")
 
     if not steps_applied:
-        st.info("No calibration steps were applied because files are missing or options are disabled.")
+        st.write("No calibration steps were applied because files are missing or options are disabled.")
         return science_data, science_header
 
     st.success(f"Calibration steps applied: {', '.join(steps_applied)}")
@@ -422,7 +422,7 @@ def fwhm_fit(
             raise ValueError(msg)
 
         mean_fwhm = np.median(fwhm_values_arr[valid])
-        st.info(f"Median FWHM estimate based on marginal sums and Gaussian model: {round(mean_fwhm)} pixels")
+        st.write(f"Median FWHM estimate based on marginal sums and Gaussian model: {round(mean_fwhm)} pixels")
 
         return round(mean_fwhm)
     except ValueError as e:
@@ -464,7 +464,7 @@ def perform_epsf_photometry(
     try:
         # Prepare data: convert image to NDData object
         nddata = NDData(data=img)
-        st.info("NDData created successfully.")
+        st.write("NDData created successfully.")
     except Exception as e:
         st.error(f"Error creating NDData: {e}")
         raise
@@ -474,7 +474,7 @@ def perform_epsf_photometry(
         stars_table = Table()
         stars_table['x'] = phot_table['xcenter']
         stars_table['y'] = phot_table['ycenter']
-        st.info("Star positions table prepared.")
+        st.write("Star positions table prepared.")
     except Exception as e:
         st.error(f"Error preparing star positions table: {e}")
         raise
@@ -482,7 +482,7 @@ def perform_epsf_photometry(
     try:
         # Define fitting shape (box size for star extraction)
         fit_shape = 2 * round(fwhm) + 1
-        st.info(f"Fitting shape defined: {fit_shape} pixels.")
+        st.write(f"Fitting shape defined: {fit_shape} pixels.")
     except Exception as e:
         st.error(f"Error calculating fitting shape: {e}")
         raise
@@ -490,7 +490,7 @@ def perform_epsf_photometry(
     try:
         # Extract stars in sub-image
         stars = extract_stars(nddata, stars_table, size=fit_shape)
-        st.info(f"{len(stars)} stars extracted.")
+        st.write(f"{len(stars)} stars extracted.")
     except Exception as e:
         st.error(f"Error extracting stars: {e}")
         raise
@@ -506,7 +506,7 @@ def perform_epsf_photometry(
             ax_stars[i].imshow(stars[i].data, norm=norm, origin='lower', cmap='viridis')
         plt.tight_layout()
         st.pyplot(fig_stars)
-        st.info("Extracted stars display complete.")
+        st.write("Extracted stars display complete.")
     except Exception as e:
         st.warning(f"Error displaying extracted stars: {e}")
 
@@ -514,7 +514,7 @@ def perform_epsf_photometry(
         # Build and fit EPSF model
         epsf_builder = EPSFBuilder(oversampling=2, maxiters=5, progress_bar=False)
         epsf, _ = epsf_builder(stars)
-        st.info("EPSF model fitted successfully.")
+        st.write("EPSF model fitted successfully.")
         st.session_state['epsf_model'] = epsf
     except Exception as e:
         st.error(f"Error fitting EPSF model: {e}")
@@ -528,7 +528,7 @@ def perform_epsf_photometry(
         # plt.colorbar(ax=ax_epsf_model)
         ax_epsf_model.set_title("Fitted EPSF Model")
         st.pyplot(fig_epsf_model)
-        st.info("EPSF model display complete.")
+        st.write("EPSF model display complete.")
     except Exception as e:
         st.warning(f"Error displaying EPSF model: {e}")
 
@@ -546,7 +546,7 @@ def perform_epsf_photometry(
         # Specify source positions
         psfphot.x = phot_table['xcenter']
         psfphot.y = phot_table['ycenter']
-        st.info("Source positions defined for PSF photometry.")
+        st.write("Source positions defined for PSF photometry.")
     except Exception as e:
         st.error(f"Error configuring PSF photometry: {e}")
         raise
@@ -555,7 +555,7 @@ def perform_epsf_photometry(
         # Run PSF photometry with provided mask
         phot_epsf_result = psfphot(img, mask=mask)
         st.session_state['epsf_photometry_result'] = phot_epsf_result
-        st.info("EPSF photometry completed successfully.")
+        st.write("EPSF photometry completed successfully.")
     except Exception as e:
         st.error(f"Error executing EPSF photometry: {e}")
         raise
@@ -607,7 +607,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
     # Calculate total error
     total_error = np.sqrt(bkg.background_rms**2 + bkg.background_median)
     
-    st.info("Estimating FWHM...")
+    st.write("Estimating FWHM...")
     fwhm_estimate = fwhm_fit(image_data - bkg.background, mean_fwhm_pixel, pixel_scale, mask)
     
     if fwhm_estimate is None:
@@ -622,7 +622,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         st.warning("No sources found!")
         return None, None, daofind, bkg
     
-    st.info(f"Found {len(sources)} sources")
+    st.write(f"Found {len(sources)} sources")
     
     # Aperture photometry
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
@@ -718,7 +718,7 @@ def cross_match_with_gaia_streamlit(_phot_table, _science_header, pixel_size_arc
     pandas.DataFrame
         Matched sources table
     """
-    st.info("Cross-matching with Gaia DR3...")
+    st.write("Cross-matching with Gaia DR3...")
 
     if _science_header is None:
         st.warning("No header information available. Cannot cross-match with Gaia.")
@@ -745,7 +745,7 @@ def cross_match_with_gaia_streamlit(_phot_table, _science_header, pixel_size_arc
         gaia_search_radius_arcsec = max(_science_header['NAXIS1'], _science_header['NAXIS2']) * pixel_size_arcsec / 2.0
         radius_query = gaia_search_radius_arcsec * u.arcsec
 
-        st.info(f"Querying Gaia DR3 in a radius of {round(radius_query.value/60.,2)} arcmin.")
+        st.write(f"Querying Gaia DR3 in a radius of {round(radius_query.value/60.,2)} arcmin.")
         job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
         gaia_table = job.get_results()
     except Exception as e:
@@ -774,7 +774,7 @@ def cross_match_with_gaia_streamlit(_phot_table, _science_header, pixel_size_arc
             st.warning(f"No Gaia sources found within magnitude range {gaia_min_mag} < {gaia_band} < {gaia_max_mag}.")
             return None
             
-        st.info(f"Filtered Gaia catalog to {len(gaia_table_filtered)} sources.")
+        st.write(f"Filtered Gaia catalog to {len(gaia_table_filtered)} sources.")
     except Exception as e:
         st.error(f"Error filtering Gaia catalog: {e}")
         return None
@@ -836,7 +836,7 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
     tuple
         (zero_point_value, zero_point_std, matplotlib_figure)
     """
-    st.info("Calculating zero point...")
+    st.write("Calculating zero point...")
 
     if _matched_table is None or len(_matched_table) == 0:
         st.warning("No matched sources to calculate zero point.")
@@ -892,7 +892,7 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         # Save plot but handle exceptions
         try:
             plt.savefig("zero_point_plot.png")
-            st.info("Zero point plot saved as 'zero_point_plot.png'.")
+            st.write("Zero point plot saved as 'zero_point_plot.png'.")
         except Exception as e:
             st.warning(f"Could not save plot to file: {e}")
             
@@ -926,7 +926,7 @@ def perform_epsf_photometry_streamlit(image_data, background_data, phot_table, f
     tuple
         (phot_epsf_result, epsf_model)
     """
-    st.info("Starting PSF photometry...")
+    st.write("Starting PSF photometry...")
     
     # Create mask
     mask = make_border_mask(image_data, border=detection_mask)
@@ -1238,11 +1238,11 @@ if science_file is not None:
         # Calculate airmass
         try:
             air = airmass(science_header)
-            st.info(f"Airmass: {air:.2f}")
+            st.write(f"Airmass: {air:.2f}")
         except Exception as e:
             st.warning(f"Error calculating airmass: {e}")
             air = 1.0
-            st.info(f"Using default airmass: {air:.2f}")
+            st.write(f"Using default airmass: {air:.2f}")
 
         # Image calibration button
         calibration_disabled = not (calibrate_bias or calibrate_dark or calibrate_flat)
@@ -1286,7 +1286,7 @@ if science_file is not None:
                 image_to_process = st.session_state['calibrated_data']
                 header_to_process = st.session_state['calibrated_header']
             
-            st.info("Doing astrometry refinement with GAIA DR3...")
+            st.write("Doing astrometry refinement with GAIA DR3...")
             # wcs = astrometry_script(image_to_process, header_to_process, catalog="GAIA", FWHM=mean_fwhm_pixel)
             # header_to_process.update(wcs.to_header())
 
@@ -1435,4 +1435,4 @@ if science_file is not None:
                     st.error(f"Error during zero point calibration: {str(e)}")
                     st.exception(e)  # This will show the full traceback for debugging
 else:
-    st.info("👆 Please upload a science image FITS file to start.")
+    st.write("👆 Please upload a science image FITS file to start.")
