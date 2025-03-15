@@ -24,6 +24,9 @@ from astropy.wcs import WCS
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from astropy.nddata import NDData
 
+import warnings
+warnings.filterwarnings("ignore")
+
 st.set_page_config(
     page_title="RAPAS Photometric Calibration",
     page_icon="🔭",
