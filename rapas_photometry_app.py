@@ -1133,11 +1133,11 @@ with st.sidebar:
     science_file = st.file_uploader("Light Image (required)", type=['fits', 'fit', 'fts'], key="science_upload")
      # Also move calibration options to sidebar
     st.header("Calibration Options")
-    calibrate_bias = st.checkbox("Apply Bias", value=True,
+    calibrate_bias = st.checkbox("Apply Bias", value=False,
                               help="Subtract bias frame from science image")
-    calibrate_dark = st.checkbox("Apply Dark", value=True,
+    calibrate_dark = st.checkbox("Apply Dark", value=False,
                               help="Subtract dark frame from science image")
-    calibrate_flat = st.checkbox("Apply Flat Field", value=True,
+    calibrate_flat = st.checkbox("Apply Flat Field", value=False,
                               help="Divide science image by flat field")
     
     st.header("Analysis Parameters")
