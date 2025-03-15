@@ -188,7 +188,7 @@ def calibrate_image_streamlit(science_data, science_header, bias_data, dark_data
                            apply_bias, apply_dark, apply_flat):
     """Calibrates a science image using bias, dark, and flat frames according to user selections."""
     if not apply_bias and not apply_dark and not apply_flat:
-        st.info("Les étapes de calibration sont désactivées. Retour des données scientifiques brutes.")
+        st.info("Calibration steps are disabled. Returning raw science data.")
         return science_data, science_header
 
     calibrated_science = science_data.copy()
@@ -226,10 +226,10 @@ def calibrate_image_streamlit(science_data, science_header, bias_data, dark_data
         steps_applied.append("Correction du Flat Field")
 
     if not steps_applied:
-        st.info("Aucune étape de calibration n'a été appliquée car les fichiers sont manquants ou les options désactivées.")
+        st.info("No calibration steps were applied because files are missing or options are disabled.")
         return science_data, science_header
 
-    st.success(f"Étapes de calibration appliquées : {', '.join(steps_applied)}")
+    st.success(f"Calibration steps applied: {', '.join(steps_applied)}")
     return calibrated_science, science_header
 
 
@@ -369,12 +369,10 @@ def fwhm_fit(
         mask_flux = (flux > median_flux - std_lo * std_flux) & (flux < median_flux + std_hi * std_flux)
         filtered_sources = sources[mask_flux]
 
-        st.write(f"Number of sources after flux filtering: {len(filtered_sources)}")
-
         # Remove sources with NaN flux values
         filtered_sources = filtered_sources[~np.isnan(filtered_sources['flux'])]
 
-        st.info(f"Number of sources after NaN filtering: {len(filtered_sources)}")
+        st.write(f"Number of sources after flux filtering: {len(filtered_sources)}")
 
         if len(filtered_sources) == 0:
             msg = "No valid sources for fitting found after filtering."
@@ -500,7 +498,7 @@ def perform_epsf_photometry(
     try:
         # Display extracted stars (optional)
         nrows, ncols = 5, 5
-        fig_stars, ax_stars = plt.subplots(nrows=nrows, ncols=ncols, figsize=(5, 5), squeeze=False)
+        fig_stars, ax_stars = plt.subplots(nrows=nrows, ncols=ncols, figsize=(3, 3), squeeze=False)
         ax_stars = ax_stars.ravel()
         n_disp = min(len(stars), nrows * ncols)
         for i in range(n_disp):
@@ -874,7 +872,7 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         st.session_state['final_phot_table'] = _phot_table
         
         # Create plot
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots(figsize=(5, 4))
         ax.scatter(_matched_table[gaia_band], _matched_table['calib_mag'], alpha=0.75, label='Matched sources')
     
         ax.set_xlabel(f"Gaia {gaia_band}")
@@ -928,7 +926,7 @@ def perform_epsf_photometry_streamlit(image_data, background_data, phot_table, f
     tuple
         (phot_epsf_result, epsf_model)
     """
-    st.info("Starting PSF-EPSF photometry...")
+    st.info("Starting PSF photometry...")
     
     # Create mask
     mask = make_border_mask(image_data, border=detection_mask)
@@ -1185,7 +1183,7 @@ if science_file is not None:
     # Show the image with zscale stretching
     try:
         norm = ImageNormalize(science_data, interval=ZScaleInterval())
-        fig_preview, ax_preview = plt.subplots(figsize=(8, 6))  # Explicit figure size
+        fig_preview, ax_preview = plt.subplots(figsize=(5, 4))  # Explicit figure size
         im = ax_preview.imshow(science_data, norm=norm, origin='lower', cmap="viridis")
         fig_preview.colorbar(im, ax=ax_preview, label='Pixel Value')
         ax_preview.set_title("Science Image (zscale stretch)")
