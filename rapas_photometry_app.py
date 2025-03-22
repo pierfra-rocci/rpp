@@ -1311,17 +1311,6 @@ with st.sidebar:
     st.link_button("NED", "https://ned.ipac.caltech.edu/")
     st.link_button("ADS", "https://ui.adsabs.harvard.edu/")
 
-    # Add this at the end of your sidebar section
-    st.markdown("---")
-    st.subheader("Control Panel")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔄 Restart Analysis", help="Reset analysis but keep uploaded files"):
-            restart_analysis()
-    with col2:
-        if st.button("🗑️ Clear All", help="Reset everything including uploaded files"):
-            clear_all()
-
 # Main processing logic
 if science_file is not None:
     science_data, science_header = load_fits_data(science_file)
