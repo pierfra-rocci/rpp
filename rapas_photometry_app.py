@@ -1264,7 +1264,7 @@ if science_file is not None:
                 pixel_size_arcsec = abs(science_header['CDELT1']) * 3600.0
 
             if pixel_size_arcsec:
-                st.metric("Pixel Size (arcsec)", f"{pixel_size_arcsec:.2f}")
+                st.metric("Mean Pixel Size (arcsec)", f"{pixel_size_arcsec:.2f}")
                 mean_fwhm_pixel = seeing / pixel_size_arcsec
                 st.metric("Est. Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (from seeing)")
             else:
