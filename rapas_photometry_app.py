@@ -72,6 +72,38 @@ def create_figure(size='medium', dpi=100):
         figsize = FIGURE_SIZES['medium']
     return plt.figure(figsize=figsize, dpi=dpi)
 
+def get_download_link(data, filename, link_text="Download"):
+    """
+    Generate a download link for data without triggering a Streamlit rerun
+    """
+    import base64
+    
+    b64 = base64.b64encode(data.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" class="download-button">{link_text}</a>'
+    
+    button_style = """
+    <style>
+    .download-button {
+        display: inline-block;
+        padding: 0.5em 1em;
+        background-color: #4CAF50;
+        color: white;
+        text-align: center;
+        text-decoration: none;
+        font-size: 16px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    .download-button:hover {
+        background-color: #45a049;
+    }
+    </style>
+    """
+    
+    return button_style + href
+
 @st.cache_data
 def airmass(
     _header: Dict,
