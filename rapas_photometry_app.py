@@ -5,6 +5,7 @@ from typing import Union, Any, Optional, Dict, Tuple
 
 from astropy.modeling import models, fitting
 import streamlit as st
+from streamlit.components.v1 import html  # Add this import for Aladin Lite widget
 import numpy as np
 from astropy.io import fits
 from astropy.stats import sigma_clip, SigmaClip
@@ -1200,10 +1201,7 @@ with st.sidebar:
     st.header("Output Options")
     catalog_name = st.text_input("Output Catalog Filename", "photometry_catalog.csv")
 
-    st.link_button("GAIA Archive", "https://gea.esac.esa.int/archive/")
-    st.link_button("WorldWideTelescope", "https://www.worldwidetelescope.org/webclient/")
-    st.link_button("Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
-    st.link_button("ESA Sky", "https://sky.esa.int/")
+    st.link_button("GAIA Archive", "https://www.cosmos.esa.int/web/gaia/data-release-3")
     st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
     st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
     st.link_button("NED", "https://ned.ipac.caltech.edu/")
@@ -1478,5 +1476,61 @@ if science_file is not None:
                 except Exception as e:
                     st.error(f"Error during zero point calibration: {str(e)}")
                     st.exception(e)  # This will show the full traceback for debugging
+
+                # Display PanSTARRS color view with detected sources
+                st.subheader("PanSTARRS Color View")
+
+                # Extract RA/DEC from header or WCS
+                ra_center = None
+                dec_center = None
+
+                if 'CRVAL1' in header_to_process and 'CRVAL2' in header_to_process:
+                    ra_center = header_to_process['CRVAL1']
+                    dec_center = header_to_process['CRVAL2']
+                elif 'RA' in header_to_process and 'DEC' in header_to_process:
+                    ra_center = header_to_process['RA']
+                    dec_center = header_to_process['DEC']
+                elif 'OBJRA' in header_to_process and 'OBJDEC' in header_to_process:
+                    ra_center = header_to_process['OBJRA']
+                    dec_center = header_to_process['OBJDEC']
+
+                if ra_center is not None and dec_center is not None:
+                    st.write(f"Creating Aladin view centered at RA={ra_center}, DEC={dec_center}")
+    
+                    # Create a direct URL to Aladin Lite with pre-configured parameters
+                    aladin_url = f"https://aladin.u-strasbg.fr/AladinLite/?target={ra_center}%20{dec_center}&fov=0.3&survey=P/PanSTARRS/DR1/color"
+                    
+                    # Create an iframe to embed Aladin Lite
+                    iframe_html = f"""
+                    <iframe 
+                        src="{aladin_url}" 
+                        width="100%" 
+                        height="550px" 
+                        style="border: 1px solid #ddd; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"
+                        allowfullscreen>
+                    </iframe>
+                    """
+                    
+                    # Display the iframe
+                    st.markdown(iframe_html, unsafe_allow_html=True)
+                    st.info("PanSTARRS DR1 color image centered on target coordinates. Use Aladin controls to overlay catalogs.")
+                    
+                    # Add instructions for manual catalog overlay
+                    with st.expander("How to overlay Gaia DR3 catalog"):
+                        st.markdown("""
+                        1. Click the "layers" icon in the upper right of the Aladin window
+                        2. Select "Catalog → VizieR"
+                        3. Search for "I/355" (Gaia DR3)
+                        4. Click on "I/355/gaiadr3" to add the Gaia DR3 catalog
+                        """)
+                    
+                    # Add ESA Sky button with target coordinates
+                    st.link_button(
+                        "ESA Sky", 
+                        f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=PanSTARRS+DR1+color+(i%2C+r%2C+g)&fov=1&projection=SIN&cooframe=J2000&sci=true&lang=en",
+                        help="Open ESA Sky with the same target coordinates"
+                    )
+                else:
+                    st.warning("Could not determine coordinates from image header. Cannot display PanSTARRS view.")
 else:
     st.write("👆 Please upload a science image FITS file to start.")
