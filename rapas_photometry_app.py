@@ -85,19 +85,24 @@ def get_download_link(data, filename, link_text="Download"):
     <style>
     .download-button {
         display: inline-block;
-        padding: 0.5em 1em;
-        background-color: #4CAF50;
+        padding: 0.7em 1.2em;
+        background-color: #00C853;  /* Brighter green */
         color: white;
         text-align: center;
         text-decoration: none;
-        font-size: 16px;
-        border-radius: 4px;
-        border: none;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 6px;
+        border: 2px solid #80E27E;  /* Light border for contrast */
         cursor: pointer;
-        margin-top: 10px;
+        margin-top: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);  /* Add shadow for depth */
+        transition: all 0.2s ease;
     }
     .download-button:hover {
-        background-color: #45a049;
+        background-color: #00E676;  /* Even brighter on hover */
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
     }
     </style>
     """
@@ -1659,19 +1664,24 @@ def get_download_link(data, filename, link_text="Download"):
     <style>
     .download-button {
         display: inline-block;
-        padding: 0.5em 1em;
-        background-color: #4CAF50;
+        padding: 0.7em 1.2em;
+        background-color: #00C853;  /* Brighter green */
         color: white;
         text-align: center;
         text-decoration: none;
-        font-size: 16px;
-        border-radius: 4px;
-        border: none;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 6px;
+        border: 2px solid #80E27E;  /* Light border for contrast */
         cursor: pointer;
-        margin-top: 10px;
+        margin-top: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);  /* Add shadow for depth */
+        transition: all 0.2s ease;
     }
     .download-button:hover {
-        background-color: #45a049;
+        background-color: #00E676;  /* Even brighter on hover */
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
     }
     </style>
     """
