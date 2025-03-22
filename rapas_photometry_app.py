@@ -502,7 +502,7 @@ def perform_epsf_photometry(
     try:
         # Prepare data: convert image to NDData object
         nddata = NDData(data=img)
-        st.write("NDData created successfully.")
+        # st.write("NDData created successfully.")
     except Exception as e:
         st.error(f"Error creating NDData: {e}")
         raise
@@ -920,10 +920,10 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         ax.grid(True, alpha=0.5)
         
         # Add annotation for zero point value
-        text_x = np.min(_matched_table[gaia_band]) + 0.1 * (np.max(_matched_table[gaia_band]) - np.min(_matched_table[gaia_band]))
-        text_y = np.max(_matched_table['calib_mag']) - 0.1 * (np.max(_matched_table['calib_mag']) - np.min(_matched_table['calib_mag']))
-        ax.text(text_x, text_y, f"Zero Point = {zero_point_value:.3f} ± {zero_point_std:.3f}", 
-                bbox=dict(facecolor='white', alpha=0.8))
+        # text_x = np.min(_matched_table[gaia_band]) + 0.1 * (np.max(_matched_table[gaia_band]) - np.min(_matched_table[gaia_band]))
+        # text_y = np.max(_matched_table['calib_mag']) - 0.1 * (np.max(_matched_table['calib_mag']) - np.min(_matched_table['calib_mag']))
+        # ax.text(text_x, text_y, f"Zero Point = {zero_point_value:.3f} ± {zero_point_std:.3f}", 
+        #         bbox=dict(facecolor='white', alpha=0.8))
                 
         st.success(f"Calculated Zero Point: {zero_point_value:.3f} ± {zero_point_std:.3f}")
         
@@ -987,7 +987,7 @@ def perform_epsf_photometry_streamlit(image_data, background_data, phot_table, f
         # Display EPSF model
         st.subheader("EPSF Model")
         norm_epsf = ImageNormalize(epsf_model.data, interval=ZScaleInterval())
-        fig_epsf, ax_epsf = plt.subplots()
+        fig_epsf, ax_epsf = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
         im_epsf = ax_epsf.imshow(epsf_model.data, norm=norm_epsf, origin='lower', cmap='viridis')
         fig_epsf.colorbar(im_epsf, ax=ax_epsf, label='EPSF Model Value')
         ax_epsf.set_title("EPSF Model (ZScale)")
@@ -1132,7 +1132,7 @@ def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_
                     # Also save locally if needed
                     with open(filename, 'w') as f:
                         f.write(csv_data)
-                    st.success(f"Catalog saved to {filename}")
+                    # st.success(f"Catalog saved to {filename}")
                     
                 except Exception as e:
                     st.error(f"Error preparing download: {e}")
@@ -1166,7 +1166,7 @@ with st.sidebar:
     bias_file = st.file_uploader("Master Bias (optional)", type=['fits', 'fit', 'fts'])
     dark_file = st.file_uploader("Master Dark (optional)", type=['fits', 'fit', 'fts'])
     flat_file = st.file_uploader("Master Flat (optional)", type=['fits', 'fit', 'fts'])
-    science_file = st.file_uploader("Light Image (required)", type=['fits', 'fit', 'fts'], key="science_upload")
+    science_file = st.file_uploader("Science Image (required)", type=['fits', 'fit', 'fts'], key="science_upload")
      # Also move calibration options to sidebar
     st.header("Calibration Options")
     calibrate_bias = st.checkbox("Apply Bias", value=False,
@@ -1200,8 +1200,14 @@ with st.sidebar:
     st.header("Output Options")
     catalog_name = st.text_input("Output Catalog Filename", "photometry_catalog.csv")
 
-    st.link_button("Open Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
-    st.link_button("Open ESA Sky", "https://sky.esa.int/")
+    st.link_button("GAIA Archive", "https://gea.esac.esa.int/archive/")
+    st.link_button("WorldWideTelescope", "https://www.worldwidetelescope.org/webclient/")
+    st.link_button("Aladin Lite",  "https://aladin.cds.unistra.fr/AladinLite/")
+    st.link_button("ESA Sky", "https://sky.esa.int/")
+    st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
+    st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+    st.link_button("NED", "https://ned.ipac.caltech.edu/")
+    st.link_button("ADS", "https://ui.adsabs.harvard.edu/")
 
 # Main processing logic
 if science_file is not None:
@@ -1216,7 +1222,7 @@ if science_file is not None:
     if dark_header is None:
         dark_header = {}
 
-    st.header("Light Image", anchor="science-image")
+    st.header("Science Image", anchor="science-image")
     
     # Show the image with zscale stretching
     try:
@@ -1224,7 +1230,7 @@ if science_file is not None:
         fig_preview, ax_preview = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)  # Explicit figure size
         im = ax_preview.imshow(science_data, norm=norm, origin='lower', cmap="viridis")
         fig_preview.colorbar(im, ax=ax_preview, label='Pixel Value')
-        ax_preview.set_title("Science Image (zscale stretch)")
+        ax_preview.set_title("(zscale stretch)")
         ax_preview.axis('off') 
         st.pyplot(fig_preview, clear_figure=True)
     except Exception as e:
@@ -1241,9 +1247,9 @@ if science_file is not None:
     st.subheader("Science Image Statistics")
     if science_data is not None:
         stats_col1, stats_col2, stats_col3 = st.columns(3)
-        stats_col1.metric("Mean", f"{np.mean(science_data):.2f}")
-        stats_col2.metric("Median", f"{np.median(science_data):.2f}")
-        stats_col3.metric("Std Dev", f"{np.std(science_data):.2f}")
+        stats_col1.metric("Mean", f"{np.mean(science_data):.3f}")
+        stats_col2.metric("Median", f"{np.median(science_data):.3f}")
+        stats_col3.metric("Std Dev", f"{np.std(science_data):.3f}")
 
         # Get pixel scale and calculate estimated FWHM
         pixel_size_arcsec = None
@@ -1463,7 +1469,7 @@ if science_file is not None:
                                             # Also save locally if needed
                                             with open(filename, 'w') as f:
                                                 f.write(csv_data)
-                                            st.success(f"Catalog saved to {filename}")
+                                            # st.success(f"Catalog saved to {filename}")
                                             
                                         except Exception as e:
                                             st.error(f"Error preparing download: {e}")
