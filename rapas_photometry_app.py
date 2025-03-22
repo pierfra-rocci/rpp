@@ -33,6 +33,44 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS to control plot display size
+st.markdown("""
+<style>
+    .stPlot > div {
+        display: flex;
+        justify-content: center;
+        min-height: 400px;
+    }
+    .main .block-container {
+        max-width: 1200px;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    .element-container img {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Define standard figure sizes to use throughout the app
+FIGURE_SIZES = {
+    'small': (6, 5),     # For small plots
+    'medium': (8, 6),    # For medium plots
+    'large': (10, 8),    # For large plots
+    'wide': (12, 6),     # For wide plots
+    'stars_grid': (10, 8)  # For grid of stars
+}
+
+# Function to create standardized matplotlib figures
+def create_figure(size='medium', dpi=100):
+    """Create a matplotlib figure with standardized size"""
+    if size in FIGURE_SIZES:
+        figsize = FIGURE_SIZES[size]
+    else:
+        figsize = FIGURE_SIZES['medium']
+    return plt.figure(figsize=figsize, dpi=dpi)
+
 @st.cache_data
 def airmass(
     _header: Dict,
@@ -498,7 +536,7 @@ def perform_epsf_photometry(
     try:
         # Display extracted stars (optional)
         nrows, ncols = 5, 5
-        fig_stars, ax_stars = plt.subplots(nrows=nrows, ncols=ncols, figsize=(3, 3), squeeze=False)
+        fig_stars, ax_stars = plt.subplots(nrows=nrows, ncols=ncols, figsize=FIGURE_SIZES['stars_grid'], squeeze=False)
         ax_stars = ax_stars.ravel()
         n_disp = min(len(stars), nrows * ncols)
         for i in range(n_disp):
@@ -523,7 +561,7 @@ def perform_epsf_photometry(
     try:
         # Display fitted EPSF model
         norm_epsf = simple_norm(epsf.data, 'log', percent=99.)
-        fig_epsf_model, ax_epsf_model = plt.subplots()
+        fig_epsf_model, ax_epsf_model = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
         ax_epsf_model.imshow(epsf.data, norm=norm_epsf, origin='lower', cmap='viridis', interpolation='nearest')
         # plt.colorbar(ax=ax_epsf_model)
         ax_epsf_model.set_title("Fitted EPSF Model")
@@ -872,7 +910,7 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         st.session_state['final_phot_table'] = _phot_table
         
         # Create plot
-        fig, ax = plt.subplots(figsize=(5, 4))
+        fig, ax = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
         ax.scatter(_matched_table[gaia_band], _matched_table['calib_mag'], alpha=0.75, label='Matched sources')
     
         ax.set_xlabel(f"Gaia {gaia_band}")
@@ -1183,7 +1221,7 @@ if science_file is not None:
     # Show the image with zscale stretching
     try:
         norm = ImageNormalize(science_data, interval=ZScaleInterval())
-        fig_preview, ax_preview = plt.subplots(figsize=(5, 4))  # Explicit figure size
+        fig_preview, ax_preview = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)  # Explicit figure size
         im = ax_preview.imshow(science_data, norm=norm, origin='lower', cmap="viridis")
         fig_preview.colorbar(im, ax=ax_preview, label='Pixel Value')
         ax_preview.set_title("Science Image (zscale stretch)")
@@ -1264,7 +1302,7 @@ if science_file is not None:
                     if calibrated_data is not None:
                         st.header("Calibrated Science Image")
                         norm_calibrated = ImageNormalize(calibrated_data, interval=ZScaleInterval())
-                        fig_calibrated, ax_calibrated = plt.subplots()
+                        fig_calibrated, ax_calibrated = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
                         im_calibrated = ax_calibrated.imshow(calibrated_data, norm=norm_calibrated,
                                                            origin='lower', cmap="viridis")
                         fig_calibrated.colorbar(im_calibrated, ax=ax_calibrated, label='pixel value')
