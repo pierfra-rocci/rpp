@@ -59,7 +59,7 @@ FIGURE_SIZES = {
     'small': (6, 5),     # For small plots
     'medium': (8, 6),    # For medium plots
     'large': (10, 8),    # For large plots
-    'wide': (12, 6),     # For wide plots
+    'wide': (12, 6),    # For wide plots
     'stars_grid': (10, 8)  # For grid of stars
 }
 
@@ -1123,13 +1123,13 @@ def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_
                     filename = catalog_name if catalog_name.endswith('.csv') else f"{catalog_name}.csv"
                     
                     # Provide download button with better formatting
-                    st.download_button(
-                        label="📥 Download Photometry Catalog",
-                        data=csv_data,
-                        file_name=filename,
-                        mime='text/csv',
-                        help="Download the photometry results as a CSV file"
+                    download_link = get_download_link(
+                        csv_data, 
+                        filename, 
+                        link_text="📥 Download Photometry Catalog"
                     )
+                    st.markdown(download_link, unsafe_allow_html=True)
+                    st.write("Click the green button above to download without page reload")
                     
                     # Also save locally if needed
                     with open(filename, 'w') as f:
@@ -1158,17 +1158,83 @@ if 'calibrated_header' not in st.session_state:
 if 'final_phot_table' not in st.session_state:
     st.session_state['final_phot_table'] = None
 
+# Initialize additional session state variables for control flow
+if 'analysis_parameters' not in st.session_state:
+    st.session_state['analysis_parameters'] = {
+        'seeing': 3.5,
+        'threshold_sigma': 3.0,
+        'detection_mask': 50,
+        'gaia_band': "phot_g_mean_mag",
+        'gaia_min_mag': 10.0,
+        'gaia_max_mag': 19.0,
+        'calibrate_bias': False,
+        'calibrate_dark': False,
+        'calibrate_flat': False
+    }
 
+if 'files_loaded' not in st.session_state:
+    st.session_state['files_loaded'] = {
+        'science_file': None,
+        'bias_file': None,
+        'dark_file': None,
+        'flat_file': None
+    }
+
+# Add these functions to handle the buttons
+def restart_analysis():
+    """Reset analysis results but keep uploaded files"""
+    # Clear analysis results
+    st.session_state['calibrated_data'] = None
+    st.session_state['calibrated_header'] = None
+    st.session_state['final_phot_table'] = None
+    st.session_state.pop('epsf_model', None)
+    st.session_state.pop('epsf_photometry_result', None)
+    # Keep the files_loaded state
+
+def clear_all():
+    """Reset everything including uploaded files"""
+    # Clear all states
+    st.session_state['calibrated_data'] = None
+    st.session_state['calibrated_header'] = None
+    st.session_state['final_phot_table'] = None
+    st.session_state.pop('epsf_model', None)
+    st.session_state.pop('epsf_photometry_result', None)
+    # Clear file states
+    st.session_state['files_loaded'] = {
+        'science_file': None,
+        'bias_file': None,
+        'dark_file': None,
+        'flat_file': None
+    }
+    # Force rerun to clear file uploaders
+    st.experimental_rerun()
 
 st.title("_RAPAS Photometric Calibration_")
 
 # Photometry parameters in sidebar
 with st.sidebar:
     st.sidebar.header("Upload FITS Files")
-    bias_file = st.file_uploader("Master Bias (optional)", type=['fits', 'fit', 'fts'])
-    dark_file = st.file_uploader("Master Dark (optional)", type=['fits', 'fit', 'fts'])
-    flat_file = st.file_uploader("Master Flat (optional)", type=['fits', 'fit', 'fts'])
-    science_file = st.file_uploader("Science Image (required)", type=['fits', 'fit', 'fts'], key="science_upload")
+    
+    # Store uploaded files in session state
+    bias_file = st.file_uploader("Master Bias (optional)", type=['fits', 'fit', 'fts'], 
+                                key="bias_uploader")
+    if bias_file is not None:
+        st.session_state.files_loaded['bias_file'] = bias_file
+    
+    dark_file = st.file_uploader("Master Dark (optional)", type=['fits', 'fit', 'fts'],
+                                key="dark_uploader")
+    if dark_file is not None:
+        st.session_state.files_loaded['dark_file'] = dark_file
+    
+    flat_file = st.file_uploader("Master Flat (optional)", type=['fits', 'fit', 'fts'],
+                                key="flat_uploader")
+    if flat_file is not None:
+        st.session_state.files_loaded['flat_file'] = flat_file
+    
+    science_file = st.file_uploader("Science Image (required)", type=['fits', 'fit', 'fts'], 
+                                   key="science_uploader")
+    if science_file is not None:
+        st.session_state.files_loaded['science_file'] = science_file
      # Also move calibration options to sidebar
     st.header("Calibration Options")
     calibrate_bias = st.checkbox("Apply Bias", value=False,
@@ -1207,6 +1273,17 @@ with st.sidebar:
     st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
     st.link_button("NED", "https://ned.ipac.caltech.edu/")
     st.link_button("ADS", "https://ui.adsabs.harvard.edu/")
+
+    # Add this at the end of your sidebar section
+    st.markdown("---")
+    st.subheader("Control Panel")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 Restart Analysis", help="Reset analysis but keep uploaded files"):
+            restart_analysis()
+    with col2:
+        if st.button("🗑️ Clear All", help="Reset everything including uploaded files"):
+            clear_all()
 
 # Main processing logic
 if science_file is not None:
@@ -1408,7 +1485,7 @@ if science_file is not None:
                                                     
                                                     # Calculate calibrated magnitudes for EPSF photometry
                                                     if 'epsf_instrumental_mag' in final_table.columns:
-                                                        final_table['psf_calib_mag'] = final_table['psf_instrumental_mag'] + zero_point_value + 0.1*air
+                                                        final_table['psf_calib_mag'] = final_table['epsf_instrumental_mag'] + zero_point_value + 0.1*air
                                                         st.success("Added EPSF photometry results to the catalog")
                                                     
                                                     # Ensure we have aperture photometry in the final table too
@@ -1457,13 +1534,13 @@ if science_file is not None:
                                             filename = catalog_name if catalog_name.endswith('.csv') else f"{catalog_name}.csv"
                                             
                                             # Provide download button with better formatting
-                                            st.download_button(
-                                                label="📥 Download Photometry Catalog",
-                                                data=csv_data,
-                                                file_name=filename,
-                                                mime='text/csv',
-                                                help="Download the photometry results as a CSV file"
+                                            download_link = get_download_link(
+                                                csv_data, 
+                                                filename, 
+                                                link_text="📥 Download Photometry Catalog"
                                             )
+                                            st.markdown(download_link, unsafe_allow_html=True)
+                                            st.write("Click the green button above to download without page reload")
                                             
                                             # Also save locally if needed
                                             with open(filename, 'w') as f:
@@ -1535,3 +1612,36 @@ if science_file is not None:
                     st.warning("Could not determine coordinates from image header. Cannot display PanSTARRS view.")
 else:
     st.write("👆 Please upload a science image FITS file to start.")
+
+
+def get_download_link(data, filename, link_text="Download"):
+    """
+    Generate a download link for data without triggering a Streamlit rerun
+    """
+    import base64
+    
+    b64 = base64.b64encode(data.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" class="download-button">{link_text}</a>'
+    
+    button_style = """
+    <style>
+    .download-button {
+        display: inline-block;
+        padding: 0.5em 1em;
+        background-color: #4CAF50;
+        color: white;
+        text-align: center;
+        text-decoration: none;
+        font-size: 16px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    .download-button:hover {
+        background-color: #45a049;
+    }
+    </style>
+    """
+    
+    return button_style + href
