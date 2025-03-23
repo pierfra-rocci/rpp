@@ -235,7 +235,7 @@ def airmass(
         st.write(f"Date & Local Time: {obstime.iso}")
         ra_deg = round(float(coord.ra.deg), 5)
         dec_deg = round(float(coord.dec.deg), 5)
-        st.write(f"Target position: RA={ra_deg}°, DEC={dec_deg}° (ICRS)")
+        st.write(f"Target: RA={ra_deg}°, DEC={dec_deg}° (ICRS)")
         st.write(f"Altitude: {details['altaz']['altitude']}°, "
               f"Azimuth: {details['altaz']['azimuth']}°")
 
