@@ -3,9 +3,15 @@ from astropy.time import Time
 from astropy.coordinates import get_sun
 from typing import Union, Any, Optional, Dict, Tuple
 
+# Add these imports at the top of your file
+from astroquery.simbad import Simbad
+from astroquery.vizier import Vizier
+import requests
+from urllib.parse import quote
+
 from astropy.modeling import models, fitting
 import streamlit as st
-from streamlit.components.v1 import html  # Add this import for Aladin Lite widget
+# from streamlit.components.v1 import html  # Add this import for Aladin Lite widget
 import numpy as np
 from astropy.io import fits
 from astropy.stats import sigma_clip, SigmaClip
@@ -1179,6 +1185,302 @@ def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_
         
         return zero_point_value, zero_point_std, final_table
 
+def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=3.0):
+    """
+    Enhance the catalog with cross-matches from GAIA DR3, SIMBAD, SkyBoT and AAVSO
+    
+    Parameters
+    ----------
+    final_table : pandas.DataFrame
+        Final photometry catalog with RA/DEC coordinates
+    matched_table : pandas.DataFrame
+        Table of already matched Gaia sources (used for calibration)
+    header : dict
+        FITS header with observation information
+    pixel_scale_arcsec : float
+        Pixel scale in arcseconds per pixel
+    search_radius_arcsec : float, optional
+        Search radius for cross-matching in arcseconds
+        
+    Returns
+    -------
+    pandas.DataFrame
+        Input dataframe with added catalog information
+    """
+    if final_table is None or len(final_table) == 0:
+        st.warning("No sources to cross-match with catalogs.")
+        return final_table
+    
+    if 'ra' not in final_table.columns or 'dec' not in final_table.columns:
+        st.warning("RA/DEC columns missing from catalog. Cannot cross-match.")
+        return final_table
+    
+    # Add progress tracking
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    status_text.write("Starting cross-match process...")
+    
+    # 1. First, add the GAIA calibration matches we already have
+    if matched_table is not None and len(matched_table) > 0:
+        status_text.write("Adding Gaia calibration matches...")
+        
+        # Create a unique ID for matching based on x,y coordinates
+        if 'xcenter' in final_table.columns and 'ycenter' in final_table.columns:
+            final_table['match_id'] = final_table['xcenter'].round(2).astype(str) + "_" + final_table['ycenter'].round(2).astype(str)
+        
+        if 'xcenter' in matched_table.columns and 'ycenter' in matched_table.columns:
+            matched_table['match_id'] = matched_table['xcenter'].round(2).astype(str) + "_" + matched_table['ycenter'].round(2).astype(str)
+            
+            # Get Gaia columns to add
+            gaia_cols = [col for col in matched_table.columns if any(x in col for x in ['gaia', 'phot_'])]
+            gaia_cols.append('match_id')
+            
+            # Select Gaia data subset
+            gaia_subset = matched_table[gaia_cols].copy()
+            
+            # Rename columns to be clearer
+            rename_dict = {}
+            for col in gaia_subset.columns:
+                if col != 'match_id' and not col.startswith('gaia_'):
+                    rename_dict[col] = f'gaia_{col}'
+            
+            if rename_dict:
+                gaia_subset = gaia_subset.rename(columns=rename_dict)
+            
+            # Merge with final table
+            final_table = pd.merge(final_table, gaia_subset, on='match_id', how='left')
+            
+            # Add a flag for calibration stars
+            final_table['gaia_calib_star'] = final_table['match_id'].isin(matched_table['match_id'])
+            
+            st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
+    
+    progress_bar.progress(25)
+    
+    # 2. Cross-match with SIMBAD
+    status_text.write("Querying SIMBAD for object identifications...")
+    try:
+        # Extract center coordinates and field size
+        field_center_ra = None
+        field_center_dec = None
+        
+        if 'CRVAL1' in header and 'CRVAL2' in header:
+            field_center_ra = header['CRVAL1']
+            field_center_dec = header['CRVAL2']
+        elif 'RA' in header and 'DEC' in header:
+            field_center_ra = header['RA']
+            field_center_dec = header['DEC']
+        elif 'OBJRA' in header and 'OBJDEC' in header:
+            field_center_ra = header['OBJRA']
+            field_center_dec = header['OBJDEC']
+        
+        if field_center_ra is not None and field_center_dec is not None:
+            # Calculate field size in arcmin
+            if 'NAXIS1' in header and 'NAXIS2' in header:
+                diagonal_pixels = math.sqrt(header['NAXIS1']**2 + header['NAXIS2']**2)
+                field_width_arcmin = (diagonal_pixels * pixel_scale_arcsec) / 60.0
+            else:
+                field_width_arcmin = 20.0  # Default 20 arcmin
+                
+            # Configure Simbad
+            custom_simbad = Simbad()
+            custom_simbad.add_votable_fields('otype', 'main_id', 'ids', 'ra', 'dec')
+            
+            # Query SIMBAD in a cone around field center
+            simbad_result = custom_simbad.query_region(
+                SkyCoord(ra=field_center_ra, dec=field_center_dec, unit='deg'),
+                radius=field_width_arcmin * u.arcmin
+            )
+            
+            if simbad_result is not None and len(simbad_result) > 0:
+                # Convert SIMBAD positions to SkyCoord objects
+                simbad_coords = SkyCoord(ra=simbad_result['RA'], dec=simbad_result['DEC'], 
+                                         unit=(u.hourangle, u.deg))
+                
+                # Convert our catalog positions to SkyCoord
+                source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, 
+                                        unit=u.deg)
+                
+                # Find best matches
+                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
+                matches = d2d < (search_radius_arcsec * u.arcsec)
+                
+                # Add SIMBAD information to matched sources
+                final_table['simbad_name'] = None
+                final_table['simbad_type'] = None
+                final_table['simbad_ids'] = None
+                
+                for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                    if match:
+                        final_table.loc[i, 'simbad_name'] = simbad_result['MAIN_ID'][match_idx]
+                        final_table.loc[i, 'simbad_type'] = simbad_result['OTYPE'][match_idx]
+                        final_table.loc[i, 'simbad_ids'] = simbad_result['IDS'][match_idx]
+                
+                st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+            else:
+                st.info("No SIMBAD objects found in the field.")
+    except Exception as e:
+        st.error(f"Error querying SIMBAD: {e}")
+    
+    progress_bar.progress(50)
+    
+    # 3. Cross-match with SkyBoT for solar system objects
+    status_text.write("Querying SkyBoT for solar system objects...")
+    try:
+        if field_center_ra is not None and field_center_dec is not None:
+            # Get observation date
+            if 'DATE-OBS' in header:
+                obs_date = header['DATE-OBS']
+            elif 'DATE' in header:
+                obs_date = header['DATE']
+            else:
+                obs_date = Time.now().isot
+                
+            # Format date for SkyBoT
+            obs_time = Time(obs_date).isot
+            
+            # Build SkyBoT URL
+            skybot_url = (
+                f"http://vo.imcce.fr/webservices/skybot/skybotconesearch_query.php?"
+                f"RA={field_center_ra}&DEC={field_center_dec}&SR={field_width_arcmin/60.0}&"
+                f"EPOCH={quote(obs_time)}&mime=json"
+            )
+            
+            # Query SkyBoT
+            response = requests.get(skybot_url)
+            if response.status_code == 200:
+                try:
+                    skybot_result = response.json()
+                    
+                    if 'data' in skybot_result and skybot_result['data']:
+                        # Create SkyCoord objects
+                        skybot_coords = SkyCoord(
+                            ra=[float(obj['RA']) for obj in skybot_result['data']], 
+                            dec=[float(obj['DEC']) for obj in skybot_result['data']], 
+                            unit=u.deg
+                        )
+                        
+                        # Convert our catalog positions to SkyCoord
+                        source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, 
+                                              unit=u.deg)
+                        
+                        # Find best matches
+                        idx, d2d, _ = source_coords.match_to_catalog_sky(skybot_coords)
+                        matches = d2d < (search_radius_arcsec * u.arcsec)
+                        
+                        # Add SkyBoT information to matched sources
+                        final_table['skybot_name'] = None
+                        final_table['skybot_type'] = None
+                        final_table['skybot_mag'] = None
+                        
+                        for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                            if match:
+                                obj = skybot_result['data'][match_idx]
+                                final_table.loc[i, 'skybot_name'] = obj['NAME']
+                                final_table.loc[i, 'skybot_type'] = obj['OBJECT_TYPE']
+                                if 'MAGV' in obj:
+                                    final_table.loc[i, 'skybot_mag'] = obj['MAGV']
+                        
+                        st.success(f"Found {sum(matches)} solar system objects in field.")
+                    else:
+                        st.info("No solar system objects found in the field.")
+                except Exception as e:
+                    st.warning(f"Error parsing SkyBoT response: {e}")
+            else:
+                st.warning(f"SkyBoT query failed with status code {response.status_code}")
+    except Exception as e:
+        st.error(f"Error querying SkyBoT: {e}")
+    
+    progress_bar.progress(75)
+    
+    # 4. Cross-match with AAVSO VSX (Variable stars)
+    status_text.write("Querying AAVSO VSX for variable stars...")
+    try:
+        if field_center_ra is not None and field_center_dec is not None:
+            # Use VizieR to access the VSX catalog (B/vsx)
+            Vizier.ROW_LIMIT = -1  # No row limit
+            vizier_result = Vizier.query_region(
+                SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=u.deg),
+                radius=field_width_arcmin * u.arcmin,
+                catalog=['B/vsx']
+            )
+            
+            if vizier_result and 'B/vsx' in vizier_result.keys() and len(vizier_result['B/vsx']) > 0:
+                vsx_table = vizier_result['B/vsx']
+                
+                # Create SkyCoord objects
+                vsx_coords = SkyCoord(ra=vsx_table['RAJ2000'], dec=vsx_table['DEJ2000'], unit=u.deg)
+                source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, 
+                                      unit=u.deg)
+                
+                # Find best matches
+                idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
+                matches = d2d < (search_radius_arcsec * u.arcsec)
+                
+                # Add AAVSO information to matched sources
+                final_table['aavso_name'] = None
+                final_table['aavso_type'] = None
+                final_table['aavso_period'] = None
+                
+                for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                    if match:
+                        final_table.loc[i, 'aavso_name'] = vsx_table['Name'][match_idx]
+                        final_table.loc[i, 'aavso_type'] = vsx_table['Type'][match_idx]
+                        if 'Period' in vsx_table.colnames:
+                            final_table.loc[i, 'aavso_period'] = vsx_table['Period'][match_idx]
+                
+                st.success(f"Found {sum(matches)} variable stars in field.")
+            else:
+                st.info("No variable stars found in the field.")
+    except Exception as e:
+        st.error(f"Error querying AAVSO VSX: {e}")
+    
+    progress_bar.progress(100)
+    status_text.write("Cross-matching complete!")
+    
+    # Create a readable summary of matches
+    final_table['catalog_matches'] = ''
+    
+    # Add matches to summary
+    if 'gaia_calib_star' in final_table.columns:
+        is_calib = final_table['gaia_calib_star'] == True
+        final_table.loc[is_calib, 'catalog_matches'] += 'GAIA (calib); '
+    
+    if 'simbad_name' in final_table.columns:
+        has_simbad = final_table['simbad_name'].notna()
+        final_table.loc[has_simbad, 'catalog_matches'] += 'SIMBAD; '
+    
+    if 'skybot_name' in final_table.columns:
+        has_skybot = final_table['skybot_name'].notna()
+        final_table.loc[has_skybot, 'catalog_matches'] += 'SkyBoT; '
+    
+    if 'aavso_name' in final_table.columns:
+        has_aavso = final_table['aavso_name'].notna()
+        final_table.loc[has_aavso, 'catalog_matches'] += 'AAVSO; '
+    
+    # Remove trailing separators and empty entries
+    final_table['catalog_matches'] = final_table['catalog_matches'].str.rstrip('; ')
+    final_table.loc[final_table['catalog_matches'] == '', 'catalog_matches'] = None
+    
+    # Display matches summary
+    matches_count = final_table['catalog_matches'].notna().sum()
+    if matches_count > 0:
+        st.subheader(f"Matched Objects Summary ({matches_count} sources)")
+        matched_df = final_table[final_table['catalog_matches'].notna()].copy()
+        
+        # Select columns to display
+        display_cols = ['xcenter', 'ycenter', 'ra', 'dec', 'aperture_calib_mag', 'catalog_matches']
+        display_cols = [col for col in display_cols if col in matched_df.columns]
+        
+        st.dataframe(matched_df[display_cols])
+    
+    # Remove temporary match_id column if it exists
+    if 'match_id' in final_table.columns:
+        final_table.drop('match_id', axis=1, inplace=True)
+        
+    return final_table
+
+
 
 # ------------------------------------------------------------------------------
 
@@ -1552,6 +1854,32 @@ if science_file is not None:
                                             # Show which columns are included
                                             st.success(f"Catalog includes {len(final_table)} sources with columns: {', '.join(final_table.columns.tolist())}")
                                             
+                                            # Add cross-matching functionality
+                                            if 'ra' in final_table.columns and 'dec' in final_table.columns:
+                                                st.subheader("Cross-matching with Astronomical Catalogs")
+                                                final_table = enhance_catalog_with_crossmatches(
+                                                    final_table,
+                                                    matched_table,  # Pass our Gaia-matched calibration table 
+                                                    header_to_process,
+                                                    pixel_size_arcsec, 
+                                                    search_radius_arcsec=2.0
+                                                )
+                                            else:
+                                                st.warning("RA/DEC coordinates not available for catalog cross-matching")
+
+                                            # Cross-match catalog with astronomical catalogs to add identifications
+                                            # if 'ra' in final_table.columns and 'dec' in final_table.columns:
+                                            #     st.subheader("Cross-matching with Astronomical Catalogs")
+                                            #     final_table = enhance_catalog_with_crossmatches(
+                                            #         final_table,
+                                            #         matched_table,  # Pass our Gaia-matched calibration table
+                                            #         header_to_process,
+                                            #         pixel_size_arcsec,
+                                            #         search_radius_arcsec=2.0
+                                            #     )
+                                            # else:
+                                            #     st.warning("RA/DEC coordinates not available for catalog cross-matching")
+
                                             # Write the filtered DataFrame to the buffer
                                             final_table.to_csv(csv_buffer, index=False)
                                             csv_data = csv_buffer.getvalue()
