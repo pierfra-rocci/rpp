@@ -440,10 +440,10 @@ def fwhm_fit(
         daofind = DAOStarFinder(fwhm=1.5*fwhm, threshold=6 * np.std(img))
         sources = daofind(img, mask=mask)
         if sources is None:
-            st.warning("No sources found by DAOStarFinder!")
+            st.warning("No sources found !")
             return None
 
-        st.write(f"Number of sources found by DAOStarFinder: {len(sources)}")
+        st.write(f"Number of sources found : {len(sources)}")
 
         # Filter sources by flux
         flux = sources['flux']
@@ -703,7 +703,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         st.warning("No sources found!")
         return None, None, daofind, bkg
     
-    st.write(f"Found {len(sources)} sources")
+    # st.write(f"Found {len(sources)} sources")
     
     # Aperture photometry
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
