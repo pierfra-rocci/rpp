@@ -961,12 +961,6 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         ax.set_title("Gaia magnitude vs Calibrated magnitude")
         ax.legend()
         ax.grid(True, alpha=0.5)
-        
-        # Add annotation for zero point value
-        # text_x = np.min(_matched_table[gaia_band]) + 0.1 * (np.max(_matched_table[gaia_band]) - np.min(_matched_table[gaia_band]))
-        # text_y = np.max(_matched_table['calib_mag']) - 0.1 * (np.max(_matched_table['calib_mag']) - np.min(_matched_table['calib_mag']))
-        # ax.text(text_x, text_y, f"Zero Point = {zero_point_value:.3f} ± {zero_point_std:.3f}", 
-        #         bbox=dict(facecolor='white', alpha=0.8))
                 
         st.success(f"Calculated Zero Point: {zero_point_value:.3f} ± {zero_point_std:.3f}")
         
@@ -1183,7 +1177,7 @@ def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_
         
         return zero_point_value, zero_point_std, final_table
 
-def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=3.0):
+def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=6.0):
     """
     Enhance the catalog with cross-matches from GAIA DR3, SIMBAD, SkyBoT and AAVSO
     
@@ -1214,7 +1208,6 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
         return final_table
     
     # Add progress tracking
-    progress_bar = st.progress(0)
     status_text = st.empty()
     status_text.write("Starting cross-match process...")
     
@@ -1253,8 +1246,6 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
             
             st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
     
-    progress_bar.progress(25)
-    
     # 2. Cross-match with SIMBAD - Fixed version
     status_text.write("Querying SIMBAD for object identifications...")
     try:
@@ -1282,7 +1273,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 if 'NAXIS1' in header and 'NAXIS2' in header:
                     field_width_arcmin = max(header.get('NAXIS1', 1000), header.get('NAXIS2', 1000)) * pixel_scale_arcsec / 60.0
                 else:
-                    field_width_arcmin = 20.0  # Default 20 arcmin
+                    field_width_arcmin = 30.0  # Default 20 arcmin
                     
                 # Configure Simbad
                 custom_simbad = Simbad()
@@ -1308,22 +1299,35 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                         # Convert catalog positions to SkyCoord objects with explicit unit
                         source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, unit='deg')
                         
-                        # Get SIMBAD coordinates with proper units
-                        simbad_coords = SkyCoord(ra=simbad_result['RA'], dec=simbad_result['DEC'], unit=(u.hourangle, u.deg))
-                        
-                        # Match coordinates
-                        idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
-                        matches = d2d < (search_radius_arcsec * u.arcsec)
-                        
-                        # Add matches to table
-                        for i, (match, match_idx) in enumerate(zip(matches, idx)):
-                            if match:
-                                final_table.loc[i, 'simbad_name'] = simbad_result['MAIN_ID'][match_idx]
-                                final_table.loc[i, 'simbad_type'] = simbad_result['OTYPE'][match_idx]
-                                if 'IDS' in simbad_result.colnames:
-                                    final_table.loc[i, 'simbad_ids'] = simbad_result['IDS'][match_idx]
-                        
-                        st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+                        # Check if RA and DEC columns exist and create SkyCoord
+                        if all(col in simbad_result.colnames for col in ['ra', 'dec']):  # Changed from 'RA', 'DEC' to lowercase
+                            # Get SIMBAD coordinates with proper units
+                            try:
+                                simbad_coords = SkyCoord(
+                                    ra=simbad_result['ra'],  # Changed from 'RA' to 'ra'
+                                    dec=simbad_result['dec'],  # Changed from 'DEC' to 'dec'
+                                    unit=(u.hourangle, u.deg)
+                                )
+                                
+                                # Match coordinates
+                                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
+                                matches = d2d < (search_radius_arcsec * u.arcsec)
+                                
+                                # Add matches to table
+                                for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                                    if match:
+                                        final_table.loc[i, 'simbad_name'] = simbad_result['main_id'][match_idx]  # Changed from 'MAIN_ID'
+                                        final_table.loc[i, 'simbad_type'] = simbad_result['otype'][match_idx]    # Changed from 'OTYPE'
+                                        if 'ids' in simbad_result.colnames:  # Changed from 'IDS'
+                                            final_table.loc[i, 'simbad_ids'] = simbad_result['ids'][match_idx]
+                                
+                                st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+                            except Exception as e:
+                                st.error(f"Error creating SkyCoord objects from SIMBAD data: {str(e)}")
+                                st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
+                        else:
+                            available_cols = ', '.join(simbad_result.colnames)
+                            st.error(f"SIMBAD result missing required columns. Available columns: {available_cols}")
                     else:
                         st.info("No SIMBAD objects found in the field.")
                 except Exception as e:
@@ -1332,8 +1336,6 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
             st.warning("Could not extract field center coordinates from header")
     except Exception as e:
         st.error(f"Error in SIMBAD processing: {str(e)}")
-    
-    progress_bar.progress(50)
     
     # 3. Cross-match with SkyBoT for solar system objects - Fixed version
     status_text.write("Querying SkyBoT for solar system objects...")
@@ -1358,7 +1360,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 f"EPOCH={quote(obs_time)}&mime=json"
             )
             
-            st.info(f"Querying SkyBoT for solar system objects")
+            st.info("Querying SkyBoT for solar system objects")
             
             # Query SkyBoT with better error handling
             try:
@@ -1404,8 +1406,8 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                                 st.success(f"Found {sum(matches)} solar system objects in field.")
                             else:
                                 st.info("No solar system objects found in the field.")
-                        except ValueError as json_err:
-                            st.info("No solar system objects found (no valid JSON data returned).")
+                        except ValueError as e:
+                            st.info(f"No solar system objects found (no valid JSON data returned). {str(e)}")
                     else:
                         st.info("No solar system objects found in the field.")
                 else:
@@ -1418,7 +1420,6 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
     except Exception as e:
         st.error(f"Error in SkyBoT processing: {str(e)}")
     
-    progress_bar.progress(75)
     
     # 4. Cross-match with AAVSO VSX (Variable stars)
     status_text.write("Querying AAVSO VSX for variable stars...")
@@ -1462,7 +1463,6 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
     except Exception as e:
         st.error(f"Error querying AAVSO VSX: {e}")
     
-    progress_bar.progress(100)
     status_text.write("Cross-matching complete!")
     
     # Create a readable summary of matches
@@ -1470,7 +1470,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
     
     # Add matches to summary
     if 'gaia_calib_star' in final_table.columns:
-        is_calib = final_table['gaia_calib_star'] == True
+        is_calib = final_table['gaia_calib_star']
         final_table.loc[is_calib, 'catalog_matches'] += 'GAIA (calib); '
     
     if 'simbad_name' in final_table.columns:
@@ -1508,7 +1508,6 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
     return final_table
 
 
-
 # ------------------------------------------------------------------------------
 
 # Main Script Execution
@@ -1531,7 +1530,7 @@ if 'analysis_parameters' not in st.session_state:
         'threshold_sigma': 3.0,
         'detection_mask': 50,
         'gaia_band': "phot_g_mean_mag",
-        'gaia_min_mag': 10.0,
+        'gaia_min_mag': 11.0,
         'gaia_max_mag': 19.0,
         'calibrate_bias': False,
         'calibrate_dark': False,
@@ -1884,28 +1883,17 @@ if science_file is not None:
                                             # Add cross-matching functionality
                                             if 'ra' in final_table.columns and 'dec' in final_table.columns:
                                                 st.subheader("Cross-matching with Astronomical Catalogs")
+                                                # Calculate search radius based on FWHM
+                                                search_radius = 2 * mean_fwhm_pixel * pixel_size_arcsec
                                                 final_table = enhance_catalog_with_crossmatches(
                                                     final_table,
                                                     matched_table,  # Pass our Gaia-matched calibration table 
                                                     header_to_process,
                                                     pixel_size_arcsec, 
-                                                    search_radius_arcsec=5.0
+                                                    search_radius_arcsec=search_radius
                                                 )
                                             else:
                                                 st.warning("RA/DEC coordinates not available for catalog cross-matching")
-
-                                            # Cross-match catalog with astronomical catalogs to add identifications
-                                            # if 'ra' in final_table.columns and 'dec' in final_table.columns:
-                                            #     st.subheader("Cross-matching with Astronomical Catalogs")
-                                            #     final_table = enhance_catalog_with_crossmatches(
-                                            #         final_table,
-                                            #         matched_table,  # Pass our Gaia-matched calibration table
-                                            #         header_to_process,
-                                            #         pixel_size_arcsec,
-                                            #         search_radius_arcsec=2.0
-                                            #     )
-                                            # else:
-                                            #     st.warning("RA/DEC coordinates not available for catalog cross-matching")
 
                                             # Write the filtered DataFrame to the buffer
                                             final_table.to_csv(csv_buffer, index=False)
