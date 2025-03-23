@@ -1255,7 +1255,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
     
     progress_bar.progress(25)
     
-    # 2. Cross-match with SIMBAD
+    # 2. Cross-match with SIMBAD - Fixed version
     status_text.write("Querying SIMBAD for object identifications...")
     try:
         # Extract center coordinates and field size
@@ -1278,55 +1278,64 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
             if not (-360 <= field_center_ra <= 360) or not (-90 <= field_center_dec <= 90):
                 st.warning(f"Invalid coordinates: RA={field_center_ra}, DEC={field_center_dec}")
             else:
+                # Calculate field width in arcmin based on image dimensions and pixel scale
+                if 'NAXIS1' in header and 'NAXIS2' in header:
+                    field_width_arcmin = max(header.get('NAXIS1', 1000), header.get('NAXIS2', 1000)) * pixel_scale_arcsec / 60.0
+                else:
+                    field_width_arcmin = 20.0  # Default 20 arcmin
+                    
                 # Configure Simbad
                 custom_simbad = Simbad()
-                custom_simbad.add_votable_fields('otype', 'main_id', 'ids', 'ra', 'dec')
+                custom_simbad.add_votable_fields('otype', 'main_id', 'ids')
                 
                 # Query SIMBAD in a cone around field center
                 st.info(f"Querying SIMBAD at RA={field_center_ra}, DEC={field_center_dec}")
-                # Calculate field width in arcmin based on image dimensions and pixel scale
-                field_width_arcmin = max(header_to_process.get('NAXIS1', 1000), header_to_process.get('NAXIS2', 1000)) * pixel_size_arcsec / 60.0
                 
-                simbad_result = custom_simbad.query_region(
-                    SkyCoord(ra=field_center_ra, dec=field_center_dec, unit='deg'),
-                    radius = field_width_arcmin * u.arcmin
-                )
-                
-                if simbad_result is not None and len(simbad_result) > 0:
-                    # Convert SIMBAD positions to SkyCoord objects
-                    simbad_coords = SkyCoord(ra=simbad_result['RA'], dec=simbad_result['DEC'], 
-                                             unit=(u.hourangle, u.deg))
+                try:
+                    # Create a SkyCoord object for the query
+                    center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit='deg')
+                    simbad_result = custom_simbad.query_region(
+                        center_coord,
+                        radius=field_width_arcmin * u.arcmin
+                    )
                     
-                    # Convert our catalog positions to SkyCoord
-                    source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, 
-                                            unit=u.deg)
-                    
-                    # Find best matches
-                    idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
-                    matches = d2d < (search_radius_arcsec * u.arcsec)
-                    
-                    # Add SIMBAD information to matched sources
-                    final_table['simbad_name'] = None
-                    final_table['simbad_type'] = None
-                    final_table['simbad_ids'] = None
-                    
-                    for i, (match, match_idx) in enumerate(zip(matches, idx)):
-                        if match:
-                            final_table.loc[i, 'simbad_name'] = simbad_result['MAIN_ID'][match_idx]
-                            final_table.loc[i, 'simbad_type'] = simbad_result['OTYPE'][match_idx]
-                            final_table.loc[i, 'simbad_ids'] = simbad_result['IDS'][match_idx]
-                    
-                    st.success(f"Found {sum(matches)} SIMBAD objects in field.")
-                else:
-                    st.info("No SIMBAD objects found in the field.")
+                    if simbad_result is not None and len(simbad_result) > 0:
+                        # Initialize columns if they don't exist
+                        final_table['simbad_name'] = None
+                        final_table['simbad_type'] = None
+                        final_table['simbad_ids'] = None
+                        
+                        # Convert catalog positions to SkyCoord objects with explicit unit
+                        source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, unit='deg')
+                        
+                        # Get SIMBAD coordinates with proper units
+                        simbad_coords = SkyCoord(ra=simbad_result['RA'], dec=simbad_result['DEC'], unit=(u.hourangle, u.deg))
+                        
+                        # Match coordinates
+                        idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
+                        matches = d2d < (search_radius_arcsec * u.arcsec)
+                        
+                        # Add matches to table
+                        for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                            if match:
+                                final_table.loc[i, 'simbad_name'] = simbad_result['MAIN_ID'][match_idx]
+                                final_table.loc[i, 'simbad_type'] = simbad_result['OTYPE'][match_idx]
+                                if 'IDS' in simbad_result.colnames:
+                                    final_table.loc[i, 'simbad_ids'] = simbad_result['IDS'][match_idx]
+                        
+                        st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+                    else:
+                        st.info("No SIMBAD objects found in the field.")
+                except Exception as e:
+                    st.error(f"SIMBAD query execution failed: {str(e)}")
         else:
             st.warning("Could not extract field center coordinates from header")
     except Exception as e:
-        st.error(f"Error querying SIMBAD: {str(e)}")
+        st.error(f"Error in SIMBAD processing: {str(e)}")
     
     progress_bar.progress(50)
     
-    # 3. Cross-match with SkyBoT for solar system objects
+    # 3. Cross-match with SkyBoT for solar system objects - Fixed version
     status_text.write("Querying SkyBoT for solar system objects...")
     try:
         if field_center_ra is not None and field_center_dec is not None:
@@ -1342,25 +1351,34 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
             obs_time = Time(obs_date).isot
             
             # Build SkyBoT URL
+            sr_value = min(field_width_arcmin/60.0, 1.0)  # Limit to 1 degree max
             skybot_url = (
                 f"http://vo.imcce.fr/webservices/skybot/skybotconesearch_query.php?"
-                f"RA={field_center_ra}&DEC={field_center_dec}&SR={field_width_arcmin/60.0}&"
+                f"RA={field_center_ra}&DEC={field_center_dec}&SR={sr_value}&"
                 f"EPOCH={quote(obs_time)}&mime=json"
             )
             
-            st.info(f"Querying SkyBoT at {skybot_url}")
+            st.info(f"Querying SkyBoT for solar system objects")
             
-            # Query SkyBoT with error handling
+            # Query SkyBoT with better error handling
             try:
-                response = requests.get(skybot_url, timeout=10)
+                # Initialize columns
+                final_table['skybot_name'] = None
+                final_table['skybot_type'] = None
+                final_table['skybot_mag'] = None
+                
+                # Make request with extended timeout
+                response = requests.get(skybot_url, timeout=15)
+                
                 if response.status_code == 200:
-                    try:
-                        content = response.text
-                        if content.strip():  # Check for empty response
+                    response_text = response.text.strip()
+                    
+                    # Check if we got a valid JSON response
+                    if response_text.startswith('{') or response_text.startswith('['):
+                        try:
                             skybot_result = response.json()
                             
                             if 'data' in skybot_result and skybot_result['data']:
-                                # Create SkyCoord objects
                                 skybot_coords = SkyCoord(
                                     ra=[float(obj['RA']) for obj in skybot_result['data']], 
                                     dec=[float(obj['DEC']) for obj in skybot_result['data']], 
@@ -1375,11 +1393,6 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                                 idx, d2d, _ = source_coords.match_to_catalog_sky(skybot_coords)
                                 matches = d2d < (search_radius_arcsec * u.arcsec)
                                 
-                                # Add SkyBoT information to matched sources
-                                final_table['skybot_name'] = None
-                                final_table['skybot_type'] = None
-                                final_table['skybot_mag'] = None
-                                
                                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                                     if match:
                                         obj = skybot_result['data'][match_idx]
@@ -1390,13 +1403,14 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                                 
                                 st.success(f"Found {sum(matches)} solar system objects in field.")
                             else:
-                                st.info("No solar system objects found in the field")
-                        else:
-                            st.info("Empty response from SkyBoT")
-                    except ValueError as json_err:
-                        st.warning(f"SkyBoT returned invalid JSON: {json_err}")
+                                st.info("No solar system objects found in the field.")
+                        except ValueError as json_err:
+                            st.info("No solar system objects found (no valid JSON data returned).")
+                    else:
+                        st.info("No solar system objects found in the field.")
                 else:
                     st.warning(f"SkyBoT query failed with status code {response.status_code}")
+                    
             except requests.exceptions.RequestException as req_err:
                 st.warning(f"Request to SkyBoT failed: {req_err}")
         else:
