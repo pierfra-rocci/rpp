@@ -627,7 +627,7 @@ def perform_epsf_photometry(
         # Specify source positions
         psfphot.x = phot_table['xcenter']
         psfphot.y = phot_table['ycenter']
-        st.write("Source positions defined for PSF photometry.")
+        st.write("Source positions for PSF photometry: done.")
     except Exception as e:
         st.error(f"Error configuring PSF photometry: {e}")
         raise
