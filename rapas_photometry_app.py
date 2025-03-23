@@ -1284,6 +1284,9 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 
                 # Query SIMBAD in a cone around field center
                 st.info(f"Querying SIMBAD at RA={field_center_ra}, DEC={field_center_dec}")
+                # Calculate field width in arcmin based on image dimensions and pixel scale
+                field_width_arcmin = max(header_to_process.get('NAXIS1', 1000), header_to_process.get('NAXIS2', 1000)) * pixel_size_arcsec / 60.0
+                
                 simbad_result = custom_simbad.query_region(
                     SkyCoord(ra=field_center_ra, dec=field_center_dec, unit='deg'),
                     radius = field_width_arcmin * u.arcmin
@@ -1872,7 +1875,7 @@ if science_file is not None:
                                                     matched_table,  # Pass our Gaia-matched calibration table 
                                                     header_to_process,
                                                     pixel_size_arcsec, 
-                                                    search_radius_arcsec=2.0
+                                                    search_radius_arcsec=5.0
                                                 )
                                             else:
                                                 st.warning("RA/DEC coordinates not available for catalog cross-matching")
