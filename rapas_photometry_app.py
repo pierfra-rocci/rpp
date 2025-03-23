@@ -565,7 +565,7 @@ def perform_epsf_photometry(
     try:
         # Define fitting shape (box size for star extraction)
         fit_shape = 2 * round(fwhm) + 1
-        st.write(f"Fitting shape defined: {fit_shape} pixels.")
+        st.write(f"Fitting shape: {fit_shape} pixels.")
     except Exception as e:
         st.error(f"Error calculating fitting shape: {e}")
         raise
