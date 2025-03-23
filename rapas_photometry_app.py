@@ -1275,7 +1275,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
         if field_center_ra is not None and field_center_dec is not None:
             # Calculate field size in arcmin
             if 'NAXIS1' in header and 'NAXIS2' in header:
-                diagonal_pixels = math.sqrt(header['NAXIS1']**2 + header['NAXIS2']**2)
+                diagonal_pixels = np.sqrt(header['NAXIS1']**2 + header['NAXIS2']**2)
                 field_width_arcmin = (diagonal_pixels * pixel_scale_arcsec) / 60.0
             else:
                 field_width_arcmin = 20.0  # Default 20 arcmin
