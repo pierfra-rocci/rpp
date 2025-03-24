@@ -771,8 +771,6 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         st.warning("No sources found!")
         return None, None, daofind, bkg
     
-    # st.write(f"Found {len(sources)} sources")
-    
     # Aperture photometry
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     apertures = CircularAperture(positions, r=1.5*fwhm_estimate)
@@ -787,6 +785,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
                 # Check if WCS has more than 2 dimensions, and if so, reduce it
                 if wcs_obj.pixel_n_dim > 2:
                     wcs_obj = wcs_obj.celestial
+                    st.info("Reduced WCS to 2D celestial coordinates for photometry")
             except Exception as e:
                 st.warning(f"Error creating WCS object: {e}")
                 wcs_obj = None
@@ -798,42 +797,88 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
             wcs=wcs_obj
         )
         
+        # Add source positions to table
+        phot_table['xcenter'] = sources['xcentroid']
+        phot_table['ycenter'] = sources['ycentroid']
+        
         # Calculate instrumental magnitudes for aperture photometry
         instrumental_mags = -2.5 * np.log10(phot_table['aperture_sum'])
         phot_table['instrumental_mag'] = instrumental_mags
         
-        # Calculate instrumental magnitudes for PSF photometry
-        epsf_instrumental_mags = -2.5 * np.log10(epsf_table['flux_fit'])
-        epsf_table['instrumental_mag'] = epsf_instrumental_mags
-
-        # Keep only valid sources
+        # Perform PSF/EPSF photometry
+        try:
+            epsf_table, _ = perform_epsf_photometry(
+                image_data - bkg.background, 
+                phot_table, 
+                fwhm_estimate, 
+                daofind, 
+                mask
+            )
+            
+            # Calculate instrumental magnitudes for PSF photometry
+            epsf_instrumental_mags = -2.5 * np.log10(epsf_table['flux_fit'])
+            epsf_table['instrumental_mag'] = epsf_instrumental_mags
+        except Exception as e:
+            st.error(f"Error performing EPSF photometry: {e}")
+            epsf_table = None
+        
+        # Keep only valid sources for aperture photometry
         valid_sources = (phot_table['aperture_sum'] > 0) & np.isfinite(phot_table['instrumental_mag'])
         phot_table = phot_table[valid_sources]
+        
+        # Keep only valid sources for PSF photometry if available
+        if epsf_table is not None:
+            epsf_valid_sources = (epsf_table['flux_fit'] > 0) & np.isfinite(epsf_table['instrumental_mag'])
+            epsf_table = epsf_table[epsf_valid_sources]
 
-        epsf_valid_sources = (epsf_table['flux_fit'] > 0) & np.isfinite(epsf_table['instrumental_mag'])
-        epsf_table = epsf_table[epsf_valid_sources]
-
-        # Add RA and Dec if WCS is available once
+        # Add RA and Dec if WCS is available
         try:
-            # Use the same properly formatted WCS object we created earlier
             if wcs_obj is not None:
                 # Process phot_table
                 ra, dec = wcs_obj.pixel_to_world_values(phot_table['xcenter'], phot_table['ycenter'])
                 phot_table['ra'] = ra * u.deg
                 phot_table['dec'] = dec * u.deg
                 
-                # Process epsf_table
-                epsf_ra, epsf_dec = wcs_obj.pixel_to_world_values(epsf_table['x_fit'], epsf_table['y_fit'])
-                epsf_table['ra'] = epsf_ra * u.deg
-                epsf_table['dec'] = epsf_dec * u.deg
+                # Process epsf_table if available
+                if epsf_table is not None:
+                    try:
+                        epsf_ra, epsf_dec = wcs_obj.pixel_to_world_values(epsf_table['x_fit'], epsf_table['y_fit'])
+                        epsf_table['ra'] = epsf_ra * u.deg
+                        epsf_table['dec'] = epsf_dec * u.deg
+                    except Exception as e:
+                        st.warning(f"Could not add coordinates to EPSF table: {e}")
+            else:
+                # If no WCS but we have RA/DEC in header, try to create approximate coordinates
+                if all(key in _science_header for key in ['RA', 'DEC', 'NAXIS1', 'NAXIS2']):
+                    st.info("Using simple linear approximation for RA/DEC coordinates")
+                    center_ra = _science_header['RA']
+                    center_dec = _science_header['DEC']
+                    width = _science_header['NAXIS1']
+                    height = _science_header['NAXIS2']
+                    
+                    # Estimate pixel scale if not available
+                    pix_scale = pixel_scale or 1.0  # arcsec/pixel
+                    
+                    # Create simple WCS transformation (approximate)
+                    center_x = width / 2
+                    center_y = height / 2
+                    
+                    # Add coordinates to tables
+                    for i, row in enumerate(phot_table):
+                        x = row['xcenter']
+                        y = row['ycenter']
+                        dx = (x - center_x) * pix_scale / 3600.0  # convert to degrees
+                        dy = (y - center_y) * pix_scale / 3600.0  # convert to degrees
+                        phot_table[i]['ra'] = center_ra + dx / np.cos(np.radians(center_dec))
+                        phot_table[i]['dec'] = center_dec + dy
         except Exception as e:
             st.warning(f"WCS transformation failed: {e}. RA and Dec not added to tables.")
             
         st.success(f"Found {len(phot_table)} sources and performed photometry.")
         return phot_table, epsf_table, daofind, bkg
     except Exception as e:
-        st.error(f"Error performing PSF photometry: {e}")
-        return phot_table, None, daofind, bkg
+        st.error(f"Error performing aperture photometry: {e}")
+        return None, None, daofind, bkg
 
 
 @st.cache_data
