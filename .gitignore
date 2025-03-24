@@ -162,3 +162,4 @@ cython_debug/
 #.idea/
 zero_point_plot.png
 photometry_catalog.csv
+data
