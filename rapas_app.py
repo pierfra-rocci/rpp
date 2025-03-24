@@ -786,10 +786,16 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
                 wcs_obj = WCS(_science_header)
                 # Check if WCS has more than 2 dimensions, and if so, reduce it
                 if wcs_obj.pixel_n_dim > 2:
-            phot_table, 
-            fwhm_estimate, 
-            daofind, 
-            mask
+                    wcs_obj = wcs_obj.celestial
+            except Exception as e:
+                st.warning(f"Error creating WCS object: {e}")
+                wcs_obj = None
+                
+        phot_table = aperture_photometry(
+            image_data - bkg.background,
+            apertures,
+            error=total_error,
+            wcs=wcs_obj
         )
         
         # Calculate instrumental magnitudes for aperture photometry
