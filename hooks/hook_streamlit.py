@@ -1,3 +1,3 @@
-from PyInstaller.hooks import collect_data_files
+from PyInstaller.utils.hooks import copy_metadata
 
-datas = collect_data_files('streamlit')
+datas = copy_metadata('streamlit')

@@ -1,12 +1,5 @@
-import streamlit.web.cli as stcli
-import os
-import sys
+from streamlit.web import cli
 
-def resolve_path(path):
-    return os.path.abspath(os.path.join(os.getcwd(), path))
-
+# This import path depends on your Streamlit version
 if __name__ == '__main__':
-    sys.argv = ['streamlit', 'run', 
-                resolve_path('rapas_app.py')]
-    
-    sys.exit(stcli.main())
+    cli._main_run_clExplicit('rapas_app.py', args=['run'])
