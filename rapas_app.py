@@ -252,15 +252,59 @@ def airmass(
 
 @st.cache_data
 def load_fits_data(file):
-    """Load FITS data from an uploaded file."""
+    """
+    Load FITS data from an uploaded file, handling both standard and RGB FITS images.
+    
+    For RGB/multi-dimensional FITS files, extracts the first image HDU and uses 
+    only the first channel if the data is multi-dimensional.
+    """
     if file is not None:
         file_content = file.read()
         # Create HDUList explicitly to avoid typing issues
         hdul = fits.open(BytesIO(file_content), mode='readonly')
         try:
+            # Start with primary HDU
             data = hdul[0].data
             header = hdul[0].header
+            
+            # If primary HDU has no data, look for first image HDU
+            if data is None:
+                for i, hdu in enumerate(hdul[1:], 1):
+                    if hasattr(hdu, 'data') and hdu.data is not None:
+                        data = hdu.data
+                        header = hdu.header
+                        st.info(f"Primary HDU has no data. Using data from HDU #{i}.")
+                        break
+            
+            # Handle case where no data was found
+            if data is None:
+                st.warning("No image data found in the FITS file.")
+                return None, None
+                
+            # Handle different data dimensionality
+            if len(data.shape) == 3:
+                # Determine if this is likely an RGB image
+                if data.shape[0] == 3 or data.shape[0] == 4:  # RGB/RGBA with color as first dimension
+                    st.info(f"Detected RGB data with shape {data.shape}. Using first color channel.")
+                    data = data[0]
+                elif data.shape[2] == 3 or data.shape[2] == 4:  # RGB/RGBA with color as last dimension
+                    st.info(f"Detected RGB data with shape {data.shape}. Using first color channel.")
+                    data = data[:, :, 0]
+                else:  # Some other 3D data structure (e.g., data cube)
+                    st.info(f"Detected 3D data with shape {data.shape}. Using first plane.")
+                    data = data[0]
+            elif len(data.shape) > 3:
+                st.warning(f"Data has {len(data.shape)} dimensions. Using first slice only.")
+                # Take first slice along all higher dimensions
+                sliced_data = data
+                while len(sliced_data.shape) > 2:
+                    sliced_data = sliced_data[0]
+                data = sliced_data
+            
             return data, header
+        except Exception as e:
+            st.error(f"Error loading FITS file: {str(e)}")
+            return None, None
         finally:
             hdul.close()
     return None, None
@@ -384,56 +428,80 @@ def fwhm_fit(
     def compute_fwhm_marginal_sums(image_data, center_row, center_col, box_size):
         """Compute FWHM using marginal sums and Gaussian fitting."""
         half_box = box_size // 2
-
+        
+        # Enforce minimum box size for fitting
+        if box_size < 5:
+            return None  # Box too small for reliable fitting
+        
         # Check if box is within image boundaries of the FULL IMAGE
         row_start = center_row - half_box
         row_end = center_row + half_box + 1
         col_start = center_col - half_box
         col_end = center_col + half_box + 1
-
-        if row_start < 0 or row_end > img.shape[0] or col_start < 0 or col_end > img.shape[1]:
+        
+        if row_start < 0 or row_end > image_data.shape[0] or col_start < 0 or col_end > image_data.shape[1]:
             return None  # Box extends beyond image boundaries
-
+        
         # Extract box region from the COMPLETE IMAGE
-        box_data = img[row_start:row_end, col_start:col_end]
-
+        box_data = image_data[row_start:row_end, col_start:col_end]
+        
+        # Skip if box is too small (due to boundary conditions)
+        if box_data.shape[0] < 5 or box_data.shape[1] < 5:
+            return None
+        
         # Calculate marginal sums
         sum_rows = np.sum(box_data, axis=1)
         sum_cols = np.sum(box_data, axis=0)
-
+        
+        # Skip if not enough signal (avoid fitting noise)
+        if np.max(sum_rows) < 5 * np.median(sum_rows) or np.max(sum_cols) < 5 * np.median(sum_cols):
+            return None
+        
         # Create axis data for fitting
-        row_indices = np.arange(box_size)
-        col_indices = np.arange(box_size)
-
+        row_indices = np.arange(box_data.shape[0])
+        col_indices = np.arange(box_data.shape[1])
+        
         # Fit Gaussians
         fitter = fitting.LevMarLSQFitter()
-
-        # Fit rows
-        model_row = models.Gaussian1D()
-        model_row.amplitude.value = np.max(sum_rows)
-        model_row.mean.value = half_box
-        model_row.stddev.value = half_box/3
+        
+        # Fit rows - with better initial estimates and error handling
         try:
+            # Better initial parameter estimation
+            row_max_idx = np.argmax(sum_rows)
+            row_max_val = sum_rows[row_max_idx]
+            
+            model_row = models.Gaussian1D(
+                amplitude=row_max_val,
+                mean=row_max_idx,
+                stddev=box_size/6  # More conservative initial stddev
+            )
+            
             fitted_row = fitter(model_row, row_indices, sum_rows)
             center_row_fit = fitted_row.mean.value + row_start
-            fwhm_row = 2 * np.sqrt(2 * np.log(2)) * fitted_row.stddev.value * pixel_scale
+            fwhm_row = 2 * np.sqrt(2 * np.log(2)) * fitted_row.stddev.value
         except Exception as e:
-            st.error(f"Error fitting row marginal sum: {e}")
+            # If row fitting fails, return None
             return None
-
-        # Fit columns
-        model_col = models.Gaussian1D()
-        model_col.amplitude.value = np.max(sum_cols)
-        model_col.mean.value = half_box
-        model_col.stddev.value = half_box/3
+        
+        # Fit columns - with better initial estimates and error handling
         try:
+            # Better initial parameter estimation
+            col_max_idx = np.argmax(sum_cols)
+            col_max_val = sum_cols[col_max_idx]
+            
+            model_col = models.Gaussian1D(
+                amplitude=col_max_val,
+                mean=col_max_idx,
+                stddev=box_size/6  # More conservative initial stddev
+            )
+            
             fitted_col = fitter(model_col, col_indices, sum_cols)
             center_col_fit = fitted_col.mean.value + col_start
-            fwhm_col = 2 * np.sqrt(2 * np.log(2)) * fitted_col.stddev.value * pixel_scale
+            fwhm_col = 2 * np.sqrt(2 * np.log(2)) * fitted_col.stddev.value
         except Exception as e:
-            st.error(f"Error fitting column marginal sum: {e}")
+            # If column fitting fails, return None
             return None
-
+        
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit
 
     try:
@@ -711,24 +779,13 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
     
     # Perform aperture photometry
     try:
-        phot_table = aperture_photometry(
-            image_data - bkg.background, 
-            apertures, 
-            error=total_error,
-            wcs=WCS(_science_header) if 'CTYPE1' in _science_header else None
-        )
-    except Exception as e:
-        st.error(f"Error performing aperture photometry: {e}")
-        return None, None, daofind, bkg
-    
-    # Add source IDs and coordinates to photometry table
-    phot_table['xcenter'] = sources['xcentroid']
-    phot_table['ycenter'] = sources['ycentroid']
-    
-    # Perform PSF/EPSF photometry
-    try:
-        epsf_table, _ = perform_epsf_photometry(
-            image_data - bkg.background, 
+        # Check if WCS exists and has the right dimensionality
+        wcs_obj = None
+        if 'CTYPE1' in _science_header:
+            try:
+                wcs_obj = WCS(_science_header)
+                # Check if WCS has more than 2 dimensions, and if so, reduce it
+                if wcs_obj.pixel_n_dim > 2:
             phot_table, 
             fwhm_estimate, 
             daofind, 
@@ -752,16 +809,17 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
 
         # Add RA and Dec if WCS is available once
         try:
-            w = WCS(_science_header)
-            # Process phot_table
-            ra, dec = w.pixel_to_world_values(phot_table['xcenter'], phot_table['ycenter'])
-            phot_table['ra'] = ra * u.deg
-            phot_table['dec'] = dec * u.deg
-            
-            # Process epsf_table
-            epsf_ra, epsf_dec = w.pixel_to_world_values(epsf_table['x_fit'], epsf_table['y_fit'])
-            epsf_table['ra'] = epsf_ra * u.deg
-            epsf_table['dec'] = epsf_dec * u.deg
+            # Use the same properly formatted WCS object we created earlier
+            if wcs_obj is not None:
+                # Process phot_table
+                ra, dec = wcs_obj.pixel_to_world_values(phot_table['xcenter'], phot_table['ycenter'])
+                phot_table['ra'] = ra * u.deg
+                phot_table['dec'] = dec * u.deg
+                
+                # Process epsf_table
+                epsf_ra, epsf_dec = wcs_obj.pixel_to_world_values(epsf_table['x_fit'], epsf_table['y_fit'])
+                epsf_table['ra'] = epsf_ra * u.deg
+                epsf_table['dec'] = epsf_dec * u.deg
         except Exception as e:
             st.warning(f"WCS transformation failed: {e}. RA and Dec not added to tables.")
             
@@ -1694,6 +1752,31 @@ if science_file is not None:
                 pixel_size_arcsec = abs(science_header['CDELT2']) * 3600.0
             elif 'CDELT1' in science_header:
                 pixel_size_arcsec = abs(science_header['CDELT1']) * 3600.0
+            elif 'XPIXSZ' in science_header:
+                # Check if we have a focal length to convert from physical pixel size to angular pixel scale
+                if 'FOCALLEN' in science_header:
+                    # Convert physical pixel size to arcsec (pixel_size / focal_length * 206265 arcsec/radian)
+                    focal_length_mm = science_header['FOCALLEN']
+                    pixel_size_um = science_header['XPIXSZ']
+                    
+                    # Determine units of XPIXSZ (usually microns but sometimes mm or arcsec directly)
+                    xpixsz_unit = science_header.get('XPIXSZU', '').strip().lower()
+                    
+                    if xpixsz_unit == 'arcsec' or xpixsz_unit == 'as':
+                        # Already in arcseconds
+                        pixel_size_arcsec = pixel_size_um
+                    elif xpixsz_unit == 'mm':
+                        # Convert mm to microns then to arcseconds
+                        pixel_size_arcsec = (pixel_size_um * 1000) / focal_length_mm * 206.265
+                    else:
+                        # Assume microns if no unit specified or unit is 'um'
+                        pixel_size_arcsec = pixel_size_um / focal_length_mm * 206.265
+                        
+                    st.info(f"Calculated pixel scale from XPIXSZ={pixel_size_um} and FOCALLEN={focal_length_mm}mm")
+                else:
+                    # If we have XPIXSZ but no FOCALLEN, assume it's directly in arcseconds
+                    pixel_size_arcsec = science_header['XPIXSZ']
+                    st.info(f"Using XPIXSZ value directly as pixel scale: {pixel_size_arcsec} arcsec/pixel")
 
             if pixel_size_arcsec:
                 st.metric("Mean Pixel Size (arcsec)", f"{pixel_size_arcsec:.2f}")
@@ -1708,7 +1791,100 @@ if science_file is not None:
             st.warning(f"Error reading pixel scale from header: {e}")
             pixel_size_arcsec = 1.0
             mean_fwhm_pixel = seeing
+
+        # Add this code in the science image processing section, after displaying header information
+        # but before calculating airmass
+
+        # Check if RA/DEC are missing from header
+        ra_missing = not any(key in science_header for key in ['RA', 'OBJRA', 'RA---', 'CRVAL1'])
+        dec_missing = not any(key in science_header for key in ['DEC', 'OBJDEC', 'DEC---', 'CRVAL2'])
+
+        # Initialize session state for manual coordinates if needed
+        if 'manual_ra' not in st.session_state:
+            st.session_state['manual_ra'] = ""
+        if 'manual_dec' not in st.session_state:
+            st.session_state['manual_dec'] = ""
             
+        # If coordinates are missing, show input fields
+        if ra_missing or dec_missing:
+            st.warning("Target coordinates (RA/DEC) not found in FITS header. Please enter them manually:")
+            
+            coord_col1, coord_col2 = st.columns(2)
+            
+            with coord_col1:
+                # Default to empty or center of image if available
+                default_ra = st.session_state['manual_ra']
+                if not default_ra and 'NAXIS1' in science_header and 'CRPIX1' in science_header and 'CD1_1' in science_header:
+                    # Try to estimate center RA from WCS if partial WCS exists
+                    default_ra = str(science_header.get('CRVAL1', ""))
+                    
+                manual_ra = st.text_input(
+                    "Right Ascension (degrees)", 
+                    value=default_ra,
+                    help="Enter RA in decimal degrees (0-360)",
+                    key="ra_input"
+                )
+                # Store in session state
+                st.session_state['manual_ra'] = manual_ra
+            
+            with coord_col2:
+                default_dec = st.session_state['manual_dec']
+                if not default_dec and 'NAXIS2' in science_header and 'CRPIX2' in science_header and 'CD2_2' in science_header:
+                    # Try to estimate center DEC from WCS if partial WCS exists
+                    default_dec = str(science_header.get('CRVAL2', ""))
+                    
+                manual_dec = st.text_input(
+                    "Declination (degrees)", 
+                    value=default_dec,
+                    help="Enter DEC in decimal degrees (-90 to +90)",
+                    key="dec_input"
+                )
+                # Store in session state
+                st.session_state['manual_dec'] = manual_dec
+            
+            # Add the manual coordinates to the header if provided
+            if manual_ra and manual_dec:
+                try:
+                    # Validate input is numeric
+                    ra_val = float(manual_ra)
+                    dec_val = float(manual_dec)
+                    
+                    # Validate ranges
+                    if not (0 <= ra_val < 360):
+                        st.error("RA must be between 0 and 360 degrees")
+                    elif not (-90 <= dec_val <= 90):
+                        st.error("DEC must be between -90 and +90 degrees")
+                    else:
+                        # Add to header and session state for persistence
+                        science_header['RA'] = ra_val
+                        science_header['DEC'] = dec_val
+                        
+                        # Store the validated coordinates in a more permanent session state
+                        st.session_state['valid_ra'] = ra_val
+                        st.session_state['valid_dec'] = dec_val
+                        
+                        st.success(f"Using manual coordinates: RA={ra_val}°, DEC={dec_val}°")
+                except ValueError:
+                    st.error("RA and DEC must be valid numbers")
+            else:
+                st.warning("Please enter both RA and DEC coordinates")
+        else:
+            # If header has coordinates, store them in session state
+            for ra_key in ['RA', 'OBJRA', 'RA---', 'CRVAL1']:
+                if ra_key in science_header:
+                    st.session_state['valid_ra'] = science_header[ra_key]
+                    break
+                    
+            for dec_key in ['DEC', 'OBJDEC', 'DEC---', 'CRVAL2']:
+                if dec_key in science_header:
+                    st.session_state['valid_dec'] = science_header[dec_key]
+                    break
+
+        # Ensure the header has the coordinates from session state before calculating airmass
+        if 'valid_ra' in st.session_state and 'valid_dec' in st.session_state:
+            science_header['RA'] = st.session_state['valid_ra']
+            science_header['DEC'] = st.session_state['valid_dec']
+
         # Calculate airmass
         try:
             air = airmass(science_header)
