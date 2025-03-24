@@ -115,7 +115,7 @@ def get_download_link(data, filename, link_text="Download"):
     
     return button_style + href
 
-@st.cache_data
+
 def airmass(
     _header: Dict,
     observatory: Optional[Dict] = None,
