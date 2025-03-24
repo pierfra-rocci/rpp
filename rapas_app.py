@@ -786,16 +786,6 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
                 wcs_obj = WCS(_science_header)
                 # Check if WCS has more than 2 dimensions, and if so, reduce it
                 if wcs_obj.pixel_n_dim > 2:
-                    wcs_obj = wcs_obj.dropaxis(2)  # Drop third dimension
-            except Exception as e:
-                st.warning(f"Error creating WCS object: {e}")
-        
-        phot_table = aperture_photometry(image_data - bkg.background, apertures, error=total_error)
-        
-        # Perform PSF photometry if the aperture photometry was successful
-        epsf_table = perform_epsf_photometry_streamlit(
-            image_data - bkg.background,
-            bkg.background,
             phot_table, 
             fwhm_estimate, 
             daofind, 
