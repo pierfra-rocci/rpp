@@ -14,7 +14,7 @@ a = Analysis(
 ("C:/Users/pierf/astronomy/.astronomy/Lib/site-packages/astroquery/CITATION", 'astroquery'),
 ("C:/Users/pierf/astronomy/.astronomy/Lib/site-packages/astroquery/simbad/data/query_criteria_fields.json", 
         'astroquery/simbad/data'),
-         ("C:/Users/pierf/astronomy/.astronomy/Lib/site-packages/streamlit-X.Y.Z.dist-info", 
+         ("C:/Users/pierf/astronomy/.astronomy/Lib/site-packages/streamlit-1.42.2.dist-info", 
         "streamlit-1.42.2.dist-info")],
     hiddenimports=['streamlit'],
     hookspath=['./hooks'],
