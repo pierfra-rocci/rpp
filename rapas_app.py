@@ -2181,8 +2181,7 @@ if science_file is not None:
                         f"https://aladin.u-strasbg.fr/AladinLite/?" +
                         f"target={ra_center}%20{dec_center}" +
                         f"&fov=0.5" +
-                        f"&survey=CDS/P/DSS2/color" +
-                        f"&catalogs={filename}"
+                        f"&survey=CDS/P/DSS2/color"
                     )
                     
                     # Create an iframe to embed Aladin Lite
@@ -2198,7 +2197,7 @@ if science_file is not None:
                     
                     # Display the iframe
                     st.markdown(iframe_html, unsafe_allow_html=True)
-                    st.info("PanSTARRS DR1 color image centered on target coordinates. Use Aladin controls to overlay catalogs.")
+                    st.info("DSS2 color image centered on target coordinates. Use Aladin controls to overlay catalogs.")
                     
                     # Add instructions for manual catalog overlay
                     with st.expander("How to overlay Gaia DR3 catalog"):
