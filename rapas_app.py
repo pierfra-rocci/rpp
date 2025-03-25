@@ -1061,8 +1061,8 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         
         # Calculate errors
         if 'aperture_sum_err' in _phot_table.columns and 'aperture_sum' in _phot_table.columns:
-            _phot_table['calib_mag_err'] = (2.5/np.log(10) * _phot_table['aperture_sum_err_0'] / 
-                                          _phot_table['aperture_sum_0']) + zero_point_std
+            _phot_table['calib_mag_err'] = (2.5/np.log(10) * _phot_table['aperture_sum_err'] / 
+                                          _phot_table['aperture_sum']) + zero_point_std
         
         # Store results in session state
         st.session_state['final_phot_table'] = _phot_table
@@ -1999,7 +1999,7 @@ if science_file is not None:
             if image_to_process is not None:
                 try:
                     with st.spinner("Background Extraction, Find Sources and Perform Photometry..."):
-                        phot_table_qtable, epsf_table, daofind, bkg = find_sources_and_photometry_streamlit(  # Use QTable for caching
+                        phot_table_qtable, epsf_table, daofind, bkg = find_sources_and_photometry_streamlit(
                             image_to_process, header_to_process, mean_fwhm_pixel, threshold_sigma, detection_mask
                         )
                         
