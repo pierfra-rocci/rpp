@@ -8,6 +8,7 @@ from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 import requests
 from urllib.parse import quote
+import urllib.parse
 
 from astropy.modeling import models, fitting
 import streamlit as st
@@ -2176,10 +2177,10 @@ if science_file is not None:
     
                     # Create a direct URL to Aladin Lite with pre-configured parameters
                     aladin_url = (
-                        f"https://aladin.u-strasbg.fr/AladinLite/?" +
+                        "https://aladin.u-strasbg.fr/AladinLite/?" +
                         f"target={ra_center}%20{dec_center}" +
-                        f"&fov=0.5" +
-                        f"&survey=CDS/P/DSS2/color"
+                        "&fov=0.5" +
+                        "&survey=CDS/P/DSS2/color"
                     )
                     
                     # Create an iframe to embed Aladin Lite
