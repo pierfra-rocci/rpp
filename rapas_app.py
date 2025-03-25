@@ -2157,7 +2157,7 @@ if science_file is not None:
                     st.exception(e)  # This will show the full traceback for debugging
 
                 # Display PanSTARRS color view with detected sources
-                st.subheader("PanSTARRS Color View")
+                st.subheader("DSS2 Color View")
 
                 # Extract RA/DEC from header or WCS
                 ra_center = None
@@ -2177,7 +2177,13 @@ if science_file is not None:
                     st.write(f"Creating Aladin view centered at RA={ra_center}, DEC={dec_center}")
     
                     # Create a direct URL to Aladin Lite with pre-configured parameters
-                    aladin_url = f"https://aladin.u-strasbg.fr/AladinLite/?target={ra_center}%20{dec_center}&fov=0.5&survey=P/PanSTARRS/DR1/color"
+                    aladin_url = (
+                        f"https://aladin.u-strasbg.fr/AladinLite/?" +
+                        f"target={ra_center}%20{dec_center}" +
+                        f"&fov=0.5" +
+                        f"&survey=CDS/P/DSS2/color" +
+                        f"&catalogs={filename}"
+                    )
                     
                     # Create an iframe to embed Aladin Lite
                     iframe_html = f"""
