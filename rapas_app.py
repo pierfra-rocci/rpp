@@ -1742,7 +1742,7 @@ with st.sidebar:
     st.header("Output Options")
     catalog_name = st.text_input("Output Catalog Filename", "photometry_catalog.csv")
 
-    st.link_button("GAIA Archive", "https://www.cosmos.esa.int/web/gaia/data-release-3")
+    st.link_button("GAIA Archive", "https://gea.esac.esa.int/archive/")
     st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
     st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
     st.link_button("NED", "https://ned.ipac.caltech.edu/")
@@ -2223,24 +2223,29 @@ def get_download_link(data, filename, link_text="Download"):
     <style>
     .download-button {
         display: inline-block;
-        padding: 0.7em 1.2em;
-        background-color: #00C853;  /* Brighter green */
+        padding: 0.8em 1.4em;
+        background-color: #3d5afe;  /* Modern blue */
         color: white;
         text-align: center;
         text-decoration: none;
-        font-size: 18px;
-        font-weight: bold;
-        border-radius: 6px;
-        border: 2px solid #80E27E;  /* Light border for contrast */
+        font-size: 16px;
+        font-weight: 500;
+        border-radius: 8px;
+        border: none;
         cursor: pointer;
         margin-top: 15px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);  /* Add shadow for depth */
-        transition: all 0.2s ease;
+        box-shadow: 0 2px 10px rgba(61, 90, 254, 0.3);  /* Subtle shadow matching button color */
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     .download-button:hover {
-        background-color: #00E676;  /* Even brighter on hover */
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        background-color: #536dfe;  /* Slightly lighter blue on hover */
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(61, 90, 254, 0.4);
+    }
+    .download-button:active {
+        transform: translateY(1px);
+        box-shadow: 0 1px 5px rgba(61, 90, 254, 0.4);
     }
     </style>
     """
