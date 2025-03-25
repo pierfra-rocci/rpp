@@ -579,7 +579,7 @@ def fwhm_fit(
             raise ValueError(msg)
 
         mean_fwhm = np.median(fwhm_values_arr[valid])
-        st.info(f"Median FWHM estimate based on marginal sums and Gaussian model: {round(mean_fwhm)} pixels")
+        st.info(f"FWHM estimate based on Gaussian model: {round(mean_fwhm)} pixels")
 
         return round(mean_fwhm)
     except ValueError as e:
@@ -673,7 +673,7 @@ def perform_epsf_photometry(
         st.write("PSF model fitted successfully.")
         st.session_state['epsf_model'] = epsf
     except Exception as e:
-        st.error(f"Error fitting EPSF model: {e}")
+        st.error(f"Error fitting PSF model: {e}")
         raise
 
     try:
@@ -701,7 +701,6 @@ def perform_epsf_photometry(
         # Specify source positions
         psfphot.x = phot_table['xcenter']
         psfphot.y = phot_table['ycenter']
-        st.write("Source positions for PSF photometry.")
     except Exception as e:
         st.error(f"Error configuring PSF photometry: {e}")
         raise
@@ -710,9 +709,9 @@ def perform_epsf_photometry(
         # Run PSF photometry with provided mask
         phot_epsf_result = psfphot(img, mask=mask)
         st.session_state['epsf_photometry_result'] = phot_epsf_result
-        st.write("EPSF photometry completed successfully.")
+        st.write("PSF photometry completed successfully.")
     except Exception as e:
-        st.error(f"Error executing EPSF photometry: {e}")
+        st.error(f"Error executing PSF photometry: {e}")
         raise
 
     return phot_epsf_result, epsf
@@ -1134,31 +1133,31 @@ def perform_epsf_photometry_streamlit(image_data, background_data, phot_table, f
         st.session_state['epsf_photometry_result'] = phot_epsf_result
         st.session_state['epsf_model'] = epsf_model
         
-        st.success("PSF-EPSF photometry completed successfully.")
+        st.success("PSF photometry completed successfully.")
         
         # Display EPSF model
-        st.subheader("EPSF Model")
+        st.subheader("PSF Model")
         norm_epsf = ImageNormalize(epsf_model.data, interval=ZScaleInterval())
         fig_epsf, ax_epsf = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
         im_epsf = ax_epsf.imshow(epsf_model.data, norm=norm_epsf, origin='lower', cmap='viridis')
-        fig_epsf.colorbar(im_epsf, ax=ax_epsf, label='EPSF Model Value')
-        ax_epsf.set_title("EPSF Model (ZScale)")
+        fig_epsf.colorbar(im_epsf, ax=ax_epsf, label='PSF Model Value')
+        ax_epsf.set_title("PSF Model (ZScale)")
         st.pyplot(fig_epsf)
         
         # Display photometry results preview
-        st.subheader("PSF-EPSF Photometry Results (first 10 rows)")
+        st.subheader("PSF Photometry Results (first 10 rows)")
         preview_df = phot_epsf_result[:10].to_pandas()
         st.dataframe(preview_df)
         
         return phot_epsf_result, epsf_model
     except Exception as e:
-        st.error(f"Error performing PSF-EPSF photometry: {e}")
+        st.error(f"Error performing PSF photometry: {e}")
         return None, None
 
 
 # Main workflow function for zero point calibration
 def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_pixel, 
-                              threshold_sigma, detection_mask, gaia_band, gaia_min_mag, gaia_max_mag, air):
+                               threshold_sigma, detection_mask, gaia_band, gaia_min_mag, gaia_max_mag, air):
     """
     Runs the complete zero point calibration workflow.
     
@@ -1284,7 +1283,6 @@ def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_
                     # Also save locally if needed
                     with open(filename, 'w') as f:
                         f.write(csv_data)
-                    # st.success(f"Catalog saved to {filename}")
                     
                 except Exception as e:
                     st.error(f"Error preparing download: {e}")
@@ -1388,7 +1386,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 if 'NAXIS1' in header and 'NAXIS2' in header:
                     field_width_arcmin = max(header.get('NAXIS1', 1000), header.get('NAXIS2', 1000)) * pixel_scale_arcsec / 60.0
                 else:
-                    field_width_arcmin = 30.0  # Default 20 arcmin
+                    field_width_arcmin = 30.0 # Default to 30 arcmin
                     
                 # Configure Simbad
                 custom_simbad = Simbad()
@@ -1475,7 +1473,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 f"EPOCH={quote(obs_time)}&mime=json"
             )
             
-            st.info("Querying SkyBoT for solar system objects")
+            st.info("Querying SkyBoT for solar system objects...")
             
             # Query SkyBoT with better error handling
             try:
@@ -1504,7 +1502,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                                 
                                 # Convert our catalog positions to SkyCoord
                                 source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, 
-                                                      unit=u.deg)
+                                                         unit=u.deg)
                                 
                                 # Find best matches
                                 idx, d2d, _ = source_coords.match_to_catalog_sky(skybot_coords)
@@ -1537,7 +1535,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
     
     
     # 4. Cross-match with AAVSO VSX (Variable stars)
-    status_text.write("Querying AAVSO VSX for variable stars...")
+    st.info("Querying AAVSO VSX for variable stars...")
     try:
         if field_center_ra is not None and field_center_dec is not None:
             # Use VizieR to access the VSX catalog (B/vsx)
@@ -1545,11 +1543,11 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
             vizier_result = Vizier.query_region(
                 SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=u.deg),
                 radius=field_width_arcmin * u.arcmin,
-                catalog=['B/vsx']
+                catalog=['B/vsx/vsx']
             )
             
-            if vizier_result and 'B/vsx' in vizier_result.keys() and len(vizier_result['B/vsx']) > 0:
-                vsx_table = vizier_result['B/vsx']
+            if vizier_result and 'B/vsx/vsx' in vizier_result.keys() and len(vizier_result['B/vsx/vsx']) > 0:
+                vsx_table = vizier_result['B/vsx/vsx']
                 
                 # Create SkyCoord objects
                 vsx_coords = SkyCoord(ra=vsx_table['RAJ2000'], dec=vsx_table['DEJ2000'], unit=u.deg)
