@@ -536,6 +536,7 @@ def fwhm_fit(
             box_size += 1
 
         fwhm_values = []
+        skipped_sources = 0  # Counter for skipped sources
 
         # Fit model for each filtered source
         for source in filtered_sources:
@@ -546,7 +547,8 @@ def fwhm_fit(
                 # Calculate FWHM using marginal sums
                 fwhm_results = compute_fwhm_marginal_sums(img, y_cen, x_cen, box_size)
                 if fwhm_results is None:
-                    st.warning(f"FWHM calculation using marginal sums failed for source at ({x_cen}, {y_cen}). Skipping.")
+                    # Instead of individual warning, just increment counter
+                    skipped_sources += 1
                     continue
 
                 fwhm_row, fwhm_col, _, _ = fwhm_results
@@ -556,9 +558,13 @@ def fwhm_fit(
                 fwhm_values.append(fwhm_source)
 
             except Exception as e:
-                st.error(f"Error calculating FWHM for source at coordinates ({x_cen}, {y_cen}): {e}")
+                skipped_sources += 1
                 continue
 
+        # Display summary of skipped sources
+        if skipped_sources > 0:
+            st.warning(f"FWHM calculation failed for {skipped_sources} sources out of {len(filtered_sources)} and were skipped.")
+            
         if len(fwhm_values) == 0:
             msg = "No valid sources for FWHM fitting after marginal sums adjustment."
             st.error(msg)
@@ -2105,7 +2111,7 @@ if science_file is not None:
                                             st.dataframe(final_table.head(10))
                                             
                                             # Show which columns are included
-                                            st.success(f"Catalog includes {len(final_table)} sources with columns: {', '.join(final_table.columns.tolist())}")
+                                            st.success(f"Catalog includes {len(final_table)} sources.")
                                             
                                             # Add cross-matching functionality
                                             if 'ra' in final_table.columns and 'dec' in final_table.columns:
