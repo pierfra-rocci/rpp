@@ -2246,7 +2246,7 @@ def get_download_link(data, filename, link_text="Download"):
         font-family: system-ui, "Segoe UI", Tahoma;
     }
     .download-button:hover {
-        background-color: #5D7793;  /* Darker silver blue on hover */
+        background-color: #7393B3;
         transform: translateY(-1px);
     }
     .download-button:active {
