@@ -2179,20 +2179,139 @@ if science_file is not None:
                     # Create a direct URL to Aladin Lite with pre-configured parameters
                     aladin_url = f"https://aladin.u-strasbg.fr/AladinLite/?target={ra_center}%20{dec_center}&fov=0.5&survey=P/PanSTARRS/DR1/color"
                     
-                    # Create an iframe to embed Aladin Lite
-                    iframe_html = f"""
-                    <iframe 
-                        src="{aladin_url}" 
-                        width="100%" 
-                        height="550px" 
-                        style="border: 1px solid #ddd; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"
-                        allowfullscreen>
-                    </iframe>
-                    """
+                    # Create a placeholder for the Aladin iframe
+                    aladin_container = st.empty()
                     
-                    # Display the iframe
-                    st.markdown(iframe_html, unsafe_allow_html=True)
-                    st.info("PanSTARRS DR1 color image centered on target coordinates. Use Aladin controls to overlay catalogs.")
+                    # Check if we have a catalog to load
+                    if 'final_phot_table' in st.session_state and not st.session_state['final_phot_table'].empty:
+                        # Write catalog to a temporary file that can be loaded
+                        try:
+                            # Create a simplified version of the catalog with just ra, dec and magnitude
+                            cat_df = st.session_state['final_phot_table'].copy()
+                            if 'ra' in cat_df.columns and 'dec' in cat_df.columns:
+                                # Select only essential columns for catalog display
+                                display_cols = ['ra', 'dec']
+                                
+                                # Add magnitude column (prefer calibrated)
+                                if 'aperture_calib_mag' in cat_df.columns:
+                                    display_cols.append('aperture_calib_mag')
+                                    mag_col = 'aperture_calib_mag'
+                                elif 'calib_mag' in cat_df.columns:
+                                    display_cols.append('calib_mag')
+                                    mag_col = 'calib_mag'
+                                elif 'instrumental_mag' in cat_df.columns:
+                                    display_cols.append('instrumental_mag')
+                                    mag_col = 'instrumental_mag'
+                                    
+                                # Create VOTable format for Aladin
+                                votable_content = "# Source catalog from RAPAS\n"
+                                votable_content += "# ra dec mag\n"
+                                
+                                for _, row in cat_df[display_cols].iterrows():
+                                    votable_content += f"{row['ra']} {row['dec']} {row.get(mag_col, 99)}\n"
+                                
+                                # Create embedded JavaScript to load the catalog
+                                js_catalog_load = f"""
+                                <script type="text/javascript">
+                                document.addEventListener('DOMContentLoaded', function() {{
+                                    // Wait for Aladin to be ready
+                                    var checkAladin = setInterval(function() {{
+                                        if (typeof A !== 'undefined' && A.aladin) {{
+                                            clearInterval(checkAladin);
+                                            var aladin = A.aladin;
+                                            // Create catalog from data
+                                            var cat = A.catalog({{
+                                                name: 'Photometry results',
+                                                sourceSize: 8,
+                                                shape: 'circle',
+                                                color: '#ff9900',
+                                                onClick: 'showPopup'
+                                            }});
+                                            
+                                            // Add catalog to Aladin
+                                            aladin.addCatalog(cat);
+                                            
+                                            // Parse and add sources
+                                            var sources = `{votable_content}`.split('\\n');
+                                            var sourceObjs = [];
+                                            
+                                            for (var i=2; i<sources.length; i++) {{
+                                                var line = sources[i].trim();
+                                                if (line) {{
+                                                    var parts = line.split(' ');
+                                                    if (parts.length >= 3) {{
+                                                        sourceObjs.push({{
+                                                            ra: parseFloat(parts[0]),
+                                                            dec: parseFloat(parts[1]),
+                                                            data: {{ mag: parseFloat(parts[2]) }}
+                                                        }});
+                                                    }}
+                                                }}
+                                            }}
+                                            
+                                            cat.addSources(sourceObjs);
+                                        }}
+                                    }}, 500);
+                                }});
+                                </script>
+                                """
+                                
+                                # Create iframe with embedded JavaScript
+                                iframe_html = f"""
+                                <iframe 
+                                    id="aladin-lite-div"
+                                    src="{aladin_url}" 
+                                    width="100%" 
+                                    height="550px" 
+                                    style="border: 1px solid #ddd; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"
+                                    allowfullscreen>
+                                </iframe>
+                                {js_catalog_load}
+                                """
+                                
+                                # Display the iframe with embedded catalog
+                                aladin_container.markdown(iframe_html, unsafe_allow_html=True)
+                                st.success("Photometry catalog overlay added to Aladin view")
+                            else:
+                                # Fall back to basic iframe if ra/dec not available
+                                basic_iframe = f"""
+                                <iframe 
+                                    src="{aladin_url}" 
+                                    width="100%" 
+                                    height="550px" 
+                                    style="border: 1px solid #ddd; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"
+                                    allowfullscreen>
+                                </iframe>
+                                """
+                                aladin_container.markdown(basic_iframe, unsafe_allow_html=True)
+                                st.warning("RA/DEC coordinates not found in catalog - can't overlay sources")
+                        except Exception as e:
+                            st.error(f"Error loading catalog into Aladin: {e}")
+                            # Fall back to basic iframe
+                            basic_iframe = f"""
+                            <iframe 
+                                src="{aladin_url}" 
+                                width="100%" 
+                                height="550px" 
+                                style="border: 1px solid #ddd; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"
+                                allowfullscreen>
+                            </iframe>
+                            """
+                            aladin_container.markdown(basic_iframe, unsafe_allow_html=True)
+                    else:
+                        # No catalog available, show basic Aladin view
+                        basic_iframe = f"""
+                        <iframe 
+                            src="{aladin_url}" 
+                            width="100%" 
+                            height="550px" 
+                            style="border: 1px solid #ddd; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"
+                            allowfullscreen>
+                        </iframe>
+                        """
+                        aladin_container.markdown(basic_iframe, unsafe_allow_html=True)
+                    
+                    st.info("PanSTARRS DR1 color image centered on target coordinates. Use Aladin controls to overlay additional catalogs.")
                     
                     # Add instructions for manual catalog overlay
                     with st.expander("How to overlay Gaia DR3 catalog"):
