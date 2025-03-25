@@ -2139,10 +2139,9 @@ if science_file is not None:
                                             download_link = get_download_link(
                                                 csv_data, 
                                                 filename, 
-                                                link_text="📥 Download Photometry Catalog"
+                                                link_text="Download Photometry Catalog"
                                             )
                                             st.markdown(download_link, unsafe_allow_html=True)
-                                            st.write("Click the green button above to download without page reload")
                                             
                                             # Also save locally if needed
                                             with open(filename, 'w') as f:
@@ -2178,7 +2177,7 @@ if science_file is not None:
                     st.write(f"Creating Aladin view centered at RA={ra_center}, DEC={dec_center}")
     
                     # Create a direct URL to Aladin Lite with pre-configured parameters
-                    aladin_url = f"https://aladin.u-strasbg.fr/AladinLite/?target={ra_center}%20{dec_center}&fov=0.3&survey=P/PanSTARRS/DR1/color"
+                    aladin_url = f"https://aladin.u-strasbg.fr/AladinLite/?target={ra_center}%20{dec_center}&fov=0.5&survey=P/PanSTARRS/DR1/color"
                     
                     # Create an iframe to embed Aladin Lite
                     iframe_html = f"""
