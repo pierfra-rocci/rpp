@@ -1060,7 +1060,7 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         _phot_table['calib_mag'] = _phot_table['instrumental_mag'] + zero_point_value + 0.1*air
         
         # Calculate errors
-        if 'aperture_sum_err_0' in _phot_table.columns and 'aperture_sum_0' in _phot_table.columns:
+        if 'aperture_sum_err' in _phot_table.columns and 'aperture_sum' in _phot_table.columns:
             _phot_table['calib_mag_err'] = (2.5/np.log(10) * _phot_table['aperture_sum_err_0'] / 
                                           _phot_table['aperture_sum_0']) + zero_point_std
         
@@ -1157,7 +1157,7 @@ def perform_epsf_photometry_streamlit(image_data, background_data, phot_table, f
 
 
 # Main workflow function for zero point calibration
-def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_pixel, 
+def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel, 
                                threshold_sigma, detection_mask, gaia_band, gaia_min_mag, gaia_max_mag, air):
     """
     Runs the complete zero point calibration workflow.
@@ -1223,7 +1223,7 @@ def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_
                 final_table = st.session_state['final_phot_table']
                 
                 try:
-                    # Add EPSF photometry results if available
+                    # Add PSF photometry results if available
                     if 'epsf_photometry_result' in st.session_state and epsf_table is not None:
                         # Convert tables to pandas if needed
                         epsf_df = epsf_table.to_pandas() if not isinstance(epsf_table, pd.DataFrame) else epsf_table
@@ -1232,7 +1232,7 @@ def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_
                         epsf_df['match_id'] = epsf_df['xcenter'].round(2).astype(str) + "_" + epsf_df['ycenter'].round(2).astype(str)
                         final_table['match_id'] = final_table['xcenter'].round(2).astype(str) + "_" + final_table['ycenter'].round(2).astype(str)
                         
-                        # Select just the columns we need from EPSF results
+                        # Select just the columns we need from PSF results
                         epsf_cols = {
                             'match_id': 'match_id',
                             'flux_fit': 'epsf_flux_fit', 
@@ -1276,10 +1276,10 @@ def run_zero_point_calibration(image_data, header, pixel_size_arcsec, mean_fwhm_
                     download_link = get_download_link(
                         csv_data, 
                         filename, 
-                        link_text="📥 Download Photometry Catalog"
+                        link_text="Download Photometry Catalog"
                     )
                     st.markdown(download_link, unsafe_allow_html=True)
-                    st.write("Click the green button above to download without page reload")
+                    st.write("Click the button above to download the photometry catalog.")
                     
                     # Also save locally if needed
                     with open(filename, 'w') as f:
@@ -1539,7 +1539,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
     st.info("Querying AAVSO VSX for variable stars...")
     try:
         if field_center_ra is not None and field_center_dec is not None:
-            # Use VizieR to access the VSX catalog (B/vsx)
+            # Use VizieR to access the VSX catalog (B/vsx/vsx)
             Vizier.ROW_LIMIT = -1  # No row limit
             vizier_result = Vizier.query_region(
                 SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=u.deg),
@@ -1553,7 +1553,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 # Create SkyCoord objects
                 vsx_coords = SkyCoord(ra=vsx_table['RAJ2000'], dec=vsx_table['DEJ2000'], unit=u.deg)
                 source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, 
-                                      unit=u.deg)
+                                         unit=u.deg)
                 
                 # Find best matches
                 idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
@@ -1660,33 +1660,33 @@ if 'files_loaded' not in st.session_state:
     }
 
 # Add these functions to handle the buttons
-def restart_analysis():
-    """Reset analysis results but keep uploaded files"""
-    # Clear analysis results
-    st.session_state['calibrated_data'] = None
-    st.session_state['calibrated_header'] = None
-    st.session_state['final_phot_table'] = None
-    st.session_state.pop('epsf_model', None)
-    st.session_state.pop('epsf_photometry_result', None)
-    # Keep the files_loaded state
+# def restart_analysis():
+#     """Reset analysis results but keep uploaded files"""
+#     # Clear analysis results
+#     st.session_state['calibrated_data'] = None
+#     st.session_state['calibrated_header'] = None
+#     st.session_state['final_phot_table'] = None
+#     st.session_state.pop('epsf_model', None)
+#     st.session_state.pop('epsf_photometry_result', None)
+#     # Keep the files_loaded state
 
-def clear_all():
-    """Reset everything including uploaded files"""
-    # Clear all states
-    st.session_state['calibrated_data'] = None
-    st.session_state['calibrated_header'] = None
-    st.session_state['final_phot_table'] = None
-    st.session_state.pop('epsf_model', None)
-    st.session_state.pop('epsf_photometry_result', None)
-    # Clear file states
-    st.session_state['files_loaded'] = {
-        'science_file': None,
-        'bias_file': None,
-        'dark_file': None,
-        'flat_file': None
-    }
-    # Force rerun to clear file uploaders
-    st.experimental_rerun()
+# def clear_all():
+#     """Reset everything including uploaded files"""
+#     # Clear all states
+#     st.session_state['calibrated_data'] = None
+#     st.session_state['calibrated_header'] = None
+#     st.session_state['final_phot_table'] = None
+#     st.session_state.pop('epsf_model', None)
+#     st.session_state.pop('epsf_photometry_result', None)
+#     # Clear file states
+#     st.session_state['files_loaded'] = {
+#         'science_file': None,
+#         'bias_file': None,
+#         'dark_file': None,
+#         'flat_file': None
+#     }
+#     # Force rerun to clear file uploaders
+#     st.experimental_rerun()
 
 st.title("_RAPAS Photometric Calibration_")
 
