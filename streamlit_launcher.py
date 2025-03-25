@@ -16,11 +16,10 @@ def main():
     process = subprocess.Popen(cmd)
     
     # Wait for server to start
-    time.sleep(3)
+    time.sleep(2)
     
     # Open browser
     print("Opening browser...")
-    webbrowser.open("http://localhost:8502")
     
     try:
         # Keep the script running until user presses Ctrl+C
