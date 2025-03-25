@@ -2224,28 +2224,24 @@ def get_download_link(data, filename, link_text="Download"):
     .download-button {
         display: inline-block;
         padding: 0.8em 1.4em;
-        background-color: #3d5afe;  /* Modern blue */
-        color: white;
+        background-color: #1c90e7;
         text-align: center;
         text-decoration: none;
         font-size: 16px;
         font-weight: 500;
-        border-radius: 8px;
+        border-radius: 4px;
         border: none;
         cursor: pointer;
         margin-top: 15px;
-        box-shadow: 0 2px 10px rgba(61, 90, 254, 0.3);  /* Subtle shadow matching button color */
         transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: system-ui, "Segoe UI", Tahoma;
     }
     .download-button:hover {
-        background-color: #536dfe;  /* Slightly lighter blue on hover */
+        background-color: #6aa84f;
         transform: translateY(-1px);
-        box-shadow: 0 4px 15px rgba(61, 90, 254, 0.4);
     }
     .download-button:active {
         transform: translateY(1px);
-        box-shadow: 0 1px 5px rgba(61, 90, 254, 0.4);
     }
     </style>
     """
