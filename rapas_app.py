@@ -957,15 +957,18 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
     tuple
         (phot_table, epsf_table, daofind, bkg)
     """
+    # Initialize daofind to None
+    daofind = None
+    
     # Get pixel scale from header
     try:
         w, wcs_error = safe_wcs_create(_science_header)
         if w is None:
             st.error(f"Error creating WCS: {wcs_error}")
-            return None
+            return None, None, daofind, None
     except Exception as e:
         st.error(f"Error creating WCS: {e}")
-        return None
+        return None, None, daofind, None
     
     pixel_scale = _science_header.get('PIXSCALE', _science_header.get('PIXSIZE', _science_header.get('PIXELSCAL', 1.0)))
     
@@ -1054,6 +1057,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         # Keep only valid sources for PSF photometry if available
         if epsf_table is not None:
             epsf_valid_sources = (epsf_table['flux_fit'] > 0) & np.isfinite(epsf_table['instrumental_mag'])
+
             epsf_table = epsf_table[epsf_valid_sources]
 
         # Add RA and Dec if WCS is available
@@ -1309,70 +1313,6 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
     except Exception as e:
         st.error(f"Error calculating zero point: {e}")
         return None, None, None
-
-
-def perform_epsf_photometry_streamlit(image_data, background_data, phot_table, fwhm, daofind, detection_mask):
-    """
-    Wrapper for PSF photometry with Streamlit UI integration.
-    
-    Parameters
-    ----------
-    image_data : numpy.ndarray
-        Science image data
-    background_data : numpy.ndarray
-        Background data to subtract
-    phot_table : astropy.table.Table
-        Table with source positions
-    fwhm : float
-        FWHM estimate in pixels
-    daofind : DAOStarFinder
-        Configured DAOStarFinder object
-    detection_mask : int
-        Border size to mask
-        
-    Returns
-    -------
-    tuple
-        (phot_epsf_result, epsf_model)
-    """
-    st.write("Starting PSF photometry...")
-    
-    # Create mask
-    mask = make_border_mask(image_data, border=detection_mask)
-    
-    # Subtract background if provided
-    image_bg_subtracted = image_data - background_data if background_data is not None else image_data
-    
-    try:
-        # Perform PSF photometry
-        phot_epsf_result, epsf_model = perform_epsf_photometry(
-            image_bg_subtracted, phot_table, fwhm, daofind, mask
-        )
-        
-        # Store results in session state
-        st.session_state['epsf_photometry_result'] = phot_epsf_result
-        st.session_state['epsf_model'] = epsf_model
-        
-        st.success("PSF photometry completed successfully.")
-        
-        # Display EPSF model
-        st.subheader("PSF Model")
-        norm_epsf = ImageNormalize(epsf_model.data, interval=ZScaleInterval())
-        fig_epsf, ax_epsf = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
-        im_epsf = ax_epsf.imshow(epsf_model.data, norm=norm_epsf, origin='lower', cmap='viridis')
-        fig_epsf.colorbar(im_epsf, ax=ax_epsf, label='PSF Model Value')
-        ax_epsf.set_title("PSF Model (ZScale)")
-        st.pyplot(fig_epsf)
-        
-        # Display photometry results preview
-        st.subheader("PSF Photometry Results (first 10 rows)")
-        preview_df = phot_epsf_result[:10].to_pandas()
-        st.dataframe(preview_df)
-        
-        return phot_epsf_result, epsf_model
-    except Exception as e:
-        st.error(f"Error performing PSF photometry: {e}")
-        return None, None
 
 
 # Main workflow function for zero point calibration
