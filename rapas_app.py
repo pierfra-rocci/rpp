@@ -8,7 +8,6 @@ from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 import requests
 from urllib.parse import quote
-import urllib.parse
 
 from astropy.modeling import models, fitting
 import streamlit as st
@@ -70,6 +69,261 @@ FIGURE_SIZES = {
     'stars_grid': (10, 8)  # For grid of stars
 }
 
+
+def safe_wcs_create(header):
+    """
+    Safely create a WCS object from a FITS header with proper error handling.
+    
+    Parameters
+    ----------
+    header : dict
+        FITS header
+        
+    Returns
+    -------
+    tuple
+        (wcs_object, None) if successful, (None, error_message) if failed
+    """
+    if not header:
+        return None, "No header provided"
+    
+    # Check if header contains minimum required WCS keywords
+    required_keys = ['CTYPE1', 'CTYPE2', 'CRVAL1', 'CRVAL2', 'CRPIX1', 'CRPIX2']
+    missing_keys = [key for key in required_keys if key not in header]
+    
+    if missing_keys:
+        return None, f"Missing required WCS keywords: {', '.join(missing_keys)}"
+    
+    try:
+        wcs_obj = WCS(header)
+        
+        # Check if WCS is valid
+        if wcs_obj is None:
+            return None, "WCS creation returned None"
+            
+        # Check dimensionality
+        if wcs_obj.pixel_n_dim > 2:
+            # Reduce to celestial coordinates only
+            wcs_obj = wcs_obj.celestial
+            
+        # Verify WCS has actual transformation
+        if not hasattr(wcs_obj, 'wcs'):
+            return None, "Created WCS object has no transformation attributes"
+        
+        return wcs_obj, None
+    except Exception as e:
+        return None, f"WCS creation error: {str(e)}"
+
+def estimate_background(image_data, box_size=100, filter_size=5):
+    """
+    Robustly estimate image background with better error handling.
+    
+    Parameters
+    ----------
+    image_data : numpy.ndarray
+        The science image data
+    box_size : int, optional
+        The box size for Background2D
+    filter_size : int, optional
+        The filter size for Background2D
+        
+    Returns
+    -------
+    tuple
+        (background_2d_object, error_message)
+    """
+    if image_data is None:
+        return None, "No image data provided"
+        
+    # Validate image dimensionality
+    if not isinstance(image_data, np.ndarray):
+        return None, f"Image data must be a numpy array, got {type(image_data)}"
+        
+    if len(image_data.shape) != 2:
+        return None, f"Image must be 2D, got shape {image_data.shape}"
+        
+    # If image is too small, adjust box size
+    height, width = image_data.shape
+    adjusted_box_size = min(box_size, height // 4, width // 4)
+    adjusted_filter_size = min(filter_size, adjusted_box_size // 2)
+    
+    if adjusted_box_size < 10:
+        return None, f"Image too small ({height}x{width}) for background estimation"
+    
+    try:
+        sigma_clip = SigmaClip(sigma=3)
+        bkg_estimator = SExtractorBackground()
+        
+        bkg = Background2D(
+            data=image_data,
+            box_size=adjusted_box_size,
+            filter_size=adjusted_filter_size,
+            sigma_clip=sigma_clip,
+            bkg_estimator=bkg_estimator
+        )
+        
+        return bkg, None
+    except Exception as e:
+        return None, f"Background estimation error: {str(e)}"
+
+
+def get_header_value(header, keys, default=None):
+    """
+    Robustly extract a header value trying multiple potential keys.
+    
+    Parameters
+    ----------
+    header : dict
+        The FITS header dictionary
+    keys : list
+        List of possible keys to try in order of preference
+    default : any
+        Default value to return if no keys are found
+        
+    Returns
+    -------
+    any
+        The header value or default if not found
+    """
+    if header is None:
+        return default
+        
+    for key in keys:
+        if key in header:
+            return header[key]
+    return default
+
+def extract_pixel_scale(header):
+    """
+    Extract pixel scale from FITS header using multiple possible keywords.
+    
+    Parameters
+    ----------
+    header : dict
+        FITS header
+        
+    Returns
+    -------
+    tuple
+        (pixel_scale_value, source_description)
+    """
+    if header is None:
+        return 1.0, "default (no header)"
+    
+    # Try direct pixel scale keywords
+    for key in ['PIXSIZE', 'PIXSCALE', 'PIXELSCAL']:
+        if key in header:
+            return header[key], f"from {key}"
+    
+    # Try WCS CDELT keywords
+    for key in ['CDELT2', 'CDELT1']:
+        if key in header:
+            scale = abs(header[key]) * 3600.0
+            return scale, f"from {key}"
+    
+    # Try calculating from physical pixel size and focal length
+    if 'XPIXSZ' in header:
+        # Check if we have a focal length
+        if 'FOCALLEN' in header:
+            focal_length_mm = header['FOCALLEN']
+            pixel_size = header['XPIXSZ']
+            
+            # Check unit of XPIXSZ
+            xpixsz_unit = header.get('XPIXSZU', '').strip().lower()
+            
+            if xpixsz_unit in ['arcsec', 'as']:
+                return pixel_size, "from XPIXSZ (in arcsec)"
+            elif xpixsz_unit == 'mm':
+                scale = (pixel_size * 1000) / focal_length_mm * 206.265
+                return scale, "calculated from XPIXSZ (mm) and FOCALLEN"
+            else:
+                # Assume microns
+                scale = pixel_size / focal_length_mm * 206.265
+                return scale, "calculated from XPIXSZ (μm) and FOCALLEN"
+        else:
+            # Assume XPIXSZ is already in arcsec if no FOCALLEN
+            return header['XPIXSZ'], "from XPIXSZ (assumed arcsec)"
+            
+    # Default fallback
+    return 1.0, "default fallback value"
+
+def extract_coordinates(header):
+    """
+    Extract RA and DEC coordinates from FITS header.
+    
+    Parameters
+    ----------
+    header : dict
+        FITS header dictionary
+    
+    Returns
+    -------
+    tuple
+        (ra, dec, source_description) or (None, None, error_message)
+    """
+    if header is None:
+        return None, None, "No header available"
+    
+    # Try different coordinate keyword combinations
+    ra_keys = ['RA', 'OBJRA', 'RA---', 'CRVAL1']
+    dec_keys = ['DEC', 'OBJDEC', 'DEC---', 'CRVAL2']
+    
+    ra = get_header_value(header, ra_keys)
+    dec = get_header_value(header, dec_keys)
+    
+    if ra is not None and dec is not None:
+        # Determine which keys were used
+        ra_source = next((k for k in ra_keys if k in header), 'unknown')
+        dec_source = next((k for k in dec_keys if k in header), 'unknown')
+        source = f"{ra_source}/{dec_source}"
+        
+        # Validate coordinate ranges
+        try:
+            ra_val = float(ra)
+            dec_val = float(dec)
+            
+            # Apply basic validation
+            if not (-360 <= ra_val <= 360):
+                return None, None, f"Invalid RA value: {ra_val}"
+            if not (-90 <= dec_val <= 90):
+                return None, None, f"Invalid DEC value: {dec_val}"
+                
+            return ra_val, dec_val, source
+        except (ValueError, TypeError):
+            return None, None, f"Non-numeric coordinates: RA={ra}, DEC={dec}"
+    
+    return None, None, "Coordinates not found in header"
+
+def safe_catalog_query(query_func, error_msg, *args, **kwargs):
+    """
+    Safely execute a catalog query with proper error handling.
+    
+    Parameters
+    ----------
+    query_func : callable
+        The function to call for the catalog query
+    error_msg : str
+        Base error message to display
+    *args, **kwargs
+        Arguments to pass to query_func
+        
+    Returns
+    -------
+    tuple
+        (result, None) if successful, (None, error_message) if failed
+    """
+    try:
+        result = query_func(*args, **kwargs)
+        return result, None
+    except requests.exceptions.RequestException as e:
+        return None, f"{error_msg}: Network error - {str(e)}"
+    except requests.exceptions.Timeout:
+        return None, f"{error_msg}: Query timed out"
+    except ValueError as e:
+        return None, f"{error_msg}: Value error - {str(e)}"
+    except Exception as e:
+        return None, f"{error_msg}: {str(e)}"
+
 # Function to create standardized matplotlib figures
 def create_figure(size='medium', dpi=100):
     """Create a matplotlib figure with standardized size"""
@@ -78,43 +332,6 @@ def create_figure(size='medium', dpi=100):
     else:
         figsize = FIGURE_SIZES['medium']
     return plt.figure(figsize=figsize, dpi=dpi)
-
-def get_download_link(data, filename, link_text="Download"):
-    """
-    Generate a download link for data without triggering a Streamlit rerun
-    """
-    import base64
-    
-    b64 = base64.b64encode(data.encode()).decode()
-    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" class="download-button">{link_text}</a>'
-    
-    button_style = """
-    <style>
-    .download-button {
-        display: inline-block;
-        padding: 0.7em 1.2em;
-        background-color: #00C853;  /* Brighter green */
-        color: white;
-        text-align: center;
-        text-decoration: none;
-        font-size: 18px;
-        font-weight: bold;
-        border-radius: 6px;
-        border: 2px solid #80E27E;  /* Light border for contrast */
-        cursor: pointer;
-        margin-top: 15px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);  /* Add shadow for depth */
-        transition: all 0.2s ease;
-    }
-    .download-button:hover {
-        background-color: #00E676;  /* Even brighter on hover */
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-    }
-    </style>
-    """
-    
-    return button_style + href
 
 
 def airmass(
@@ -232,11 +449,10 @@ def airmass(
         }
 
         # Affichage des informations
-        st.write("Observation details:")
         st.write(f"Date & Local Time: {obstime.iso}")
-        ra_deg = round(float(coord.ra.deg), 5)
-        dec_deg = round(float(coord.dec.deg), 5)
-        st.write(f"Target: RA={ra_deg}°, DEC={dec_deg}° (ICRS)")
+        # ra_deg = round(float(coord.ra.deg), 5)
+        # dec_deg = round(float(coord.dec.deg), 5)
+        # st.write(f"Target: RA={ra_deg}°, DEC={dec_deg}°")
         st.write(f"Altitude: {details['altaz']['altitude']}°, "
               f"Azimuth: {details['altaz']['azimuth']}°")
 
@@ -742,19 +958,22 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         (phot_table, epsf_table, daofind, bkg)
     """
     # Get pixel scale from header
+    try:
+        w, wcs_error = safe_wcs_create(_science_header)
+        if w is None:
+            st.error(f"Error creating WCS: {wcs_error}")
+            return None
+    except Exception as e:
+        st.error(f"Error creating WCS: {e}")
+        return None
+    
     pixel_scale = _science_header.get('PIXSCALE', _science_header.get('PIXSIZE', _science_header.get('PIXELSCAL', 1.0)))
     
     # Estimate background and noise
-    sigma_clip = SigmaClip(sigma=3)
-    bkg_estimator = SExtractorBackground()
-    bkg = Background2D(
-        data=image_data,
-        box_size=100,
-        filter_size=5,
-        mask=None,
-        sigma_clip=sigma_clip,
-        bkg_estimator=bkg_estimator
-    )
+    bkg, bkg_error = estimate_background(image_data, box_size=100, filter_size=5)
+    if bkg is None:
+        st.error(f"Error estimating background: {bkg_error}")
+        return None, None, daofind, None
     
     # Create detection mask
     mask = make_border_mask(image_data, border=detection_mask)
@@ -1269,6 +1488,19 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                     if cols_to_drop:
                         final_table = final_table.drop(columns=cols_to_drop)
                     
+                    # Before writing to CSV, ensure match_id column is removed
+                    if 'match_id' in final_table.columns:
+                        final_table.drop('match_id', axis=1, inplace=True)
+                    
+                    # Add zero point information to the table
+                    final_table['zero_point'] = zero_point_value
+                    final_table['zero_point_std'] = zero_point_std
+                    final_table['airmass'] = air
+                    
+                    # Create a catalog summary in the UI
+                    st.subheader("Final Photometry Catalog")
+                    st.dataframe(final_table.head(10))
+                    
                     # Write the filtered DataFrame to the buffer
                     final_table.to_csv(csv_buffer, index=False)
                     csv_data = csv_buffer.getvalue()
@@ -1403,51 +1635,56 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 try:
                     # Create a SkyCoord object for the query
                     center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit='deg')
-                    simbad_result = custom_simbad.query_region(
+                    simbad_result, error = safe_catalog_query(
+                        custom_simbad.query_region,
+                        "SIMBAD query failed",
                         center_coord,
                         radius=field_width_arcmin * u.arcmin
                     )
-                    
-                    if simbad_result is not None and len(simbad_result) > 0:
-                        # Initialize columns if they don't exist
-                        final_table['simbad_name'] = None
-                        final_table['simbad_type'] = None
-                        final_table['simbad_ids'] = None
-                        
-                        # Convert catalog positions to SkyCoord objects with explicit unit
-                        source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, unit='deg')
-                        
-                        # Check if RA and DEC columns exist and create SkyCoord
-                        if all(col in simbad_result.colnames for col in ['ra', 'dec']):  # Changed from 'RA', 'DEC' to lowercase
-                            # Get SIMBAD coordinates with proper units
-                            try:
-                                simbad_coords = SkyCoord(
-                                    ra=simbad_result['ra'],  # Changed from 'RA' to 'ra'
-                                    dec=simbad_result['dec'],  # Changed from 'DEC' to 'dec'
-                                    unit=(u.hourangle, u.deg)
-                                )
-                                
-                                # Match coordinates
-                                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
-                                matches = d2d < (search_radius_arcsec * u.arcsec)
-                                
-                                # Add matches to table
-                                for i, (match, match_idx) in enumerate(zip(matches, idx)):
-                                    if match:
-                                        final_table.loc[i, 'simbad_name'] = simbad_result['main_id'][match_idx]  # Changed from 'MAIN_ID'
-                                        final_table.loc[i, 'simbad_type'] = simbad_result['otype'][match_idx]    # Changed from 'OTYPE'
-                                        if 'ids' in simbad_result.colnames:  # Changed from 'IDS'
-                                            final_table.loc[i, 'simbad_ids'] = simbad_result['ids'][match_idx]
-                                
-                                st.success(f"Found {sum(matches)} SIMBAD objects in field.")
-                            except Exception as e:
-                                st.error(f"Error creating SkyCoord objects from SIMBAD data: {str(e)}")
-                                st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
-                        else:
-                            available_cols = ', '.join(simbad_result.colnames)
-                            st.error(f"SIMBAD result missing required columns. Available columns: {available_cols}")
+                    if error:
+                        st.warning(error)
                     else:
-                        st.info("No SIMBAD objects found in the field.")
+                        # Process simbad_result
+                        if simbad_result is not None and len(simbad_result) > 0:
+                            # Initialize columns if they don't exist
+                            final_table['simbad_name'] = None
+                            final_table['simbad_type'] = None
+                            final_table['simbad_ids'] = None
+                            
+                            # Convert catalog positions to SkyCoord objects with explicit unit
+                            source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, unit='deg')
+                            
+                            # Check if RA and DEC columns exist and create SkyCoord
+                            if all(col in simbad_result.colnames for col in ['ra', 'dec']):  # Changed from 'RA', 'DEC' to lowercase
+                                # Get SIMBAD coordinates with proper units
+                                try:
+                                    simbad_coords = SkyCoord(
+                                        ra=simbad_result['ra'],  # Changed from 'RA' to 'ra'
+                                        dec=simbad_result['dec'],  # Changed from 'DEC' to 'dec'
+                                        unit=(u.hourangle, u.deg)
+                                    )
+                                    
+                                    # Match coordinates
+                                    idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
+                                    matches = d2d < (search_radius_arcsec * u.arcsec)
+                                    
+                                    # Add matches to table
+                                    for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                                        if match:
+                                            final_table.loc[i, 'simbad_name'] = simbad_result['main_id'][match_idx]  # Changed from 'MAIN_ID'
+                                            final_table.loc[i, 'simbad_type'] = simbad_result['otype'][match_idx]    # Changed from 'OTYPE'
+                                            if 'ids' in simbad_result.colnames:  # Changed from 'IDS'
+                                                final_table.loc[i, 'simbad_ids'] = simbad_result['ids'][match_idx]
+                                    
+                                    st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+                                except Exception as e:
+                                    st.error(f"Error creating SkyCoord objects from SIMBAD data: {str(e)}")
+                                    st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
+                            else:
+                                available_cols = ', '.join(simbad_result.colnames)
+                                st.error(f"SIMBAD result missing required columns. Available columns: {available_cols}")
+                        else:
+                            st.info("No SIMBAD objects found in the field.")
                 except Exception as e:
                     st.error(f"SIMBAD query execution failed: {str(e)}")
         else:
@@ -1626,43 +1863,125 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
     return final_table
 
 
+def get_download_link(data, filename, link_text="Download"):
+    """
+    Generate a download link for data with improved styling and error handling.
+    
+    Parameters
+    ----------
+    data : str
+        String data to be downloaded
+    filename : str
+        Name of the file to be downloaded
+    link_text : str, optional
+        Text to display on the download button
+        
+    Returns
+    -------
+    str
+        HTML for the download link
+    """
+    if not data:
+        return '<div class="error-text">No data available to download</div>'
+        
+    try:
+        import base64
+        
+        # Ensure we have string data
+        if isinstance(data, bytes):
+            b64 = base64.b64encode(data).decode()
+        else:
+            b64 = base64.b64encode(data.encode()).decode()
+        
+        href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" class="download-button">{link_text}</a>'
+        
+        button_style = """
+        <style>
+        .download-button {
+            display: inline-block;
+            padding: 0.8em 1.4em;
+            background-color: #4CAF50;  /* Green background */
+            color: white;  /* White text */
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .download-button:hover {
+            background-color: #45a049;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transform: translateY(-1px);
+        }
+        .error-text {
+            color: red;
+            font-style: italic;
+        }
+        </style>
+        """
+        
+        return button_style + href
+    except Exception as e:
+        return f'<div class="error-text">Error creating download link: {str(e)}</div>'
+
 # ------------------------------------------------------------------------------
 
 # Main Script Execution
 # ------------------------------------------------------------------------------
 
-# Initialize session state variables if they don't exist
-if 'calibrated_data' not in st.session_state:
-    st.session_state['calibrated_data'] = None
+def initialize_session_state():
+    """Initialize all session state variables in one place to improve organization."""
+    # Image data storage
+    if 'calibrated_data' not in st.session_state:
+        st.session_state['calibrated_data'] = None
+    if 'calibrated_header' not in st.session_state:
+        st.session_state['calibrated_header'] = None
+    if 'final_phot_table' not in st.session_state:
+        st.session_state['final_phot_table'] = None
+    if 'epsf_model' not in st.session_state:
+        st.session_state['epsf_model'] = None
+    if 'epsf_photometry_result' not in st.session_state:
+        st.session_state['epsf_photometry_result'] = None
+    
+    # Coordinate storage
+    if 'manual_ra' not in st.session_state:
+        st.session_state['manual_ra'] = ""
+    if 'manual_dec' not in st.session_state:
+        st.session_state['manual_dec'] = ""
+    if 'valid_ra' not in st.session_state:
+        st.session_state['valid_ra'] = None
+    if 'valid_dec' not in st.session_state:
+        st.session_state['valid_dec'] = None
+    
+    # Analysis parameters
+    if 'analysis_parameters' not in st.session_state:
+        st.session_state['analysis_parameters'] = {
+            'seeing': 3.5,
+            'threshold_sigma': 3.0,
+            'detection_mask': 50,
+            'gaia_band': "phot_g_mean_mag",
+            'gaia_min_mag': 11.0,
+            'gaia_max_mag': 19.0,
+            'calibrate_bias': False,
+            'calibrate_dark': False,
+            'calibrate_flat': False
+        }
+    
+    # File tracking
+    if 'files_loaded' not in st.session_state:
+        st.session_state['files_loaded'] = {
+            'science_file': None,
+            'bias_file': None,
+            'dark_file': None,
+            'flat_file': None
+        }
 
-if 'calibrated_header' not in st.session_state:
-    st.session_state['calibrated_header'] = None
-
-if 'final_phot_table' not in st.session_state:
-    st.session_state['final_phot_table'] = None
-
-# Initialize additional session state variables for control flow
-if 'analysis_parameters' not in st.session_state:
-    st.session_state['analysis_parameters'] = {
-        'seeing': 3.5,
-        'threshold_sigma': 3.0,
-        'detection_mask': 50,
-        'gaia_band': "phot_g_mean_mag",
-        'gaia_min_mag': 11.0,
-        'gaia_max_mag': 19.0,
-        'calibrate_bias': False,
-        'calibrate_dark': False,
-        'calibrate_flat': False
-    }
-
-if 'files_loaded' not in st.session_state:
-    st.session_state['files_loaded'] = {
-        'science_file': None,
-        'bias_file': None,
-        'dark_file': None,
-        'flat_file': None
-    }
-
+initialize_session_state()
 
 st.title("_RAPAS Photometric Calibration_")
 
@@ -1772,61 +2091,19 @@ if science_file is not None:
         stats_col3.metric("Std Dev", f"{np.std(science_data):.3f}")
 
         # Get pixel scale and calculate estimated FWHM
-        pixel_size_arcsec = None
-        try:
-            if 'PIXSIZE' in science_header:
-                pixel_size_arcsec = science_header['PIXSIZE']
-            elif 'PIXSCALE' in science_header:
-                pixel_size_arcsec = science_header['PIXSCALE']
-            elif 'PIXELSCAL' in science_header:
-                pixel_size_arcsec = science_header['PIXELSCAL']
-            elif 'CDELT2' in science_header:
-                pixel_size_arcsec = abs(science_header['CDELT2']) * 3600.0
-            elif 'CDELT1' in science_header:
-                pixel_size_arcsec = abs(science_header['CDELT1']) * 3600.0
-            elif 'XPIXSZ' in science_header:
-                # Check if we have a focal length to convert from physical pixel size to angular pixel scale
-                if 'FOCALLEN' in science_header:
-                    # Convert physical pixel size to arcsec (pixel_size / focal_length * 206265 arcsec/radian)
-                    focal_length_mm = science_header['FOCALLEN']
-                    pixel_size_um = science_header['XPIXSZ']
-                    
-                    # Determine units of XPIXSZ (usually microns but sometimes mm or arcsec directly)
-                    xpixsz_unit = science_header.get('XPIXSZU', '').strip().lower()
-                    
-                    if xpixsz_unit == 'arcsec' or xpixsz_unit == 'as':
-                        # Already in arcseconds
-                        pixel_size_arcsec = pixel_size_um
-                    elif xpixsz_unit == 'mm':
-                        # Convert mm to microns then to arcseconds
-                        pixel_size_arcsec = (pixel_size_um * 1000) / focal_length_mm * 206.265
-                    else:
-                        # Assume microns if no unit specified or unit is 'um'
-                        pixel_size_arcsec = pixel_size_um / focal_length_mm * 206.265
-                        
-                    st.info(f"Calculated pixel scale from XPIXSZ={pixel_size_um} and FOCALLEN={focal_length_mm}mm")
-                else:
-                    # If we have XPIXSZ but no FOCALLEN, assume it's directly in arcseconds
-                    pixel_size_arcsec = science_header['XPIXSZ']
-                    st.info(f"Using XPIXSZ value directly as pixel scale: {pixel_size_arcsec} arcsec/pixel")
-
-            if pixel_size_arcsec:
-                st.metric("Mean Pixel Size (arcsec)", f"{pixel_size_arcsec:.2f}")
-                mean_fwhm_pixel = seeing / pixel_size_arcsec
-                st.metric("Est. Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (from seeing)")
-            else:
-                st.warning("Pixel scale not found in header. Using default value of 1.0 arcsec/pixel")
-                pixel_size_arcsec = 1.0
-                mean_fwhm_pixel = seeing / pixel_size_arcsec
-                st.metric("Est. Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (from seeing, with default pixel scale)")
-        except Exception as e:
-            st.warning(f"Error reading pixel scale from header: {e}")
-            pixel_size_arcsec = 1.0
-            mean_fwhm_pixel = seeing
+        pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
+        st.metric("Pixel Scale (arcsec/pixel)", f"{pixel_size_arcsec:.2f} (estimated from header)")
+        mean_fwhm_pixel = seeing / pixel_size_arcsec
+        st.metric("Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (estimated from seeing)")
 
         # Check if RA/DEC are missing from header
-        ra_missing = not any(key in science_header for key in ['RA', 'OBJRA', 'RA---', 'CRVAL1'])
-        dec_missing = not any(key in science_header for key in ['DEC', 'OBJDEC', 'DEC---', 'CRVAL2'])
+        ra_val, dec_val, coord_source = extract_coordinates(science_header)
+        if ra_val is not None and dec_val is not None:
+            st.write(f"Target: RA={ra_val}°, DEC={dec_val}° (from header)")
+            ra_missing = dec_missing = False
+        else:
+            st.warning(f"Coordinate issue: {coord_source}")
+            ra_missing = dec_missing = True
 
         # Initialize session state for manual coordinates if needed
         if 'manual_ra' not in st.session_state:
@@ -1945,7 +2222,7 @@ if science_file is not None:
                         norm_calibrated = ImageNormalize(calibrated_data, interval=ZScaleInterval())
                         fig_calibrated, ax_calibrated = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
                         im_calibrated = ax_calibrated.imshow(calibrated_data, norm=norm_calibrated,
-                                                           origin='lower', cmap="viridis")
+                                                             origin='lower', cmap="viridis")
                         fig_calibrated.colorbar(im_calibrated, ax=ax_calibrated, label='pixel value')
                         ax_calibrated.set_title("Calibrated Image (zscale)")
                         ax_calibrated.axis('off')
@@ -2080,6 +2357,11 @@ if science_file is not None:
                                             if 'match_id' in final_table.columns:
                                                 final_table.drop('match_id', axis=1, inplace=True)
                                             
+                                            # Add zero point information to the table
+                                            final_table['zero_point'] = zero_point_value
+                                            final_table['zero_point_std'] = zero_point_std
+                                            final_table['airmass'] = air
+                                            
                                             # Create a catalog summary in the UI
                                             st.subheader("Final Photometry Catalog")
                                             st.dataframe(final_table.head(10))
@@ -2185,50 +2467,10 @@ if science_file is not None:
                     # Add ESA Sky button with target coordinates
                     st.link_button(
                         "ESA Sky", 
-                        f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=PanSTARRS+DR1+color+(i%2C+r%2C+g)&fov=1&projection=SIN&cooframe=J2000&sci=true&lang=en",
+                        f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=DSS2+color&fov=1&projection=SIN&cooframe=J2000&sci=true&lang=en",
                         help="Open ESA Sky with the same target coordinates"
                     )
                 else:
                     st.warning("Could not determine coordinates from image header. Cannot display PanSTARRS view.")
 else:
     st.write("👆 Please upload a science image FITS file to start.")
-
-
-def get_download_link(data, filename, link_text="Download"):
-    """
-    Generate a download link for data without triggering a Streamlit rerun
-    """
-    import base64
-    
-    b64 = base64.b64encode(data.encode()).decode()
-    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" class="download-button">{link_text}</a>'
-    
-    button_style = """
-    <style>
-    .download-button {
-        display: inline-block;
-        padding: 0.8em 1.4em;
-        background-color: #7393B3;  /* Silver blue background */
-        color: white;  /* White text */
-        text-align: center;
-        text-decoration: none;
-        font-size: 16px;
-        font-weight: 500;
-        border-radius: 4px;
-        border: none;
-        cursor: pointer;
-        margin-top: 15px;
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        font-family: system-ui, "Segoe UI", Tahoma;
-    }
-    .download-button:hover {
-        background-color: #7393B3;
-        transform: translateY(-1px);
-    }
-    .download-button:active {
-        transform: translateY(1px);
-    }
-    </style>
-    """
-    
-    return button_style + href
