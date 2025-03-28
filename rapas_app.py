@@ -1232,14 +1232,18 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                         epsf_df['match_id'] = epsf_df['xcenter'].round(2).astype(str) + "_" + epsf_df['ycenter'].round(2).astype(str)
                         final_table['match_id'] = final_table['xcenter'].round(2).astype(str) + "_" + final_table['ycenter'].round(2).astype(str)
                         
-                        # Select just the columns we need from PSF results
+                        # Select just the columns we need from EPSF results
                         epsf_cols = {
                             'match_id': 'match_id',
                             'flux_fit': 'epsf_flux_fit', 
                             'flux_unc': 'epsf_flux_unc',
                             'instrumental_mag': 'epsf_instrumental_mag'
                         }
-                        epsf_subset = epsf_df[list(epsf_cols.keys())].rename(columns=epsf_cols)
+                        
+                        # Only continue if we have the necessary columns
+                        if len(epsf_cols) > 1 and 'match_id' in epsf_df.columns and 'match_id' in final_table.columns:
+                            # Select columns that actually exist
+                            epsf_subset = epsf_df[[col for col in epsf_cols.keys() if col in epsf_df.columns]].rename(columns=epsf_cols)
                         
                         # Merge the EPSF results with the final table
                         final_table = pd.merge(final_table, epsf_subset, on='match_id', how='left')
@@ -1659,34 +1663,6 @@ if 'files_loaded' not in st.session_state:
         'flat_file': None
     }
 
-# Add these functions to handle the buttons
-# def restart_analysis():
-#     """Reset analysis results but keep uploaded files"""
-#     # Clear analysis results
-#     st.session_state['calibrated_data'] = None
-#     st.session_state['calibrated_header'] = None
-#     st.session_state['final_phot_table'] = None
-#     st.session_state.pop('epsf_model', None)
-#     st.session_state.pop('epsf_photometry_result', None)
-#     # Keep the files_loaded state
-
-# def clear_all():
-#     """Reset everything including uploaded files"""
-#     # Clear all states
-#     st.session_state['calibrated_data'] = None
-#     st.session_state['calibrated_header'] = None
-#     st.session_state['final_phot_table'] = None
-#     st.session_state.pop('epsf_model', None)
-#     st.session_state.pop('epsf_photometry_result', None)
-#     # Clear file states
-#     st.session_state['files_loaded'] = {
-#         'science_file': None,
-#         'bias_file': None,
-#         'dark_file': None,
-#         'flat_file': None
-#     }
-#     # Force rerun to clear file uploaders
-#     st.experimental_rerun()
 
 st.title("_RAPAS Photometric Calibration_")
 
@@ -1847,9 +1823,6 @@ if science_file is not None:
             st.warning(f"Error reading pixel scale from header: {e}")
             pixel_size_arcsec = 1.0
             mean_fwhm_pixel = seeing
-
-        # Add this code in the science image processing section, after displaying header information
-        # but before calculating airmass
 
         # Check if RA/DEC are missing from header
         ra_missing = not any(key in science_header for key in ['RA', 'OBJRA', 'RA---', 'CRVAL1'])
@@ -2059,8 +2032,10 @@ if science_file is not None:
                                                 # Select just the columns we need from EPSF results
                                                 epsf_cols = {}
                                                 epsf_cols['match_id'] = 'match_id'
+                                                epsf_cols['flux_fit'] = 'epsf_flux_fit'
+                                                epsf_cols['flux_unc'] = 'epsf_flux_unc'
+                                                epsf_cols['instrumental_mag'] = 'epsf_instrumental_mag'
                                                 
-                                                    
                                                 # Only continue if we have the necessary columns
                                                 if len(epsf_cols) > 1 and 'match_id' in epsf_df.columns and 'match_id' in final_table.columns:
                                                     # Select columns that actually exist
