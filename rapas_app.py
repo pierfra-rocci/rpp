@@ -760,7 +760,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
     mask = make_border_mask(image_data, border=detection_mask)
     
     # Calculate total error
-    total_error = np.sqrt(bkg.background_rms**2 + bkg.background_median)
+    total_error = np.sqrt(bkg.background_rms**2 + bkg.background_median)/np.sqrt(bkg.background_median)
     
     st.write("Estimating FWHM...")
     fwhm_estimate = fwhm_fit(image_data - bkg.background, mean_fwhm_pixel, pixel_scale, mask)
@@ -1060,9 +1060,9 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         _phot_table['calib_mag'] = _phot_table['instrumental_mag'] + zero_point_value + 0.1*air
         
         # Calculate errors
-        if 'aperture_sum_err' in _phot_table.columns and 'aperture_sum' in _phot_table.columns:
-            _phot_table['calib_mag_err'] = (2.5/np.log(10) * _phot_table['aperture_sum_err'] / 
-                                          _phot_table['aperture_sum']) + zero_point_std
+        # if 'aperture_sum_err' in _phot_table.columns and 'aperture_sum' in _phot_table.columns:
+        #     _phot_table['calib_mag_err'] = (2.5/np.log(10) * _phot_table['aperture_sum_err'] / 
+        #                                   _phot_table['aperture_sum']) + zero_point_std
         
         # Store results in session state
         st.session_state['final_phot_table'] = _phot_table
