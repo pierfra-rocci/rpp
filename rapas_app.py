@@ -1,3 +1,6 @@
+import os
+import datetime
+
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
 from astropy.coordinates import get_sun
@@ -1888,6 +1891,12 @@ def initialize_session_state():
     if 'epsf_photometry_result' not in st.session_state:
         st.session_state['epsf_photometry_result'] = None
     
+    # Log handling
+    if 'log_buffer' not in st.session_state:
+        st.session_state['log_buffer'] = None
+    if 'base_filename' not in st.session_state:
+        st.session_state['base_filename'] = "photometry"
+    
     # Coordinate storage
     if 'manual_ra' not in st.session_state:
         st.session_state['manual_ra'] = ""
@@ -1921,6 +1930,81 @@ def initialize_session_state():
             'flat_file': None
         }
 
+
+def get_base_filename(file_obj):
+    """
+    Extract the base filename from an uploaded file object without extension.
+    
+    Parameters
+    ----------
+    file_obj : UploadedFile
+        The uploaded file object
+    
+    Returns
+    -------
+    str
+        Base filename without extension
+    """
+    if file_obj is None:
+        return "photometry"
+        
+    # Get original filename
+    original_name = file_obj.name
+    
+    # Remove extension(s) from filename
+    base_name = os.path.splitext(original_name)[0]
+    
+    # Remove any additional extensions (e.g. for .fits.fz files)
+    base_name = os.path.splitext(base_name)[0]
+    
+    return base_name
+
+
+def initialize_log(base_filename):
+    """
+    Initialize a log file for the current processing session.
+    
+    Parameters
+    ----------
+    base_filename : str
+        Base name for the log file
+    
+    Returns
+    -------
+    StringIO
+        Log buffer object
+    """
+    log_buffer = StringIO()
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    log_buffer.write("RAPAS Photometric Calibration Log\n")
+    log_buffer.write("===============================\n")
+    log_buffer.write(f"Processing started: {timestamp}\n")
+    log_buffer.write(f"Input file: {base_filename}\n\n")
+    
+    return log_buffer
+
+
+def write_to_log(log_buffer, message, level="INFO"):
+    """
+    Write a message to the log buffer with timestamp and level.
+    
+    Parameters
+    ----------
+    log_buffer : StringIO
+        The log buffer to write to
+    message : str
+        The message to log
+    level : str, optional
+        Log level (INFO, WARNING, ERROR)
+    """
+    if log_buffer is None:
+        return
+        
+    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+    log_buffer.write(f"[{timestamp}] {level}: {message}\n")
+
+
 initialize_session_state()
 
 st.title("_RAPAS Photometric Calibration_")
@@ -1949,6 +2033,14 @@ with st.sidebar:
                                    key="science_uploader")
     if science_file is not None:
         st.session_state.files_loaded['science_file'] = science_file
+        
+        # Get base filename for logs and output
+        base_filename = get_base_filename(science_file)
+        st.session_state['base_filename'] = base_filename
+        
+        # Initialize log
+        st.session_state['log_buffer'] = initialize_log(science_file.name)
+    
      # Also move calibration options to sidebar
     st.header("Calibration Options")
     calibrate_bias = st.checkbox("Apply Bias", value=False,
@@ -1980,7 +2072,8 @@ with st.sidebar:
     
     # Move catalog name to sidebar as well
     st.header("Output Options")
-    catalog_name = st.text_input("Output Catalog Filename", "photometry_catalog.csv")
+    default_catalog_name = f"{st.session_state['base_filename']}_phot.csv"
+    catalog_name = st.text_input("Output Catalog Filename", default_catalog_name)
 
     st.link_button("GAIA Archive", "https://gea.esac.esa.int/archive/")
     st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
@@ -1994,6 +2087,16 @@ if science_file is not None:
     bias_data, _ = load_fits_data(bias_file)
     dark_data, dark_header = load_fits_data(dark_file)
     flat_data, _ = load_fits_data(flat_file)
+    
+    # Log file loading
+    log_buffer = st.session_state['log_buffer']
+    write_to_log(log_buffer, f"Loaded science image: {science_file.name}")
+    if bias_file:
+        write_to_log(log_buffer, f"Loaded bias frame: {bias_file.name}")
+    if dark_file:
+        write_to_log(log_buffer, f"Loaded dark frame: {dark_file.name}")
+    if flat_file:
+        write_to_log(log_buffer, f"Loaded flat field: {flat_file.name}")
     
     # If headers are None, create empty dictionaries to avoid errors
     if science_header is None:
@@ -2033,9 +2136,9 @@ if science_file is not None:
         # Get pixel scale and calculate estimated FWHM
         pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
         st.metric("Pixel Scale (arcsec/pixel)", f"{pixel_size_arcsec:.2f} (estimated from header)")
-        mean_fwhm_pixel = seeing / pixel_size_arcsec
-        st.metric("Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (estimated from seeing)")
+        write_to_log(log_buffer, f"Pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})")
 
+        mean_fwhm_pixel = seeing / pixel_size_arcsec
         # Check if RA/DEC are missing from header
         ra_val, dec_val, coord_source = extract_coordinates(science_header)
         if ra_val is not None and dec_val is not None:
