@@ -2602,7 +2602,7 @@ if science_file is not None:
                                             # Also save locally in the output directory
                                             with open(catalog_path, 'w') as f:
                                                 f.write(csv_data)
-                                            st.success(f"Catalog saved to {catalog_path}")
+                                            st.write(f"Catalog saved to {catalog_path}")
                                             
                                         except Exception as e:
                                             st.error(f"Error preparing download: {e}")
