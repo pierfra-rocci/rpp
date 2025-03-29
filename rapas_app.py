@@ -1874,6 +1874,42 @@ def get_download_link(data, filename, link_text="Download"):
     except Exception as e:
         return f'<div class="error-text">Error creating download link: {str(e)}</div>'
 
+
+def save_header_to_txt(header, filename):
+    """
+    Save FITS header to a text file.
+    
+    Parameters
+    ----------
+    header : dict
+        FITS header dictionary
+    filename : str
+        Base filename to use (without extension)
+    
+    Returns
+    -------
+    str
+        Full path to the saved file
+    """
+    if header is None:
+        return None
+        
+    # Create a nicely formatted text representation of the header
+    header_txt = "FITS Header\n"
+    header_txt += "==========\n\n"
+    
+    # Format each key-value pair
+    for key, value in header.items():
+        header_txt += f"{key:8} = {value}\n"
+    
+    output_filename = f"{filename}.txt"
+    
+    with open(output_filename, 'w') as f:
+        f.write(header_txt)
+        
+    return output_filename
+
+
 # ------------------------------------------------------------------------------
 
 # Main Script Execution
