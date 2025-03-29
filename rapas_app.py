@@ -2106,8 +2106,6 @@ with st.sidebar:
     gaia_max_mag = st.slider("Gaia Max Magnitude", 16.0, 20.0, 19.0, 0.5,
                           help="Maximum magnitude for Gaia sources")
     
-   
-    
     # Move catalog name to sidebar as well
     st.header("Output Options")
     default_catalog_name = f"{st.session_state['base_filename']}_phot.csv"
@@ -2126,7 +2124,6 @@ if science_file is not None:
     dark_data, dark_header = load_fits_data(dark_file)
     flat_data, _ = load_fits_data(flat_file)
 
-    # Add this code here
     # Save header to text file
     if science_header is not None:
         # Save the header to a text file
