@@ -2624,6 +2624,8 @@ else:
 # Save log file only if we have a log buffer
 if 'log_buffer' in st.session_state and st.session_state['log_buffer'] is not None:
     log_buffer = st.session_state['log_buffer']
+    
+    # Save log file with timestamp
     timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     log_filename = f"{st.session_state['base_filename']}_log_{timestamp_str}.txt"
     log_filepath = os.path.join(output_dir, log_filename)
