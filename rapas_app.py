@@ -2141,6 +2141,10 @@ with st.sidebar:
     st.link_button("NED", "https://ned.ipac.caltech.edu/")
     st.link_button("ADS", "https://ui.adsabs.harvard.edu/")
 
+# Make sure the output directory exists
+output_dir = ensure_output_directory("rapas_results")
+st.session_state['output_dir'] = output_dir
+
 # Main processing logic
 if science_file is not None:
     science_data, science_header = load_fits_data(science_file)
