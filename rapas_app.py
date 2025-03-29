@@ -2139,6 +2139,8 @@ if science_file is not None:
         write_to_log(log_buffer, f"Pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})")
 
         mean_fwhm_pixel = seeing / pixel_size_arcsec
+        st.metric("Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (estimated from seeing)")
+        write_to_log(log_buffer, f"Estimated FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)")
         # Check if RA/DEC are missing from header
         ra_val, dec_val, coord_source = extract_coordinates(science_header)
         if ra_val is not None and dec_val is not None:
