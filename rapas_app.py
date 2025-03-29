@@ -1902,7 +1902,7 @@ def get_download_link(data, filename, link_text="Download"):
 
 
 def save_header_to_txt(header, filename):
-    """
+   """
     Save FITS header to a text file.
     
     Parameters
@@ -1928,7 +1928,9 @@ def save_header_to_txt(header, filename):
     for key, value in header.items():
         header_txt += f"{key:8} = {value}\n"
     
-    output_filename = f"{filename}.txt"
+    # Use the output directory
+    output_dir = st.session_state.get('output_dir', '.')
+    output_filename = os.path.join(output_dir, f"{filename}.txt")
     
     with open(output_filename, 'w') as f:
         f.write(header_txt)
