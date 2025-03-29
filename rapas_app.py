@@ -1331,8 +1331,9 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         
         # Save plot but handle exceptions
         try:
-            plt.savefig("zero_point_plot.png")
-            st.write("Zero point plot saved as 'zero_point_plot.png'.")
+            zero_point_plot_path = os.path.join(output_dir, "zero_point_plot.png")
+            plt.savefig(zero_point_plot_path)
+            st.write(f"Zero point plot saved as '{zero_point_plot_path}'")
         except Exception as e:
             st.warning(f"Could not save plot to file: {e}")
             
