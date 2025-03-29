@@ -2162,6 +2162,19 @@ if science_file is not None:
         fig_preview.colorbar(im, ax=ax_preview, label='Pixel Value')
         ax_preview.set_title("(zscale stretch)")
         ax_preview.axis('off') 
+        
+        # Save the figure to a PNG file with timestamp
+        timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        image_filename = f"{st.session_state['base_filename']}_image_{timestamp_str}.png"
+        
+        try:
+            plt.savefig(image_filename, dpi=150, bbox_inches='tight')
+            write_to_log(log_buffer, f"Saved image plot to {image_filename}")
+            st.info(f"Image saved as {image_filename}")
+        except Exception as e:
+            write_to_log(log_buffer, f"Failed to save image plot: {str(e)}", level="ERROR")
+            st.error(f"Error saving image: {str(e)}")
+        
         st.pyplot(fig_preview, clear_figure=True)
     except Exception as e:
         st.error(f"Error displaying image: {e}")
