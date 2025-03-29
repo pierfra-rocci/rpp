@@ -2189,7 +2189,7 @@ if science_file is not None:
         timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         
         # Save the header to a text file with timestamp
-        header_filename = f"{st.session_state['base_filename']}_header_{timestamp_str}"
+        header_filename = f"{st.session_state['base_filename']}_header"
         header_file_path = os.path.join(output_dir, f"{header_filename}.txt")
         
         header_file = save_header_to_txt(science_header, header_filename)
@@ -2240,7 +2240,7 @@ if science_file is not None:
             
             # Save after displaying
             timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            image_filename = f"{st.session_state['base_filename']}_image_{timestamp_str}.png"
+            image_filename = f"{st.session_state['base_filename']}_image.png"
             image_path = os.path.join(output_dir, image_filename)
             
             # Saving as separate step
