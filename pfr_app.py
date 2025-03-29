@@ -37,6 +37,7 @@ from astropy.nddata import NDData
 import warnings
 warnings.filterwarnings("ignore")
 
+
 st.set_page_config(
     page_title="RAPAS Photometric Calibration",
     page_icon="🔭",
@@ -71,6 +72,129 @@ FIGURE_SIZES = {
     'wide': (12, 6),    # For wide plots
     'stars_grid': (10, 8)  # For grid of stars
 }
+
+def solve_with_astrometry_net(image_data, header=None, api_key=None):
+    """
+    Solve plate using the astrometry.net API.
+    
+    Parameters
+    ----------
+    image_data : numpy.ndarray
+        The image data to solve
+    header : dict, optional
+        FITS header with any available metadata to help the solver
+    api_key : str, optional
+        Astrometry.net API key. If not provided, will look in environment variables.
+        
+    Returns
+    -------
+    tuple
+        (wcs_object, updated_header, status_message)
+    """
+    try:
+        # Import required libraries
+        import tempfile
+        import time
+        from astroquery.astrometry_net import AstrometryNetClass
+        from astropy.io import fits
+        import os
+        
+        # Get API key from environment if not provided
+        if api_key is None:
+            api_key = "cnolwaeoasefkoka"  # Default API key for testing purposes
+            if api_key is None:
+                return None, header, "No API key provided or found in environment variables"
+        
+        # Initialize AstrometryNet client
+        ast = AstrometryNetClass()
+        ast.api_key = api_key
+        
+        # Extract metadata to help with solving
+        solve_kwargs = {}
+        
+        # If we have coordinates and scale in header, use them to narrow down search
+        if header is not None:
+            # Extract RA/DEC if available
+            ra, dec, _ = extract_coordinates(header)
+            if ra is not None and dec is not None:
+                solve_kwargs['center_ra'] = ra
+                solve_kwargs['center_dec'] = dec
+                solve_kwargs['radius'] = 1.0  # Search radius in degrees
+                
+            # Extract pixel scale if available
+            scale, _ = extract_pixel_scale(header)
+            if scale > 0:
+                # astrometry.net expects scale range in arcsec/pixel
+                solve_kwargs['scale_lower'] = scale * 0.8
+                solve_kwargs['scale_upper'] = scale * 1.2
+        
+        # Send the image to astrometry.net
+        try_idx = 1
+        max_tries = 3
+        wcs_header = None
+        
+        while try_idx <= max_tries and wcs_header is None:
+            try:
+                file_path = None
+                
+                # Write image to temporary FITS file
+                with tempfile.NamedTemporaryFile(suffix='.fits', delete=False) as f:
+                    file_path = f.name
+                    hdu = fits.PrimaryHDU(data=image_data, header=fits.Header())
+                    hdu.writeto(file_path, overwrite=True)
+                
+                try:
+                    # Submit the job to astrometry.net
+                    st.info(f"Submitting image to astrometry.net (attempt {try_idx}/{max_tries})...")
+                    
+                    # First try with a file upload
+                    wcs_header = ast.solve_from_image(file_path, **solve_kwargs)
+                    
+                except Exception as e:
+                    st.warning(f"Error with file upload: {str(e)}. Trying with image data directly...")
+                    # If file upload fails, try with image data directly
+                    wcs_header = ast.solve_from_image(image_data, **solve_kwargs)
+                
+                # Clean up temporary file
+                if file_path and os.path.exists(file_path):
+                    os.unlink(file_path)
+            
+            except Exception as e:
+                try_idx += 1
+                st.warning(f"Astrometry.net attempt {try_idx-1} failed: {str(e)}")
+                # Wait before retrying
+                time.sleep(2)
+        
+        if wcs_header is None:
+            return None, header, f"Astrometry.net failed after {max_tries} attempts"
+        
+        # Create WCS object from the returned header
+        wcs_obj = WCS(wcs_header)
+        
+        # Update the original header with WCS information
+        if header is None:
+            header = fits.Header()
+            
+        # Add WCS keywords to the header
+        for key in wcs_header:
+            if key in ['SIMPLE', 'BITPIX', 'NAXIS', 'NAXIS1', 'NAXIS2', 'EXTEND']:
+                # Skip these structural keywords
+                continue
+            if key.startswith('HISTORY') or key.startswith('COMMENT'):
+                continue
+            # Add the WCS keyword to our header
+            header[key] = wcs_header[key]
+        
+        # Also add information that this WCS came from astrometry.net
+        header['ASTRSRC'] = 'astrometry.net'
+        header['ASTRTRY'] = try_idx
+        
+        return wcs_obj, header, "Astrometry.net solution successful"
+    
+    except ImportError as e:
+        return None, header, f"Required packages not installed: {str(e)}"
+    except Exception as e:
+        return None, header, f"Error solving with astrometry.net: {str(e)}"
 
 
 def ensure_output_directory(directory="rapas_results"):
@@ -2179,6 +2303,57 @@ if science_file is not None:
     bias_data, _ = load_fits_data(bias_file)
     dark_data, dark_header = load_fits_data(dark_file)
     flat_data, _ = load_fits_data(flat_file)
+
+    # Check if we have valid WCS in the header
+    wcs_obj, wcs_error = safe_wcs_create(science_header)
+    if wcs_obj is None:
+        st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
+        
+        # Ask user if they want to solve with astrometry.net
+        use_astrometry = st.checkbox(
+            "Attempt plate solving with astrometry.net?", 
+            value=True,
+            help="Uses the online astrometry.net service to determine WCS coordinates"
+        )
+        
+        if use_astrometry:
+            # Let user input their API key
+            api_key = st.text_input(
+                "Astrometry.net API Key", 
+                value="", 
+                type="password",
+                help="Get your key at https://nova.astrometry.net/api_help"
+            )
+            
+            if api_key:
+                # Try to solve with astrometry.net
+                with st.spinner("Running plate solve with astrometry.net (this may take a while)..."):
+                    wcs_obj, science_header, astrometry_msg = solve_with_astrometry_net(
+                        science_data, science_header, api_key
+                    )
+                    
+                    # Get log buffer from session state
+                    log_buffer = st.session_state['log_buffer']
+                    
+                    if wcs_obj is not None:
+                        st.success("Astrometry.net plate solving successful!")
+                        write_to_log(log_buffer, f"Solved plate with astrometry.net: {astrometry_msg}")
+                        
+                        # Save the updated header with WCS information to a file
+                        wcs_header_filename = f"{st.session_state['base_filename']}_wcs_header"
+                        wcs_header_file_path = save_header_to_txt(science_header, wcs_header_filename)
+                        if wcs_header_file_path:
+                            st.info(f"Updated WCS header saved to {wcs_header_file_path}")
+                    else:
+                        st.error(f"Astrometry.net plate solving failed: {astrometry_msg}")
+                        write_to_log(log_buffer, f"Failed to solve plate: {astrometry_msg}", level="ERROR")
+            else:
+                st.info("Please enter your astrometry.net API key to proceed with plate solving.")
+    else:
+        st.success("Valid WCS found in the FITS header.")
+        # Get the log buffer from session state
+        log_buffer = st.session_state['log_buffer']
+        write_to_log(log_buffer, "Valid WCS found in header")
 
     # Save header to text file
     if science_header is not None:
