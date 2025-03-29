@@ -2526,3 +2526,22 @@ if science_file is not None:
                     st.warning("Could not determine coordinates from image header. Cannot display PanSTARRS view.")
 else:
     st.write("👆 Please upload a science image FITS file to start.")
+
+# Save log file
+log_filename = f"{st.session_state['base_filename']}_log.txt"
+with open(log_filename, 'w') as f:
+    # Add final timestamp
+    write_to_log(log_buffer, "Processing completed", level="INFO")
+    f.write(log_buffer.getvalue())
+
+# Also provide log download
+log_download_link = get_download_link(
+    log_buffer.getvalue(),
+    log_filename,
+    link_text="Download Processing Log"
+)
+st.markdown(log_download_link, unsafe_allow_html=True)
+
+# Show log in UI
+with st.expander("View Processing Log"):
+    st.text(log_buffer.getvalue())
