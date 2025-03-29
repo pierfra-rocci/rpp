@@ -1902,16 +1902,16 @@ def get_download_link(data, filename, link_text="Download"):
 
 
 def save_header_to_txt(header, filename):
-   """
+    """
     Save FITS header to a text file.
-    
+
     Parameters
     ----------
     header : dict
         FITS header dictionary
     filename : str
         Base filename to use (without extension)
-    
+
     Returns
     -------
     str
@@ -2620,6 +2620,31 @@ if science_file is not None:
                     st.warning("Could not determine coordinates from image header. Cannot display PanSTARRS view.")
 else:
     st.write("👆 Please upload a science image FITS file to start.")
+
+# Save log file only if we have a log buffer
+if 'log_buffer' in st.session_state and st.session_state['log_buffer'] is not None:
+    log_buffer = st.session_state['log_buffer']
+    timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_filename = f"{st.session_state['base_filename']}_log_{timestamp_str}.txt"
+    log_filepath = os.path.join(output_dir, log_filename)
+
+    with open(log_filepath, 'w') as f:
+        # Add final timestamp
+        write_to_log(log_buffer, "Processing completed", level="INFO")
+        f.write(log_buffer.getvalue())
+        write_to_log(log_buffer, f"Log saved to {log_filepath}")
+
+    # Also provide log download with same timestamped filename
+    log_download_link = get_download_link(
+        log_buffer.getvalue(),
+        log_filename,
+        link_text="Download Processing Log"
+    )
+    st.markdown(log_download_link, unsafe_allow_html=True)
+
+    # Show log in UI
+    with st.expander("View Processing Log"):
+        st.text(log_buffer.getvalue())
 
 # Save log file with timestamp
 timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
