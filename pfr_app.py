@@ -2232,7 +2232,7 @@ if science_file is not None:
                 im = ax_preview.imshow(science_data, vmin=vmin, vmax=vmax, origin='lower', cmap="viridis")
             
             fig_preview.colorbar(im, ax=ax_preview, label='Pixel Value')
-            ax_preview.set_title(f"Science Image: {science_file.name}")
+            ax_preview.set_title(f"{science_file.name}")
             ax_preview.axis('off')
             
             # Display the plot first (before saving)
