@@ -12,7 +12,7 @@ def main():
         app_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Path to the actual app executable
-    app_path = os.path.join(app_dir, "rapas_app.exe")
+    app_path = os.path.join(app_dir, "pfr_app.exe")
     
     # Start the Streamlit process
     process = subprocess.Popen([app_path, "--server.address=127.0.0.1", "--server.headless=false"])
@@ -21,7 +21,7 @@ def main():
     time.sleep(5)
     
     # Open browser
-    webbrowser.open("http://localhost:8501")
+    webbrowser.open("http://localhost:8502")
     
     # Wait for the process to finish
     process.wait()

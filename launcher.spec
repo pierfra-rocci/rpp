@@ -27,7 +27,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='RapasApp',
+    name='PfrApp',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['rapas_app.py'],
+    ['pfr_app.py'],
     pathex=[],
     binaries=[],
     datas=[("C:/Users/pierf/astronomy/.astronomy/Lib/site-packages/altair/vegalite/v5/schema/vega-lite-schema.json",
