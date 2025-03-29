@@ -73,6 +73,30 @@ FIGURE_SIZES = {
 }
 
 
+def ensure_output_directory(directory="rapas_results"):
+    """
+    Ensure the output directory exists, create it if needed.
+    
+    Parameters
+    ----------
+    directory : str
+        Name of the directory to create
+        
+    Returns
+    -------
+    str
+        Path to the output directory
+    """
+    # Create directory if it doesn't exist
+    if not os.path.exists(directory):
+        try:
+            os.makedirs(directory)
+            return directory
+        except Exception as e:
+            st.warning(f"Could not create directory '{directory}': {e}")
+            return "."  # Fallback to current directory
+    return directory
+
 def safe_wcs_create(header):
     """
     Safely create a WCS object from a FITS header with proper error handling.
