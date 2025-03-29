@@ -2196,11 +2196,12 @@ if science_file is not None:
         # Save the figure to a PNG file with timestamp
         timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         image_filename = f"{st.session_state['base_filename']}_image_{timestamp_str}.png"
-        
+        image_path = os.path.join(output_dir, image_filename)
+
         try:
-            plt.savefig(image_filename, dpi=150, bbox_inches='tight')
-            write_to_log(log_buffer, f"Saved image plot to {image_filename}")
-            st.info(f"Image saved as {image_filename}")
+            plt.savefig(image_path, dpi=150, bbox_inches='tight')
+            write_to_log(log_buffer, f"Saved image plot to {image_path}")
+            st.info(f"Image saved as {image_path}")
         except Exception as e:
             write_to_log(log_buffer, f"Failed to save image plot: {str(e)}", level="ERROR")
             st.error(f"Error saving image: {str(e)}")
