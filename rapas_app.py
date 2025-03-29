@@ -2126,8 +2126,11 @@ if science_file is not None:
 
     # Save header to text file
     if science_header is not None:
-        # Save the header to a text file
-        header_filename = f"{st.session_state['base_filename']}_header"
+        # Format current time for filename
+        timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Save the header to a text file with timestamp
+        header_filename = f"{st.session_state['base_filename']}_header_{timestamp_str}"
         header_file = save_header_to_txt(science_header, header_filename)
         if header_file:
             write_to_log(log_buffer, f"Saved header to {header_file}") # type: ignore
@@ -2570,14 +2573,16 @@ if science_file is not None:
 else:
     st.write("👆 Please upload a science image FITS file to start.")
 
-# Save log file
-log_filename = f"{st.session_state['base_filename']}_log.txt"
+# Save log file with timestamp
+timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+log_filename = f"{st.session_state['base_filename']}_log_{timestamp_str}.txt"
+
 with open(log_filename, 'w') as f:
     # Add final timestamp
     write_to_log(log_buffer, "Processing completed", level="INFO")
     f.write(log_buffer.getvalue())
 
-# Also provide log download
+# Also provide log download with same timestamped filename
 log_download_link = get_download_link(
     log_buffer.getvalue(),
     log_filename,
