@@ -2195,7 +2195,7 @@ if science_file is not None:
         header_file = save_header_to_txt(science_header, header_filename)
         if header_file:
             write_to_log(log_buffer, f"Saved header to {header_file}")
-            st.info(f"FITS header saved to {header_file}")
+            st.write(f"FITS header saved to {header_file}")
 
     # Log file loading
     log_buffer = st.session_state['log_buffer']
@@ -2247,7 +2247,7 @@ if science_file is not None:
             try:
                 fig_preview.savefig(image_path, dpi=150, bbox_inches='tight')
                 write_to_log(log_buffer, f"Saved image plot to {image_path}")
-                st.info(f"Image saved as {image_path}")
+                st.write(f"Image saved as {image_path}")
             except Exception as save_error:
                 write_to_log(log_buffer, f"Failed to save image plot: {str(save_error)}", level="ERROR")
                 st.error(f"Error saving image: {str(save_error)}")
@@ -2690,4 +2690,4 @@ if 'log_buffer' in st.session_state and st.session_state['log_buffer'] is not No
         write_to_log(log_buffer, f"Log saved to {log_filepath}")
     
     # Just show a small notification
-    st.info(f"Processing log saved to {log_filepath}")
+    st.write(f"Processing log saved to {log_filepath}")
