@@ -2122,18 +2122,20 @@ with st.sidebar:
 # Main processing logic
 if science_file is not None:
     science_data, science_header = load_fits_data(science_file)
+    bias_data, _ = load_fits_data(bias_file)
+    dark_data, dark_header = load_fits_data(dark_file)
+    flat_data, _ = load_fits_data(flat_file)
+
+    # Add this code here
+    # Save header to text file
     if science_header is not None:
-    # Save the header to a text file
+        # Save the header to a text file
         header_filename = f"{st.session_state['base_filename']}_header"
         header_file = save_header_to_txt(science_header, header_filename)
         if header_file:
             write_to_log(log_buffer, f"Saved header to {header_file}")
             st.info(f"FITS header saved to {header_file}")
-            
-    bias_data, _ = load_fits_data(bias_file)
-    dark_data, dark_header = load_fits_data(dark_file)
-    flat_data, _ = load_fits_data(flat_file)
-    
+
     # Log file loading
     log_buffer = st.session_state['log_buffer']
     write_to_log(log_buffer, f"Loaded science image: {science_file.name}")
