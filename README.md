@@ -1,4 +1,3 @@
-# Photometria
+# P_F_R
 
-Photometric Pipeline for the RAPAS Pro/Am project
-
+Photometric Factory for RAPAS Images
