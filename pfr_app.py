@@ -2067,7 +2067,7 @@ def initialize_log(base_filename):
     log_buffer = StringIO()
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    log_buffer.write("RAPAS Photometric Calibration Log\n")
+    log_buffer.write("Photometric Factory for RAPAS Log\n")
     log_buffer.write("===============================\n")
     log_buffer.write(f"Processing started: {timestamp}\n")
     log_buffer.write(f"Input file: {base_filename}\n\n")
@@ -2097,7 +2097,7 @@ def write_to_log(log_buffer, message, level="INFO"):
 
 initialize_session_state()
 
-st.title("_RAPAS Photometric Calibration_")
+st.title("_Photometric Factory for RAPAS_")
 
 # Photometry parameters in sidebar
 with st.sidebar:
