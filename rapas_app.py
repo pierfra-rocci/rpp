@@ -1379,6 +1379,8 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
         
         if zero_point_value is not None:
             st.pyplot(zp_plot)
+            write_to_log(log_buffer, f"Zero point: {zero_point_value:.3f} ± {zero_point_std:.3f}")
+            write_to_log(log_buffer, f"Airmass: {air:.2f}")
             
             # Prepare catalog for download
             if 'final_phot_table' in st.session_state:
@@ -2326,6 +2328,8 @@ if science_file is not None:
                                 
                                 if zero_point_value is not None:
                                     st.pyplot(zp_plot)
+                                    write_to_log(log_buffer, f"Zero point: {zero_point_value:.3f} ± {zero_point_std:.3f}")
+                                    write_to_log(log_buffer, f"Airmass: {air:.2f}")
                                     
                                     # Prepare for download if final_phot_table exists in session state
                                     if 'final_phot_table' in st.session_state:
