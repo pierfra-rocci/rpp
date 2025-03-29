@@ -1477,7 +1477,8 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                     
                     # Ensure filename has .csv extension
                     filename = catalog_name if catalog_name.endswith('.csv') else f"{catalog_name}.csv"
-                    
+                    catalog_path = os.path.join(output_dir, filename)
+
                     # Provide download button with better formatting
                     download_link = get_download_link(
                         csv_data, 
@@ -1485,11 +1486,11 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                         link_text="Download Photometry Catalog"
                     )
                     st.markdown(download_link, unsafe_allow_html=True)
-                    st.write("Click the button above to download the photometry catalog.")
-                    
-                    # Also save locally if needed
-                    with open(filename, 'w') as f:
+
+                    # Also save locally in the output directory
+                    with open(catalog_path, 'w') as f:
                         f.write(csv_data)
+                    st.success(f"Catalog saved to {catalog_path}")
                     
                 except Exception as e:
                     st.error(f"Error preparing download: {e}")
