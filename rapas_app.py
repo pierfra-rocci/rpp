@@ -2216,30 +2216,50 @@ if science_file is not None:
     st.header("Science Image", anchor="science-image")
     
     # Show the image with zscale stretching
-    try:
-        norm = ImageNormalize(science_data, interval=ZScaleInterval())
-        fig_preview, ax_preview = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)  # Explicit figure size
-        im = ax_preview.imshow(science_data, norm=norm, origin='lower', cmap="viridis")
-        fig_preview.colorbar(im, ax_preview, label='Pixel Value')
-        ax_preview.set_title("(zscale stretch)")
-        ax_preview.axis('off') 
-        
-        # Save the figure to a PNG file with timestamp
-        timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        image_filename = f"{st.session_state['base_filename']}_image_{timestamp_str}.png"
-        image_path = os.path.join(output_dir, image_filename)
-
+    if science_data is not None:
         try:
-            plt.savefig(image_path, dpi=150, bbox_inches='tight')
-            write_to_log(log_buffer, f"Saved image plot to {image_path}")
-            st.info(f"Image saved as {image_path}")
+            # First create the plot
+            fig_preview, ax_preview = plt.subplots(figsize=FIGURE_SIZES['medium'])
+            
+            # Try ZScaleInterval first, fall back to simple normalization if that fails
+            try:
+                norm = ImageNormalize(science_data, interval=ZScaleInterval())
+                im = ax_preview.imshow(science_data, norm=norm, origin='lower', cmap="viridis")
+            except Exception as norm_error:
+                st.warning(f"ZScale normalization failed: {norm_error}. Using simple normalization.")
+                # Fall back to simple normalization
+                vmin, vmax = np.percentile(science_data, [1, 99])  # Use percentiles to avoid outliers
+                im = ax_preview.imshow(science_data, vmin=vmin, vmax=vmax, origin='lower', cmap="viridis")
+            
+            fig_preview.colorbar(im, ax=ax_preview, label='Pixel Value')
+            ax_preview.set_title(f"Science Image: {science_file.name}")
+            ax_preview.axis('off')
+            
+            # Display the plot first (before saving)
+            st.pyplot(fig_preview)
+            
+            # Save after displaying
+            timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            image_filename = f"{st.session_state['base_filename']}_image_{timestamp_str}.png"
+            image_path = os.path.join(output_dir, image_filename)
+            
+            # Saving as separate step
+            try:
+                fig_preview.savefig(image_path, dpi=150, bbox_inches='tight')
+                write_to_log(log_buffer, f"Saved image plot to {image_path}")
+                st.info(f"Image saved as {image_path}")
+            except Exception as save_error:
+                write_to_log(log_buffer, f"Failed to save image plot: {str(save_error)}", level="ERROR")
+                st.error(f"Error saving image: {str(save_error)}")
+            
+            # Clear the figure to avoid memory issues
+            plt.close(fig_preview)
+            
         except Exception as e:
-            write_to_log(log_buffer, f"Failed to save image plot: {str(e)}", level="ERROR")
-            st.error(f"Error saving image: {str(e)}")
-        
-        st.pyplot(fig_preview, clear_figure=True)
-    except Exception as e:
-        st.error(f"Error displaying image: {e}")
+            st.error(f"Error displaying image: {str(e)}")
+            st.exception(e)  # Show full traceback for debugging
+    else:
+        st.error("No image data available to display. Check if the file was loaded correctly.")
 
     # Show header information
     with st.expander("Science Image Header"):
