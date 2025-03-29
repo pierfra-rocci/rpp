@@ -2220,7 +2220,7 @@ if science_file is not None:
         norm = ImageNormalize(science_data, interval=ZScaleInterval())
         fig_preview, ax_preview = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)  # Explicit figure size
         im = ax_preview.imshow(science_data, norm=norm, origin='lower', cmap="viridis")
-        fig_preview.colorbar(im, ax=ax_preview, label='Pixel Value')
+        fig_preview.colorbar(im, ax_preview, label='Pixel Value')
         ax_preview.set_title("(zscale stretch)")
         ax_preview.axis('off') 
         
@@ -2659,8 +2659,8 @@ else:
 # Save log file only if we have a log buffer
 if 'log_buffer' in st.session_state and st.session_state['log_buffer'] is not None:
     log_buffer = st.session_state['log_buffer']
-    timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_filename = f"{st.session_state['base_filename']}_log_{timestamp_str}.log"
+    # Remove timestamp from log filename
+    log_filename = f"{st.session_state['base_filename']}_log.log"
     log_filepath = os.path.join(output_dir, log_filename)
 
     with open(log_filepath, 'w') as f:
