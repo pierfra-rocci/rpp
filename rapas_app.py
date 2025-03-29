@@ -1492,6 +1492,30 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                         f.write(csv_data)
                     st.success(f"Catalog saved to {catalog_path}")
                     
+                    # Also create a metadata file with analysis parameters
+                    metadata_filename = f"{base_catalog_name}_{timestamp_str}_metadata.txt"
+                    metadata_path = os.path.join(output_dir, metadata_filename)
+
+                    with open(metadata_path, 'w') as f:
+                        f.write(f"RAPAS Photometry Analysis Metadata\n")
+                        f.write(f"================================\n\n")
+                        f.write(f"Analysis Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                        f.write(f"Input File: {science_file.name}\n")
+                        f.write(f"Catalog File: {filename}\n\n")
+                        
+                        f.write(f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n")
+                        f.write(f"Airmass: {air:.3f}\n")
+                        f.write(f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n")
+                        f.write(f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n")
+                        
+                        f.write(f"Detection Parameters:\n")
+                        f.write(f"  Threshold: {threshold_sigma} sigma\n")
+                        f.write(f"  Edge Mask: {detection_mask} pixels\n")
+                        f.write(f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n")
+
+                    write_to_log(log_buffer, f"Saved catalog metadata to {metadata_path}")
+                    st.success(f"Analysis metadata saved to {metadata_path}")
+                    
                 except Exception as e:
                     st.error(f"Error preparing download: {e}")
                     st.exception(e)
@@ -2636,7 +2660,7 @@ else:
 if 'log_buffer' in st.session_state and st.session_state['log_buffer'] is not None:
     log_buffer = st.session_state['log_buffer']
     timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_filename = f"{st.session_state['base_filename']}_log_{timestamp_str}.txt"
+    log_filename = f"{st.session_state['base_filename']}_log_{timestamp_str}.log"
     log_filepath = os.path.join(output_dir, log_filename)
 
     with open(log_filepath, 'w') as f:
@@ -2644,15 +2668,6 @@ if 'log_buffer' in st.session_state and st.session_state['log_buffer'] is not No
         write_to_log(log_buffer, "Processing completed", level="INFO")
         f.write(log_buffer.getvalue())
         write_to_log(log_buffer, f"Log saved to {log_filepath}")
-
-    # Also provide log download with same timestamped filename
-    log_download_link = get_download_link(
-        log_buffer.getvalue(),
-        log_filename,
-        link_text="Download Processing Log"
-    )
-    st.markdown(log_download_link, unsafe_allow_html=True)
-
-    # Show log in UI
-    with st.expander("View Processing Log"):
-        st.text(log_buffer.getvalue())
+    
+    # Just show a small notification
+    st.info(f"Processing log saved to {log_filepath}")
