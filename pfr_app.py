@@ -1617,7 +1617,7 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                 st.success(f"Catalog saved to {catalog_path}")
                 
                 # Also create a metadata file with analysis parameters
-                metadata_filename = f"{base_catalog_name}_{timestamp_str}_metadata.txt"
+                metadata_filename = f"{base_catalog_name}_metadata.txt"
                 metadata_path = os.path.join(output_dir, metadata_filename)
 
                 with open(metadata_path, 'w') as f:
@@ -2760,7 +2760,7 @@ if science_file is not None:
                                             base_catalog_name = catalog_name
                                             if base_catalog_name.endswith('.csv'):
                                                 base_catalog_name = base_catalog_name[:-4]
-                                            filename = f"{base_catalog_name}_{timestamp_str}.csv"
+                                            filename = f"{base_catalog_name}.csv"
 
                                             # Save to rapas_results directory
                                             catalog_path = os.path.join(output_dir, filename)
