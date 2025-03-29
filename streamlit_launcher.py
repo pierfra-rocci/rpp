@@ -1,11 +1,10 @@
 import subprocess
 import time
-import webbrowser
 
 def main():
     # Get path to Streamlit executable and the main app script
     streamlit_path = r"C:\Users\pierf\astronomy\.astronomy\Scripts\streamlit.exe"
-    app_script = r"C:\Users\pierf\photometria\rapas_app.py"
+    app_script = r"C:\Users\pierf\photometria\pfr_app.py"
     
     # Command to run the app
     cmd = [streamlit_path, "run", app_script, "--server.port=8502"]
