@@ -10,7 +10,6 @@ from argparse import ArgumentParser
 
 import get_catalog_data as query
 import get_transformation as register
-import settings as s
 
 import astropy.units as u
 from astropy.io import fits
@@ -385,16 +384,13 @@ def parseArguments():
 def main():
     """Perform astrometry for the given file."""
     print("Program version: 1.2")
-    StartTime = datetime.now()
     args = parseArguments()
 
     verbose = args.verbose
     images = args.images
-    ignore_warnings = args.ignore_warnings
     if(args.silent):
         verbose = False
         images = False
-        ignore_warnings = True
 
     if(args.images):
         plt.ioff()
