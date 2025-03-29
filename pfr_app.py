@@ -2434,7 +2434,7 @@ if science_file is not None:
                 header_to_process = st.session_state['calibrated_header']
             
             st.write("Doing astrometry refinement with GAIA DR3...")
-            # Perform astrometry refinement with Gaia DR3
+            # Perform astrometry refinement with Gaia DR3 TODO
 
             if image_to_process is not None:
                 try:
