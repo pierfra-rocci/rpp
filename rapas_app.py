@@ -1407,8 +1407,8 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
             write_to_log(log_buffer, f"Zero point: {zero_point_value:.3f} ± {zero_point_std:.3f}")
             write_to_log(log_buffer, f"Airmass: {air:.2f}")
             
-            # Prepare catalog for download
-            if 'final_phot_table' in st.session_state:
+            # Save the zero point plot with timestamp
+            timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 final_table = st.session_state['final_phot_table']
                 
                 try:
@@ -2158,7 +2158,10 @@ if science_file is not None:
 
     # Save header to text file
     if science_header is not None:
-    # Format current time for filename
+        # Get the log buffer from session state first
+        log_buffer = st.session_state['log_buffer']
+        
+        # Format current time for filename
         timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         
         # Save the header to a text file with timestamp
@@ -2533,10 +2536,17 @@ if science_file is not None:
                                             # Write the filtered DataFrame to the buffer
                                             final_table.to_csv(csv_buffer, index=False)
                                             csv_data = csv_buffer.getvalue()
-                                            
-                                            # Ensure filename has .csv extension
-                                            filename = catalog_name if catalog_name.endswith('.csv') else f"{catalog_name}.csv"
-                                            
+
+                                            # Add timestamp to catalog filename
+                                            timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                                            base_catalog_name = catalog_name
+                                            if base_catalog_name.endswith('.csv'):
+                                                base_catalog_name = base_catalog_name[:-4]
+                                            filename = f"{base_catalog_name}_{timestamp_str}.csv"
+
+                                            # Save to rapas_results directory
+                                            catalog_path = os.path.join(output_dir, filename)
+
                                             # Provide download button with better formatting
                                             download_link = get_download_link(
                                                 csv_data, 
@@ -2544,11 +2554,11 @@ if science_file is not None:
                                                 link_text="Download Photometry Catalog"
                                             )
                                             st.markdown(download_link, unsafe_allow_html=True)
-                                            
-                                            # Also save locally if needed
-                                            with open(filename, 'w') as f:
+
+                                            # Also save locally in the output directory
+                                            with open(catalog_path, 'w') as f:
                                                 f.write(csv_data)
-                                            # st.success(f"Catalog saved to {filename}")
+                                            st.success(f"Catalog saved to {catalog_path}")
                                             
                                         except Exception as e:
                                             st.error(f"Error preparing download: {e}")
@@ -2621,25 +2631,28 @@ if science_file is not None:
 else:
     st.write("👆 Please upload a science image FITS file to start.")
 
-# Save log file with timestamp
-timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-log_filename = f"{st.session_state['base_filename']}_log_{timestamp_str}.txt"
-log_filepath = os.path.join(output_dir, log_filename)
 
-with open(log_filepath, 'w') as f:
-    # Add final timestamp
-    write_to_log(log_buffer, "Processing completed", level="INFO")
-    f.write(log_buffer.getvalue())
-    write_to_log(log_buffer, f"Log saved to {log_filepath}")
+# Save log file only if we have a log buffer
+if 'log_buffer' in st.session_state and st.session_state['log_buffer'] is not None:
+    log_buffer = st.session_state['log_buffer']
+    timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_filename = f"{st.session_state['base_filename']}_log_{timestamp_str}.txt"
+    log_filepath = os.path.join(output_dir, log_filename)
 
-# Also provide log download with same timestamped filename
-log_download_link = get_download_link(
-    log_buffer.getvalue(),
-    log_filename,
-    link_text="Download Processing Log"
-)
-st.markdown(log_download_link, unsafe_allow_html=True)
+    with open(log_filepath, 'w') as f:
+        # Add final timestamp
+        write_to_log(log_buffer, "Processing completed", level="INFO")
+        f.write(log_buffer.getvalue())
+        write_to_log(log_buffer, f"Log saved to {log_filepath}")
 
-# Show log in UI
-with st.expander("View Processing Log"):
-    st.text(log_buffer.getvalue())
+    # Also provide log download with same timestamped filename
+    log_download_link = get_download_link(
+        log_buffer.getvalue(),
+        log_filename,
+        link_text="Download Processing Log"
+    )
+    st.markdown(log_download_link, unsafe_allow_html=True)
+
+    # Show log in UI
+    with st.expander("View Processing Log"):
+        st.text(log_buffer.getvalue())
