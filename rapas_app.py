@@ -1409,116 +1409,116 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
             
             # Save the zero point plot with timestamp
             timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                final_table = st.session_state['final_phot_table']
+            final_table = st.session_state['final_phot_table']
                 
-                try:
-                    # Add PSF photometry results if available
-                    if 'epsf_photometry_result' in st.session_state and epsf_table is not None:
-                        # Convert tables to pandas if needed
-                        epsf_df = epsf_table.to_pandas() if not isinstance(epsf_table, pd.DataFrame) else epsf_table
-                        
-                        # Add a unique ID for matching (based on x,y position)
-                        epsf_df['match_id'] = epsf_df['xcenter'].round(2).astype(str) + "_" + epsf_df['ycenter'].round(2).astype(str)
-                        final_table['match_id'] = final_table['xcenter'].round(2).astype(str) + "_" + final_table['ycenter'].round(2).astype(str)
-                        
-                        # Select just the columns we need from EPSF results
-                        epsf_cols = {
-                            'match_id': 'match_id',
-                            'flux_fit': 'epsf_flux_fit', 
-                            'flux_unc': 'epsf_flux_unc',
-                            'instrumental_mag': 'epsf_instrumental_mag'
-                        }
-                        
-                        # Only continue if we have the necessary columns
-                        if len(epsf_cols) > 1 and 'match_id' in epsf_df.columns and 'match_id' in final_table.columns:
-                            # Select columns that actually exist
-                            epsf_subset = epsf_df[[col for col in epsf_cols.keys() if col in epsf_df.columns]].rename(columns=epsf_cols)
-                        
-                        # Merge the EPSF results with the final table
-                        final_table = pd.merge(final_table, epsf_subset, on='match_id', how='left')
-                        
-                        # Calculate calibrated magnitudes for EPSF photometry
-                        if 'epsf_instrumental_mag' in final_table.columns:
-                            final_table['epsf_calib_mag'] = final_table['epsf_instrumental_mag'] + zero_point_value + 0.1*air
-                        
-                        # Remove temporary match column
-                        final_table.drop('match_id', axis=1, inplace=True)
-                        
-                        st.success("Added EPSF photometry results to the catalog")
+            try:
+                # Add PSF photometry results if available
+                if 'epsf_photometry_result' in st.session_state and epsf_table is not None:
+                    # Convert tables to pandas if needed
+                    epsf_df = epsf_table.to_pandas() if not isinstance(epsf_table, pd.DataFrame) else epsf_table
                     
-                    # Create a StringIO buffer for CSV data
-                    csv_buffer = StringIO()
+                    # Add a unique ID for matching (based on x,y position)
+                    epsf_df['match_id'] = epsf_df['xcenter'].round(2).astype(str) + "_" + epsf_df['ycenter'].round(2).astype(str)
+                    final_table['match_id'] = final_table['xcenter'].round(2).astype(str) + "_" + final_table['ycenter'].round(2).astype(str)
                     
-                    # Check and remove problematic columns if they exist
-                    cols_to_drop = []
-                    for col_name in ['sky_center.ra', 'sky_center.dec']:
-                        if col_name in final_table.columns:
-                            cols_to_drop.append(col_name)
+                    # Select just the columns we need from EPSF results
+                    epsf_cols = {
+                        'match_id': 'match_id',
+                        'flux_fit': 'epsf_flux_fit', 
+                        'flux_unc': 'epsf_flux_unc',
+                        'instrumental_mag': 'epsf_instrumental_mag'
+                    }
                     
-                    if cols_to_drop:
-                        final_table = final_table.drop(columns=cols_to_drop)
+                    # Only continue if we have the necessary columns
+                    if len(epsf_cols) > 1 and 'match_id' in epsf_df.columns and 'match_id' in final_table.columns:
+                        # Select columns that actually exist
+                        epsf_subset = epsf_df[[col for col in epsf_cols.keys() if col in epsf_df.columns]].rename(columns=epsf_cols)
                     
-                    # Before writing to CSV, ensure match_id column is removed
-                    if 'match_id' in final_table.columns:
-                        final_table.drop('match_id', axis=1, inplace=True)
+                    # Merge the EPSF results with the final table
+                    final_table = pd.merge(final_table, epsf_subset, on='match_id', how='left')
                     
-                    # Add zero point information to the table
-                    final_table['zero_point'] = zero_point_value
-                    final_table['zero_point_std'] = zero_point_std
-                    final_table['airmass'] = air
+                    # Calculate calibrated magnitudes for EPSF photometry
+                    if 'epsf_instrumental_mag' in final_table.columns:
+                        final_table['epsf_calib_mag'] = final_table['epsf_instrumental_mag'] + zero_point_value + 0.1*air
                     
-                    # Create a catalog summary in the UI
-                    st.subheader("Final Photometry Catalog")
-                    st.dataframe(final_table.head(10))
+                    # Remove temporary match column
+                    final_table.drop('match_id', axis=1, inplace=True)
                     
-                    # Write the filtered DataFrame to the buffer
-                    final_table.to_csv(csv_buffer, index=False)
-                    csv_data = csv_buffer.getvalue()
-                    
-                    # Ensure filename has .csv extension
-                    filename = catalog_name if catalog_name.endswith('.csv') else f"{catalog_name}.csv"
-                    catalog_path = os.path.join(output_dir, filename)
+                    st.success("Added EPSF photometry results to the catalog")
+                
+                # Create a StringIO buffer for CSV data
+                csv_buffer = StringIO()
+                
+                # Check and remove problematic columns if they exist
+                cols_to_drop = []
+                for col_name in ['sky_center.ra', 'sky_center.dec']:
+                    if col_name in final_table.columns:
+                        cols_to_drop.append(col_name)
+                
+                if cols_to_drop:
+                    final_table = final_table.drop(columns=cols_to_drop)
+                
+                # Before writing to CSV, ensure match_id column is removed
+                if 'match_id' in final_table.columns:
+                    final_table.drop('match_id', axis=1, inplace=True)
+                
+                # Add zero point information to the table
+                final_table['zero_point'] = zero_point_value
+                final_table['zero_point_std'] = zero_point_std
+                final_table['airmass'] = air
+                
+                # Create a catalog summary in the UI
+                st.subheader("Final Photometry Catalog")
+                st.dataframe(final_table.head(10))
+                
+                # Write the filtered DataFrame to the buffer
+                final_table.to_csv(csv_buffer, index=False)
+                csv_data = csv_buffer.getvalue()
+                
+                # Ensure filename has .csv extension
+                filename = catalog_name if catalog_name.endswith('.csv') else f"{catalog_name}.csv"
+                catalog_path = os.path.join(output_dir, filename)
 
-                    # Provide download button with better formatting
-                    download_link = get_download_link(
-                        csv_data, 
-                        filename, 
-                        link_text="Download Photometry Catalog"
-                    )
-                    st.markdown(download_link, unsafe_allow_html=True)
+                # Provide download button with better formatting
+                download_link = get_download_link(
+                    csv_data, 
+                    filename, 
+                    link_text="Download Photometry Catalog"
+                )
+                st.markdown(download_link, unsafe_allow_html=True)
 
-                    # Also save locally in the output directory
-                    with open(catalog_path, 'w') as f:
-                        f.write(csv_data)
-                    st.success(f"Catalog saved to {catalog_path}")
+                # Also save locally in the output directory
+                with open(catalog_path, 'w') as f:
+                    f.write(csv_data)
+                st.success(f"Catalog saved to {catalog_path}")
+                
+                # Also create a metadata file with analysis parameters
+                metadata_filename = f"{base_catalog_name}_{timestamp_str}_metadata.txt"
+                metadata_path = os.path.join(output_dir, metadata_filename)
+
+                with open(metadata_path, 'w') as f:
+                    f.write("RAPAS Photometry Analysis Metadata\n")
+                    f.write("================================\n\n")
+                    f.write(f"Analysis Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(f"Input File: {science_file.name}\n")
+                    f.write(f"Catalog File: {filename}\n\n")
                     
-                    # Also create a metadata file with analysis parameters
-                    metadata_filename = f"{base_catalog_name}_{timestamp_str}_metadata.txt"
-                    metadata_path = os.path.join(output_dir, metadata_filename)
-
-                    with open(metadata_path, 'w') as f:
-                        f.write(f"RAPAS Photometry Analysis Metadata\n")
-                        f.write(f"================================\n\n")
-                        f.write(f"Analysis Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                        f.write(f"Input File: {science_file.name}\n")
-                        f.write(f"Catalog File: {filename}\n\n")
-                        
-                        f.write(f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n")
-                        f.write(f"Airmass: {air:.3f}\n")
-                        f.write(f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n")
-                        f.write(f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n")
-                        
-                        f.write(f"Detection Parameters:\n")
-                        f.write(f"  Threshold: {threshold_sigma} sigma\n")
-                        f.write(f"  Edge Mask: {detection_mask} pixels\n")
-                        f.write(f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n")
-
-                    write_to_log(log_buffer, f"Saved catalog metadata to {metadata_path}")
-                    st.success(f"Analysis metadata saved to {metadata_path}")
+                    f.write(f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n")
+                    f.write(f"Airmass: {air:.3f}\n")
+                    f.write(f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n")
+                    f.write(f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n")
                     
-                except Exception as e:
-                    st.error(f"Error preparing download: {e}")
-                    st.exception(e)
+                    f.write("Detection Parameters:\n")
+                    f.write(f"  Threshold: {threshold_sigma} sigma\n")
+                    f.write(f"  Edge Mask: {detection_mask} pixels\n")
+                    f.write(f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n")
+
+                write_to_log(log_buffer, f"Saved catalog metadata to {metadata_path}")
+                st.success(f"Analysis metadata saved to {metadata_path}")
+                
+            except Exception as e:
+                st.error(f"Error preparing download: {e}")
+                st.exception(e)
         
         return zero_point_value, zero_point_std, final_table
 
