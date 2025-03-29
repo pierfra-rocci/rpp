@@ -2680,7 +2680,7 @@ else:
 if 'log_buffer' in st.session_state and st.session_state['log_buffer'] is not None:
     log_buffer = st.session_state['log_buffer']
     # Remove timestamp from log filename
-    log_filename = f"{st.session_state['base_filename']}_log.log"
+    log_filename = f"{st.session_state['base_filename']}.log"
     log_filepath = os.path.join(output_dir, log_filename)
 
     with open(log_filepath, 'w') as f:
