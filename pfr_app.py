@@ -2827,7 +2827,6 @@ if science_file is not None:
                     
                     # Display the iframe
                     st.markdown(iframe_html, unsafe_allow_html=True)
-                    st.info("DSS2 color image centered on target coordinates. Use Aladin controls to overlay catalogs.")
                     
                     # Add instructions for manual catalog overlay
                     with st.expander("How to overlay Gaia DR3 catalog"):
