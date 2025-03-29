@@ -931,7 +931,7 @@ def fwhm_fit(
 
         # Display summary of skipped sources
         if skipped_sources > 0:
-            st.warning(f"FWHM calculation failed for {skipped_sources} sources out of {len(filtered_sources)} and were skipped.")
+            st.write(f"FWHM calculation failed for {skipped_sources} sources out of {len(filtered_sources)} and were skipped.")
             
         if len(fwhm_values) == 0:
             msg = "No valid sources for FWHM fitting after marginal sums adjustment."
@@ -947,7 +947,7 @@ def fwhm_fit(
             raise ValueError(msg)
 
         mean_fwhm = np.median(fwhm_values_arr[valid])
-        st.info(f"FWHM estimate based on Gaussian model: {round(mean_fwhm)} pixels")
+        st.write(f"FWHM estimate based on Gaussian model: {round(mean_fwhm)} pixels")
 
         return round(mean_fwhm)
     except ValueError as e:
@@ -1803,7 +1803,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                                 available_cols = ', '.join(simbad_result.colnames)
                                 st.error(f"SIMBAD result missing required columns. Available columns: {available_cols}")
                         else:
-                            st.info("No SIMBAD objects found in the field.")
+                            st.write("No SIMBAD objects found in the field.")
                 except Exception as e:
                     st.error(f"SIMBAD query execution failed: {str(e)}")
         else:
@@ -1879,11 +1879,11 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                                 
                                 st.success(f"Found {sum(matches)} solar system objects in field.")
                             else:
-                                st.info("No solar system objects found in the field.")
+                                st.write("No solar system objects found in the field.")
                         except ValueError as e:
-                            st.info(f"No solar system objects found (no valid JSON data returned). {str(e)}")
+                            st.write(f"No solar system objects found (no valid JSON data returned). {str(e)}")
                     else:
-                        st.info("No solar system objects found in the field.")
+                        st.write("No solar system objects found in the field.")
                 else:
                     st.warning(f"SkyBoT query failed with status code {response.status_code}")
                     
@@ -1933,7 +1933,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 
                 st.success(f"Found {sum(matches)} variable stars in field.")
             else:
-                st.info("No variable stars found in the field.")
+                st.write("No variable stars found in the field.")
     except Exception as e:
         st.error(f"Error querying AAVSO VSX: {e}")
     
