@@ -2142,12 +2142,15 @@ if science_file is not None:
         st.metric("Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (estimated from seeing)")
         write_to_log(log_buffer, f"Estimated FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)")
         # Check if RA/DEC are missing from header
+       # Check if RA/DEC are missing from header
         ra_val, dec_val, coord_source = extract_coordinates(science_header)
         if ra_val is not None and dec_val is not None:
             st.write(f"Target: RA={ra_val}°, DEC={dec_val}° (from header)")
+            write_to_log(log_buffer, f"Target coordinates: RA={ra_val}°, DEC={dec_val}° ({coord_source})")
             ra_missing = dec_missing = False
         else:
             st.warning(f"Coordinate issue: {coord_source}")
+            write_to_log(log_buffer, f"Coordinate issue: {coord_source}", level="WARNING")
             ra_missing = dec_missing = True
 
         # Initialize session state for manual coordinates if needed
