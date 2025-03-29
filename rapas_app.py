@@ -2154,14 +2154,16 @@ if science_file is not None:
 
     # Save header to text file
     if science_header is not None:
-        # Format current time for filename
+    # Format current time for filename
         timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         
         # Save the header to a text file with timestamp
         header_filename = f"{st.session_state['base_filename']}_header_{timestamp_str}"
+        header_file_path = os.path.join(output_dir, f"{header_filename}.txt")
+        
         header_file = save_header_to_txt(science_header, header_filename)
         if header_file:
-            write_to_log(log_buffer, f"Saved header to {header_file}") # type: ignore
+            write_to_log(log_buffer, f"Saved header to {header_file}")
             st.info(f"FITS header saved to {header_file}")
 
     # Log file loading
