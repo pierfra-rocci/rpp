@@ -2133,7 +2133,7 @@ if science_file is not None:
         header_filename = f"{st.session_state['base_filename']}_header"
         header_file = save_header_to_txt(science_header, header_filename)
         if header_file:
-            write_to_log(log_buffer, f"Saved header to {header_file}")
+            write_to_log(log_buffer, f"Saved header to {header_file}") # type: ignore
             st.info(f"FITS header saved to {header_file}")
 
     # Log file loading
