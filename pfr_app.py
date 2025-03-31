@@ -601,9 +601,6 @@ def airmass(
 
         # Affichage des informations
         st.write(f"Date & Local Time: {obstime.iso}")
-        # ra_deg = round(float(coord.ra.deg), 5)
-        # dec_deg = round(float(coord.dec.deg), 5)
-        # st.write(f"Target: RA={ra_deg}°, DEC={dec_deg}°")
         st.write(f"Altitude: {details['altaz']['altitude']}°, "
               f"Azimuth: {details['altaz']['azimuth']}°")
 
@@ -679,8 +676,7 @@ def load_fits_data(file):
 
 
 def calibrate_image_streamlit(science_data, science_header, bias_data, dark_data, flat_data,
-                           exposure_time_science, exposure_time_dark,
-                           apply_bias, apply_dark, apply_flat):
+                              exposure_time_science, exposure_time_dark, apply_bias, apply_dark, apply_flat):
     """Calibrates a science image using bias, dark, and flat frames according to user selections."""
     if not apply_bias and not apply_dark and not apply_flat:
         st.write("Calibration steps are disabled. Returning raw science data.")
@@ -983,10 +979,14 @@ def perform_epsf_photometry(
     Returns
     -------
     Tuple[astropy.table.Table, photutils.epsf.EPSF]
-        - phot_epsf : PSF photometry results with EPSF model.
-        - epsf : Fitted EPSF model.
+        - phot_epsf_result : Table containing PSF photometry results, including fitted fluxes and positions.
+        - epsf : The fitted EPSF model used for photometry.
     """
     try:
+        # Validate the input image
+        if img is None or not isinstance(img, np.ndarray) or img.size == 0:
+            raise ValueError("Invalid image data provided. Ensure the image is a non-empty numpy array.")
+        
         # Prepare data: convert image to NDData object
         nddata = NDData(data=img)
         # st.write("NDData created successfully.")
@@ -1002,7 +1002,9 @@ def perform_epsf_photometry(
         st.write("Star positions table prepared.")
     except Exception as e:
         st.error(f"Error preparing star positions table: {e}")
-        raise
+        if fwhm <= 0:
+            raise ValueError("FWHM must be a positive number.")
+        fit_shape = 2 * round(fwhm) + 1
 
     try:
         # Define fitting shape (box size for star extraction)
@@ -1021,7 +1023,6 @@ def perform_epsf_photometry(
         raise
 
     try:
-        # Display extracted stars (optional)
         nrows, ncols = 5, 5
         fig_stars, ax_stars = plt.subplots(nrows=nrows, ncols=ncols, figsize=FIGURE_SIZES['stars_grid'], squeeze=False)
         ax_stars = ax_stars.ravel()
@@ -1036,42 +1037,49 @@ def perform_epsf_photometry(
 
     try:
         # Build and fit EPSF model
-        epsf_builder = EPSFBuilder(oversampling=2, maxiters=5, progress_bar=False)
+        progress_bar = st.progress(0)
+        epsf_builder = EPSFBuilder(oversampling=2, maxiters=5, progress_bar=progress_bar.update)
         epsf, _ = epsf_builder(stars)
-        st.write("PSF model fitted successfully.")
+        progress_bar.empty()  # Clear the progress bar
+        st.success("PSF model fitted successfully.")
         st.session_state['epsf_model'] = epsf
     except Exception as e:
         st.error(f"Error fitting PSF model: {e}")
         raise
 
-    try:
-        # Display fitted EPSF model
-        norm_epsf = simple_norm(epsf.data, 'log', percent=99.)
-        fig_epsf_model, ax_epsf_model = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
-        ax_epsf_model.imshow(epsf.data, norm=norm_epsf, origin='lower', cmap='viridis', interpolation='nearest')
-        # plt.colorbar(ax=ax_epsf_model)
-        ax_epsf_model.set_title("Fitted PSF Model")
-        st.pyplot(fig_epsf_model)
-    except Exception as e:
-        st.warning(f"Error displaying PSF model: {e}")
+    if epsf.data is not None and epsf.data.size > 0:
+        try:
+            norm_epsf = simple_norm(epsf.data, 'log', percent=99.)
+            fig_epsf_model, ax_epsf_model = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
+            ax_epsf_model.imshow(epsf.data, norm=norm_epsf, origin='lower', cmap='viridis', interpolation='nearest')
+            ax_epsf_model.set_title("Fitted PSF Model")
+            st.pyplot(fig_epsf_model)
+        except Exception as e:
+            st.warning(f"Error displaying PSF model: {e}")
+    else:
+        st.warning("EPSF data is empty or invalid. Cannot display the PSF model.")
+        # Ensure daostarfind is a valid star finder
+        if not callable(daostarfind):
+            raise ValueError("The 'finder' parameter must be a callable star finder, such as DAOStarFinder.")
 
-    try:
-        # Perform PSF photometry with EPSF model
-        psfphot = IterativePSFPhotometry(
-            epsf,
-            fit_shape,
-            finder=daostarfind,
-            aperture_radius=fit_shape / 2,
-            maxiters=3,
-            mode='new',
-            progress_bar=False
+    psfphot = IterativePSFPhotometry(
+        psf_model=epsf,  # Changed from epsf_model to psf_model
+        fitshape=fit_shape,
+        finder=daostarfind,
+        aperture_radius=fit_shape / 2,
+        maxiters=3,
+        progress_bar=False
         )
-        # Specify source positions
-        psfphot.x = phot_table['xcenter']
-        psfphot.y = phot_table['ycenter']
-    except Exception as e:
-        st.error(f"Error configuring PSF photometry: {e}")
-        raise
+    
+    # Validate inputs before running PSF photometry
+    if img is None or not isinstance(img, np.ndarray) or img.size == 0:
+        raise ValueError("Invalid image data provided. Ensure the image is a non-empty numpy array.")
+    if mask is not None and (not isinstance(mask, np.ndarray) or mask.shape != img.shape):
+        raise ValueError("Invalid mask provided. Ensure the mask is a numpy array with the same shape as the image.")
+    
+    # Specify source positions
+    psfphot.x = phot_table['xcenter']
+    psfphot.y = phot_table['ycenter']
 
     try:
         # Run PSF photometry with provided mask
@@ -2861,6 +2869,3 @@ if 'log_buffer' in st.session_state and st.session_state['log_buffer'] is not No
         write_to_log(log_buffer, "Processing completed", level="INFO")
         f.write(log_buffer.getvalue())
         write_to_log(log_buffer, f"Log saved to {log_filepath}")
-    
-    # Just show a small notification
-    st.write(f"Processing log saved to {log_filepath}")
