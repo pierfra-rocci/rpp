@@ -1063,8 +1063,8 @@ def perform_epsf_photometry(
             raise ValueError("The 'finder' parameter must be a callable star finder, such as DAOStarFinder.")
 
     psfphot = IterativePSFPhotometry(
-        psf_model=epsf,  # Changed from epsf_model to psf_model
-        fitshape=fit_shape,
+        psf_model=epsf,  
+        fit_shape=fit_shape,  # Changed from fitshape to fit_shape
         finder=daostarfind,
         aperture_radius=fit_shape / 2,
         maxiters=3,
