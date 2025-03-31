@@ -1049,13 +1049,31 @@ def perform_epsf_photometry(
 
     if epsf.data is not None and epsf.data.size > 0:
         try:
+            # Save the PSF model as a FITS file
+            from astropy.io import fits
+            hdu = fits.PrimaryHDU(data=epsf.data)
+            
+            # Add metadata to header
+            hdu.header['COMMENT'] = 'PSF model created with photutils.EPSFBuilder'
+            hdu.header['FWHMPIX'] = (fwhm, 'FWHM in pixels used for extraction')
+            hdu.header['OVERSAMP'] = (2, 'Oversampling factor')
+            
+            # Create filename based on the base filename in session state
+            psf_filename = f"{st.session_state.get('base_filename', 'psf_model')}_epsf.fits"
+            psf_filepath = os.path.join(st.session_state.get('output_dir', '.'), psf_filename)
+            
+            # Save the FITS file
+            hdu.writeto(psf_filepath, overwrite=True)
+            st.success(f"PSF model saved as FITS file: {psf_filepath}")
+            
+            # Also display the model
             norm_epsf = simple_norm(epsf.data, 'log', percent=99.)
             fig_epsf_model, ax_epsf_model = plt.subplots(figsize=FIGURE_SIZES['medium'], dpi=100)
             ax_epsf_model.imshow(epsf.data, norm=norm_epsf, origin='lower', cmap='viridis', interpolation='nearest')
             ax_epsf_model.set_title("Fitted PSF Model")
             st.pyplot(fig_epsf_model)
         except Exception as e:
-            st.warning(f"Error displaying PSF model: {e}")
+            st.warning(f"Error working with PSF model: {e}")
     else:
         st.warning("EPSF data is empty or invalid. Cannot display the PSF model.")
         # Ensure daostarfind is a valid star finder
