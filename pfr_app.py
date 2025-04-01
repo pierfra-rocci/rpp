@@ -2838,7 +2838,7 @@ if science_file is not None:
                     dec_center = header_to_process['OBJDEC']
 
                 if ra_center is not None and dec_center is not None:
-                    st.write(f"Creating Aladin view centered at RA={ra_center}, DEC={dec_center}")
+                    st.write(f"Aladin view centered at RA={ra_center}, DEC={dec_center}")
     
                     # Create a direct URL to Aladin Lite with pre-configured parameters
                     aladin_url = (
