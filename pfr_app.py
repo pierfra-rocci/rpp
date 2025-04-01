@@ -1190,8 +1190,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         astrometry.clear_wcs(_science_header, remove_comments=True, remove_underscored=True, remove_history=True)
         _science_header.update(wcs.to_header(relax=True))
     except Exception as e:
-        st.error(f"Error refining WCS: {e}")
-        st.warning("Skipping WCS refinement.")
+        st.warning(f"Skipping WCS refinement:  {e}")
 
     # Aperture photometry
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
