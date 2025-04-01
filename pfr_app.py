@@ -41,7 +41,7 @@ warnings.filterwarnings("ignore")
 
 
 st.set_page_config(
-    page_title="Photometry Factory",
+    page_title="Photometry Factory for RAPAS",
     page_icon="🔭",
     layout="wide"
 )
@@ -2260,7 +2260,7 @@ def write_to_log(log_buffer, message, level="INFO"):
 
 initialize_session_state()
 
-st.title("_Photometric Factory for RAPAS_")
+st.title("_Photometry Factory for RAPAS_")
 
 # Photometry parameters in sidebar
 with st.sidebar:
