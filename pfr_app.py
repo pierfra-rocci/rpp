@@ -1181,7 +1181,6 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
     st.write("Doing astrometry refinement with GAIA DR3...")
     # Get the center of the image using WCS
     ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w, width=image_data.shape[1], height=image_data.shape[0])
-    st.write(f"RA: {ra0}, DEC: {dec0}, SR: {sr0}")
     cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3', filters={'RPmag':'<19'})
     cat_col_mag = 'RPmag'
     sources['x'] = sources['xcentroid']
@@ -1194,6 +1193,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         _science_header.update(wcs.to_header(relax=True))
     except Exception as e:
         st.error(f"Error refining WCS: {e}")
+        st.warning("Skipping WCS refinement.")
 
     # Aperture photometry
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
@@ -1786,7 +1786,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                     
                 # Configure Simbad
                 custom_simbad = Simbad()
-                custom_simbad.add_votable_fields('otype', 'main_id', 'ids')
+                custom_simbad.add_votable_fields('otype', 'main_id', 'ids','flux_b', 'flux_v')
                 
                 # Query SIMBAD in a cone around field center
                 st.info(f"Querying SIMBAD at RA={field_center_ra}, DEC={field_center_dec}")
@@ -1806,9 +1806,11 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                         # Process simbad_result
                         if simbad_result is not None and len(simbad_result) > 0:
                             # Initialize columns if they don't exist
-                            final_table['simbad_name'] = None
-                            final_table['simbad_type'] = None
+                            final_table['simbad_main_id'] = None
+                            final_table['simbad_otype'] = None
                             final_table['simbad_ids'] = None
+                            final_table['simbad_flux_b'] = None
+                            final_table['simbad_flux_v'] = None
                             
                             # Convert catalog positions to SkyCoord objects with explicit unit
                             source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, unit='deg')
@@ -1830,8 +1832,10 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                                     # Add matches to table
                                     for i, (match, match_idx) in enumerate(zip(matches, idx)):
                                         if match:
-                                            final_table.loc[i, 'simbad_name'] = simbad_result['main_id'][match_idx]  # Changed from 'MAIN_ID'
-                                            final_table.loc[i, 'simbad_type'] = simbad_result['otype'][match_idx]    # Changed from 'OTYPE'
+                                            final_table.loc[i, 'simbad_main_id'] = simbad_result['main_id'][match_idx]  # Changed from 'MAIN_ID'
+                                            final_table.loc[i, 'simbad_otype'] = simbad_result['otype'][match_idx]    # Changed from 'OTYPE'
+                                            final_table.loc[i, 'simbad_flux_b'] = simbad_result['flux_b'][match_idx] 
+                                            final_table.loc[i, 'simbad_flux_v'] = simbad_result['flux_v'][match_idx] 
                                             if 'ids' in simbad_result.colnames:  # Changed from 'IDS'
                                                 final_table.loc[i, 'simbad_ids'] = simbad_result['ids'][match_idx]
                                     
@@ -1879,9 +1883,9 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
             # Query SkyBoT with better error handling
             try:
                 # Initialize columns
-                final_table['skybot_name'] = None
-                final_table['skybot_type'] = None
-                final_table['skybot_mag'] = None
+                final_table['skybot_NAME'] = None
+                final_table['skybot_OBJECT_TYPE'] = None
+                final_table['skybot_MAGV'] = None
                 
                 # Make request with extended timeout
                 response = requests.get(skybot_url, timeout=15)
@@ -1912,10 +1916,10 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                                     if match:
                                         obj = skybot_result['data'][match_idx]
-                                        final_table.loc[i, 'skybot_name'] = obj['NAME']
-                                        final_table.loc[i, 'skybot_type'] = obj['OBJECT_TYPE']
+                                        final_table.loc[i, 'skybot_NAME'] = obj['NAME']
+                                        final_table.loc[i, 'skybot_OBJECT_TYPE'] = obj['OBJECT_TYPE']
                                         if 'MAGV' in obj:
-                                            final_table.loc[i, 'skybot_mag'] = obj['MAGV']
+                                            final_table.loc[i, 'skybot_MAGV'] = obj['MAGV']
                                 
                                 st.success(f"Found {sum(matches)} solar system objects in field.")
                             else:
@@ -1960,16 +1964,16 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 matches = d2d < (search_radius_arcsec * u.arcsec)
                 
                 # Add AAVSO information to matched sources
-                final_table['aavso_name'] = None
-                final_table['aavso_type'] = None
-                final_table['aavso_period'] = None
+                final_table['aavso_Name'] = None
+                final_table['aavso_Type'] = None
+                final_table['aavso_Period'] = None
                 
                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                     if match:
-                        final_table.loc[i, 'aavso_name'] = vsx_table['Name'][match_idx]
-                        final_table.loc[i, 'aavso_type'] = vsx_table['Type'][match_idx]
+                        final_table.loc[i, 'aavso_Name'] = vsx_table['Name'][match_idx]
+                        final_table.loc[i, 'aavso_Type'] = vsx_table['Type'][match_idx]
                         if 'Period' in vsx_table.colnames:
-                            final_table.loc[i, 'aavso_period'] = vsx_table['Period'][match_idx]
+                            final_table.loc[i, 'aavso_Period'] = vsx_table['Period'][match_idx]
                 
                 st.success(f"Found {sum(matches)} variable stars in field.")
             else:
@@ -1987,16 +1991,16 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
         is_calib = final_table['gaia_calib_star']
         final_table.loc[is_calib, 'catalog_matches'] += 'GAIA (calib); '
     
-    if 'simbad_name' in final_table.columns:
-        has_simbad = final_table['simbad_name'].notna()
+    if 'simbad_main_id' in final_table.columns:
+        has_simbad = final_table['simbad_main_id'].notna()
         final_table.loc[has_simbad, 'catalog_matches'] += 'SIMBAD; '
     
-    if 'skybot_name' in final_table.columns:
-        has_skybot = final_table['skybot_name'].notna()
+    if 'skybot_NAME' in final_table.columns:
+        has_skybot = final_table['skybot_NAME'].notna()
         final_table.loc[has_skybot, 'catalog_matches'] += 'SkyBoT; '
     
-    if 'aavso_name' in final_table.columns:
-        has_aavso = final_table['aavso_name'].notna()
+    if 'aavso_Name' in final_table.columns:
+        has_aavso = final_table['aavso_Name'].notna()
         final_table.loc[has_aavso, 'catalog_matches'] += 'AAVSO; '
     
     # Remove trailing separators and empty entries
