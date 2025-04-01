@@ -168,4 +168,4 @@ rapas_results/*.log
 *.png
 *.pdf
 *.csv
-*.txt
+rapas_results/SN2025dr_gaia_RP_180s_processed_header.txt
