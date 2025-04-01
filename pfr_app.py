@@ -1066,7 +1066,7 @@ def perform_epsf_photometry(
             
             # Save the FITS file
             hdu.writeto(psf_filepath, overwrite=True)
-            st.success(f"PSF model saved as FITS file: {psf_filepath}")
+            st.success("PSF model saved as FITS file")
             
             # Also display the model
             norm_epsf = simple_norm(epsf.data, 'log', percent=99.)
@@ -2414,7 +2414,6 @@ if science_file is not None:
         header_file = save_header_to_txt(science_header, header_filename)
         if header_file:
             write_to_log(log_buffer, f"Saved header to {header_file}")
-            st.write("FITS header saved")
 
     # Log file loading
     log_buffer = st.session_state['log_buffer']
