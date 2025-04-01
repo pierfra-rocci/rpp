@@ -164,6 +164,7 @@ photometry_catalog.csv
 data
 *.log
 rapas_results/*
+pfr_results/*
 *.fits
 *.png
 *.pdf
