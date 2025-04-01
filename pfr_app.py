@@ -1178,7 +1178,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         st.warning("No sources found!")
         return None, None, daofind, bkg
     
-    st.write("Doing astrometry refinement with GAIA DR3...")
+    st.info("Doing astrometry refinement with GAIA DR3...")
     # Get the center of the image using WCS
     ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w, width=image_data.shape[1], height=image_data.shape[0])
     cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3', filters={'RPmag':'<19'})
@@ -1497,7 +1497,6 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         try:
             zero_point_plot_path = os.path.join(output_dir, "zero_point_plot.png")
             plt.savefig(zero_point_plot_path)
-            st.write("Zero point plot saved")
         except Exception as e:
             st.warning(f"Could not save plot to file: {e}")
             
@@ -1653,7 +1652,6 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                 # Also save locally in the output directory
                 with open(catalog_path, 'w') as f:
                     f.write(csv_data)
-                st.success("Catalog saved")
                 
                 # Also create a metadata file with analysis parameters
                 metadata_filename = f"{base_catalog_name}_metadata.txt"
@@ -2816,7 +2814,6 @@ if science_file is not None:
                                             # Also save locally in the output directory
                                             with open(catalog_path, 'w') as f:
                                                 f.write(csv_data)
-                                            st.write("Catalog saved")
                                             
                                         except Exception as e:
                                             st.error(f"Error preparing download: {e}")
