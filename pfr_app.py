@@ -41,7 +41,7 @@ warnings.filterwarnings("ignore")
 
 
 st.set_page_config(
-    page_title="RAPAS Photometric Calibration",
+    page_title="Photometry Factory",
     page_icon="🔭",
     layout="wide"
 )
@@ -199,7 +199,7 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
         return None, header, f"Error solving with astrometry.net: {str(e)}"
 
 
-def ensure_output_directory(directory="rapas_results"):
+def ensure_output_directory(directory="pfr_results"):
     """
     Ensure the output directory exists, create it if needed.
     
@@ -2230,7 +2230,7 @@ def initialize_log(base_filename):
     log_buffer = StringIO()
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    log_buffer.write("Photometric Factory for RAPAS Log\n")
+    log_buffer.write("Photometry Factory for RAPAS Log\n")
     log_buffer.write("===============================\n")
     log_buffer.write(f"Processing started: {timestamp}\n")
     log_buffer.write(f"Input file: {base_filename}\n\n")
