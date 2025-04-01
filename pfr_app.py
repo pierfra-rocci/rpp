@@ -1786,7 +1786,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                     
                 # Configure Simbad
                 custom_simbad = Simbad()
-                custom_simbad.add_votable_fields('otype', 'main_id', 'ids','flux_b', 'flux_v')
+                custom_simbad.add_votable_fields('otype', 'main_id', 'ids','B', 'V')
                 
                 # Query SIMBAD in a cone around field center
                 st.info(f"Querying SIMBAD at RA={field_center_ra}, DEC={field_center_dec}")
@@ -1809,8 +1809,8 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                             final_table['simbad_main_id'] = None
                             final_table['simbad_otype'] = None
                             final_table['simbad_ids'] = None
-                            final_table['simbad_flux_b'] = None
-                            final_table['simbad_flux_v'] = None
+                            final_table['simbad_B'] = None
+                            final_table['simbad_V'] = None
                             
                             # Convert catalog positions to SkyCoord objects with explicit unit
                             source_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, unit='deg')
@@ -1834,8 +1834,8 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                                         if match:
                                             final_table.loc[i, 'simbad_main_id'] = simbad_result['main_id'][match_idx]  # Changed from 'MAIN_ID'
                                             final_table.loc[i, 'simbad_otype'] = simbad_result['otype'][match_idx]    # Changed from 'OTYPE'
-                                            final_table.loc[i, 'simbad_flux_b'] = simbad_result['flux_b'][match_idx] 
-                                            final_table.loc[i, 'simbad_flux_v'] = simbad_result['flux_v'][match_idx] 
+                                            final_table.loc[i, 'simbad_B'] = simbad_result['B'][match_idx] 
+                                            final_table.loc[i, 'simbad_V'] = simbad_result['V'][match_idx] 
                                             if 'ids' in simbad_result.colnames:  # Changed from 'IDS'
                                                 final_table.loc[i, 'simbad_ids'] = simbad_result['ids'][match_idx]
                                     
