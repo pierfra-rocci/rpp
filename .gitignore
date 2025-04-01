@@ -163,7 +163,7 @@ zero_point_plot.png
 photometry_catalog.csv
 data
 *.log
-rapas_results/*.log
+rapas_results/*
 *.fits
 *.png
 *.pdf
