@@ -2333,7 +2333,7 @@ with st.sidebar:
     st.link_button("ADS", "https://ui.adsabs.harvard.edu/")
 
 # Make sure the output directory exists
-output_dir = ensure_output_directory("rapas_results")
+output_dir = ensure_output_directory("pfr_results")
 st.session_state['output_dir'] = output_dir
 
 # Main processing logic
