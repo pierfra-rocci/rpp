@@ -1784,7 +1784,7 @@ def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_
                 custom_simbad.add_votable_fields('otype', 'main_id', 'ids','B', 'V')
                 
                 # Query SIMBAD in a cone around field center
-                st.info(f"Querying SIMBAD at RA={field_center_ra}, DEC={field_center_dec}")
+                st.info("Querying SIMBAD")
                 
                 try:
                     # Create a SkyCoord object for the query
