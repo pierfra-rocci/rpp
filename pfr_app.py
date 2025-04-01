@@ -1188,7 +1188,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
     sources['y'] = sources['ycentroid']
     try:
         wcs = pipeline.refine_astrometry(sources, cat, 1.5*fwhm_estimate*pixel_scale/3600, wcs=w, order=0,
-                                        cat_col_mag=cat_col_mag, verbose=True)
+                                         cat_col_mag=cat_col_mag, verbose=True)
         # Update WCS info in the header
         astrometry.clear_wcs(_science_header, remove_comments=True, remove_underscored=True, remove_history=True)
         _science_header.update(wcs.to_header(relax=True))
@@ -2498,7 +2498,7 @@ if science_file is not None:
 
         mean_fwhm_pixel = seeing / pixel_size_arcsec
         st.metric("Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (estimated from seeing)")
-        write_to_log(log_buffer, f"Estimated FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)")
+        write_to_log(log_buffer, f"Seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)")
         # Check if RA/DEC are missing from header
        # Check if RA/DEC are missing from header
         ra_val, dec_val, coord_source = extract_coordinates(science_header)
