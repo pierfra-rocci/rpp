@@ -877,8 +877,6 @@ def fwhm_fit(
             st.warning("No sources found !")
             return None
 
-        st.write(f"Number of sources found : {len(sources)}")
-
         # Filter sources by flux
         flux = sources['flux']
         median_flux = np.median(flux)
