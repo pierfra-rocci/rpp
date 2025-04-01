@@ -1178,6 +1178,23 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         st.warning("No sources found!")
         return None, None, daofind, bkg
     
+    st.write("Doing astrometry refinement with GAIA DR3...")
+    # Get the center of the image using WCS
+    ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w, width=image_data.shape[1], height=image_data.shape[0])
+    st.write(f"RA: {ra0}, DEC: {dec0}, SR: {sr0}")
+    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3', filters={'RPmag':'<19'})
+    cat_col_mag = 'RPmag'
+    sources['x'] = sources['xcentroid']
+    sources['y'] = sources['ycentroid']
+    try:
+        wcs = pipeline.refine_astrometry(sources, cat, 1.5*fwhm_estimate*pixel_scale/3600, wcs=w, order=0,
+                                        cat_col_mag=cat_col_mag, verbose=True)
+        # Update WCS info in the header
+        astrometry.clear_wcs(_science_header, remove_comments=True, remove_underscored=True, remove_history=True)
+        _science_header.update(wcs.to_header(relax=True))
+    except Exception as e:
+        st.error(f"Error refining WCS: {e}")
+
     # Aperture photometry
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     apertures = CircularAperture(positions, r=1.5*fwhm_estimate)
@@ -1461,11 +1478,6 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         # Calculate calibrated magnitudes for all sources
         _phot_table['calib_mag'] = _phot_table['instrumental_mag'] + zero_point_value + 0.1*air
         
-        # Calculate errors
-        # if 'aperture_sum_err' in _phot_table.columns and 'aperture_sum' in _phot_table.columns:
-        #     _phot_table['calib_mag_err'] = (2.5/np.log(10) * _phot_table['aperture_sum_err'] / 
-        #                                   _phot_table['aperture_sum']) + zero_point_std
-        
         # Store results in session state
         st.session_state['final_phot_table'] = _phot_table
         
@@ -1560,7 +1572,6 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
             write_to_log(log_buffer, f"Airmass: {air:.2f}")
             
             # Save the zero point plot with timestamp
-            timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             final_table = st.session_state['final_phot_table']
                 
             try:
@@ -1673,6 +1684,7 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                 st.exception(e)
         
         return zero_point_value, zero_point_std, final_table
+
 
 def enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=6.0):
     """
@@ -2635,9 +2647,6 @@ if science_file is not None:
             if st.session_state['calibrated_data'] is not None:
                 image_to_process = st.session_state['calibrated_data']
                 header_to_process = st.session_state['calibrated_header']
-            
-            st.write("Doing astrometry refinement with GAIA DR3...")
-            # Perform astrometry refinement with Gaia DR3 TODO
 
             if image_to_process is not None:
                 try:
