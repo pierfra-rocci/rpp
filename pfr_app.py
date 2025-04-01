@@ -1483,7 +1483,7 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         try:
             zero_point_plot_path = os.path.join(output_dir, "zero_point_plot.png")
             plt.savefig(zero_point_plot_path)
-            st.write(f"Zero point plot saved as '{zero_point_plot_path}'")
+            st.write("Zero point plot saved")
         except Exception as e:
             st.warning(f"Could not save plot to file: {e}")
             
@@ -1640,7 +1640,7 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                 # Also save locally in the output directory
                 with open(catalog_path, 'w') as f:
                     f.write(csv_data)
-                st.success(f"Catalog saved to {catalog_path}")
+                st.success("Catalog saved")
                 
                 # Also create a metadata file with analysis parameters
                 metadata_filename = f"{base_catalog_name}_metadata.txt"
@@ -1663,7 +1663,7 @@ def run_zero_point_calibration(header, pixel_size_arcsec, mean_fwhm_pixel,
                     f.write(f"  Edge Mask: {detection_mask} pixels\n")
                     f.write(f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n")
 
-                write_to_log(log_buffer, f"Saved catalog metadata to {metadata_path}")
+                write_to_log(log_buffer, "Saved catalog metadata")
                 st.success(f"Analysis metadata saved to {metadata_path}")
                 
             except Exception as e:
@@ -2369,7 +2369,7 @@ if science_file is not None:
                         wcs_header_filename = f"{st.session_state['base_filename']}_wcs_header"
                         wcs_header_file_path = save_header_to_txt(science_header, wcs_header_filename)
                         if wcs_header_file_path:
-                            st.info(f"Updated WCS header saved to {wcs_header_file_path}")
+                            st.info("Updated WCS header saved")
                     else:
                         st.error(f"Astrometry.net plate solving failed: {astrometry_msg}")
                         write_to_log(log_buffer, f"Failed to solve plate: {astrometry_msg}", level="ERROR")
@@ -2396,7 +2396,7 @@ if science_file is not None:
         header_file = save_header_to_txt(science_header, header_filename)
         if header_file:
             write_to_log(log_buffer, f"Saved header to {header_file}")
-            st.write(f"FITS header saved to {header_file}")
+            st.write("FITS header saved")
 
     # Log file loading
     log_buffer = st.session_state['log_buffer']
@@ -2447,8 +2447,8 @@ if science_file is not None:
             # Saving as separate step
             try:
                 fig_preview.savefig(image_path, dpi=150, bbox_inches='tight')
-                write_to_log(log_buffer, f"Saved image plot to {image_path}")
-                st.write(f"Image saved as {image_path}")
+                write_to_log(log_buffer, "Saved image plot")
+                st.write("Image saved")
             except Exception as save_error:
                 write_to_log(log_buffer, f"Failed to save image plot: {str(save_error)}", level="ERROR")
                 st.error(f"Error saving image: {str(save_error)}")
@@ -2802,7 +2802,7 @@ if science_file is not None:
                                             # Also save locally in the output directory
                                             with open(catalog_path, 'w') as f:
                                                 f.write(csv_data)
-                                            st.write(f"Catalog saved to {catalog_path}")
+                                            st.write("Catalog saved")
                                             
                                         except Exception as e:
                                             st.error(f"Error preparing download: {e}")
