@@ -2502,7 +2502,7 @@ if science_file is not None:
        # Check if RA/DEC are missing from header
         ra_val, dec_val, coord_source = extract_coordinates(science_header)
         if ra_val is not None and dec_val is not None:
-            st.write(f"Target: RA={ra_val}°, DEC={dec_val}° (from header)")
+            st.write(f"Target: RA={ra_val}°, DEC={dec_val}°")
             write_to_log(log_buffer, f"Target coordinates: RA={ra_val}°, DEC={dec_val}° ({coord_source})")
             ra_missing = dec_missing = False
         else:
