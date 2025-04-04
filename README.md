@@ -72,9 +72,6 @@ A comprehensive astronomical image processing and photometry tool designed speci
     stramlit run prf_app.py
     ```
 
-Here's the raw markdown content for your README.md file:
-
-```markdown
 # Photometry Factory for RAPAS (PFR)
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -218,4 +215,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-Created with ❤️ by [Your Name]
+Created with ❤️ by [Pier-Francesco Rocci]
