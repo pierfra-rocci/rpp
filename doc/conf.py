@@ -14,8 +14,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'Photometry Factory for RAPAS'
-copyright = '2024, Author'
-author = 'Author'
+copyright = '2024, Pier-Francesco Rocci'
+author = 'Pier-Francesco Rocci'
 
 # The full version, including alpha/beta/rc tags
 release = '0.1.0'
