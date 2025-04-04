@@ -6,7 +6,7 @@
 
 A comprehensive astronomical image processing and photometry tool designed specifically for RAPAS (Remote Astronomical Photometry & Astrometry System) data.
 
-![PFR Screenshot](doc/_static/pfr_screenshot.png)
+![PFR Screenshot](doc/_static/logo.png)
 
 ## Features
 
