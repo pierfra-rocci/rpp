@@ -1,0 +1,946 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; Photometry Factory for RAPAS 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="User Guide" href="user_guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Photometry Factory for RAPAS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-pfr_app">pfr_app</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.solve_with_astrometry_net"><code class="docutils literal notranslate"><span class="pre">solve_with_astrometry_net()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.ensure_output_directory"><code class="docutils literal notranslate"><span class="pre">ensure_output_directory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.safe_wcs_create"><code class="docutils literal notranslate"><span class="pre">safe_wcs_create()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.estimate_background"><code class="docutils literal notranslate"><span class="pre">estimate_background()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.get_header_value"><code class="docutils literal notranslate"><span class="pre">get_header_value()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.extract_pixel_scale"><code class="docutils literal notranslate"><span class="pre">extract_pixel_scale()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.extract_coordinates"><code class="docutils literal notranslate"><span class="pre">extract_coordinates()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.safe_catalog_query"><code class="docutils literal notranslate"><span class="pre">safe_catalog_query()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.create_figure"><code class="docutils literal notranslate"><span class="pre">create_figure()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.airmass"><code class="docutils literal notranslate"><span class="pre">airmass()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.load_fits_data"><code class="docutils literal notranslate"><span class="pre">load_fits_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.calibrate_image_streamlit"><code class="docutils literal notranslate"><span class="pre">calibrate_image_streamlit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.make_border_mask"><code class="docutils literal notranslate"><span class="pre">make_border_mask()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.fwhm_fit"><code class="docutils literal notranslate"><span class="pre">fwhm_fit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.perform_epsf_photometry"><code class="docutils literal notranslate"><span class="pre">perform_epsf_photometry()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.find_sources_and_photometry_streamlit"><code class="docutils literal notranslate"><span class="pre">find_sources_and_photometry_streamlit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.cross_match_with_gaia_streamlit"><code class="docutils literal notranslate"><span class="pre">cross_match_with_gaia_streamlit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.calculate_zero_point_streamlit"><code class="docutils literal notranslate"><span class="pre">calculate_zero_point_streamlit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.run_zero_point_calibration"><code class="docutils literal notranslate"><span class="pre">run_zero_point_calibration()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.enhance_catalog_with_crossmatches"><code class="docutils literal notranslate"><span class="pre">enhance_catalog_with_crossmatches()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.get_download_link"><code class="docutils literal notranslate"><span class="pre">get_download_link()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.save_header_to_txt"><code class="docutils literal notranslate"><span class="pre">save_header_to_txt()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.initialize_session_state"><code class="docutils literal notranslate"><span class="pre">initialize_session_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.get_base_filename"><code class="docutils literal notranslate"><span class="pre">get_base_filename()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.initialize_log"><code class="docutils literal notranslate"><span class="pre">initialize_log()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.write_to_log"><code class="docutils literal notranslate"><span class="pre">write_to_log()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#tools-astrometry-lite">tools.astrometry_lite</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tools-get-catalog-data">tools.get_catalog_data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tools.get_catalog_data.get_GAIA_data"><code class="docutils literal notranslate"><span class="pre">get_GAIA_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tools.get_catalog_data.get_PS_data"><code class="docutils literal notranslate"><span class="pre">get_PS_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tools.get_catalog_data.get_PS_photometry_data"><code class="docutils literal notranslate"><span class="pre">get_PS_photometry_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tools.get_catalog_data.get_2MASS_data"><code class="docutils literal notranslate"><span class="pre">get_2MASS_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tools.get_catalog_data.get_2MASS_photometry_data"><code class="docutils literal notranslate"><span class="pre">get_2MASS_photometry_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tools.get_catalog_data.get_file_data"><code class="docutils literal notranslate"><span class="pre">get_file_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tools.get_catalog_data.get_data"><code class="docutils literal notranslate"><span class="pre">get_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tools.get_catalog_data.get_photometry_data"><code class="docutils literal notranslate"><span class="pre">get_photometry_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#tools-extract-sources">tools.extract_sources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tools-get-transformation">tools.get_transformation</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Photometry Factory for RAPAS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api_reference.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<p>This section provides detailed API documentation for the main modules of the Photometry Factory for RAPAS.</p>
+<section id="module-pfr_app">
+<span id="pfr-app"></span><h2>pfr_app<a class="headerlink" href="#module-pfr_app" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.solve_with_astrometry_net">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">solve_with_astrometry_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#solve_with_astrometry_net"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.solve_with_astrometry_net" title="Link to this definition"></a></dt>
+<dd><p>Solve plate using the astrometry.net API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – The image data to solve</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em>, </em><em>optional</em>) – FITS header with any available metadata to help the solver</p></li>
+<li><p><strong>api_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Astrometry.net API key. If not provided, will look in environment variables.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(wcs_object, updated_header, status_message)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.ensure_output_directory">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">ensure_output_directory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pfr_results'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#ensure_output_directory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.ensure_output_directory" title="Link to this definition"></a></dt>
+<dd><p>Ensure the output directory exists, create it if needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>directory</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the directory to create</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to the output directory</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.safe_wcs_create">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">safe_wcs_create</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#safe_wcs_create"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.safe_wcs_create" title="Link to this definition"></a></dt>
+<dd><p>Safely create a WCS object from a FITS header with proper error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a>) – FITS header</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(wcs_object, None) if successful, (None, error_message) if failed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.estimate_background">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">estimate_background</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#estimate_background"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.estimate_background" title="Link to this definition"></a></dt>
+<dd><p>Robustly estimate image background with better error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – The science image data</p></li>
+<li><p><strong>box_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><em>optional</em>) – The box size for Background2D</p></li>
+<li><p><strong>filter_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><em>optional</em>) – The filter size for Background2D</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(background_2d_object, error_message)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.get_header_value">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">get_header_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#get_header_value"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.get_header_value" title="Link to this definition"></a></dt>
+<dd><p>Robustly extract a header value trying multiple potential keys.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a>) – The FITS header dictionary</p></li>
+<li><p><strong>keys</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><em>list</em></a>) – List of possible keys to try in order of preference</p></li>
+<li><p><strong>default</strong> (<em>any</em>) – Default value to return if no keys are found</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The header value or default if not found</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.extract_pixel_scale">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">extract_pixel_scale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#extract_pixel_scale"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.extract_pixel_scale" title="Link to this definition"></a></dt>
+<dd><p>Extract pixel scale from FITS header using multiple possible keywords.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a>) – FITS header</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(pixel_scale_value, source_description)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.extract_coordinates">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">extract_coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#extract_coordinates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.extract_coordinates" title="Link to this definition"></a></dt>
+<dd><p>Extract RA and DEC coordinates from FITS header.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a>) – FITS header dictionary</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(ra, dec, source_description) or (None, None, error_message)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.safe_catalog_query">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">safe_catalog_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_func</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error_msg</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#safe_catalog_query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.safe_catalog_query" title="Link to this definition"></a></dt>
+<dd><p>Safely execute a catalog query with proper error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query_func</strong> (<em>callable</em>) – The function to call for the catalog query</p></li>
+<li><p><strong>error_msg</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Base error message to display</p></li>
+<li><p><strong>*args</strong> – Arguments to pass to query_func</p></li>
+<li><p><strong>**kwargs</strong> – Arguments to pass to query_func</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(result, None) if successful, (None, error_message) if failed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.create_figure">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">create_figure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'medium'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#create_figure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.create_figure" title="Link to this definition"></a></dt>
+<dd><p>Create a matplotlib figure with standardized size</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.airmass">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">airmass</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#airmass"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.airmass" title="Link to this definition"></a></dt>
+<dd><p>Calculates the airmass for a celestial object from header data
+and observatory information.</p>
+<p>This function handles multiple coordinate formats and performs
+physical validity checks on the results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>_header</strong> (<em>Dict</em>) – FITS header or dictionary containing observation information.
+Must contain:
+- Coordinates (RA/DEC or OBJRA/OBJDEC)
+- Observation date (DATE-OBS)</p></li>
+<li><p><strong>observatory</strong> (<em>Dict</em><em>, </em><em>optional</em>) – <p>Information about the observatory. If not provided, uses the default (TJMS).
+Format:
+{</p>
+<blockquote>
+<div><p>’name’: str,           # Observatory name
+‘latitude’: float,     # Latitude in degrees
+‘longitude’: float,    # Longitude in degrees
+‘elevation’: float     # Elevation in meters</p>
+</div></blockquote>
+<p>}</p>
+</p></li>
+<li><p><strong>return_details</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, returns additional information about the observation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>If return_details=False: airmass (float)</p></li>
+<li><p>If return_details=True: (airmass, observation_details)</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Union[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a>, Tuple[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a>, Dict]]</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Airmass is a measure of the amount of atmosphere traversed
+by the light from a celestial object. An airmass of 1 corresponds
+to an observation at zenith.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.load_fits_data">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">load_fits_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#load_fits_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.load_fits_data" title="Link to this definition"></a></dt>
+<dd><p>Load FITS data from an uploaded file with robust error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file</strong> (<em>UploadedFile</em>) – Streamlit file object from file uploader</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(image_data, header) where image_data is a 2D numpy array and header is the FITS header
+Returns (None, None) if loading fails</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Automatically handles multi-extension FITS by trying primary HDU first</p></li>
+<li><p>For 3D/4D data (RGB, data cubes), extracts only the first 2D plane</p></li>
+<li><p>First HDU with data is used if primary HDU has no data</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.calibrate_image_streamlit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">calibrate_image_streamlit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">science_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">science_header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dark_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flat_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time_science</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time_dark</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_bias</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_dark</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_flat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#calibrate_image_streamlit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.calibrate_image_streamlit" title="Link to this definition"></a></dt>
+<dd><p>Calibrates a science image using bias, dark, and flat frames according to user selections.
+This function performs standard CCD calibration steps based on the user’s choices:
+1. Bias subtraction (optional)
+2. Dark frame subtraction with exposure time scaling (optional)
+3. Flat field correction using normalized flat (optional)
+:param science_data: The raw science image data to be calibrated
+:type science_data: numpy.ndarray
+:param science_header: Header information from the science image
+:type science_header: dict or fits.Header
+:param bias_data: Bias frame data for zero-level correction
+:type bias_data: numpy.ndarray or None
+:param dark_data: Dark frame data for thermal noise correction
+:type dark_data: numpy.ndarray or None
+:param flat_data: Flat field data for sensitivity/vignetting correction
+:type flat_data: numpy.ndarray or None
+:param exposure_time_science: Exposure time of the science image in seconds
+:type exposure_time_science: float
+:param exposure_time_dark: Exposure time of the dark frame in seconds
+:type exposure_time_dark: float
+:param apply_bias: Whether to apply bias subtraction
+:type apply_bias: bool
+:param apply_dark: Whether to apply dark frame subtraction
+:type apply_dark: bool
+:param apply_flat: Whether to apply flat field correction
+:type apply_flat: bool</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(calibrated_science, science_header) where:
+- calibrated_science is the processed science image as numpy.ndarray
+- science_header is the unchanged header information</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>If bias correction is applied, it’s also applied to dark and flat frames before they’re used.
+The flat field is normalized by its median value before division.
+Dark frames are scaled according to exposure time ratios if different from science exposure.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.make_border_mask">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">make_border_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border=50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">invert=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'bool'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#make_border_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.make_border_mask" title="Link to this definition"></a></dt>
+<dd><p>Creates a binary mask for an image excluding one or more borders.
+:param image: The input image as a NumPy array.
+:type image: np.ndarray
+:param border: Border size(s) to exclude from the mask:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>If int: same border size on all sides</p></li>
+<li><p>If tuple of 2 elements: (vertical, horizontal) borders</p></li>
+<li><p>If tuple of 4 elements: (top, bottom, left, right) borders</p></li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>invert</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a><em>, </em><em>default=True</em>) – If True, the mask will be inverted (False for border regions)
+If False, the mask will be True for non-border regions</p></li>
+<li><p><strong>dtype</strong> (<em>np.dtype</em><em>, </em><em>default=bool</em>) – Data type of the output mask</p></li>
+<li><p><strong>image</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>ndarray</em></a>)</p></li>
+<li><p><strong>border</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><em>default=50</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Binary mask with the same height and width as the input image</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.13)"><strong>TypeError</strong></a> – If image is not a NumPy array or border is not of the correct type</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If image is empty, borders are negative, borders are larger than the image,
+    or border tuple has an invalid length</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a mask with 10px border on all sides</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mask</span> <span class="o">=</span> <span class="n">make_border_mask</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a mask with different vertical/horizontal borders</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mask</span> <span class="o">=</span> <span class="n">make_border_mask</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a mask with custom borders for each side</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mask</span> <span class="o">=</span> <span class="n">make_border_mask</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">),</span> <span class="n">invert</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.fwhm_fit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">fwhm_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fwhm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std_lo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std_hi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#fwhm_fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.fwhm_fit" title="Link to this definition"></a></dt>
+<dd><p>Estimate the Full Width at Half Maximum (FWHM) of stars in an astronomical image.
+This function detects sources in the image using DAOStarFinder, filters them based on
+flux values, and fits 1D Gaussian models to the marginal distributions of each source
+to calculate FWHM values. The median FWHM of all successful fits is returned.
+:param img: The 2D image array containing astronomical sources.
+:type img: np.ndarray
+:param fwhm: Initial FWHM estimate in pixels, used for source detection.
+:type fwhm: float
+:param pixel_scale: The pixel scale of the image (not used directly in current implementation).
+:type pixel_scale: float
+:param mask: Boolean mask array where True indicates pixels to ignore during source detection.
+:type mask: np.ndarray, optional
+:param std_lo: Lower bound for flux filtering, in standard deviations below median flux.
+:type std_lo: float, default=0.5
+:param std_hi: Upper bound for flux filtering, in standard deviations above median flux.
+:type std_hi: float, default=0.5</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The median FWHM value in pixels (rounded to nearest integer) if successful,
+or None if no valid sources could be measured.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a> or None</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If no sources are found, no valid sources remain after filtering,
+    all FWHM values are NaN/infinite, or other calculation errors occur.</p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>img</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>ndarray</em></a>)</p></li>
+<li><p><strong>fwhm</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>)</p></li>
+<li><p><strong>pixel_scale</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>)</p></li>
+<li><p><strong>mask</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>ndarray</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>std_lo</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>)</p></li>
+<li><p><strong>std_hi</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The function uses marginal sums along the x and y dimensions and fits 1D Gaussian
+profiles to estimate FWHM. For each source, a box of size ~6×FWHM is extracted,
+and profiles are fit independently in both dimensions, with the results averaged.
+Progress and error messages are displayed using Streamlit (st).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.perform_epsf_photometry">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">perform_epsf_photometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phot_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fwhm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">daostarfind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#perform_epsf_photometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.perform_epsf_photometry" title="Link to this definition"></a></dt>
+<dd><p>Perform PSF photometry using an EPSF model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>np.ndarray</em>) – Image with sky background subtracted.</p></li>
+<li><p><strong>phot_table</strong> (<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.0)"><em>astropy.table.Table</em></a>) – Table containing source positions.</p></li>
+<li><p><strong>fwhm</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Full Width at Half Maximum used to define fitting size.</p></li>
+<li><p><strong>daostarfind</strong> (<em>callable</em>) – Star detection function used as “finder” in PSF photometry.</p></li>
+<li><p><strong>mask</strong> (<em>np.ndarray</em><em>, </em><em>optional</em>) – Mask to exclude certain image areas.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>phot_epsf_result : Table containing PSF photometry results, including fitted fluxes and positions.</p></li>
+<li><p>epsf : The fitted EPSF model used for photometry.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.0)">astropy.table.Table</a>, photutils.epsf.EPSF]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.find_sources_and_photometry_streamlit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">find_sources_and_photometry_streamlit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_science_header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_fwhm_pixel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detection_mask</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#find_sources_and_photometry_streamlit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.find_sources_and_photometry_streamlit" title="Link to this definition"></a></dt>
+<dd><p>Find sources and perform photometry on astronomical images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – Science image data</p></li>
+<li><p><strong>_science_header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a>) – Header information from FITS file (underscore prevents caching issues)</p></li>
+<li><p><strong>mean_fwhm_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Estimated FWHM in pixels</p></li>
+<li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Detection threshold in sigma</p></li>
+<li><p><strong>detection_mask</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Border size to mask during detection</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(phot_table, epsf_table, daofind, bkg)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.cross_match_with_gaia_streamlit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">cross_match_with_gaia_streamlit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_phot_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_science_header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size_arcsec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_fwhm_pixel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_min_mag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_max_mag</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#cross_match_with_gaia_streamlit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.cross_match_with_gaia_streamlit" title="Link to this definition"></a></dt>
+<dd><p>Cross-matches sources with Gaia catalog.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>_phot_table</strong> (<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.0)"><em>astropy.table.Table</em></a>) – Table containing source positions (underscore prevents caching issues)</p></li>
+<li><p><strong>_science_header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a>) – FITS header with WCS information (underscore prevents caching issues)</p></li>
+<li><p><strong>pixel_size_arcsec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Pixel scale in arcseconds per pixel</p></li>
+<li><p><strong>mean_fwhm_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – FWHM in pixels</p></li>
+<li><p><strong>gaia_band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Gaia magnitude band to use (e.g., ‘phot_g_mean_mag’)</p></li>
+<li><p><strong>gaia_min_mag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Minimum magnitude for filtering Gaia sources</p></li>
+<li><p><strong>gaia_max_mag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Maximum magnitude for filtering Gaia sources</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Matched sources table</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.calculate_zero_point_streamlit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">calculate_zero_point_streamlit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_phot_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_matched_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">air</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#calculate_zero_point_streamlit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.calculate_zero_point_streamlit" title="Link to this definition"></a></dt>
+<dd><p>Calculates photometric zero point using matched sources.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>_phot_table</strong> (<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.0)"><em>astropy.table.Table</em></a><em> or </em><em>pandas.DataFrame</em>) – Photometry results table (underscore prevents caching issues)</p></li>
+<li><p><strong>_matched_table</strong> (<em>pandas.DataFrame</em>) – Table of Gaia cross-matched sources (underscore prevents caching issues)</p></li>
+<li><p><strong>gaia_band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Gaia magnitude band used</p></li>
+<li><p><strong>air</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Airmass value for extinction correction</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(zero_point_value, zero_point_std, matplotlib_figure)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.run_zero_point_calibration">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">run_zero_point_calibration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size_arcsec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_fwhm_pixel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detection_mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_min_mag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_max_mag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">air</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#run_zero_point_calibration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.run_zero_point_calibration" title="Link to this definition"></a></dt>
+<dd><p>Runs the complete zero point calibration workflow.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – Image data to process</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a>) – FITS header</p></li>
+<li><p><strong>pixel_size_arcsec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Pixel scale in arcseconds</p></li>
+<li><p><strong>mean_fwhm_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – FWHM estimate in pixels</p></li>
+<li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Detection threshold</p></li>
+<li><p><strong>detection_mask</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Border mask size</p></li>
+<li><p><strong>gaia_band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Gaia magnitude band</p></li>
+<li><p><strong>gaia_min_mag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Magnitude limits for Gaia sources</p></li>
+<li><p><strong>gaia_max_mag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Magnitude limits for Gaia sources</p></li>
+<li><p><strong>air</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Airmass value</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(zero_point_value, zero_point_std, phot_table)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.enhance_catalog_with_crossmatches">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">enhance_catalog_with_crossmatches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">final_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matched_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_scale_arcsec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius_arcsec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#enhance_catalog_with_crossmatches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.enhance_catalog_with_crossmatches" title="Link to this definition"></a></dt>
+<dd><p>Enhance the catalog with cross-matches from GAIA DR3, SIMBAD, SkyBoT and AAVSO</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>final_table</strong> (<em>pandas.DataFrame</em>) – Final photometry catalog with RA/DEC coordinates</p></li>
+<li><p><strong>matched_table</strong> (<em>pandas.DataFrame</em>) – Table of already matched Gaia sources (used for calibration)</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a>) – FITS header with observation information</p></li>
+<li><p><strong>pixel_scale_arcsec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Pixel scale in arcseconds per pixel</p></li>
+<li><p><strong>search_radius_arcsec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>optional</em>) – Search radius for cross-matching in arcseconds</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Input dataframe with added catalog information</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.get_download_link">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">get_download_link</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link_text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Download'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#get_download_link"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.get_download_link" title="Link to this definition"></a></dt>
+<dd><p>Generate a download link for data with improved styling and error handling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – String data to be downloaded</p></li>
+<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Name of the file to be downloaded</p></li>
+<li><p><strong>link_text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Text to display on the download button</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>HTML for the download link</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.save_header_to_txt">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">save_header_to_txt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#save_header_to_txt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.save_header_to_txt" title="Link to this definition"></a></dt>
+<dd><p>Save FITS header to a text file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a>) – FITS header dictionary</p></li>
+<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Base filename to use (without extension)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Full path to the saved file</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.initialize_session_state">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">initialize_session_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#initialize_session_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.initialize_session_state" title="Link to this definition"></a></dt>
+<dd><p>Initialize all session state variables in one place to improve organization.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.get_base_filename">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">get_base_filename</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_obj</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#get_base_filename"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.get_base_filename" title="Link to this definition"></a></dt>
+<dd><p>Extract the base filename from an uploaded file object without extension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file_obj</strong> (<em>UploadedFile</em>) – The uploaded file object</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Base filename without extension</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.initialize_log">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">initialize_log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#initialize_log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.initialize_log" title="Link to this definition"></a></dt>
+<dd><p>Initialize a log file for the current processing session.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>base_filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Base name for the log file</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Log buffer object</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>StringIO</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.write_to_log">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">write_to_log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'INFO'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#write_to_log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.write_to_log" title="Link to this definition"></a></dt>
+<dd><p>Write a message to the log buffer with timestamp and level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>log_buffer</strong> (<em>StringIO</em>) – The log buffer to write to</p></li>
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The message to log</p></li>
+<li><p><strong>level</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Log level (INFO, WARNING, ERROR)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="tools-astrometry-lite">
+<h2>tools.astrometry_lite<a class="headerlink" href="#tools-astrometry-lite" title="Link to this heading"></a></h2>
+</section>
+<section id="tools-get-catalog-data">
+<h2>tools.get_catalog_data<a class="headerlink" href="#tools-get-catalog-data" title="Link to this heading"></a></h2>
+<p id="module-tools.get_catalog_data">Methods to get catalog data online.</p>
+<p>Author Lukas Wenzl
+written in python 3</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="tools.get_catalog_data.get_GAIA_data">
+<span class="sig-prename descclassname"><span class="pre">tools.get_catalog_data.</span></span><span class="sig-name descname"><span class="pre">get_GAIA_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coord</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/get_catalog_data.html#get_GAIA_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#tools.get_catalog_data.get_GAIA_data" title="Link to this definition"></a></dt>
+<dd><p>Query Gaia database.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>coord</strong> (<em>SkyCoord</em>) – Position to search.</p></li>
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Radius of search cone.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>table with the objects including the following info: ra (deg), ra_error (milliarcsec), dec (deg), dec_error (milliarcsec), mag</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>objects</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tools.get_catalog_data.get_PS_data">
+<span class="sig-prename descclassname"><span class="pre">tools.get_catalog_data.</span></span><span class="sig-name descname"><span class="pre">get_PS_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coord</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/get_catalog_data.html#get_PS_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#tools.get_catalog_data.get_PS_data" title="Link to this definition"></a></dt>
+<dd><p>Query Vizier for Panstarrs1 data. PS1 was calibrated with GAIA and goes darker so if it is availabe it is likely the best choice.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>coord</strong> (<em>SkyCoord</em>) – Position to search.</p></li>
+<li><p><strong>radius</strong> (<em>float*unit</em>) – Radius of search cone.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>table with the objects including the following info: ra (deg), ra_error (milliarcsec), dec (deg), dec_error (milliarcsec), mag</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>objects</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tools.get_catalog_data.get_PS_photometry_data">
+<span class="sig-prename descclassname"><span class="pre">tools.get_catalog_data.</span></span><span class="sig-name descname"><span class="pre">get_PS_photometry_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'z'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/get_catalog_data.html#get_PS_photometry_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#tools.get_catalog_data.get_PS_photometry_data" title="Link to this definition"></a></dt>
+<dd><p>Query Vizier for Panstarrs1 data. This method is meant to get the color info for nearby stars</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ra</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – ra to search</p></li>
+<li><p><strong>dec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – dec to search</p></li>
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Radius of search cone in arcsec.</p></li>
+<li><p><strong>coord</strong> (<em>SkyCoord</em>) – Position to search. Use instead of ra and dec</p></li>
+<li><p><strong>band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – photometric band that is needed. PanStarrs has g,r,i,z,y</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>objects</em> – table with the objects including the following info: ra (deg), ra_error (milliarcsec), dec (deg), dec_error (milliarcsec), mag</p></li>
+<li><p><em>band</em> – photometric band with the info required</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tools.get_catalog_data.get_2MASS_data">
+<span class="sig-prename descclassname"><span class="pre">tools.get_catalog_data.</span></span><span class="sig-name descname"><span class="pre">get_2MASS_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coord</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/get_catalog_data.html#get_2MASS_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#tools.get_catalog_data.get_2MASS_data" title="Link to this definition"></a></dt>
+<dd><p>Query Vizier for 2MASS astronometry data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>coord</strong> (<em>SkyCoord</em>) – Position to search. Use instead of ra and dec</p></li>
+<li><p><strong>radius</strong> (<em>float*unit</em>) – Radius of search cone in arcsec.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>objects</em> – table with the objects including the following info: ra (deg), ra_error (milliarcsec), dec (deg), dec_error (milliarcsec), mag</p></li>
+<li><p><em>band</em> – photometric band with the info required</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tools.get_catalog_data.get_2MASS_photometry_data">
+<span class="sig-prename descclassname"><span class="pre">tools.get_catalog_data.</span></span><span class="sig-name descname"><span class="pre">get_2MASS_photometry_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coord</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'z'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/get_catalog_data.html#get_2MASS_photometry_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#tools.get_catalog_data.get_2MASS_photometry_data" title="Link to this definition"></a></dt>
+<dd><p>Query Vizier for Panstarrs1 data. This method is meant to get the color info for nearby stars</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ra</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – ra to search</p></li>
+<li><p><strong>dec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – dec to search</p></li>
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Radius of search cone in arcsec.</p></li>
+<li><p><strong>coord</strong> (<em>SkyCoord</em>) – Position to search. Use instead of ra and dec</p></li>
+<li><p><strong>band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – photometric band that is needed. PanStarrs has g,r,i,z,y</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>objects</em> – table with the objects including the following info: ra (deg), ra_error (milliarcsec), dec (deg), dec_error (milliarcsec), mag</p></li>
+<li><p><em>band</em> – photometric band with the info required</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tools.get_catalog_data.get_file_data">
+<span class="sig-prename descclassname"><span class="pre">tools.get_catalog_data.</span></span><span class="sig-name descname"><span class="pre">get_file_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/get_catalog_data.html#get_file_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#tools.get_catalog_data.get_file_data" title="Link to this definition"></a></dt>
+<dd><p>Read catalog data from local file. At the minimum the columns ra, dec and mag are needed.
+The magnitudes do not need to be calibrated only ordered.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tools.get_catalog_data.get_data">
+<span class="sig-prename descclassname"><span class="pre">tools.get_catalog_data.</span></span><span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/get_catalog_data.html#get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#tools.get_catalog_data.get_data" title="Link to this definition"></a></dt>
+<dd><p>Query databases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pos</strong> (<em>SkyCoord</em>) – Position to search.</p></li>
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Radius of search cone.</p></li>
+<li><p><strong>source</strong> (<em>string</em>) – Define which catalog to query. Standard is ‘PS’ for Panstarrs DR1, alternatives: GAIA</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>table with the objects.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>objects</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="tools.get_catalog_data.get_photometry_data">
+<span class="sig-prename descclassname"><span class="pre">tools.get_catalog_data.</span></span><span class="sig-name descname"><span class="pre">get_photometry_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/tools/get_catalog_data.html#get_photometry_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#tools.get_catalog_data.get_photometry_data" title="Link to this definition"></a></dt>
+<dd><p>Query databases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pos</strong> (<em>SkyCoord</em>) – Position to search.</p></li>
+<li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Radius of search cone.</p></li>
+<li><p><strong>source</strong> (<em>string</em>) – Define which catalog to query. Standard is ‘PS’ for Panstarrs DR1, alternatives: GAIA</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>table with the objects.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>objects</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="tools-extract-sources">
+<h2>tools.extract_sources<a class="headerlink" href="#tools-extract-sources" title="Link to this heading"></a></h2>
+</section>
+<section id="tools-get-transformation">
+<h2>tools.get_transformation<a class="headerlink" href="#tools-get-transformation" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="user_guide.html" class="btn btn-neutral float-left" title="User Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Author.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
