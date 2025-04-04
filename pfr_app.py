@@ -864,8 +864,7 @@ def make_border_mask( image: np.ndarray,
 
 
 @st.cache_data
-def fwhm_fit(
-    img: np.ndarray,
+def fwhm_fit(img: np.ndarray,
     fwhm: float,
     pixel_scale: float,
     mask: Optional[np.ndarray] = None,
@@ -873,16 +872,70 @@ def fwhm_fit(
     std_hi: float = 0.5
 ) -> Optional[float]:
     """
-    Calculate the FWHM of an image using marginal sums and 1D Gaussian model fitting.
-    
-    This function first filters sources based on their flux, keeping those within a range
-    defined by std_lo and std_hi around the median. For each filtered source, it extracts
-    a sub-image, calculates marginal sums, and fits a 1D Gaussian model to estimate FWHM.
-    
-    Returns the median estimated FWHM in pixels.
+    Estimate the Full Width at Half Maximum (FWHM) of stars in an astronomical image.
+    This function detects sources in the image using DAOStarFinder, filters them based on 
+    flux values, and fits 1D Gaussian models to the marginal distributions of each source 
+    to calculate FWHM values. The median FWHM of all successful fits is returned.
+    Parameters
+    ----------
+    img : np.ndarray
+        The 2D image array containing astronomical sources.
+    fwhm : float
+        Initial FWHM estimate in pixels, used for source detection.
+    pixel_scale : float
+        The pixel scale of the image (not used directly in current implementation).
+    mask : np.ndarray, optional
+        Boolean mask array where True indicates pixels to ignore during source detection.
+    std_lo : float, default=0.5
+        Lower bound for flux filtering, in standard deviations below median flux.
+    std_hi : float, default=0.5
+        Upper bound for flux filtering, in standard deviations above median flux.
+    Returns
+    -------
+    float or None
+        The median FWHM value in pixels (rounded to nearest integer) if successful, 
+        or None if no valid sources could be measured.
+    Raises
+    ------
+    ValueError
+        If no sources are found, no valid sources remain after filtering,
+        all FWHM values are NaN/infinite, or other calculation errors occur.
+    Notes
+    -----
+    The function uses marginal sums along the x and y dimensions and fits 1D Gaussian 
+    profiles to estimate FWHM. For each source, a box of size ~6×FWHM is extracted, 
+    and profiles are fit independently in both dimensions, with the results averaged.
+    Progress and error messages are displayed using Streamlit (st).
     """
+
     def compute_fwhm_marginal_sums(image_data, center_row, center_col, box_size):
-        """Compute FWHM using marginal sums and Gaussian fitting."""
+        """Compute Full Width at Half Maximum (FWHM) of a source in an image using marginal sums and Gaussian fitting.
+        This function extracts a square region around a specified center position, computes the marginal sums
+        in both row and column directions, and then fits Gaussian profiles to determine the FWHM.
+        Parameters
+        ----------
+        image_data : numpy.ndarray
+            2D image array to analyze
+        center_row : int
+            Initial row coordinate of the source center
+        center_col : int
+            Initial column coordinate of the source center
+        box_size : int
+            Size of the square box to extract around the center (should be at least 5)
+        Returns
+        -------
+        tuple or None
+            If successful, returns a tuple containing:
+            - fwhm_row (float): FWHM in the row direction
+            - fwhm_col (float): FWHM in the column direction
+            - center_row_fit (float): Refined row center from Gaussian fit
+            - center_col_fit (float): Refined column center from Gaussian fit
+            Returns None if:
+            - Box size is less than 5 pixels
+            - Box extends beyond image boundaries
+            - Signal is too weak for reliable fitting
+            - Gaussian fitting fails for any reason
+        """
         half_box = box_size // 2
         
         # Enforce minimum box size for fitting
@@ -2216,7 +2269,6 @@ def save_header_to_txt(header, filename):
 
 
 # ------------------------------------------------------------------------------
-
 # Main Script Execution
 # ------------------------------------------------------------------------------
 
