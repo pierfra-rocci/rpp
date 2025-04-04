@@ -530,7 +530,7 @@ def airmass(
     by the light from a celestial object. An airmass of 1 corresponds
     to an observation at zenith.
     """
-    # Observatoire par défaut (OHP)
+    # Default observatory (OHP)
     DEFAULT_OBSERVATORY = {
         'name': 'TJMS',
         'latitude': 48.29166,
@@ -538,11 +538,11 @@ def airmass(
         'elevation': 94.0
     }
 
-    # Utilisation de l'observatoire spécifié ou par défaut
+    # Use the specified observatory or the default one
     obs_data = observatory or DEFAULT_OBSERVATORY
 
     try:
-        # Extraction des coordonnées avec gestion de différents formats
+        # Extract coordinates with handling of different formats
         ra = _header.get("RA", _header.get("OBJRA", _header.get("RA---")))
         dec = _header.get("DEC", _header.get("OBJDEC", _header.get("DEC---")))
         obstime_str = _header.get("DATE-OBS", _header.get("DATE"))
@@ -554,36 +554,36 @@ def airmass(
             if obstime_str is None: missing.append("DATE-OBS")
             raise KeyError(f"Missing required header keywords: {', '.join(missing)}")
 
-        # Conversion des coordonnées et création de l'objet SkyCoord
+        # Convert coordinates and create SkyCoord object
         coord = SkyCoord(ra=ra, dec=dec, unit=u.deg, frame='icrs')
 
-        # Création de l'objet Time
+        # Create Time object
         obstime = Time(obstime_str)
 
-        # Création de l'objet EarthLocation pour l'observatoire
+        # Create EarthLocation object for the observatory
         location = EarthLocation(
             lat=obs_data['latitude']*u.deg,
             lon=obs_data['longitude']*u.deg,
             height=obs_data['elevation']*u.m
         )
 
-        # Calcul de l'altitude et de la masse d'air
+        # Calculate altitude and airmass
         altaz_frame = AltAz(obstime=obstime, location=location)
         altaz = coord.transform_to(altaz_frame)
         airmass_value = float(altaz.secz)
 
-        # Vérifications physiques
+        # Physical verification
         if airmass_value < 1.0:
             st.warning("Calculated airmass is less than 1 (physically impossible)")
             airmass_value = 1.0
         elif airmass_value > 40.0:
             st.warning("Extremely high airmass (>40), object near horizon")
 
-        # Calcul de la position du Soleil pour vérifier les conditions d'observation
+        # Calculate the Sun's position to check observation conditions
         sun_altaz = get_sun(obstime).transform_to(altaz_frame)
         sun_alt = float(sun_altaz.alt.deg)
 
-        # Création du dictionnaire de détails
+        # Create details dictionary
         details = {
             'observatory': obs_data['name'],
             'datetime': obstime.iso,
@@ -601,7 +601,7 @@ def airmass(
                               'day'
         }
 
-        # Affichage des informations
+        # Display information
         st.write(f"Date & Local Time: {obstime.iso}")
         st.write(f"Altitude: {details['altaz']['altitude']}°, "
               f"Azimuth: {details['altaz']['azimuth']}°")
