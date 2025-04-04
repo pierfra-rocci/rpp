@@ -6,7 +6,6 @@ from astropy.time import Time
 from astropy.coordinates import get_sun
 from typing import Union, Any, Optional, Dict, Tuple
 
-# Add these imports at the top of your file
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 import requests
@@ -14,7 +13,7 @@ from urllib.parse import quote
 
 from astropy.modeling import models, fitting
 import streamlit as st
-# from streamlit.components.v1 import html  # Add this import for Aladin Lite widget
+
 import numpy as np
 from astropy.io import fits
 from astropy.stats import sigma_clip, SigmaClip
@@ -620,10 +619,24 @@ def airmass(
 @st.cache_data
 def load_fits_data(file):
     """
-    Load FITS data from an uploaded file, handling both standard and RGB FITS images.
+    Load FITS data from an uploaded file with robust error handling.
     
-    For RGB/multi-dimensional FITS files, extracts the first image HDU and uses 
-    only the first channel if the data is multi-dimensional.
+    Parameters
+    ----------
+    file : UploadedFile
+        Streamlit file object from file uploader
+        
+    Returns
+    -------
+    tuple
+        (image_data, header) where image_data is a 2D numpy array and header is the FITS header
+        Returns (None, None) if loading fails
+        
+    Notes
+    -----
+    - Automatically handles multi-extension FITS by trying primary HDU first
+    - For 3D/4D data (RGB, data cubes), extracts only the first 2D plane
+    - First HDU with data is used if primary HDU has no data
     """
     if file is not None:
         file_content = file.read()
@@ -677,9 +690,49 @@ def load_fits_data(file):
     return None, None
 
 
-def calibrate_image_streamlit(science_data, science_header, bias_data, dark_data, flat_data,
+def calibrate_image_streamlit(science_data, science_header, bias_data, dark_data, flat_data, 
                               exposure_time_science, exposure_time_dark, apply_bias, apply_dark, apply_flat):
-    """Calibrates a science image using bias, dark, and flat frames according to user selections."""
+    
+    """
+    Calibrates a science image using bias, dark, and flat frames according to user selections.
+    This function performs standard CCD calibration steps based on the user's choices:
+    1. Bias subtraction (optional)
+    2. Dark frame subtraction with exposure time scaling (optional)
+    3. Flat field correction using normalized flat (optional)
+    Parameters
+    ----------
+    science_data : numpy.ndarray
+        The raw science image data to be calibrated
+    science_header : dict or fits.Header
+        Header information from the science image
+    bias_data : numpy.ndarray or None
+        Bias frame data for zero-level correction
+    dark_data : numpy.ndarray or None
+        Dark frame data for thermal noise correction
+    flat_data : numpy.ndarray or None
+        Flat field data for sensitivity/vignetting correction
+    exposure_time_science : float
+        Exposure time of the science image in seconds
+    exposure_time_dark : float
+        Exposure time of the dark frame in seconds
+    apply_bias : bool
+        Whether to apply bias subtraction
+    apply_dark : bool
+        Whether to apply dark frame subtraction
+    apply_flat : bool
+        Whether to apply flat field correction
+    Returns
+    -------
+    tuple
+        (calibrated_science, science_header) where:
+        - calibrated_science is the processed science image as numpy.ndarray
+        - science_header is the unchanged header information
+    Notes
+    -----
+    If bias correction is applied, it's also applied to dark and flat frames before they're used.
+    The flat field is normalized by its median value before division.
+    Dark frames are scaled according to exposure time ratios if different from science exposure.
+    """
     if not apply_bias and not apply_dark and not apply_flat:
         st.write("Calibration steps are disabled. Returning raw science data.")
         return science_data, science_header
@@ -727,23 +780,60 @@ def calibrate_image_streamlit(science_data, science_header, bias_data, dark_data
 
 
 @st.cache_data
-def make_border_mask(
-    image: np.ndarray,
+def make_border_mask( image: np.ndarray,
     border: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 50,
     invert: bool = True,
     dtype: np.dtype = bool
 ) -> np.ndarray:
-    """Creates a binary mask for an image excluding one or more borders."""
-    # Validation du type d'entrée
+    """
+    Creates a binary mask for an image excluding one or more borders.
+    Parameters
+    ----------
+    image : np.ndarray
+        The input image as a NumPy array.
+    border : int or tuple of int, default=50
+        Border size(s) to exclude from the mask:
+        - If int: same border size on all sides
+        - If tuple of 2 elements: (vertical, horizontal) borders
+        - If tuple of 4 elements: (top, bottom, left, right) borders
+    invert : bool, default=True
+        If True, the mask will be inverted (False for border regions)
+        If False, the mask will be True for non-border regions
+    dtype : np.dtype, default=bool
+        Data type of the output mask
+    Returns
+    -------
+    np.ndarray
+        Binary mask with the same height and width as the input image
+    Raises
+    ------
+    TypeError
+        If image is not a NumPy array or border is not of the correct type
+    ValueError
+        If image is empty, borders are negative, borders are larger than the image,
+        or border tuple has an invalid length
+    Examples
+    --------
+    >>> img = np.ones((100, 100))
+    >>> # Create a mask with 10px border on all sides
+    >>> mask = make_border_mask(img, 10)
+    >>> # Create a mask with different vertical/horizontal borders
+    >>> mask = make_border_mask(img, (20, 30))
+    >>> # Create a mask with custom borders for each side
+    >>> mask = make_border_mask(img, (10, 20, 30, 40), invert=False)
+    """
+    # Image validation
+    if image is None:
+        raise ValueError("Image cannot be None")
     if not isinstance(image, np.ndarray):
-        raise TypeError("L'image doit être un numpy.ndarray")
+        raise TypeError("Image must be a numpy.ndarray")
 
     if image.size == 0:
-        raise ValueError("L'image ne peut pas être vide")
+        raise ValueError("Image cannot be empty")
 
     height, width = image.shape[:2]
 
-    # Conversion et validation des bordures
+    # Convert and validate borders
     if isinstance(border, (int, float)):
         border = int(border)
         top = bottom = left = right = border
@@ -755,18 +845,18 @@ def make_border_mask(
         elif len(border) == 4:
             top, bottom, left, right = border
         else:
-            raise ValueError("border doit être un int ou un tuple de 2 ou 4 éléments")
+            raise ValueError("border must be an int or a tuple of 2 or 4 elements")
     else:
-        raise TypeError("border doit être un int ou un tuple")
+        raise TypeError("border must be an int or a tuple")
 
-    # Validation des dimensions
+    # Validate dimensions
     if any(b < 0 for b in (top, bottom, left, right)):
-        raise ValueError("Les bordures ne peuvent pas être négatives")
+        raise ValueError("Borders cannot be negative")
 
     if top + bottom >= height or left + right >= width:
-        raise ValueError("Les bordures sont plus grandes que l'image")
+        raise ValueError("Borders are larger than the image")
 
-    # Création du masque
+    # Create mask
     mask = np.zeros(image.shape[:2], dtype=dtype)
     mask[top:height-bottom, left:width-right] = True
 
