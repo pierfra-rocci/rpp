@@ -493,42 +493,42 @@ def airmass(
     return_details: bool = False
 ) -> Union[float, Tuple[float, Dict]]:
     """
-    Calcule la masse d'air pour un objet céleste à partir des données d'en-tête
-    et des informations de l'observatoire.
+    Calculates the airmass for a celestial object from header data
+    and observatory information.
 
-    Cette fonction gère plusieurs formats de coordonnées et effectue des
-    vérifications de validité physique des résultats.
+    This function handles multiple coordinate formats and performs
+    physical validity checks on the results.
 
-    Paramètres
+    Parameters
     ----------
-    header : Dict
-        En-tête FITS ou dictionnaire contenant les informations de l'observation.
-        Doit contenir:
-        - Coordonnées (RA/DEC ou OBJRA/OBJDEC)
-        - Date d'observation (DATE-OBS)
-    observatory : Dict, optionnel
-        Informations sur l'observatoire. Si non fourni, utilise l'OHP par défaut.
+    _header : Dict
+        FITS header or dictionary containing observation information.
+        Must contain:
+        - Coordinates (RA/DEC or OBJRA/OBJDEC)
+        - Observation date (DATE-OBS)
+    observatory : Dict, optional
+        Information about the observatory. If not provided, uses the default (TJMS).
         Format:
         {
-            'name': str,           # Nom de l'observatoire
-            'latitude': float,     # Latitude en degrés
-            'longitude': float,    # Longitude en degrés
-            'elevation': float     # Élévation en mètres
+            'name': str,           # Observatory name
+            'latitude': float,     # Latitude in degrees
+            'longitude': float,    # Longitude in degrees
+            'elevation': float     # Elevation in meters
         }
-    return_details : bool, optionnel
-        Si True, retourne des informations supplémentaires sur l'observation.
+    return_details : bool, optional
+        If True, returns additional information about the observation.
 
-    Retourne
+    Returns
     -------
     Union[float, Tuple[float, Dict]]
-        - Si return_details=False: masse d'air (float)
-        - Si return_details=True: (masse d'air, détails_observation)
+        - If return_details=False: airmass (float)
+        - If return_details=True: (airmass, observation_details)
 
     Notes
     -----
-    La masse d'air est une mesure de la quantité d'atmosphère traversée
-    par la lumière d'un objet céleste. Une masse d'air de 1 correspond
-    à une observation au zénith.
+    Airmass is a measure of the amount of atmosphere traversed
+    by the light from a celestial object. An airmass of 1 corresponds
+    to an observation at zenith.
     """
     # Observatoire par défaut (OHP)
     DEFAULT_OBSERVATORY = {
