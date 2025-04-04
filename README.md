@@ -181,7 +181,6 @@ Comprehensive documentation is available in the `doc/` directory:
 
 - [Installation Guide](doc/installation.rst)
 - [User Guide](doc/user_guide.rst)
-- [API Reference](doc/api_reference.rst)
 
 To build the documentation:
 ```bash
