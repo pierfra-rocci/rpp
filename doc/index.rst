@@ -1,7 +1,7 @@
 Welcome to Photometry Factory for RAPAS's documentation!
 ========================================================
 
-**Photometry Factory for RAPAS (PFR)** is a Python-based tool designed for astronomical image processing and photometry with focus on RAPAS (Remote Astronomical Photometry & Astrometry System) data.
+**Photometry Factory for RAPAS (PFR)** is a Python-based tool designed for astronomical image processing and photometry with focus on RAPAS (Réseau Amateur Professionnel pour les Alertes) data.
 
 The application provides a streamlined workflow for image calibration, astrometry, and photometric analysis of astronomical images.
 
