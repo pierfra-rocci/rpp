@@ -3011,7 +3011,7 @@ if science_file is not None:
                             unsafe_allow_html=True
                         )
                     
-                    # # Keep the original embedded view for quick reference
+                    # # Embedded view for quick reference
                     # st.subheader("Quick DSS2 Preview")
                     # # Create a direct URL to Aladin Lite with pre-configured parameters
                     # aladin_url = (
