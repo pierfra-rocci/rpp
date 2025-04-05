@@ -2979,37 +2979,23 @@ if science_file is not None:
                     ra_center = header_to_process['OBJRA']
                     dec_center = header_to_process['OBJDEC']
 
-                # if ra_center is not None and dec_center is not None:
-                #     st.write(f"Aladin view centered at RA={ra_center}, DEC={dec_center}")
+                if ra_center is not None and dec_center is not None:
+                    # st.write(f"Aladin view centered at RA={ra_center}, DEC={dec_center}")
     
                     # Create a button to open Aladin in a new tab with catalog
                     if 'final_phot_table' in st.session_state and not st.session_state['final_phot_table'].empty:
                         # Create URL with parameters
                         aladin_href = f"aladin.html?ra={ra_center}&dec={dec_center}"
                         
-                        # Create button with JavaScript to open the link in a new tab
-                        st.markdown(
-                            f"""
-                            <a href="{aladin_href}" target="_blank" style="text-decoration: none;">
-                                <button style="
-                                    background-color: #4CAF50;
-                                    color: white;
-                                    padding: 10px 15px;
-                                    border: none;
-                                    border-radius: 4px;
-                                    cursor: pointer;
-                                    font-size: 16px;
-                                    margin: 10px 0;
-                                ">
-                                    Open Aladin Catalog Viewer in New Tab
-                                </button>
-                            </a>
-                            <p style="font-size: 0.9em; margin-top: 5px;">
-                                After opening Aladin, upload the catalog CSV file you downloaded above.
-                            </p>
-                            """,
-                            unsafe_allow_html=True
+                        # Use Streamlit's native link_button instead of custom HTML
+                        st.link_button(
+                            "Open Aladin Catalog Viewer in New Tab",
+                            aladin_href,
+                            help="Opens Aladin Lite with catalog data. Upload your CSV file after opening."
                         )
+                        
+                        # Display instructions underneath
+                        st.caption("After opening Aladin, upload the catalog CSV file you downloaded above.")
                     
                     # # Embedded view for quick reference
                     # st.subheader("Quick DSS2 Preview")
