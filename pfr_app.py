@@ -2963,7 +2963,7 @@ if science_file is not None:
                     st.exception(e)  # This will show the full traceback for debugging
 
                 # Display DSS2 color view with detected sources
-                st.subheader("DSS2 Color View")
+                # st.subheader("DSS2 Color View")
 
                 # Extract RA/DEC from header or WCS
                 ra_center = None
