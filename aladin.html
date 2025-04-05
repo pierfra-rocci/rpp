@@ -8,10 +8,70 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Direct load with error handling -->
+    <script>
+        // Global flag to track if PapaParse is loaded
+        window.papaParseLoaded = false;
+        
+        // Function to load PapaParse from different sources
+        function loadPapaParse() {
+            const sources = [
+                "https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js",
+                "https://unpkg.com/papaparse@latest/papaparse.min.js",
+                "https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"
+            ];
+            
+            function trySource(index) {
+                if (index >= sources.length) {
+                    console.error("Failed to load PapaParse from all sources");
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = sources[index];
+                script.onload = function() {
+                    window.papaParseLoaded = true;
+                    console.log("PapaParse loaded successfully from " + sources[index]);
+                };
+                script.onerror = function() {
+                    console.error("Failed to load PapaParse from " + sources[index]);
+                    trySource(index + 1);
+                };
+                document.head.appendChild(script);
+            }
+            
+            trySource(0);
+        }
+        
+        // Load PapaParse on page load
+        window.addEventListener('load', function() {
+            if (typeof Papa === 'undefined') {
+                console.log("PapaParse not detected, loading it now...");
+                loadPapaParse();
+            } else {
+                window.papaParseLoaded = true;
+                console.log("PapaParse already loaded");
+            }
+        });
+    </script>
     
     <!-- Important: Load Aladin Lite with 'defer' to ensure it loads completely -->
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/aladin-lite/3.2.0/aladin.js" defer></script>
+    
+    <!-- In the head section, ensure proper loading order and fallbacks -->
+    <script>
+        // Check if scripts failed to load and provide fallbacks
+        window.addEventListener('error', function(e) {
+            if (e.target && e.target.src && e.target.src.includes('papaparse')) {
+                console.error('PapaParse failed to load from CDN, loading from alternate source');
+                // Create a new script tag with an alternative source
+                const script = document.createElement('script');
+                script.src = "https://unpkg.com/papaparse@latest/papaparse.min.js";
+                document.head.appendChild(script);
+            }
+        }, true);
+    </script>
     
     <style>
         body {
@@ -142,11 +202,11 @@
             </div>
             <div class="form-group">
                 <label for="raColumn">RA Column Name</label>
-                <input type="text" id="raColumn" value="RA" placeholder="e.g., RA, ra, RAJ2000">
+                <input type="text" id="raColumn" value="ra" placeholder="e.g., RA, ra, RAJ2000">
             </div>
             <div class="form-group">
                 <label for="decColumn">DEC Column Name</label>
-                <input type="text" id="decColumn" value="DEC" placeholder="e.g., DEC, dec, DEJ2000">
+                <input type="text" id="decColumn" value="dec" placeholder="e.g., DEC, dec, DEJ2000">
             </div>
             <div class="form-group">
                 <label for="colorColumn">Color By (optional)</label>
@@ -212,16 +272,18 @@
                 
                 log("Attempting to load Aladin library...");
                 
-                // Try multiple CDN sources sequentially
+                // Try CDN sources sequentially
                 const cdnSources = [
-                    'https://cdnjs.cloudflare.com/ajax/libs/aladin-lite/3.2.0/aladin.js',
                     'https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js',
-                    'https://cdn.jsdelivr.net/npm/aladin-lite@3.2.0/aladin.min.js'
                 ];
                 
                 let currentSourceIndex = 0;
+                let aladinLoaded = false;
+                let globalTimeoutId = null;
                 
                 function tryLoadScript() {
+                    if (aladinLoaded) return; // Skip if already loaded
+                    
                     if (currentSourceIndex >= cdnSources.length) {
                         // We've tried all sources, offer local file option and fail
                         const errorMsg = "Failed to load Aladin library from all CDN sources.";
@@ -252,6 +314,8 @@
                         // Give a little time for the script to initialize
                         setTimeout(() => {
                             if (window.A) {
+                                aladinLoaded = true;
+                                if (globalTimeoutId) clearTimeout(globalTimeoutId);
                                 log("Aladin library loaded and detected");
                                 createAladinInstance();
                                 resolve();
@@ -283,11 +347,13 @@
                 tryLoadScript();
                 
                 // Overall timeout as a last resort
-                setTimeout(() => {
-                    const errorMsg = "Failed to load Aladin library after multiple attempts. Please check your internet connection, try a different browser, or check browser console for errors.";
-                    showStatus(errorMsg, "error");
-                    log("Detailed troubleshooting: Ensure no content blockers are active and try opening the Aladin CDN URL directly in a new tab.");
-                    reject(new Error(errorMsg));
+                globalTimeoutId = setTimeout(() => {
+                    if (!aladinLoaded) {
+                        const errorMsg = "Failed to load Aladin library after multiple attempts.";
+                        showStatus(errorMsg, "error");
+                        log("Detailed troubleshooting: Ensure no content blockers are active and try opening the Aladin CDN URL directly in a new tab.");
+                        reject(new Error(errorMsg));
+                    }
                 }, 20000);
             });
         }
@@ -336,210 +402,284 @@
         
         // Function to handle CSV upload and processing
         function processCatalogFile() {
-            if (!aladin) {
-                showStatus("Aladin is not initialized. Please wait or refresh the page.", "error");
-                return;
-            }
-            
-            const fileInput = document.getElementById('csvFile');
-            const raColumnName = document.getElementById('raColumn').value.trim();
-            const decColumnName = document.getElementById('decColumn').value.trim();
-            const colorColumnName = document.getElementById('colorColumn').value.trim();
-            const markerSize = parseInt(document.getElementById('markerSize').value);
-            const initCoords = document.getElementById('initCoords').value.trim();
-            
-            // Show loading indicator
-            document.getElementById('loading').style.display = 'inline';
-            
-            // Update target coordinates if provided
-            if (initCoords) {
-                try {
-                    aladin.gotoObject(initCoords);
-                    log(`Set view to coordinates: ${initCoords}`);
-                } catch (error) {
-                    log(`Error setting coordinates: ${error.message}`);
-                    showStatus(`Invalid coordinates format: ${initCoords}`, "error");
-                }
-            }
-            
-            // Check if file is selected
-            if (!fileInput.files.length) {
-                showStatus("Please select a CSV file.", "error");
-                document.getElementById('loading').style.display = 'none';
-                return;
-            }
-
-            const file = fileInput.files[0];
-            log(`Processing file: ${file.name} (${Math.round(file.size / 1024)} KB)`);
-            
-            // Clear previous catalog
-            if (currentCatalog) {
-                aladin.removeCatalog(currentCatalog);
-                log("Removed previous catalog");
-            }
-            
-            // Create a new catalog
             try {
-                currentCatalog = A.catalog({
-                    name: file.name,
-                    sourceSize: markerSize
-                });
-                aladin.addCatalog(currentCatalog);
-                log(`Created new catalog with name: ${file.name}`);
-            } catch (error) {
-                showStatus(`Error creating catalog: ${error.message}`, "error");
-                document.getElementById('loading').style.display = 'none';
-                return;
-            }
-            
-            // Parse CSV file
-            Papa.parse(file, {
-                header: true,
-                dynamicTyping: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    // Hide loading indicator
+                if (!aladin) {
+                    showStatus("Aladin is not initialized. Please wait or refresh the page.", "error");
                     document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+                
+                // Check if PapaParse is loaded
+                if (typeof Papa === 'undefined') {
+                    showStatus("CSV parser library not loaded. Loading it now...", "warning");
                     
-                    if (results.errors.length > 0) {
-                        showStatus("Error parsing CSV: " + results.errors[0].message, "error");
-                        log(`CSV parsing errors: ${JSON.stringify(results.errors)}`);
-                        return;
-                    }
+                    // Show loading indicator to provide feedback
+                    document.getElementById('loading').style.display = 'inline';
+                    document.getElementById('loading').textContent = "Loading CSV parser...";
                     
-                    csvData = results.data;
-                    log(`CSV parsed successfully. Found ${csvData.length} rows and columns: ${results.meta.fields.join(', ')}`);
+                    // Try alternative loading approaches
+                    loadPapaParse(); // This is the function we added in the head
                     
-                    // Log first row for debugging
-                    if (csvData.length > 0) {
-                        log(`First row data: ${JSON.stringify(csvData[0])}`);
-                    }
+                    setTimeout(function() {
+                        if (typeof Papa !== 'undefined' || window.papaParseLoaded) {
+                            document.getElementById('loading').style.display = 'none';
+                            showStatus("CSV parser loaded successfully. Please try again.", "success");
+                        } else {
+                            document.getElementById('loading').style.display = 'none';
+                            showStatus("Failed to load CSV parser. Please refresh the page or try a different browser.", "error");
+                        }
+                    }, 3000); // Give it 3 seconds to load
                     
-                    // Check if RA and DEC columns exist
-                    if (!csvData.length) {
-                        showStatus("The CSV file contains no data rows.", "error");
-                        return;
-                    }
-                    
-                    if (!csvData[0].hasOwnProperty(raColumnName)) {
-                        showStatus(`Could not find column named "${raColumnName}" in the CSV file. Available columns: ${Object.keys(csvData[0]).join(', ')}`, "error");
-                        return;
-                    }
-                    
-                    if (!csvData[0].hasOwnProperty(decColumnName)) {
-                        showStatus(`Could not find column named "${decColumnName}" in the CSV file. Available columns: ${Object.keys(csvData[0]).join(', ')}`, "error");
-                        return;
-                    }
+                    return;
+                }
+                
+                const fileInput = document.getElementById('csvFile');
+                const raColumnName = document.getElementById('raColumn').value.trim();
+                const decColumnName = document.getElementById('decColumn').value.trim();
+                const colorColumnName = document.getElementById('colorColumn').value.trim();
+                const markerSize = parseInt(document.getElementById('markerSize').value) || 6;
+                const initCoords = document.getElementById('initCoords').value.trim();
+                
+                // Show immediate loading feedback when button is clicked
+                document.getElementById('loading').style.display = 'inline';
+                document.getElementById('loading').textContent = "Processing...";
+                showStatus("Processing your request...", "success");
 
-                    // Process each row
-                    let minVal = Infinity;
-                    let maxVal = -Infinity;
+                // Update target coordinates if provided
+                if (initCoords) {
+                    try {
+                        aladin.gotoObject(initCoords);
+                        log(`Set view to coordinates: ${initCoords}`);
+                    } catch (error) {
+                        log(`Error setting coordinates: ${error.message}`);
+                        showStatus(`Invalid coordinates format: ${initCoords}`, "error");
+                        // Continue processing even if coordinates setting fails
+                    }
+                }
+                
+                // Check if file is selected
+                if (!fileInput.files.length) {
+                    showStatus("Please select a CSV file.", "error");
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+
+                const file = fileInput.files[0];
+                log(`Processing file: ${file.name} (${Math.round(file.size / 1024)} KB)`);
+                
+                // Clear previous catalog
+                if (currentCatalog) {
+                    try {
+                        // Using the correct API methods to remove a catalog
+                        aladin.removeCatalog(currentCatalog);
+                    } catch (err) {
+                        try {
+                            // Alternative approach if the first method fails
+                            currentCatalog.clear();
+                            log("Cleared previous catalog using alternative method");
+                        } catch (innerErr) {
+                            // If both methods fail, try a different approach
+                            log(`Warning: Could not clear previous catalog: ${err.message}`);
+                            try {
+                                // Last resort: remove and recreate the overlay
+                                aladin.view.removeCatalog(currentCatalog);
+                            } catch (finalErr) {
+                                log("Using fallback catalog cleanup method");
+                            }
+                        }
+                    }
+                }
+                
+                // Create a new catalog
+                try {
+                    currentCatalog = A.catalog({
+                        name: file.name,
+                        sourceSize: markerSize
+                    });
+                    aladin.addCatalog(currentCatalog);
+                    log(`Created new catalog with name: ${file.name}`);
+                } catch (error) {
+                    showStatus(`Error creating catalog: ${error.message}`, "error");
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+                
+                // Parse CSV file with PapaParse
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        try {
+                            document.getElementById('loading').style.display = 'none';
+                            
+                            if (results.errors && results.errors.length > 0) {
+                                showStatus("Error parsing CSV: " + results.errors[0].message, "error");
+                                log(`CSV parsing errors: ${JSON.stringify(results.errors)}`);
+                                return;
+                            }
+                            
+                            if (!results.data || !Array.isArray(results.data) || results.data.length === 0) {
+                                showStatus("Invalid CSV format or empty file", "error");
+                                return;
+                            }
+                            
+                            csvData = results.data;
+                            log(`CSV parsed successfully. Found ${csvData.length} rows`);
+                            
+                            // Process and display the data
+                            processSourceData(csvData, raColumnName, decColumnName, colorColumnName);
+                        } catch (error) {
+                            document.getElementById('loading').style.display = 'none';
+                            showStatus(`Error processing CSV data: ${error.message}`, "error");
+                            console.error("CSV processing error:", error);
+                        }
+                    },
+                    error: function(error) {
+                        document.getElementById('loading').style.display = 'none';
+                        showStatus("Error reading file: " + error.message, "error");
+                        log(`CSV parsing error: ${error.message}`);
+                    }
+                });
+            } catch (error) {
+                // Catch any other errors
+                document.getElementById('loading').style.display = 'none';
+                showStatus(`Unexpected error: ${error.message}`, "error");
+                console.error("Unexpected error in processCatalogFile:", error);
+            }
+        }
+
+        // Helper function to process source data and add to catalog
+        function processSourceData(csvData, raColumnName, decColumnName, colorColumnName) {
+            try {
+                // Calculate min/max for color column if specified
+                let minVal = Infinity;
+                let maxVal = -Infinity;
+                
+                // First pass for min/max calculation
+                if (colorColumnName && colorColumnName.trim() !== '') {
+                    let colorColumnFound = false;
                     
-                    // First pass to find min/max if color column is specified
-                    if (colorColumnName && csvData.some(row => row.hasOwnProperty(colorColumnName))) {
-                        csvData.forEach(row => {
+                    csvData.forEach(row => {
+                        if (row.hasOwnProperty(colorColumnName)) {
+                            colorColumnFound = true;
                             const val = row[colorColumnName];
                             if (typeof val === 'number' && !isNaN(val)) {
                                 minVal = Math.min(minVal, val);
                                 maxVal = Math.max(maxVal, val);
                             }
-                        });
-                        log(`Color column "${colorColumnName}" range: ${minVal} to ${maxVal}`);
-                    }
-                    
-                    // Second pass to add sources
-                    let sourcesAdded = 0;
-                    let sourcesSkipped = 0;
-                    
-                    csvData.forEach((row, index) => {
-                        const ra = row[raColumnName];
-                        const dec = row[decColumnName];
-                        
-                        if (ra === undefined || dec === undefined || ra === null || dec === null || isNaN(ra) || isNaN(dec)) {
-                            sourcesSkipped++;
-                            if (index < 5) {
-                                log(`Skipping row ${index + 1} due to invalid coordinates: RA=${ra}, DEC=${dec}`);
-                            }
-                            return; // Skip rows with missing coordinates
-                        }
-                        
-                        let color = "#1AB7EA"; // Default color
-                        
-                        // Color by specified column if available
-                        if (colorColumnName && row.hasOwnProperty(colorColumnName) && 
-                            typeof row[colorColumnName] === 'number' && !isNaN(row[colorColumnName])) {
-                            const val = row[colorColumnName];
-                            const normalizedVal = (val - minVal) / (maxVal - minVal); // Normalize to 0-1
-                            
-                            // Create a color gradient from blue to red
-                            const r = Math.floor(normalizedVal * 255);
-                            const b = Math.floor((1 - normalizedVal) * 255);
-                            color = `rgb(${r}, 100, ${b})`;
-                        }
-                        
-                        try {
-                            // Add the source to the catalog
-                            currentCatalog.addSources([A.source(ra, dec, {
-                                color: color,
-                                data: row
-                            })]);
-                            
-                            sourcesAdded++;
-                            
-                            // Log first few sources for debugging
-                            if (sourcesAdded <= 3) {
-                                log(`Added source ${sourcesAdded}: RA=${ra}, DEC=${dec}`);
-                            }
-                        } catch (error) {
-                            sourcesSkipped++;
-                            if (index < 5) {
-                                log(`Error adding source at row ${index + 1}: ${error.message}`);
-                            }
                         }
                     });
                     
-                    // Show stats
-                    log(`Added ${sourcesAdded} sources, skipped ${sourcesSkipped} invalid entries`);
-                    
-                    if (sourcesAdded > 0) {
-                        showStatus(`Successfully loaded ${sourcesAdded} sources from ${file.name}${sourcesSkipped ? ` (${sourcesSkipped} entries skipped)` : ''}`, "success");
-                        
-                        // If we have coordinates for the first valid source, center on it
-                        if (csvData.length > 0 && sourcesAdded > 0) {
-                            const firstValidSource = csvData.find(row => {
-                                const ra = row[raColumnName];
-                                const dec = row[decColumnName];
-                                return ra !== undefined && dec !== undefined && ra !== null && dec !== null && !isNaN(ra) && !isNaN(dec);
-                            });
-                            
-                            if (firstValidSource) {
-                                try {
-                                    const ra = firstValidSource[raColumnName];
-                                    const dec = firstValidSource[decColumnName];
-                                    aladin.gotoRaDec(ra, dec);
-                                    log(`Centered view on first source: RA=${ra}, DEC=${dec}`);
-                                } catch (error) {
-                                    log(`Error centering on first source: ${error.message}`);
-                                }
-                            }
-                        }
-                        
-                        // Add click event to display source information
-                        currentCatalog.on('objectClicked', function(object) {
-                            displaySourceInfo(object.data);
-                        });
+                    if (colorColumnFound) {
+                        log(`Color column "${colorColumnName}" range: ${minVal} to ${maxVal}`);
                     } else {
-                        showStatus("No valid sources found in the CSV file. Please check your data format and column names.", "error");
+                        log(`Warning: Color column "${colorColumnName}" not found in data`);
                     }
-                },
-                error: function(error) {
-                    document.getElementById('loading').style.display = 'none';
-                    showStatus("Error reading file: " + error.message, "error");
-                    log(`CSV parsing error: ${error.message}`);
                 }
-            });
+                
+                // Second pass to add sources
+                let sourcesAdded = 0;
+                let sourcesSkipped = 0;
+                
+                csvData.forEach((row, index) => {
+                    const ra = row[raColumnName];
+                    const dec = row[decColumnName];
+                    
+                    if (ra === undefined || dec === undefined || ra === null || dec === null || isNaN(ra) || isNaN(dec)) {
+                        sourcesSkipped++;
+                        if (index < 5) {
+                            log(`Skipping row ${index + 1} due to invalid coordinates: RA=${ra}, DEC=${dec}`);
+                        }
+                        return; // Skip rows with missing coordinates
+                    }
+                    
+                    let color = "#1AB7EA"; // Default color
+                    
+                    // Color by specified column if available
+                    if (colorColumnName && row.hasOwnProperty(colorColumnName) && 
+                        typeof row[colorColumnName] === 'number' && !isNaN(row[colorColumnName])) {
+                        const val = row[colorColumnName];
+                        const normalizedVal = (val - minVal) / (maxVal - minVal || 1); // Avoid division by zero
+                        
+                        // Create a color gradient from blue to red
+                        const r = Math.floor(normalizedVal * 255);
+                        const b = Math.floor((1 - normalizedVal) * 255);
+                        color = `rgb(${r}, 100, ${b})`;
+                    }
+                    
+                    try {
+                        // Add the source to the catalog
+                        currentCatalog.addSources([A.source(ra, dec, {
+                            color: color,
+                            data: row
+                        })]);
+                        
+                        sourcesAdded++;
+                        
+                        // Log first few sources for debugging
+                        if (sourcesAdded <= 3) {
+                            log(`Added source ${sourcesAdded}: RA=${ra}, DEC=${dec}`);
+                        }
+                    } catch (error) {
+                        sourcesSkipped++;
+                        if (index < 5) {
+                            log(`Error adding source at row ${index + 1}: ${error.message}`);
+                        }
+                    }
+                });
+                
+                // Show stats
+                log(`Added ${sourcesAdded} sources, skipped ${sourcesSkipped} invalid entries`);
+                
+                if (sourcesAdded > 0) {
+                    showStatus(`Successfully loaded ${sourcesAdded} sources from catalog${sourcesSkipped ? ` (${sourcesSkipped} entries skipped)` : ''}`, "success");
+                    
+                    // Center on first valid source
+                    try {
+                        centerOnFirstSource(csvData, raColumnName, decColumnName);
+                    } catch (err) {
+                        log(`Warning: Could not center view: ${err.message}`);
+                    }
+                    
+                    // Use Aladin's listener system instead
+                    if (!aladin.hasClickHandler) {
+                        aladin.hasClickHandler = true; // Flag to prevent multiple listeners
+                        aladin.on('objectClicked', function(object) {
+                            if (object && object.data) {
+                                displaySourceInfo(object.data);
+                                log(`Object clicked: ${object.ra.toFixed(6)}, ${object.dec.toFixed(6)}`);
+                            }
+                        });
+                        log("Click handler attached to Aladin instance");
+                    }
+                } else {
+                    showStatus("No valid sources found in the CSV file. Check column names and data format.", "error");
+                }
+            } catch (error) {
+                showStatus(`Error processing source data: ${error.message}`, "error");
+                console.error("Error in processSourceData:", error);
+            }
         }
-        
+
+        // Helper to center on first valid source
+        function centerOnFirstSource(csvData, raColumnName, decColumnName) {
+            if (csvData.length > 0) {
+                const firstValidSource = csvData.find(row => {
+                    const ra = row[raColumnName];
+                    const dec = row[decColumnName];
+                    return ra !== undefined && dec !== undefined && ra !== null && dec !== null && !isNaN(ra) && !isNaN(dec);
+                });
+                
+                if (firstValidSource) {
+                    const ra = firstValidSource[raColumnName];
+                    const dec = firstValidSource[decColumnName];
+                    aladin.gotoRaDec(ra, dec);
+                    log(`Centered view on first source: RA=${ra}, DEC=${dec}`);
+                }
+            }
+        }
+
         // Initialize when document is ready
         document.addEventListener('DOMContentLoaded', function() {
             log("Page loaded. Initializing application...");
@@ -567,6 +707,16 @@
             // Initial status
             showStatus("Upload a CSV file and click 'Load Catalog' to begin.", "success");
         });
+
+        window.addEventListener('error', function(e) {
+            // If any script fails to load, check if it's PapaParse and try local
+            if (e.target && e.target.src && e.target.src.includes('papaparse') && typeof Papa === 'undefined') {
+                console.log("All CDN attempts failed, trying local PapaParse");
+                const script = document.createElement('script');
+                script.src = "papaparse.min.js"; // Local copy in the same directory
+                document.head.appendChild(script);
+            }
+        }, true);
     </script>
 </body>
 </html>
