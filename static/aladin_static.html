@@ -1,268 +1,168 @@
+.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aladin Catalog Viewer</title>
-    <!-- Load dependencies -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-toast-plugin/1.3.2/jquery.toast.min.js"></script>
-    
-    <!-- Direct load with error handling -->
-    <script>
-        // Global flag to track if PapaParse is loaded
-        window.papaParseLoaded = false;
-        
-        // Function to load PapaParse from different sources
-        function loadPapaParse() {
-            const sources = [
-                "https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js",
-                "https://unpkg.com/papaparse@latest/papaparse.min.js",
-                "https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"
-            ];
-            
-            function trySource(index) {
-                if (index >= sources.length) {
-                    console.error("Failed to load PapaParse from all sources");
-                    return;
-                }
-                
-                const script = document.createElement('script');
-                script.src = sources[index];
-                script.onload = function() {
-                    window.papaParseLoaded = true;
-                    console.log("PapaParse loaded successfully from " + sources[index]);
-                };
-                script.onerror = function() {
-                    console.error("Failed to load PapaParse from " + sources[index]);
-                    trySource(index + 1);
-                };
-                document.head.appendChild(script);
-            }
-            
-            trySource(0);
-        }
-        
-        // Load PapaParse on page load
-        window.addEventListener('load', function() {
-            if (typeof Papa === 'undefined') {
-                console.log("PapaParse not detected, loading it now...");
-                loadPapaParse();
-            } else {
-                window.papaParseLoaded = true;
-                console.log("PapaParse already loaded");
-            }
-        });
-    </script>
-    
-    <!-- Important: Load Aladin Lite with 'defer' to ensure it loads completely -->
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/aladin-lite/3.2.0/aladin.js" defer></script>
-    
-    <!-- In the head section, ensure proper loading order and fallbacks -->
-    <script>
-        // Check if scripts failed to load and provide fallbacks
-        window.addEventListener('error', function(e) {
-            if (e.target && e.target.src && e.target.src.includes('papaparse')) {
-                console.error('PapaParse failed to load from CDN, loading from alternate source');
-                // Create a new script tag with an alternative source
-                const script = document.createElement('script');
-                script.src = "https://unpkg.com/papaparse@latest/papaparse.min.js";
-                document.head.appendChild(script);
-            }
-        }, true);
-    </script>
-    
+    <script src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
+        body, html {
+            height: 100%;
             margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
+            padding: 0;
+            font-family: Arial, sans-serif;
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        #container {
             display: flex;
-            flex-direction: column;
-            gap: 20px;
+            height: 100%;
+        }
+        #aladin-container {
+            flex: 1;
+            position: relative;
+        }
+        #controls {
+            width: 300px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-left: 1px solid #ddd;
+            overflow-y: auto;
         }
         #aladin-lite-div {
             width: 100%;
-            height: 600px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #000;
+            height: 100%;
         }
-        .panel {
-            padding: 15px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        h1 {
+            font-size: 1.5em;
+            margin-top: 0;
         }
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: flex-end;
+        .control-group {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ddd;
         }
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            min-width: 200px;
-        }
-        label {
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        input, select {
+        input, button, select {
+            margin: 5px 0;
             padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
         }
         button {
-            padding: 8px 15px;
-            background-color: #4a6fa5;
+            background: #4CAF50;
             color: white;
             border: none;
-            border-radius: 4px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            font-weight: bold;
         }
         button:hover {
-            background-color: #3a5985;
-        }
-        .source-info {
-            padding: 10px;
-            margin-top: 10px;
-            background-color: #f9f9f9;
-            border: 1px solid #eee;
-            border-radius: 4px;
-            max-height: 200px;
-            overflow-y: auto;
+            background: #45a049;
         }
         #status {
-            margin-top: 10px;
             padding: 10px;
+            margin-top: 10px;
             border-radius: 4px;
         }
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
+        .success { background: #d4edda; color: #155724; }
+        .warning { background: #fff3cd; color: #856404; }
+        .error { background: #f8d7da; color: #721c24; }
         #log {
-            font-family: monospace;
-            max-height: 100px;
+            height: 150px;
             overflow-y: auto;
-            background-color: #f8f9fa;
-            color: #333;
+            background: #333;
+            color: #f0f0f0;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        #source-info {
+            background: #e9f7fe;
             padding: 10px;
             border-radius: 4px;
             margin-top: 10px;
+            display: none;
         }
-        .loading {
+        #loading {
             display: none;
             margin-left: 10px;
-            font-style: italic;
-            color: #666;
-        }
-        .sample-data {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #f0f8ff;
-            border-radius: 4px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="panel">
-            <h1>Aladin Lite Catalog Viewer</h1>
-            <p>Upload a CSV catalog file with RA and DEC coordinates to visualize sources on the DSS2 color sky map.</p>
-            <button id="showSampleBtn">Show Sample CSV Format</button>
-            <div id="sampleData" class="sample-data" style="display:none;">
-                <strong>Sample CSV Format:</strong><br>
-                <pre>RA,DEC,Magnitude,Name
-83.63308,22.0145,15.3,Star1
-83.82292,21.9092,16.2,Star2
-84.05417,22.1231,14.7,Star3</pre>
-                <p>The column names are customizable - just make sure to specify the correct RA and DEC column names in the form.</p>
-            </div>
+    <div id="container">
+        <div id="aladin-container">
+            <div id="aladin-lite-div"></div>
         </div>
-        
-        <div class="panel controls">
-            <div class="form-group">
-                <label for="csvFile">Upload Catalog (CSV)</label>
+        <div id="controls">
+            <h1>Aladin Catalog Viewer</h1>
+            
+            <div class="control-group">
+                <h3>Upload Catalog</h3>
                 <input type="file" id="csvFile" accept=".csv">
+                <div>
+                    <label for="raColumn">RA Column Name:</label>
+                    <input type="text" id="raColumn" value="ra" placeholder="e.g., ra">
+                </div>
+                <div>
+                    <label for="decColumn">DEC Column Name:</label>
+                    <input type="text" id="decColumn" value="dec" placeholder="e.g., dec">
+                </div>
+                <div>
+                    <label for="colorColumn">Color by Column (optional):</label>
+                    <input type="text" id="colorColumn" placeholder="e.g., magnitude">
+                </div>
+                <div>
+                    <label for="markerSize">Marker Size:</label>
+                    <input type="number" id="markerSize" min="1" max="20" value="8">
+                </div>
+                <div>
+                    <label for="initCoords">Initial Coordinates:</label>
+                    <input type="text" id="initCoords" placeholder="e.g., 83.633083 22.0145">
+                </div>
+                <button id="loadBtn" onclick="processCatalogFile()">Load Catalog <span id="loading">Loading...</span></button>
             </div>
-            <div class="form-group">
-                <label for="raColumn">RA Column Name</label>
-                <input type="text" id="raColumn" value="ra" placeholder="e.g., RA, ra, RAJ2000">
-            </div>
-            <div class="form-group">
-                <label for="decColumn">DEC Column Name</label>
-                <input type="text" id="decColumn" value="dec" placeholder="e.g., DEC, dec, DEJ2000">
-            </div>
-            <div class="form-group">
-                <label for="colorColumn">Color By (optional)</label>
-                <input type="text" id="colorColumn" placeholder="e.g., magnitude, flux">
-            </div>
-            <div class="form-group">
-                <label for="initCoords">Initial Coordinates</label>
-                <input type="text" id="initCoords" value="00 42 44.3 +41 16 09" placeholder="e.g., 00 42 44.3 +41 16 09">
-            </div>
-            <div class="form-group">
-                <label for="markerSize">Marker Size</label>
-                <input type="number" id="markerSize" value="6" min="1" max="20">
-            </div>
-            <button id="loadButton">Load Catalog</button>
-            <span id="loading" class="loading">Loading...</span>
-        </div>
-        
-        <div id="aladin-lite-div"></div>
-        
-        <div class="panel">
-            <h3>Source Information</h3>
-            <div id="sourceInfo" class="source-info">
-                Click on a source to see its information.
-            </div>
+            
             <div id="status"></div>
-            <div id="log"></div>
+            <div id="source-info"></div>
+            
+            <div class="control-group">
+                <h3>Log</h3>
+                <div id="log"></div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Global variables
         let aladin = null;
         let currentCatalog = null;
         let csvData = null;
-        
-        // Debug logging
-        function log(message) {
-            const logDiv = document.getElementById('log');
-            const timestamp = new Date().toLocaleTimeString();
-            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
-            logDiv.scrollTop = logDiv.scrollHeight;
-            console.log(message);
-        }
-        
-        // Show status message
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('status');
-            statusDiv.textContent = message;
-            statusDiv.className = type;
-            log(message);
-        }
-        
+
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const raParam = urlParams.get('ra');
+        const decParam = urlParams.get('dec');
+
+        // Initialize the page
+        window.onload = function() {
+            log("Page loaded. Initializing application...");
+            
+            // If we have RA/DEC parameters, set them as initial coordinates
+            if (raParam && decParam) {
+                document.getElementById('initCoords').value = `${raParam} ${decParam}`;
+            }
+            
+            // Load Aladin
+            initAladin().then(() => {
+                log("Upload a CSV file and click 'Load Catalog' to begin.");
+            }).catch(error => {
+                log(`Failed to initialize Aladin: ${error.message}`);
+            });
+        };
+
         // Wait for Aladin to be loaded completely
         function initAladin() {
             return new Promise((resolve, reject) => {
-                // First check if Aladin is already loaded by the HTML script tag
+                // Check if Aladin is already loaded
                 if (window.A) {
                     log("Aladin library is already loaded");
                     createAladinInstance();
@@ -272,9 +172,9 @@
                 
                 log("Attempting to load Aladin library...");
                 
-                // Try CDN sources sequentially
+                // Try multiple CDN sources sequentially
                 const cdnSources = [
-                    'https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js',
+                    'https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js'
                 ];
                 
                 let currentSourceIndex = 0;
@@ -334,12 +234,6 @@
                         tryLoadScript();
                     };
                     
-                    // Clean up any previous script attempts to avoid conflicts
-                    const oldScript = document.querySelector(`script[src="${script.src}"]`);
-                    if (oldScript) {
-                        document.head.removeChild(oldScript);
-                    }
-                    
                     document.head.appendChild(script);
                 }
                 
@@ -357,52 +251,45 @@
                 }, 20000);
             });
         }
-        
-        // Create Aladin instance
+
+        // Create and configure the Aladin instance
         function createAladinInstance() {
+            log("Creating Aladin instance...");
             try {
-                log("Creating Aladin instance...");
+                // Create Aladin Lite instance
                 aladin = A.aladin('#aladin-lite-div', {
                     survey: "P/DSS2/color",
-                    fov: 0.5,
-                    target: "00 42 44.3 +41 16 09", // Default to M31 (Andromeda Galaxy)
-                    cooFrame: "J2000",
+                    fov: 1.0,
+                    target: document.getElementById('initCoords').value || "0 0",
                     showReticle: true,
-                    showLayersControl: true,
-                    showFullscreenControl: true,
                     showFrame: true,
-                    showCoordinates: true
+                    showCatalog: true,
+                    fullScreen: false
                 });
+                
+                // Set up click handler
+                aladin.on('objectClicked', function(object) {
+                    if (object && object.data) {
+                        displaySourceInfo(object.data);
+                    }
+                });
+                
                 log("Aladin instance created successfully");
             } catch (error) {
-                log("Error creating Aladin instance: " + error.message);
-                showStatus("Error initializing sky view: " + error.message, "error");
+                log(`Error creating Aladin instance: ${error.message}`);
+                showStatus("Failed to create Aladin map. Please check the console for errors.", "error");
+                throw error;
             }
         }
 
-        // Display source information
-        function displaySourceInfo(data) {
-            const sourceInfoDiv = document.getElementById('sourceInfo');
-            
-            if (!data) {
-                sourceInfoDiv.innerHTML = "No data available for this source.";
-                return;
-            }
-            
-            let html = "<table style='width:100%; border-collapse: collapse;'>";
-            html += "<tr><th style='text-align:left; padding:5px; border-bottom:1px solid #ddd;'>Property</th><th style='text-align:left; padding:5px; border-bottom:1px solid #ddd;'>Value</th></tr>";
-            
-            for (const [key, value] of Object.entries(data)) {
-                html += `<tr><td style='padding:5px; border-bottom:1px solid #eee;'>${key}</td><td style='padding:5px; border-bottom:1px solid #eee;'>${value}</td></tr>`;
-            }
-            
-            html += "</table>";
-            sourceInfoDiv.innerHTML = html;
-        }
-        
         // Function to handle CSV upload and processing
         function processCatalogFile() {
             try {
+                // Show immediate loading feedback when button is clicked
+                document.getElementById('loading').style.display = 'inline';
+                document.getElementById('loading').textContent = "Processing...";
+                showStatus("Processing your request...", "success");
+                
                 if (!aladin) {
                     showStatus("Aladin is not initialized. Please wait or refresh the page.", "error");
                     document.getElementById('loading').style.display = 'none';
@@ -417,18 +304,18 @@
                     document.getElementById('loading').style.display = 'inline';
                     document.getElementById('loading').textContent = "Loading CSV parser...";
                     
-                    // Try alternative loading approaches
-                    loadPapaParse(); // This is the function we added in the head
-                    
-                    setTimeout(function() {
-                        if (typeof Papa !== 'undefined' || window.papaParseLoaded) {
-                            document.getElementById('loading').style.display = 'none';
-                            showStatus("CSV parser loaded successfully. Please try again.", "success");
-                        } else {
-                            document.getElementById('loading').style.display = 'none';
-                            showStatus("Failed to load CSV parser. Please refresh the page or try a different browser.", "error");
-                        }
-                    }, 3000); // Give it 3 seconds to load
+                    // Try to load PapaParse dynamically
+                    const script = document.createElement('script');
+                    script.src = "https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js";
+                    script.onload = function() {
+                        document.getElementById('loading').style.display = 'none';
+                        showStatus("CSV parser loaded successfully. Please try again.", "success");
+                    };
+                    script.onerror = function() {
+                        document.getElementById('loading').style.display = 'none';
+                        showStatus("Failed to load CSV parser. Please refresh the page.", "error");
+                    };
+                    document.head.appendChild(script);
                     
                     return;
                 }
@@ -440,11 +327,6 @@
                 const markerSize = parseInt(document.getElementById('markerSize').value) || 6;
                 const initCoords = document.getElementById('initCoords').value.trim();
                 
-                // Show immediate loading feedback when button is clicked
-                document.getElementById('loading').style.display = 'inline';
-                document.getElementById('loading').textContent = "Processing...";
-                showStatus("Processing your request...", "success");
-
                 // Update target coordinates if provided
                 if (initCoords) {
                     try {
@@ -470,23 +352,11 @@
                 // Clear previous catalog
                 if (currentCatalog) {
                     try {
-                        // Using the correct API methods to remove a catalog
                         aladin.removeCatalog(currentCatalog);
+                        log("Removed previous catalog");
                     } catch (err) {
-                        try {
-                            // Alternative approach if the first method fails
-                            currentCatalog.clear();
-                            log("Cleared previous catalog using alternative method");
-                        } catch (innerErr) {
-                            // If both methods fail, try a different approach
-                            log(`Warning: Could not clear previous catalog: ${err.message}`);
-                            try {
-                                // Last resort: remove and recreate the overlay
-                                aladin.view.removeCatalog(currentCatalog);
-                            } catch (finalErr) {
-                                log("Using fallback catalog cleanup method");
-                            }
-                        }
+                        log(`Warning: Could not remove previous catalog: ${err.message}`);
+                        // Continue anyway
                     }
                 }
                 
@@ -504,13 +374,14 @@
                     return;
                 }
                 
-                // Parse CSV file with PapaParse
+                // Parse CSV file
                 Papa.parse(file, {
                     header: true,
                     dynamicTyping: true,
                     skipEmptyLines: true,
                     complete: function(results) {
                         try {
+                            // Hide loading indicator
                             document.getElementById('loading').style.display = 'none';
                             
                             if (results.errors && results.errors.length > 0) {
@@ -519,17 +390,60 @@
                                 return;
                             }
                             
-                            if (!results.data || !Array.isArray(results.data) || results.data.length === 0) {
+                            if (!results.data || !Array.isArray(results.data)) {
                                 showStatus("Invalid CSV format or empty file", "error");
                                 return;
                             }
                             
                             csvData = results.data;
                             log(`CSV parsed successfully. Found ${csvData.length} rows`);
+                            if (results.meta && results.meta.fields) {
+                                log(`Columns found: ${results.meta.fields.join(', ')}`);
+                            }
                             
-                            // Process and display the data
-                            processSourceData(csvData, raColumnName, decColumnName, colorColumnName);
+                            // Log first row for debugging
+                            if (csvData.length > 0) {
+                                log(`First row data: ${JSON.stringify(csvData[0])}`);
+                            } else {
+                                showStatus("The CSV file contains no data rows.", "error");
+                                return;
+                            }
+                            
+                            // Try to find columns case-insensitively if exact match fails
+                            let actualRaColumn = raColumnName;
+                            let actualDecColumn = decColumnName;
+                            
+                            if (!csvData[0].hasOwnProperty(raColumnName)) {
+                                // Try case-insensitive match
+                                const columns = Object.keys(csvData[0]);
+                                const raMatch = columns.find(col => col.toLowerCase() === raColumnName.toLowerCase());
+                                if (raMatch) {
+                                    actualRaColumn = raMatch;
+                                    log(`Using column "${raMatch}" for RA (case-insensitive match for "${raColumnName}")`);
+                                } else {
+                                    showStatus(`Could not find column for RA. Available columns: ${columns.join(', ')}`, "error");
+                                    return;
+                                }
+                            }
+                            
+                            if (!csvData[0].hasOwnProperty(decColumnName)) {
+                                // Try case-insensitive match
+                                const columns = Object.keys(csvData[0]);
+                                const decMatch = columns.find(col => col.toLowerCase() === decColumnName.toLowerCase());
+                                if (decMatch) {
+                                    actualDecColumn = decMatch;
+                                    log(`Using column "${decMatch}" for DEC (case-insensitive match for "${decColumnName}")`);
+                                } else {
+                                    showStatus(`Could not find column for DEC. Available columns: ${columns.join(', ')}`, "error");
+                                    return;
+                                }
+                            }
+
+                            // Process sources
+                            processSourceData(csvData, actualRaColumn, actualDecColumn, colorColumnName);
+                            
                         } catch (error) {
+                            // Make sure loading indicator is hidden even if there's an error
                             document.getElementById('loading').style.display = 'none';
                             showStatus(`Error processing CSV data: ${error.message}`, "error");
                             console.error("CSV processing error:", error);
@@ -642,7 +556,7 @@
                         log(`Warning: Could not center view: ${err.message}`);
                     }
                     
-                    // Use Aladin's listener system instead
+                    // Use Aladin's listener system for click events
                     if (!aladin.hasClickHandler) {
                         aladin.hasClickHandler = true; // Flag to prevent multiple listeners
                         aladin.on('objectClicked', function(object) {
@@ -680,43 +594,42 @@
             }
         }
 
-        // Initialize when document is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            log("Page loaded. Initializing application...");
+        // Display information about the selected source
+        function displaySourceInfo(sourceData) {
+            const infoDiv = document.getElementById('source-info');
+            infoDiv.style.display = 'block';
             
-            // Initialize Aladin
-            initAladin().catch(error => {
-                log(`Failed to initialize Aladin: ${error.message}`);
-            });
-            
-            // Event listeners
-            document.getElementById('loadButton').addEventListener('click', processCatalogFile);
-            
-            // Show/hide sample data
-            document.getElementById('showSampleBtn').addEventListener('click', function() {
-                const sampleDiv = document.getElementById('sampleData');
-                if (sampleDiv.style.display === 'none') {
-                    sampleDiv.style.display = 'block';
-                    this.textContent = 'Hide Sample CSV Format';
-                } else {
-                    sampleDiv.style.display = 'none';
-                    this.textContent = 'Show Sample CSV Format';
+            let infoHTML = '<h3>Source Information</h3><table style="width:100%">';
+            for (const key in sourceData) {
+                if (sourceData.hasOwnProperty(key)) {
+                    infoHTML += `<tr>
+                        <td style="font-weight:bold;padding:2px 5px;border-bottom:1px solid #ddd">${key}</td>
+                        <td style="padding:2px 5px;border-bottom:1px solid #ddd">${sourceData[key]}</td>
+                    </tr>`;
                 }
-            });
-            
-            // Initial status
-            showStatus("Upload a CSV file and click 'Load Catalog' to begin.", "success");
-        });
-
-        window.addEventListener('error', function(e) {
-            // If any script fails to load, check if it's PapaParse and try local
-            if (e.target && e.target.src && e.target.src.includes('papaparse') && typeof Papa === 'undefined') {
-                console.log("All CDN attempts failed, trying local PapaParse");
-                const script = document.createElement('script');
-                script.src = "papaparse.min.js"; // Local copy in the same directory
-                document.head.appendChild(script);
             }
-        }, true);
+            infoHTML += '</table>';
+            infoDiv.innerHTML = infoHTML;
+        }
+
+        // Show status messages
+        function showStatus(message, type = "info") {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+        }
+
+        // Log messages
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: true });
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
     </script>
+    
+    <!-- Add PapaParse directly in the HTML -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
 </body>
 </html>
