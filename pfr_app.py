@@ -2962,8 +2962,8 @@ if science_file is not None:
                     st.error(f"Error during zero point calibration: {str(e)}")
                     st.exception(e)  # This will show the full traceback for debugging
 
-                # # Display DSS2 color view with detected sources
-                # st.subheader("DSS2 Color View")
+                # Display DSS2 color view with detected sources
+                st.subheader("DSS2 Color View")
 
                 # Extract RA/DEC from header or WCS
                 ra_center = None
