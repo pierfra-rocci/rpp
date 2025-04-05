@@ -3003,9 +3003,6 @@ if science_file is not None:
                             """, 
                             unsafe_allow_html=True
                         )
-                        
-                        # Display instructions underneath
-                        # st.caption("After opening Aladin, upload the catalog CSV file you downloaded above.")
                     
                     # Add ESA Sky button with target coordinates
                     st.link_button(
