@@ -202,32 +202,93 @@
         // Wait for Aladin to be loaded completely
         function initAladin() {
             return new Promise((resolve, reject) => {
-                // Check if Aladin is already loaded
+                // First check if Aladin is already loaded by the HTML script tag
                 if (window.A) {
                     log("Aladin library is already loaded");
                     createAladinInstance();
                     resolve();
-                } else {
-                    log("Waiting for Aladin library to load...");
-                    const checkInterval = setInterval(() => {
-                        if (window.A) {
-                            log("Aladin library loaded successfully");
-                            clearInterval(checkInterval);
-                            createAladinInstance();
-                            resolve();
-                        }
-                    }, 200);
-                    
-                    // Timeout after 10 seconds
-                    setTimeout(() => {
-                        if (!window.A) {
-                            clearInterval(checkInterval);
-                            const errorMsg = "Failed to load Aladin library. Please check your internet connection and try refreshing the page.";
-                            showStatus(errorMsg, "error");
-                            reject(new Error(errorMsg));
-                        }
-                    }, 10000);
+                    return;
                 }
+                
+                log("Attempting to load Aladin library...");
+                
+                // Try multiple CDN sources sequentially
+                const cdnSources = [
+                    'https://cdnjs.cloudflare.com/ajax/libs/aladin-lite/3.2.0/aladin.js',
+                    'https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js',
+                    'https://cdn.jsdelivr.net/npm/aladin-lite@3.2.0/aladin.min.js'
+                ];
+                
+                let currentSourceIndex = 0;
+                
+                function tryLoadScript() {
+                    if (currentSourceIndex >= cdnSources.length) {
+                        // We've tried all sources, offer local file option and fail
+                        const errorMsg = "Failed to load Aladin library from all CDN sources.";
+                        showStatus(errorMsg + " Try downloading the library and using it locally.", "error");
+                        log("Download Aladin from: https://aladin.u-strasbg.fr/AladinLite/");
+                        reject(new Error(errorMsg));
+                        return;
+                    }
+                    
+                    const source = cdnSources[currentSourceIndex];
+                    log(`Trying to load Aladin from source ${currentSourceIndex + 1}/${cdnSources.length}: ${source}`);
+                    
+                    const script = document.createElement('script');
+                    script.type = 'text/javascript';
+                    script.src = source;
+                    
+                    // Set a shorter timeout per source attempt
+                    const sourceTimeout = setTimeout(() => {
+                        log(`Source ${currentSourceIndex + 1} timed out after 7 seconds, trying next source...`);
+                        currentSourceIndex++;
+                        tryLoadScript();
+                    }, 7000);
+                    
+                    script.onload = function() {
+                        clearTimeout(sourceTimeout);
+                        log(`Script loaded from ${source}, checking for Aladin object...`);
+                        
+                        // Give a little time for the script to initialize
+                        setTimeout(() => {
+                            if (window.A) {
+                                log("Aladin library loaded and detected");
+                                createAladinInstance();
+                                resolve();
+                            } else {
+                                log("Script loaded but Aladin object not found, trying next source");
+                                currentSourceIndex++;
+                                tryLoadScript();
+                            }
+                        }, 500);
+                    };
+                    
+                    script.onerror = function() {
+                        clearTimeout(sourceTimeout);
+                        log(`Error loading from source ${currentSourceIndex + 1}, trying next...`);
+                        currentSourceIndex++;
+                        tryLoadScript();
+                    };
+                    
+                    // Clean up any previous script attempts to avoid conflicts
+                    const oldScript = document.querySelector(`script[src="${script.src}"]`);
+                    if (oldScript) {
+                        document.head.removeChild(oldScript);
+                    }
+                    
+                    document.head.appendChild(script);
+                }
+                
+                // Start trying to load scripts
+                tryLoadScript();
+                
+                // Overall timeout as a last resort
+                setTimeout(() => {
+                    const errorMsg = "Failed to load Aladin library after multiple attempts. Please check your internet connection, try a different browser, or check browser console for errors.";
+                    showStatus(errorMsg, "error");
+                    log("Detailed troubleshooting: Ensure no content blockers are active and try opening the Aladin CDN URL directly in a new tab.");
+                    reject(new Error(errorMsg));
+                }, 20000);
             });
         }
         
