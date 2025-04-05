@@ -11,6 +11,7 @@ The application provides a streamlined workflow for image calibration, astrometr
 
    installation
    user_guide
+   examples
    api_reference
 
 Features
