@@ -3,3 +3,6 @@ developmentMode = false
 
 [server]
 port = 8501
+
+[server]
+enableStaticServing = true

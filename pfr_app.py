@@ -2985,7 +2985,7 @@ if science_file is not None:
                     # Create a button to open Aladin in a new tab with catalog
                     if 'final_phot_table' in st.session_state and not st.session_state['final_phot_table'].empty:
                         # Create URL with parameters
-                        aladin_href = f"static/aladin.html?ra={ra_center}&dec={dec_center}"
+                        aladin_href = f"./static/aladin.html?ra={ra_center}&dec={dec_center}"
                         
                         # Create HTML link that opens in a new tab
                         st.markdown(
