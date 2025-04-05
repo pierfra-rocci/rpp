@@ -2982,6 +2982,37 @@ if science_file is not None:
                 if ra_center is not None and dec_center is not None:
                     st.write(f"Aladin view centered at RA={ra_center}, DEC={dec_center}")
     
+                    # Create a button to open Aladin in a new tab with catalog
+                    if 'final_phot_table' in st.session_state and not st.session_state['final_phot_table'].empty:
+                        # Create URL with parameters
+                        aladin_href = f"aladin.html?ra={ra_center}&dec={dec_center}"
+                        
+                        # Create button with JavaScript to open the link in a new tab
+                        st.markdown(
+                            f"""
+                            <a href="{aladin_href}" target="_blank" style="text-decoration: none;">
+                                <button style="
+                                    background-color: #4CAF50;
+                                    color: white;
+                                    padding: 10px 15px;
+                                    border: none;
+                                    border-radius: 4px;
+                                    cursor: pointer;
+                                    font-size: 16px;
+                                    margin: 10px 0;
+                                ">
+                                    Open Aladin Catalog Viewer in New Tab
+                                </button>
+                            </a>
+                            <p style="font-size: 0.9em; margin-top: 5px;">
+                                After opening Aladin, upload the catalog CSV file you downloaded above.
+                            </p>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    
+                    # Keep the original embedded view for quick reference
+                    st.subheader("Quick DSS2 Preview")
                     # Create a direct URL to Aladin Lite with pre-configured parameters
                     aladin_url = (
                         "https://aladin.u-strasbg.fr/AladinLite/?" +
@@ -2995,7 +3026,7 @@ if science_file is not None:
                     <iframe 
                         src="{aladin_url}" 
                         width="100%" 
-                        height="550px" 
+                        height="400px" 
                         style="border: 1px solid #ddd; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"
                         allowfullscreen>
                     </iframe>
@@ -3005,12 +3036,13 @@ if science_file is not None:
                     st.markdown(iframe_html, unsafe_allow_html=True)
                     
                     # Add instructions for manual catalog overlay
-                    with st.expander("How to overlay Gaia DR3 catalog"):
+                    with st.expander("How to use Aladin Catalog Viewer"):
                         st.markdown("""
-                        1. Click the "layers" icon in the upper right of the Aladin window
-                        2. Select "Catalog → VizieR"
-                        3. Search for "I/355" (Gaia DR3)
-                        4. Click on "I/355/gaiadr3" to add the Gaia DR3 catalog
+                        1. Click on **Open Aladin Catalog Viewer in New Tab** above
+                        2. In the new tab, click **Choose File** to select the catalog CSV you downloaded
+                        3. Ensure column names match (usually "ra" and "dec")
+                        4. Click **Load Catalog** to visualize your data
+                        5. Click on any source to see its detailed information
                         """)
                     
                     # Add ESA Sky button with target coordinates
