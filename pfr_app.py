@@ -3004,6 +3004,40 @@ if science_file is not None:
                             unsafe_allow_html=True
                         )
                     
+                    # # Keep the original embedded view for quick reference
+                    # st.subheader("Quick DSS2 Preview")
+                    # # Create a direct URL to Aladin Lite with pre-configured parameters
+                    # aladin_url = (
+                    #     "https://aladin.u-strasbg.fr/AladinLite/?" +
+                    #     f"target={ra_center}%20{dec_center}" +
+                    #     "&fov=0.5" +
+                    #     "&survey=CDS/P/DSS2/color"
+                    # )
+                    
+                    # # Create an iframe to embed Aladin Lite
+                    # iframe_html = f"""
+                    # <iframe 
+                    #     src="{aladin_url}" 
+                    #     width="100%" 
+                    #     height="400px" 
+                    #     style="border: 1px solid #ddd; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"
+                    #     allowfullscreen>
+                    # </iframe>
+                    # """
+                    
+                    # # Display the iframe
+                    # st.markdown(iframe_html, unsafe_allow_html=True)
+                    
+                    # # Add instructions for manual catalog overlay
+                    # with st.expander("How to use Aladin Catalog Viewer"):
+                    #     st.markdown("""
+                    #     1. Click on **Open Aladin Catalog Viewer in New Tab** above
+                    #     2. In the new tab, click **Choose File** to select the catalog CSV you downloaded
+                    #     3. Ensure column names match (usually "ra" and "dec")
+                    #     4. Click **Load Catalog** to visualize your data
+                    #     5. Click on any source to see its detailed information
+                    #     """)
+                    
                     # Add ESA Sky button with target coordinates
                     st.link_button(
                         "ESA Sky", 
