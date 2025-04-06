@@ -2286,147 +2286,140 @@ def display_catalog_in_aladin(final_table, ra_center, dec_center, fov=0.5):
     fov : float, optional
         Field of view in degrees
     """
-    # Convert the DataFrame to a simple dictionary format for JSON
-    catalog_sources = []
-    for idx, row in final_table.iterrows():
-        if 'ra' in row and 'dec' in row and pd.notna(row['ra']) and pd.notna(row['dec']):
-            source = {
-                'ra': float(row['ra']),
-                'dec': float(row['dec'])
-            }
-            
-            # Add magnitude if available (prefer calibrated magnitudes)
-            if 'aperture_calib_mag' in row and pd.notna(row['aperture_calib_mag']):
-                source['mag'] = float(row['aperture_calib_mag'])
-            elif 'calib_mag' in row and pd.notna(row['calib_mag']):
-                source['mag'] = float(row['calib_mag'])
+    # Verify we have valid coordinates
+    if not (ra_center and dec_center):
+        st.error("Missing center coordinates for Aladin display")
+        return
+        
+    # Add a spinner to show loading status
+    with st.spinner("Loading Aladin Lite viewer..."):
+        # Convert the DataFrame to a simple dictionary format for JSON
+        catalog_sources = []
+        for idx, row in final_table.iterrows():
+            if 'ra' in row and 'dec' in row and pd.notna(row['ra']) and pd.notna(row['dec']):
+                source = {
+                    'ra': float(row['ra']),
+                    'dec': float(row['dec'])
+                }
                 
-            # Add catalog matches info if available
-            if 'catalog_matches' in row and pd.notna(row['catalog_matches']):
-                source['catalog'] = str(row['catalog_matches'])
+                # Add magnitude if available (prefer calibrated magnitudes)
+                if 'aperture_calib_mag' in row and pd.notna(row['aperture_calib_mag']):
+                    source['mag'] = float(row['aperture_calib_mag'])
+                elif 'calib_mag' in row and pd.notna(row['calib_mag']):
+                    source['mag'] = float(row['calib_mag'])
+                    
+                # Add catalog matches info if available
+                if 'catalog_matches' in row and pd.notna(row['catalog_matches']):
+                    source['catalog'] = str(row['catalog_matches'])
+                    
+                # Add a label for the popup
+                source_id = f"Source {idx+1}"
+                if 'simbad_main_id' in row and pd.notna(row['simbad_main_id']):
+                    source_id = str(row['simbad_main_id'])
+                elif 'skybot_NAME' in row and pd.notna(row['skybot_NAME']):
+                    source_id = str(row['skybot_NAME'])
+                elif 'aavso_Name' in row and pd.notna(row['aavso_Name']):
+                    source_id = str(row['aavso_Name'])
+                    
+                source['name'] = source_id
+                catalog_sources.append(source)
+        
+        # Display diagnostic information
+        st.info(f"Preparing to display {len(catalog_sources)} sources in Aladin Lite")
+        
+        # Serialize to JSON
+        catalog_json = json.dumps(catalog_sources)
+        
+        # Create custom HTML with embedded Aladin Lite and catalog data - simplified for better iframe compatibility
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Aladin Lite with Catalog</title>
+            <style>
+                body {{ margin: 0; padding: 0; overflow: hidden; }}
+                #aladin-lite-div {{ 
+                    width: 100%; 
+                    height: 600px; 
+                    border: none;
+                }}
+            </style>
+            <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.js" charset="utf-8"></script>
+        </head>
+        <body>
+            <div id="aladin-lite-div"></div>
+            <script type="text/javascript">
+                // Initialize immediately - don't wait for DOM content loaded event
+                var aladin = A.aladin('#aladin-lite-div', {{
+                    survey: "P/DSS2/color",
+                    fov: {fov},
+                    target: "{ra_center} {dec_center}",
+                    showReticle: false,
+                    showFullscreenControl: true,
+                    showLayersControl: true,
+                    cooFrame: "J2000",
+                    reticleColor: "#88ccff",
+                    reticleSize: 22
+                }});
                 
-            # Add a label for the popup
-            source_id = f"Source {idx+1}"
-            if 'simbad_main_id' in row and pd.notna(row['simbad_main_id']):
-                source_id = str(row['simbad_main_id'])
-            elif 'skybot_NAME' in row and pd.notna(row['skybot_NAME']):
-                source_id = str(row['skybot_NAME'])
-            elif 'aavso_Name' in row and pd.notna(row['aavso_Name']):
-                source_id = str(row['aavso_Name'])
+                // Create a catalog from the JSON data
+                var sourceData = {catalog_json};
                 
-            source['name'] = source_id
-            catalog_sources.append(source)
-    
-    # Serialize to JSON
-    catalog_json = json.dumps(catalog_sources)
-    
-    # Create custom HTML with embedded Aladin Lite and catalog data
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Aladin Lite with Catalog</title>
-        <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.js" charset="utf-8"></script>
-        <style>
-            body {{ margin: 0; padding: 0; }}
-            #aladin-lite-div {{ 
-                width: 100%; 
-                height: 600px; 
-            }}
-            .aladin-fullscreen {{
-                height: 100% !important;
-            }}
-            .marker-color-0 {{ color: #35AC51; }}
-        </style>
-    </head>
-    <body>
-        <div id="aladin-lite-div"></div>
-        <script type="text/javascript">
-            // Initialize Aladin Lite
-            let aladin = A.aladin('#aladin-lite-div', {{
-                survey: "P/DSS2/color",
-                fov: {fov},
-                target: "{ra_center} {dec_center}",
-                showReticle: false,
-                showZoomControl: true,
-                showFullscreenControl: true,
-                showLayersControl: true,
-                showGotoControl: true
-            }});
+                // Create a custom catalog
+                var catalog = A.catalog({{
+                    name: 'Detected Sources',
+                    sourceSize: 12,
+                    shape: 'circle',
+                    color: '#35AC51',
+                    onClick: 'showPopup'
+                }});
+                
+                // Add each source to the catalog
+                sourceData.forEach(function(source) {{
+                    var sourceObj = A.source(
+                        source.ra,
+                        source.dec,
+                        {{
+                            name: source.name || '',
+                            mag: source.mag || null,
+                            catalog: source.catalog || ''
+                        }}
+                    );
+                    catalog.addSources([sourceObj]);
+                }});
+                
+                // Add the catalog to Aladin
+                aladin.addCatalog(catalog);
+                
+                // Force redraw after a short delay to ensure proper rendering
+                setTimeout(function() {{ 
+                    aladin.setFoV({fov}); 
+                }}, 500);
+            </script>
+        </body>
+        </html>
+        """
+        
+        # Display using streamlit components with increased height and scrolling enabled
+        try:
+            components.html(html_content, height=700, scrolling=True)
             
-            // Create a catalog from the JSON data
-            const sourceData = {catalog_json};
-            
-            // Create a custom catalog
-            const catalog = A.catalog({{
-                name: 'Detected Sources',
-                sourceSize: 12,
-                shape: 'circle',
-                color: '#35AC51',  // Green color for sources
-                onClick: 'showPopup'  // Show popup when clicking on a source
-            }});
-            
-            // Add each source to the catalog
-            sourceData.forEach(source => {{
-                let sourceObj = A.source(
-                    source.ra,
-                    source.dec,
-                    {{
-                        name: source.name || '',
-                        mag: source.mag || null,
-                        catalog: source.catalog || ''
-                    }}
-                );
-                catalog.addSources([sourceObj]);
-            }});
-            
-            // Add the catalog to Aladin
-            aladin.addCatalog(catalog);
-            
-            // Add a catalog selector tool to the viewer (without GAIA)
-            aladin.createCatalogByPos();
-        </script>
-    </body>
-    </html>
-    """
-    
-    # Display using streamlit components with increased height for better usability
-    components.html(html_content, height=650, scrolling=False)
-    
-    # Add explanatory text
-    st.caption("Interactive star map with your detected sources")
-    
-    # # Add fullscreen button within the app
-    # st.markdown('''
-    # <style>
-    # .fullscreen-button {
-    #     background-color: #4B7CE2;
-    #     color: white;
-    #     padding: 8px 16px;
-    #     border-radius: 4px;
-    #     font-weight: bold;
-    #     text-align: center;
-    #     cursor: pointer;
-    #     display: inline-block;
-    #     margin-top: 10px;
-    # }
-    # </style>
-    # <div class="fullscreen-button" onclick="document.querySelector('.stComponent iframe').requestFullscreen();">
-    #     Toggle Fullscreen
-    # </div>
-    # ''', unsafe_allow_html=True)
-    
-    # Add helpful tips
-    with st.expander("Aladin Viewer Tips"):
-        st.markdown("""
-        - **Pan**: Click and drag to move around the sky
-        - **Zoom**: Use mouse wheel or the zoom controls in the top-right corner
-        - **Change Survey**: Click the layers icon (top-right) to select different imagery
-        - **Search Objects**: Use the search bar (top-left)
-        - **Click on Sources**: Get detailed information about each source
-        - **Fullscreen**: Use the button above or the control in the top-right corner
-        """)
+            # Add explanatory text
+            st.caption("Interactive star map with your detected sources")
+        except Exception as e:
+            st.error(f"Error displaying Aladin viewer: {str(e)}")
+        
+        # Add helpful tips
+        with st.expander("Aladin Viewer Tips"):
+            st.markdown("""
+            - **Pan**: Click and drag to move around the sky
+            - **Zoom**: Use mouse wheel or the zoom controls in the top-right corner
+            - **Change Survey**: Click the layers icon (top-right) to select different imagery
+            - **Search Objects**: Use the search bar (top-left)
+            - **Click on Sources**: Get detailed information about each source
+            - **Fullscreen**: Use the button in the top-right corner
+            """)
 
 
 # ------------------------------------------------------------------------------
