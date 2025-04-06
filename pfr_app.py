@@ -2963,7 +2963,7 @@ if science_file is not None:
                     st.exception(e)  # This will show the full traceback for debugging
 
                 # Display DSS2 color view with detected sources
-                # st.subheader("DSS2 Color View")
+                st.subheader("DSS2 Color View")
 
                 # Extract RA/DEC from header or WCS
                 ra_center = None
@@ -2980,7 +2980,7 @@ if science_file is not None:
                     dec_center = header_to_process['OBJDEC']
 
                 if ra_center is not None and dec_center is not None:
-                    # st.write(f"Aladin view centered at RA={ra_center}, DEC={dec_center}")
+                    st.write(f"Aladin view centered at RA={ra_center}, DEC={dec_center}")
     
                     # Create a button to open Aladin in a new tab with catalog
                     if 'final_phot_table' in st.session_state and not st.session_state['final_phot_table'].empty:
