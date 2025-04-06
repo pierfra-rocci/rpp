@@ -1,5 +1,7 @@
 import os
 import datetime
+import json 
+import base64
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -13,6 +15,7 @@ from urllib.parse import quote
 
 from astropy.modeling import models, fitting
 import streamlit as st
+import streamlit.components.v1 as components
 
 import numpy as np
 from astropy.io import fits
@@ -1170,7 +1173,7 @@ def perform_epsf_photometry(
         fig_stars, ax_stars = plt.subplots(nrows=nrows, ncols=ncols, figsize=FIGURE_SIZES['stars_grid'], squeeze=False)
         ax_stars = ax_stars.ravel()
         n_disp = min(len(stars), nrows * ncols)
-        for i in range(n_disp):
+        for i in n_disp:
             norm = simple_norm(stars[i].data, 'log', percent=99.0)
             ax_stars[i].imshow(stars[i].data, norm=norm, origin='lower', cmap='viridis')
         plt.tight_layout()
@@ -2268,6 +2271,164 @@ def save_header_to_txt(header, filename):
     return output_filename
 
 
+def display_catalog_in_aladin(final_table, ra_center, dec_center, fov=0.5):
+    """
+    Display the catalog in an embedded Aladin Lite viewer with the catalog pre-loaded.
+    
+    Parameters
+    ----------
+    final_table : pandas.DataFrame
+        DataFrame containing the catalog data with 'ra' and 'dec' columns
+    ra_center : float
+        Right Ascension center coordinate in degrees
+    dec_center : float
+        Declination center coordinate in degrees
+    fov : float, optional
+        Field of view in degrees
+    """
+    # Convert the DataFrame to a simple dictionary format for JSON
+    catalog_sources = []
+    for idx, row in final_table.iterrows():
+        if 'ra' in row and 'dec' in row and pd.notna(row['ra']) and pd.notna(row['dec']):
+            source = {
+                'ra': float(row['ra']),
+                'dec': float(row['dec'])
+            }
+            
+            # Add magnitude if available (prefer calibrated magnitudes)
+            if 'aperture_calib_mag' in row and pd.notna(row['aperture_calib_mag']):
+                source['mag'] = float(row['aperture_calib_mag'])
+            elif 'calib_mag' in row and pd.notna(row['calib_mag']):
+                source['mag'] = float(row['calib_mag'])
+                
+            # Add catalog matches info if available
+            if 'catalog_matches' in row and pd.notna(row['catalog_matches']):
+                source['catalog'] = str(row['catalog_matches'])
+                
+            # Add a label for the popup
+            source_id = f"Source {idx+1}"
+            if 'simbad_main_id' in row and pd.notna(row['simbad_main_id']):
+                source_id = str(row['simbad_main_id'])
+            elif 'skybot_NAME' in row and pd.notna(row['skybot_NAME']):
+                source_id = str(row['skybot_NAME'])
+            elif 'aavso_Name' in row and pd.notna(row['aavso_Name']):
+                source_id = str(row['aavso_Name'])
+                
+            source['name'] = source_id
+            catalog_sources.append(source)
+    
+    # Serialize to JSON
+    catalog_json = json.dumps(catalog_sources)
+    
+    # Create custom HTML with embedded Aladin Lite and catalog data
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Aladin Lite with Catalog</title>
+        <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.js" charset="utf-8"></script>
+        <style>
+            body {{ margin: 0; padding: 0; }}
+            #aladin-lite-div {{ 
+                width: 100%; 
+                height: 600px; 
+            }}
+            .aladin-fullscreen {{
+                height: 100% !important;
+            }}
+            .marker-color-0 {{ color: #35AC51; }}
+        </style>
+    </head>
+    <body>
+        <div id="aladin-lite-div"></div>
+        <script type="text/javascript">
+            // Initialize Aladin Lite
+            let aladin = A.aladin('#aladin-lite-div', {{
+                survey: "P/DSS2/color",
+                fov: {fov},
+                target: "{ra_center} {dec_center}",
+                showReticle: false,
+                showZoomControl: true,
+                showFullscreenControl: true,
+                showLayersControl: true,
+                showGotoControl: true
+            }});
+            
+            // Create a catalog from the JSON data
+            const sourceData = {catalog_json};
+            
+            // Create a custom catalog
+            const catalog = A.catalog({{
+                name: 'Detected Sources',
+                sourceSize: 12,
+                shape: 'circle',
+                color: '#35AC51',  // Green color for sources
+                onClick: 'showPopup'  // Show popup when clicking on a source
+            }});
+            
+            // Add each source to the catalog
+            sourceData.forEach(source => {{
+                let sourceObj = A.source(
+                    source.ra,
+                    source.dec,
+                    {{
+                        name: source.name || '',
+                        mag: source.mag || null,
+                        catalog: source.catalog || ''
+                    }}
+                );
+                catalog.addSources([sourceObj]);
+            }});
+            
+            // Add the catalog to Aladin
+            aladin.addCatalog(catalog);
+            
+            // Add a catalog selector tool to the viewer (without GAIA)
+            aladin.createCatalogByPos();
+        </script>
+    </body>
+    </html>
+    """
+    
+    # Display using streamlit components with increased height for better usability
+    components.html(html_content, height=650, scrolling=False)
+    
+    # Add explanatory text
+    st.caption("Interactive star map with your detected sources")
+    
+    # # Add fullscreen button within the app
+    # st.markdown('''
+    # <style>
+    # .fullscreen-button {
+    #     background-color: #4B7CE2;
+    #     color: white;
+    #     padding: 8px 16px;
+    #     border-radius: 4px;
+    #     font-weight: bold;
+    #     text-align: center;
+    #     cursor: pointer;
+    #     display: inline-block;
+    #     margin-top: 10px;
+    # }
+    # </style>
+    # <div class="fullscreen-button" onclick="document.querySelector('.stComponent iframe').requestFullscreen();">
+    #     Toggle Fullscreen
+    # </div>
+    # ''', unsafe_allow_html=True)
+    
+    # Add helpful tips
+    with st.expander("Aladin Viewer Tips"):
+        st.markdown("""
+        - **Pan**: Click and drag to move around the sky
+        - **Zoom**: Use mouse wheel or the zoom controls in the top-right corner
+        - **Change Survey**: Click the layers icon (top-right) to select different imagery
+        - **Search Objects**: Use the search bar (top-left)
+        - **Click on Sources**: Get detailed information about each source
+        - **Fullscreen**: Use the button above or the control in the top-right corner
+        """)
+
+
 # ------------------------------------------------------------------------------
 # Main Script Execution
 # ------------------------------------------------------------------------------
@@ -2962,9 +3123,6 @@ if science_file is not None:
                     st.error(f"Error during zero point calibration: {str(e)}")
                     st.exception(e)  # This will show the full traceback for debugging
 
-                # Display DSS2 color view with detected sources
-                st.subheader("DSS2 Color View")
-
                 # Extract RA/DEC from header or WCS
                 ra_center = None
                 dec_center = None
@@ -2980,63 +3138,18 @@ if science_file is not None:
                     dec_center = header_to_process['OBJDEC']
 
                 if ra_center is not None and dec_center is not None:
-                    st.write(f"Aladin view centered at RA={ra_center}, DEC={dec_center}")
+                    # st.write(f"Aladin view centered at RA={ra_center}, DEC={dec_center}")
     
                     # Create a button to open Aladin in a new tab with catalog
                     if 'final_phot_table' in st.session_state and not st.session_state['final_phot_table'].empty:
-                        # # Create URL with parameters
-                        # aladin_href = f"./static/aladin.html?ra={ra_center}&dec={dec_center}"
-                        
-                        # # Create HTML link that opens in a new tab
-                        # st.markdown(
-                        #     f"""
-                        #     <a href="{aladin_href}" target="_blank" rel="noopener noreferrer" 
-                        #        style="display: inline-block; padding: 0.6em 1.2em; 
-                        #              color: white; background-color: #4CAF50; 
-                        #              text-decoration: none; font-weight: 600;
-                        #              border-radius: 0.25rem; cursor: pointer;">
-                        #         Open Aladin Catalog Viewer in New Tab
-                        #     </a>
-                        #     <p style="font-size: 0.9em; margin-top: 5px;">
-                        #         After opening Aladin, upload the catalog CSV file you downloaded above.
-                        #     </p>
-                        #     """, 
-                        #     unsafe_allow_html=True
-                        # )
-                        
-                        # Keep the original embedded view for quick reference
-                        st.subheader("Quick DSS2 Preview")
-                        # Create a direct URL to Aladin Lite with pre-configured parameters
-                        aladin_url = (
-                            "https://aladin.u-strasbg.fr/AladinLite/?" +
-                            f"target={ra_center}%20{dec_center}" +
-                            "&fov=0.5" +
-                            "&survey=CDS/P/DSS2/color"
+                        # Display catalog in interactive Aladin viewer
+                        st.subheader("Aladin Catalog Viewer")
+                        display_catalog_in_aladin(
+                            final_table=final_table,
+                            ra_center=ra_center,
+                            dec_center=dec_center,
+                            fov=0.5
                         )
-                        
-                        # Create an iframe to embed Aladin Lite
-                        iframe_html = f"""
-                        <iframe 
-                            src="{aladin_url}" 
-                            width="100%" 
-                            height="400px" 
-                            style="border: 1px solid #ddd; border-radius: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1);"
-                            allowfullscreen>
-                        </iframe>
-                        """
-                        
-                        # Display the iframe
-                        st.markdown(iframe_html, unsafe_allow_html=True)
-                        
-                        # Add instructions for manual catalog overlay
-                        with st.expander("How to use Aladin Catalog Viewer"):
-                            st.markdown("""
-                            1. Click on **Open Aladin Catalog Viewer in New Tab** above
-                            2. In the new tab, click **Choose File** to select the catalog CSV you downloaded
-                            3. Ensure column names match (usually "ra" and "dec")
-                            4. Click **Load Catalog** to visualize your data
-                            5. Click on any source to see its detailed information
-                            """)
                     
                     # Add ESA Sky button with target coordinates
                     st.link_button(
