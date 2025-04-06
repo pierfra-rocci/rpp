@@ -11,34 +11,37 @@ A comprehensive astronomical image processing and photometry tool designed speci
 ## Features
 
 - **Complete Image Calibration Pipeline**
-  - Bias, dark and flat field correction
-  - Background estimation and subtraction
+  - Bias, dark and flat field correction with exposure time scaling
+  - Background estimation and subtraction with robust outlier detection
   
 - **Advanced Astrometry**
   - WCS coordinate determination from image headers
-  - Automatic plate solving via astrometry.net integration
+  - Automatic plate solving via astrometry.net API integration
   - Manual coordinate entry for challenging fields
   
 - **Comprehensive Photometry Tools**
   - Aperture photometry with configurable parameters
-  - PSF photometry with automatic PSF modeling
+  - PSF photometry with automatic PSF modeling and visualization
   - Zero-point calibration with Gaia DR3
+  - Automatic airmass calculation and correction
   
 - **Extensive Catalog Cross-matching**
   - Gaia DR3 source matching
-  - SIMBAD object identification
+  - SIMBAD object identification with object types
   - SkyBoT solar system object detection
   - AAVSO Variable Star cross-matching
   
 - **Interactive Visualization**
   - Image display with adjustable scaling
-  - Embedded Aladin Lite for catalog overlays
+  - Embedded Aladin Lite for DSS2 color overlays
   - Interactive tables for data exploration
+  - Direct links to ESA Sky and other astronomy resources
   
 - **Analysis and Export**
   - Comprehensive photometry catalog output
   - Detailed logging of all processing steps
-  - Direct links to online astronomy resources
+  - Export of PSF models as FITS files
+  - Metadata files with analysis parameters
 
 ## Installation
 
@@ -124,6 +127,7 @@ The application generates several output files in the pfr_results directory:
 - `[filename]_header.txt` - FITS header information
 - `[filename].log` - Processing log
 - `[filename]_image.png` - Preview image
+- `[filename]_epsf.fits` - PSF model file
 
 ## Contributing
 
