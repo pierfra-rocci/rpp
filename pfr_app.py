@@ -3316,12 +3316,6 @@ if science_file is not None:
                     if 'final_phot_table' in st.session_state and not st.session_state['final_phot_table'].empty:
                         # Display catalog in interactive Aladin viewer
                         st.subheader("Aladin Catalog Viewer")
-                        # display_catalog_in_aladin(
-                        #     final_table=final_table,
-                        #     ra_center=ra_center,
-                        #     dec_center=dec_center,
-                        #     fov=0.5
-                        # )
 
                         display_catalog_in_aladin(
                             final_table=final_table, # Use the same table, but focus elsewhere
@@ -3330,7 +3324,7 @@ if science_file is not None:
                             fov=0.5,
                             alt_mag_col='aperture_calib_mag',
                             id_cols=['simbad_main_id'], # Only use SIMBAD ID if available
-                            aladin_height="500px" # Fixed pixel height
+                            aladin_height=600 # Fixed pixel height
                         )
                     
                     # Add ESA Sky button with target coordinates
