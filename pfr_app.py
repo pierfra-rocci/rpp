@@ -1194,7 +1194,6 @@ def perform_epsf_photometry(
     if epsf.data is not None and epsf.data.size > 0:
         try:
             # Save the PSF model as a FITS file
-            from astropy.io import fits
             hdu = fits.PrimaryHDU(data=epsf.data)
             
             # Add metadata to header
