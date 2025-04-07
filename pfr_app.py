@@ -1,6 +1,5 @@
 import os
 import datetime
-import json
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -2382,197 +2381,11 @@ def display_catalog_in_aladin(
 
             catalog_sources.append(source)
 
-
     if not catalog_sources:
         st.warning("No valid sources with RA/Dec found in the table to display.")
         return
 
-    # --- 3. JSON Serialization ---
-    try:
-        catalog_json = json.dumps(catalog_sources, allow_nan=False) # Ensure valid JSON
-    except TypeError as e:
-        st.error(f"Error serializing catalog data to JSON: {e}")
-        return
-
-    # --- 4. HTML and JavaScript Generation ---
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Aladin Lite with Catalog</title>
-        <style>
-            body {{ margin: 0; padding: 0; overflow: hidden; }}
-            #aladin-lite-div {{
-                width: 100%;
-                height: 800px; /* Use parameter */
-                min-height: 400px; /* Prevent excessive shrinking */
-                border: none;
-            }}
-            /* Optional: Style for Aladin popups */
-            .aladin-popup {{ font-family: sans-serif; font-size: 12px; }}
-        </style>
-        <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.js" charset="utf-8"></script>
-
-        <script id="catalog-data" type="application/json">
-        {catalog_json}
-        </script>
-    </head>
-    <body>
-        <div id="aladin-lite-div"></div>
-
-        <script type="text/javascript">
-          // Use a try-catch block for robustness in the browser
-          try {{
-              // Ensure the DOM is ready before initializing Aladin
-            document.addEventListener('DOMContentLoaded', (event) => {{
-                            if (typeof A === 'undefined') {{
-                                console.error("Aladin API not loaded. Check network connection or script URL.");
-                                document.getElementById('aladin-lite-div').innerHTML = 
-                                    '<p style="color: red; padding: 10px;">Aladin API not loaded. Check network connection.</p>';
-                                return;
-                            }}
-                  console.log("DOM ready, initializing Aladin Lite.");
-                  var aladin = null; // Declare aladin variable in outer scope
-
-                  try {{
-                      aladin = A.aladin('#aladin-lite-div', {{
-                          survey: "{survey}", // Use parameter
-                          fov: {fov},
-                          target: "{ra_center} {dec_center}",
-                          showReticle: false,
-                          showFullscreenControl: true,
-                          showLayersControl: true,
-                          cooFrame: "J2000", // Common astronomical frame
-                          reticleColor: "#88ccff",
-                          reticleSize: 22
-                      }});
-                  }} catch (initError) {{
-                      console.error("Aladin Lite initialization failed:", initError);
-                      document.getElementById('aladin-lite-div').innerHTML =
-                         '<p style="color: red; padding: 10px;">Error initializing Aladin viewer. Check console.</p>';
-                      return; // Stop execution if init fails
-                  }}
-
-                  // Retrieve and parse the catalog data
-                  var catalogDataElement = document.getElementById('catalog-data');
-                  var sourceData = null;
-                  try {{
-                      sourceData = JSON.parse(catalogDataElement.textContent || catalogDataElement.innerText);
-                  }} catch (parseError) {{
-                     console.error("Error parsing catalog JSON data:", parseError);
-                        document.getElementById('aladin-lite-div').insertAdjacentHTML('beforeend', 
-                        '<div style="color: red; padding: 10px; position: absolute; bottom: 10px; left: 10px; 
-                        background: rgba(255,255,255,0.8);">Error loading catalog data</div>');
-
-                  }}
-
-
-                  if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {{
-                      console.log(`Creating catalog layer with ${{sourceData.length}} sources.`);
-                      // Create a custom catalog layer
-                      // API Docs: https://aladin.u-strasbg.fr/AladinLite/doc/API/jsdoc/A.catalog.html
-                      var catalog = A.catalog({{
-                          name: 'Detected Sources', // Layer name in controls
-                          sourceSize: 10,          // Marker size in pixels
-                          shape: 'circle',         // Marker shape ('circle', 'square', 'diamond', etc.)
-                          color: '#33cc33',       // Marker color (e.g., bright green)
-                          // onClick: 'showPopup' uses the default popup which shows basic data.
-                          // To customize popups (e.g., formatting, adding links), define a
-                          // JavaScript function (like handleSourceClick below) and pass its name:
-                          // onClick: handleSourceClick
-                          onClick: 'showPopup'
-                      }});
-
-                      // Add sources to the catalog layer
-                      // API Docs: https://aladin.u-strasbg.fr/AladinLite/doc/API/jsdoc/A.source.html
-                      var sourcesToAdd = [];
-                      sourceData.forEach(function(source) {{
-                          if (source.ra !== undefined && source.dec !== undefined) {{
-                               var sourceObj = A.source(
-                                  source.ra,
-                                  source.dec,
-                                  {{ // Data payload attached to the source object
-                                      name: source.name || 'Unnamed Source', // Ensure name exists
-                                      // Use 'undefined' if mag is not present, Aladin handles it
-                                      mag: source.mag !== undefined ? source.mag : undefined,
-                                      catalog: source.catalog || '' // Catalog info if available
-                                      // Add any other data from your DataFrame here
-                                      // custom_info: source.some_other_column
-                                  }}
-                              );
-                              sourcesToAdd.push(sourceObj);
-                          }} else {{
-                              console.warn("Skipping source due to missing ra/dec in JSON:", source);
-                          }}
-                      }});
-
-                      // Add all sources at once (potentially more efficient than one by one)
-                      if (sourcesToAdd.length > 0) {{
-                          catalog.addSources(sourcesToAdd);
-                          // Add the completed catalog layer to Aladin
-                          aladin.addCatalog(catalog);
-                          console.log("Catalog layer added to Aladin.");
-                      }} else {{
-                          console.log("No valid sources were prepared for the Aladin catalog.");
-                      }}
-
-                      // --- Optional Redraw/FoV Adjustment ---
-                      // Sometimes needed if the view doesn't update correctly after adding layers,
-                      // especially in complex layouts or iframes. Test without it first.
-                      /*
-                      setTimeout(function() {{
-                          if (aladin) {{ // Check if aladin instance exists
-                              console.log("Applying FoV adjustment via setTimeout.");
-                              // aladin.setFoV({fov}); // Re-apply FoV
-                              // OR Force redraw:
-                              // aladin.view.requestRedraw();
-                          }}
-                      }}, 500); // 500ms delay, adjust if needed
-                      */
-
-                  }} else {{
-                      console.log("No valid source data found in JSON to display.");
-                  }}
-
-                  // --- Example: Custom Popup Handler (if not using onClick: 'showPopup') ---
-                  /*
-                  function handleSourceClick(sourceObject) {{
-                      // sourceObject contains the A.source instance
-                      let data = sourceObject.data; // Access the data payload
-                      let popupHtml = `<b>${{data.name}}</b><br>` +
-                                      `RA: ${{sourceObject.ra.toFixed(6)}}<br>` +
-                                      `Dec: ${{sourceObject.dec.toFixed(6)}}`;
-                      if (data.mag !== undefined) {{
-                          popupHtml += `<br>Mag: ${{data.mag.toFixed(2)}}`;
-                      }}
-                      if (data.catalog) {{
-                          popupHtml += `<br>Catalog: ${{data.catalog}}`;
-                      }}
-                      // Add more fields from data payload as needed...
-                      // popupHtml += `<br>Info: ${{data.custom_info}}`;
-
-                      // Display the custom popup
-                      aladin.popup(sourceObject.popupPos[0], sourceObject.popupPos[1], popupHtml);
-                  }}
-                  */
-
-              }}); // End DOMContentLoaded listener
-
-          }} catch (globalError) {{
-              // Catch any errors that might occur outside the DOMContentLoaded listener
-              console.error("Global JavaScript error in Aladin script:", globalError);
-              var aladinDiv = document.getElementById('aladin-lite-div');
-              if (aladinDiv) {{
-                 aladinDiv.innerHTML = '<p style="color: red; padding: 10px;">JavaScript error encountered. Check console.</p>';
-              }}
-          }}
-        </script>
-    </body>
-    </html>
-    """
-
-    # --- 5. Display in Streamlit ---
+    # --- 3. Display in Streamlit ---
     with st.spinner("Loading Aladin Lite viewer..."):
         try:
             # Use Streamlit's HTML component to display the Aladin viewer
@@ -2585,17 +2398,6 @@ def display_catalog_in_aladin(
         except Exception as e:
             st.error(f"Streamlit failed to render the Aladin HTML component: {str(e)}")
             st.exception(e)
-
-    # # --- 6. Helpful Tips (Optional Expander) ---
-    # with st.expander("Aladin Viewer Tips"):
-    #     st.markdown("""
-    #     - **Pan**: Click and drag to move around the sky.
-    #     - **Zoom**: Use the mouse wheel or zoom controls (+/-) in the top-right corner.
-    #     - **Change Imagery**: Click the layers icon (looks like stacked squares, top-right) to select different background surveys.
-    #     - **Search**: Use the search bar (top-left) to find objects by name or coordinates.
-    #     - **Source Info**: Click on the green markers (Detected Sources) to view basic information in a popup.
-    #     - **Fullscreen**: Use the fullscreen button (four outward arrows, top-right).
-    #     """)
 
 # ------------------------------------------------------------------------------
 # Main Script Execution
