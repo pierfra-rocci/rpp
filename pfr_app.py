@@ -3325,7 +3325,7 @@ if science_file is not None:
                     # Add ESA Sky button with target coordinates
                     st.link_button(
                         "ESA Sky", 
-                        f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=DSS2+color&fov=1&projection=SIN&cooframe=J2000&sci=true&lang=en",
+                        f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=DSS2+color&fov=0.5&projection=SIN&cooframe=J2000&sci=true&lang=en",
                         help="Open ESA Sky with the same target coordinates"
                     )
                 else:
