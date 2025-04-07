@@ -1186,7 +1186,6 @@ def perform_epsf_photometry(
         epsf_builder = EPSFBuilder(oversampling=2, maxiters=5, progress_bar=progress_bar.update)
         epsf, _ = epsf_builder(stars)
         progress_bar.empty()  # Clear the progress bar
-        st.success("PSF model fitted successfully.")
         st.session_state['epsf_model'] = epsf
     except Exception as e:
         st.error(f"Error fitting PSF model: {e}")
@@ -2278,9 +2277,8 @@ def display_catalog_in_aladin(
     catalog_col: str = 'catalog_matches',
     id_cols: list[str] = ['simbad_main_id', 'skybot_NAME', 'aavso_Name'], # Priority list for source names
     fallback_id_prefix: str = "Source",
-    # --- Display Parameters ---
-    aladin_height: str = "600px", # CSS height for the Aladin container
-    survey: str = "P/DSS2/color" # Default Aladin survey
+    aladin_height: int = 600,
+    survey: str = "CDS/P/DSS2/color"
 ) -> None:
     """
     Displays a Pandas DataFrame catalog in an embedded Aladin Lite viewer
@@ -2584,8 +2582,9 @@ def display_catalog_in_aladin(
         try:
             # Use Streamlit's HTML component to display the Aladin viewer
             # Note: st.components.v1.html() is deprecated, use st.components.iframe() instead
-            aladin_api = "https://aladin.u-strasbg.fr/AladinLite/?ra={ra_center}&dec={dec_center}&fov={fov}&survey={survey}"
-            components.iframe(aladin_api, height=600, scrolling=True, width=800)
+            aladin_api = f"https://aladin.u-strasbg.fr/AladinLite/?target={ra_center}%20{dec_center}&fov={fov}&survey={survey}"
+
+            components.iframe(aladin_api, height=aladin_height, scrolling=True)
             st.caption("Interactive star map showing detected sources.")
 
         except Exception as e:
