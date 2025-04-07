@@ -2394,6 +2394,9 @@ def display_catalog_in_aladin(
 
             # Create HTML with embedded JavaScript for Aladin Lite with catalog integration
            # Create HTML with embedded JavaScript for Aladin Lite
+             # Convert catalog_sources to a JSON string and properly escape it for JavaScript
+            sources_json_string = json.dumps(catalog_sources).replace("'", "\\'").replace('"', '\\"')
+            
             html_content = f"""
             <!DOCTYPE html>
             <html>
@@ -2433,8 +2436,8 @@ def display_catalog_in_aladin(
 
                             // Parse the JSON data embedded from Python
                             // Use JSON.parse() for safety and clarity
-                            let sourcesData = JSON.parse('{sources_json_string}');
-                            let aladinSources = [];
+                            let sourcesData = JSON.parse("{sources_json_string}");
+                           let aladinSources = [];
 
                             // Create Aladin Source objects
                             sourcesData.forEach(function(source) {{
@@ -2456,7 +2459,6 @@ def display_catalog_in_aladin(
                                 popupContent += '</div>';
 
                                 // Create an Aladin Source object
-                                // The popup content goes into data: { description: ... }
                                 let aladinSource = A.source(
                                     source.ra,
                                     source.dec,
