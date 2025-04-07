@@ -2276,7 +2276,6 @@ def display_catalog_in_aladin(
     catalog_col: str = 'catalog_matches',
     id_cols: list[str] = ['simbad_main_id', 'skybot_NAME', 'aavso_Name'], # Priority list for source names
     fallback_id_prefix: str = "Source",
-    aladin_height: int = 600,
     survey: str = "CDS/P/DSS2/color"
 ) -> None:
     """
@@ -2311,12 +2310,9 @@ def display_catalog_in_aladin(
     fallback_id_prefix : str, optional
         Prefix to use for source names if no ID is found in id_cols.
         Default "Source". The index will be appended.
-    aladin_height : str, optional
-        CSS height specification for the Aladin container div (e.g., "600px", "80vh").
-        Default "600px".
     survey : str, optional
         The initial sky survey to display in Aladin Lite.
-        Default "P/DSS2/color". See Aladin Lite docs for more options.
+        Default "CDS/P/DSS2/color". See Aladin Lite docs for more options.
     """
     # --- 1. Input Validation ---
     if not (isinstance(ra_center, (int, float)) and isinstance(dec_center, (int, float))):
@@ -2409,7 +2405,7 @@ def display_catalog_in_aladin(
             body {{ margin: 0; padding: 0; overflow: hidden; }}
             #aladin-lite-div {{
                 width: 100%;
-                height: {aladin_height}; /* Use parameter */
+                height: 800px; /* Use parameter */
                 min-height: 400px; /* Prevent excessive shrinking */
                 border: none;
             }}
@@ -2583,23 +2579,23 @@ def display_catalog_in_aladin(
             # Note: st.components.v1.html() is deprecated, use st.components.iframe() instead
             aladin_api = f"https://aladin.u-strasbg.fr/AladinLite/?target={ra_center}%20{dec_center}&fov={fov}&survey={survey}"
 
-            components.iframe(aladin_api, height=aladin_height, scrolling=True)
+            components.iframe(aladin_api, height=600, width=800, scrolling=True)
             st.caption("Interactive star map showing detected sources.")
 
         except Exception as e:
             st.error(f"Streamlit failed to render the Aladin HTML component: {str(e)}")
             st.exception(e)
 
-    # --- 6. Helpful Tips (Optional Expander) ---
-    with st.expander("Aladin Viewer Tips"):
-        st.markdown("""
-        - **Pan**: Click and drag to move around the sky.
-        - **Zoom**: Use the mouse wheel or zoom controls (+/-) in the top-right corner.
-        - **Change Imagery**: Click the layers icon (looks like stacked squares, top-right) to select different background surveys.
-        - **Search**: Use the search bar (top-left) to find objects by name or coordinates.
-        - **Source Info**: Click on the green markers (Detected Sources) to view basic information in a popup.
-        - **Fullscreen**: Use the fullscreen button (four outward arrows, top-right).
-        """)
+    # # --- 6. Helpful Tips (Optional Expander) ---
+    # with st.expander("Aladin Viewer Tips"):
+    #     st.markdown("""
+    #     - **Pan**: Click and drag to move around the sky.
+    #     - **Zoom**: Use the mouse wheel or zoom controls (+/-) in the top-right corner.
+    #     - **Change Imagery**: Click the layers icon (looks like stacked squares, top-right) to select different background surveys.
+    #     - **Search**: Use the search bar (top-left) to find objects by name or coordinates.
+    #     - **Source Info**: Click on the green markers (Detected Sources) to view basic information in a popup.
+    #     - **Fullscreen**: Use the fullscreen button (four outward arrows, top-right).
+    #     """)
 
 # ------------------------------------------------------------------------------
 # Main Script Execution
@@ -3323,8 +3319,7 @@ if science_file is not None:
                             dec_center=dec_center,
                             fov=0.5,
                             alt_mag_col='aperture_calib_mag',
-                            id_cols=['simbad_main_id'], # Only use SIMBAD ID if available
-                            aladin_height=600 # Fixed pixel height
+                            id_cols=['simbad_main_id']
                         )
                     
                     # Add ESA Sky button with target coordinates
