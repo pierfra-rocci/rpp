@@ -2393,60 +2393,96 @@ def display_catalog_in_aladin(
             # Convert catalog_sources to a format compatible with Aladin
 
             # Create HTML with embedded JavaScript for Aladin Lite with catalog integration
+           # Create HTML with embedded JavaScript for Aladin Lite
             html_content = f"""
-            <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
-            <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
-            <script type="text/javascript">
-                // Wait for Aladin Lite API to load and create viewer
-                A.aladin('#aladin-lite-div', {{
-                    target: '{ra_center} {dec_center}',
-                    fov: {fov},
-                    survey: '{survey}',
-                    cooFrame: 'J2000',
-                    showReticle: false,
-                    showZoomControl: true,
-                    showFullscreenControl: true,
-                    showLayersControl: true,
-                    showGotoControl: true,
-                    showSimbadPointerControl: true
-                }}).then(function(aladin) {{
-                    // Create a new catalog layer
-                    var cat = A.catalog({{
-                        name: 'Photometry Results',
-                        sourceSize: 12,
-                        shape: 'circle',
-                        color: '#00ff88',
-                        onClick: 'showPopup'
-                    }});
-                    
-                    // Add the catalog to the Aladin view
-                    aladin.addCatalog(cat);
-                    
-                    // Parse the JSON data from Python
-                    var sources = {json.dumps(catalog_sources)};
-                    
-                    // Add each source to the catalog
-                    sources.forEach(function(source) {{
-                        // Prepare popup content
-                        var popupContent = '<div style="padding:10px;">';
-                        if(source.name) {{
-                            popupContent += '<b>' + source.name + '</b><br/>';
-                        }}
-                        popupContent += 'RA: ' + source.ra.toFixed(6) + '<br/>';
-                        popupContent += 'Dec: ' + source.dec.toFixed(6) + '<br/>';
-                        
-                        if(source.mag) {{
-                            popupContent += 'Mag: ' + source.mag.toFixed(2) + '<br/>';
-                        }}
-                        
-                        if(source.catalog) {{
-                            popupContent += 'Catalogs: ' + source.catalog + '<br/>';
-                        }}
-                        
-                        popupContent += '</div>';
-                  """      
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Aladin Lite</title>
+            </head>
+            <body>
+                <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
+                <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+                <script type="text/javascript">
+                    // Ensure the DOM is ready (though often not strictly needed if script is at the end)
+                    document.addEventListener("DOMContentLoaded", function(event) {{
+                        try {{
+                            let aladin = A.aladin('#aladin-lite-div', {{
+                                target: '{ra_center} {dec_center}',
+                                fov: {fov},
+                                survey: '{survey}',
+                                cooFrame: 'J2000',
+                                showReticle: false,
+                                showZoomControl: true,
+                                showFullscreenControl: true,
+                                showLayersControl: true,
+                                showGotoControl: true,
+                                showSimbadPointerControl: true
+                            }});
 
-            components.iframe(html_content, height=600, width=800, scrolling=True)
+                            // Create a new catalog layer
+                            let cat = A.catalog({{
+                                name: 'Photometry Results',
+                                sourceSize: 12,
+                                shape: 'circle',
+                                color: '#00ff88',
+                                onClick: 'showPopup' // Standard action: shows data.description
+                            }});
+                            aladin.addCatalog(cat);
+
+                            // Parse the JSON data embedded from Python
+                            // Use JSON.parse() for safety and clarity
+                            let sourcesData = JSON.parse('{sources_json_string}');
+                            let aladinSources = [];
+
+                            // Create Aladin Source objects
+                            sourcesData.forEach(function(source) {{
+                                // Prepare popup content as HTML string
+                                let popupContent = '<div style="padding:5px;">'; // Smaller padding
+                                if(source.name) {{
+                                    popupContent += '<b>' + source.name + '</b><br/>';
+                                }}
+                                // Use toFixed only if ra/dec are numbers
+                                popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '<br/>';
+                                popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '<br/>';
+
+                                if(source.mag) {{
+                                    popupContent += 'Mag: ' + (typeof source.mag === 'number' ? source.mag.toFixed(2) : source.mag) + '<br/>';
+                                }}
+                                if(source.catalog) {{
+                                    popupContent += 'Catalogs: ' + source.catalog + '<br/>';
+                                }}
+                                popupContent += '</div>';
+
+                                // Create an Aladin Source object
+                                // The popup content goes into data: { description: ... }
+                                let aladinSource = A.source(
+                                    source.ra,
+                                    source.dec,
+                                    {{ description: popupContent }} // Pass the HTML content here
+                                );
+                                aladinSources.push(aladinSource);
+                            }});
+
+                            // Add all created sources to the catalog layer at once (more efficient)
+                            if (aladinSources.length > 0) {{
+                                cat.addSources(aladinSources);
+                            }}
+
+                        }} catch (error) {{
+                            // Log any JS errors to the browser console
+                            console.error("Error initializing Aladin Lite or adding sources:", error);
+                            // Optionally display an error in the div
+                            document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin viewer. Check console.</p>';
+                        }}
+                    }});
+                </script>
+            </body>
+            </html>
+            """
+
+            components.iframe(html_content, scrolling=True)
             st.caption("Interactive star map showing detected sources.")
 
         except Exception as e:
