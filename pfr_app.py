@@ -1,7 +1,6 @@
 import os
 import datetime
-import json 
-import base64
+import json
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -1173,7 +1172,7 @@ def perform_epsf_photometry(
         fig_stars, ax_stars = plt.subplots(nrows=nrows, ncols=ncols, figsize=FIGURE_SIZES['stars_grid'], squeeze=False)
         ax_stars = ax_stars.ravel()
         n_disp = min(len(stars), nrows * ncols)
-        for i in n_disp:
+        for i in range(n_disp):
             norm = simple_norm(stars[i].data, 'log', percent=99.0)
             ax_stars[i].imshow(stars[i].data, norm=norm, origin='lower', cmap='viridis')
         plt.tight_layout()
@@ -2204,8 +2203,6 @@ def get_download_link(data, filename, link_text="Download"):
         .download-button {
             display: inline-block;
             padding: 0.8em 1.4em;
-            background-color: #4CAF50;  /* Green background */
-            color: white;  /* White text */
             text-align: center;
             text-decoration: none;
             font-size: 16px;
@@ -2215,11 +2212,10 @@ def get_download_link(data, filename, link_text="Download"):
             cursor: pointer;
             margin-top: 15px;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: #2b70a1;
         }
         .download-button:hover {
-            background-color: #45a049;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            background-color: #2b70a1;
             transform: translateY(-1px);
         }
         .error-text {
@@ -2586,7 +2582,13 @@ def display_catalog_in_aladin(
           // Use a try-catch block for robustness in the browser
           try {{
               // Ensure the DOM is ready before initializing Aladin
-              document.addEventListener('DOMContentLoaded', (event) => {{
+            document.addEventListener('DOMContentLoaded', (event) => {{
+                            if (typeof A === 'undefined') {{
+                                console.error("Aladin API not loaded. Check network connection or script URL.");
+                                document.getElementById('aladin-lite-div').innerHTML = 
+                                    '<p style="color: red; padding: 10px;">Aladin API not loaded. Check network connection.</p>';
+                                return;
+                            }}
                   console.log("DOM ready, initializing Aladin Lite.");
                   var aladin = null; // Declare aladin variable in outer scope
 
@@ -2616,12 +2618,15 @@ def display_catalog_in_aladin(
                       sourceData = JSON.parse(catalogDataElement.textContent || catalogDataElement.innerText);
                   }} catch (parseError) {{
                      console.error("Error parsing catalog JSON data:", parseError);
-                     // Optionally notify the user, though Aladin will just show no sources
+                        document.getElementById('aladin-lite-div').insertAdjacentHTML('beforeend', 
+                        '<div style="color: red; padding: 10px; position: absolute; bottom: 10px; left: 10px; 
+                        background: rgba(255,255,255,0.8);">Error loading catalog data</div>');
+
                   }}
 
 
                   if (sourceData && Array.isArray(sourceData) && sourceData.length > 0) {{
-                      console.log(`Creating catalog layer with ${'{sourceData.length}'} sources.`);
+                      console.log(`Creating catalog layer with ${{sourceData.length}} sources.`);
                       // Create a custom catalog layer
                       // API Docs: https://aladin.u-strasbg.fr/AladinLite/doc/API/jsdoc/A.catalog.html
                       var catalog = A.catalog({{
@@ -2727,13 +2732,13 @@ def display_catalog_in_aladin(
     # --- 5. Display in Streamlit ---
     with st.spinner("Loading Aladin Lite viewer..."):
         try:
-            st.html(html_content)
+            # st.html(html_content)
+            components.iframe(html_content, height=600)
             st.caption("Interactive star map showing detected sources.")
 
         except Exception as e:
-            # Catch potential errors during Streamlit's HTML rendering
             st.error(f"Streamlit failed to render the Aladin HTML component: {str(e)}")
-            st.exception(e) # Provides traceback in Streamlit for debugging
+            st.exception(e)
 
     # --- 6. Helpful Tips (Optional Expander) ---
     with st.expander("Aladin Viewer Tips"):
