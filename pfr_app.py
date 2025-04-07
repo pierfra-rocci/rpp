@@ -1,5 +1,7 @@
 import os
 import datetime
+import base64
+import json
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -2185,8 +2187,6 @@ def get_download_link(data, filename, link_text="Download"):
         return '<div class="error-text">No data available to download</div>'
         
     try:
-        import base64
-        
         # Ensure we have string data
         if isinstance(data, bytes):
             b64 = base64.b64encode(data).decode()
@@ -2390,9 +2390,63 @@ def display_catalog_in_aladin(
         try:
             # Use Streamlit's HTML component to display the Aladin viewer
             # Note: st.components.v1.html() is deprecated, use st.components.iframe() instead
-            aladin_api = f"https://aladin.u-strasbg.fr/AladinLite/?target={ra_center}%20{dec_center}&fov={fov}&survey={survey}"
+            # Convert catalog_sources to a format compatible with Aladin
 
-            components.iframe(aladin_api, height=600, width=800, scrolling=True)
+            # Create HTML with embedded JavaScript for Aladin Lite with catalog integration
+            html_content = f"""
+            <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
+            <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+            <script type="text/javascript">
+                // Wait for Aladin Lite API to load and create viewer
+                A.aladin('#aladin-lite-div', {{
+                    target: '{ra_center} {dec_center}',
+                    fov: {fov},
+                    survey: '{survey}',
+                    cooFrame: 'J2000',
+                    showReticle: false,
+                    showZoomControl: true,
+                    showFullscreenControl: true,
+                    showLayersControl: true,
+                    showGotoControl: true,
+                    showSimbadPointerControl: true
+                }}).then(function(aladin) {{
+                    // Create a new catalog layer
+                    var cat = A.catalog({{
+                        name: 'Photometry Results',
+                        sourceSize: 12,
+                        shape: 'circle',
+                        color: '#00ff88',
+                        onClick: 'showPopup'
+                    }});
+                    
+                    // Add the catalog to the Aladin view
+                    aladin.addCatalog(cat);
+                    
+                    // Parse the JSON data from Python
+                    var sources = {json.dumps(catalog_sources)};
+                    
+                    // Add each source to the catalog
+                    sources.forEach(function(source) {{
+                        // Prepare popup content
+                        var popupContent = '<div style="padding:10px;">';
+                        if(source.name) {{
+                            popupContent += '<b>' + source.name + '</b><br/>';
+                        }}
+                        popupContent += 'RA: ' + source.ra.toFixed(6) + '<br/>';
+                        popupContent += 'Dec: ' + source.dec.toFixed(6) + '<br/>';
+                        
+                        if(source.mag) {{
+                            popupContent += 'Mag: ' + source.mag.toFixed(2) + '<br/>';
+                        }}
+                        
+                        if(source.catalog) {{
+                            popupContent += 'Catalogs: ' + source.catalog + '<br/>';
+                        }}
+                        
+                        popupContent += '</div>';
+                  """      
+
+            components.iframe(html_content, height=600, width=800, scrolling=True)
             st.caption("Interactive star map showing detected sources.")
 
         except Exception as e:
