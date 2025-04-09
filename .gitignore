@@ -169,3 +169,4 @@ pfr_results/*
 *.pdf
 *.csv
 rapas_results/SN2025dr_gaia_RP_180s_processed_header.txt
+pfr-win32*
