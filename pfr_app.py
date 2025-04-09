@@ -2668,6 +2668,17 @@ with st.sidebar:
     calibrate_flat = st.checkbox("Apply Flat Field", value=False,
                               help="Divide science image by flat field")
     
+    # Add API key input for astrometry.net
+    st.sidebar.header("Astrometry.net")
+    api_key = st.text_input(
+        "API Key", 
+        api_key = "cnolwaeoasefkoka",
+        help = "Enter your astrometry.net API key",
+        type = "password"
+    )
+    st.caption("Get your own key at [nova.astrometry.net](http://nova.astrometry.net/)")
+    
+
     st.header("Analysis Parameters")
     seeing = st.number_input("Seeing (arcsec)", value=3.5, 
                      help="Estimate of the atmospheric seeing in arcseconds")
@@ -2721,14 +2732,6 @@ if science_file is not None:
         )
         
         if use_astrometry:
-            # Let user input their API key
-            api_key = st.text_input(
-                "Astrometry.net API Key", 
-                value="", 
-                type="password",
-                help="Get your key at https://nova.astrometry.net/api_help"
-            )
-            
             if api_key:
                 # Try to solve with astrometry.net
                 with st.spinner("Running plate solve with astrometry.net (this may take a while)..."):
