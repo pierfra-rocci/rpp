@@ -3140,7 +3140,7 @@ if science_file is not None:
                                             st.success(f"Catalog includes {len(final_table)} sources.")
                                             
                                             # Add cross-matching functionality
-                                            if 'ra' in final_table.columns and 'dec' in final_table.columns:
+                                            if final_table is not None and 'ra' in final_table.columns and 'dec' in final_table.columns:
                                                 st.subheader("Cross-matching with Astronomical Catalogs")
                                                 # Calculate search radius based on FWHM
                                                 search_radius = 2 * mean_fwhm_pixel * pixel_size_arcsec
@@ -3151,8 +3151,10 @@ if science_file is not None:
                                                     pixel_size_arcsec, 
                                                     search_radius_arcsec=search_radius
                                                 )
-                                            else:
+                                            elif final_table is not None:
                                                 st.warning("RA/DEC coordinates not available for catalog cross-matching")
+                                            else:
+                                                st.error("Final photometry table is None - cannot perform cross-matching")
 
                                             # Write the filtered DataFrame to the buffer
                                             final_table.to_csv(csv_buffer, index=False)
@@ -3206,7 +3208,9 @@ if science_file is not None:
                     # st.write(f"Aladin view centered at RA={ra_center}, DEC={dec_center}")
     
                     # Create a button to open Aladin in a new tab with catalog
-                    if 'final_phot_table' in st.session_state and not st.session_state['final_phot_table'].empty:
+                    if ('final_phot_table' in st.session_state and 
+                            st.session_state['final_phot_table'] is not None and 
+                            not st.session_state['final_phot_table'].empty):
                         # Display catalog in interactive Aladin viewer
                         st.subheader("Aladin Catalog Viewer")
 
