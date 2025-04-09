@@ -2672,7 +2672,7 @@ with st.sidebar:
     st.sidebar.header("Astrometry.net")
     api_key = st.text_input(
         "API Key", 
-        api_key = "cnolwaeoasefkoka",
+        value = "cnolwaeoasefkoka",
         help = "Enter your astrometry.net API key",
         type = "password"
     )
