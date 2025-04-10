@@ -1,5 +1,15 @@
-from streamlit.web import cli
+from cx_Freeze import setup, Executable
 
-# This import path depends on your Streamlit version
-if __name__ == '__main__':
-    cli._main_run_clExplicit('rapas_app.py', args=['run'])
+# Specify the modules to include
+build_exe_options = {
+    'packages': ['streamlit.runtime.scriptrunner'],
+    'includes': ['streamlit.runtime.scriptrunner.magic_funcs'],
+}
+
+setup(
+    name='PFR_RAPAS',
+    version='1.0',
+    description='Photometry Factory for RAPAS',
+    options={'build_exe': build_exe_options},
+    executables=[Executable('pfr_app.py')],
+)
