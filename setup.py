@@ -1,4 +1,4 @@
-from cx_freeze import setup, Executable
+from cx_Freeze import setup, Executable
 
 # Specify the modules to include
 build_exe_options = {
