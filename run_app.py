@@ -41,6 +41,10 @@ from astropy.nddata import NDData
 
 from stdpipe import astrometry, catalogs, pipeline
 
+import astropy.constants.codata2018
+import astropy.constants.iau2015
+
+
 def resolve_path(path):
     return os.path.abspath(os.path.join(os.getcwd(), path))
 
