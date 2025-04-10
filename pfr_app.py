@@ -105,7 +105,8 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
         
         # Get API key from environment if not provided
         if api_key is None:
-            api_key = "cnolwaeoasefkoka"  # Default API key for testing purposes
+            # Try to get API key from environment variable
+            api_key = os.environ.get("ASTROMETRY_API_KEY")
             if api_key is None:
                 return None, header, "No API key provided or found in environment variables"
         
@@ -2672,12 +2673,11 @@ with st.sidebar:
     st.sidebar.header("Astrometry.net")
     api_key = st.text_input(
         "API Key", 
-        value = "cnolwaeoasefkoka",
-        help = "Enter your astrometry.net API key",
-        type = "password"
+        value="",  # Remove the default value here
+        help="Enter your astrometry.net API key",
+        type="password"
     )
     st.caption("Get your own key at [nova.astrometry.net](http://nova.astrometry.net/)")
-    
 
     st.header("Analysis Parameters")
     seeing = st.number_input("Seeing (arcsec)", value=3.5, 
