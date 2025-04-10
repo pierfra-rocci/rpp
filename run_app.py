@@ -43,6 +43,7 @@ from stdpipe import astrometry, catalogs, pipeline
 
 import astropy.constants.codata2018
 import astropy.constants.iau2015
+import streamlit.runtime.scriptrunner.magic_funcs
 
 
 def resolve_path(path):
