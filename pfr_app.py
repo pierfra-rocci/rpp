@@ -54,6 +54,10 @@ st.set_page_config(
     layout="wide"
 )
 
+# Add application version to the sidebar
+APP_VERSION = "1.0.0"
+st.sidebar.markdown(f"**PFR App Version:** {APP_VERSION}")
+
 # Custom CSS to control plot display size
 st.markdown("""
 <style>

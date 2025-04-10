@@ -36,6 +36,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - Embedded Aladin Lite for DSS2 color overlays
   - Interactive tables for data exploration
   - Direct links to ESA Sky and other astronomy resources
+  - **New:** Real-time photometry updates with live plots during pipeline execution
   
 - **Analysis and Export**
   - Comprehensive photometry catalog output
