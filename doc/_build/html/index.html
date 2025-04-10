@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to Photometry Factory for RAPAS’s documentation! &mdash; Photometry Factory for RAPAS 0.1.0 documentation</title>
+  <title>Photometry Factory for RAPAS Documentation &mdash; Photometry Factory for RAPAS 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
@@ -45,12 +45,15 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Basic Workflow Example</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html#advanced-use-cases">Advanced Use Cases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Modules</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#image-processing">Image Processing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#photometry">Photometry</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#utilities">Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Example 1: Basic Photometry Workflow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#example-2-analyzing-a-variable-star-field">Example 2: Analyzing a Variable Star Field</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#example-3-asteroid-photometry">Example 3: Asteroid Photometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#advanced-example-crowded-field-photometry">Advanced Example: Crowded Field Photometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html#usage-examples">Usage Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
 
         </div>
@@ -67,7 +70,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Welcome to Photometry Factory for RAPAS’s documentation!</li>
+      <li class="breadcrumb-item active">Photometry Factory for RAPAS Documentation</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -77,80 +80,131 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="welcome-to-photometry-factory-for-rapas-s-documentation">
-<h1>Welcome to Photometry Factory for RAPAS’s documentation!<a class="headerlink" href="#welcome-to-photometry-factory-for-rapas-s-documentation" title="Link to this heading"></a></h1>
-<p><strong>Photometry Factory for RAPAS (PFR)</strong> is a Python-based tool designed for astronomical image processing and photometry with focus on RAPAS (Réseau Amateur Professionnel pour les Alertes) data.</p>
-<p>The application provides a streamlined workflow for image calibration, astrometry, and photometric analysis of astronomical images.</p>
+  <section id="photometry-factory-for-rapas-documentation">
+<h1>Photometry Factory for RAPAS Documentation<a class="headerlink" href="#photometry-factory-for-rapas-documentation" title="Link to this heading"></a></h1>
+<a class="reference internal image-reference" href="_static/pfr_logo.png"><img alt="PFR Logo" class="align-right" src="_static/pfr_logo.png" style="width: 200px;" />
+</a>
+<p><strong>Photometry Factory for RAPAS (PFR)</strong> is a comprehensive Python-based application designed for astronomical image processing and photometry with a focus on RAPAS (Réseau Amateur Professionnel pour les Alertes) data.</p>
+<p>This tool provides astronomers with a streamlined workflow for image calibration, plate solving, and photometric analysis of astronomical images through an intuitive web interface powered by Streamlit.</p>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#requirements">Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#basic-installation">Basic Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#alternative-installation-options">Alternative Installation Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#development-installation">Development Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#system-requirements">System Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#standard-installation">Standard Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#using-virtual-environments">Using Virtual Environments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#standalone-executable-windows">Standalone Executable (Windows)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#docker-installation">Docker Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#troubleshooting-installation">Troubleshooting Installation</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="user_guide.html#getting-started">Getting Started</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide.html#main-interface">Main Interface</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide.html#image-calibration">Image Calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide.html#plate-solving">Plate Solving</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide.html#source-detection-and-photometry">Source Detection and Photometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide.html#zero-point-calibration">Zero-Point Calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide.html#output-files">Output Files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide.html#interactive-features">Interactive Features</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#application-layout">Application Layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-1-uploading-files">Step 1: Uploading Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-2-image-calibration">Step 2: Image Calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-3-wcs-determination">Step 3: WCS Determination</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-4-photometry-and-analysis">Step 4: Photometry and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-5-reviewing-results">Step 5: Reviewing Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#step-6-exporting-data">Step 6: Exporting Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#using-the-interactive-aladin-viewer">Using the Interactive Aladin Viewer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#best-practices-and-tips">Best Practices and Tips</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide.html#additional-resources">Additional Resources</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Basic Workflow Example</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html#advanced-use-cases">Advanced Use Cases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Modules</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.solve_with_astrometry_net"><code class="docutils literal notranslate"><span class="pre">solve_with_astrometry_net()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.ensure_output_directory"><code class="docutils literal notranslate"><span class="pre">ensure_output_directory()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.safe_wcs_create"><code class="docutils literal notranslate"><span class="pre">safe_wcs_create()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.estimate_background"><code class="docutils literal notranslate"><span class="pre">estimate_background()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.get_header_value"><code class="docutils literal notranslate"><span class="pre">get_header_value()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.extract_pixel_scale"><code class="docutils literal notranslate"><span class="pre">extract_pixel_scale()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.extract_coordinates"><code class="docutils literal notranslate"><span class="pre">extract_coordinates()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.safe_catalog_query"><code class="docutils literal notranslate"><span class="pre">safe_catalog_query()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.create_figure"><code class="docutils literal notranslate"><span class="pre">create_figure()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.airmass"><code class="docutils literal notranslate"><span class="pre">airmass()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.load_fits_data"><code class="docutils literal notranslate"><span class="pre">load_fits_data()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.calibrate_image_streamlit"><code class="docutils literal notranslate"><span class="pre">calibrate_image_streamlit()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.make_border_mask"><code class="docutils literal notranslate"><span class="pre">make_border_mask()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.fwhm_fit"><code class="docutils literal notranslate"><span class="pre">fwhm_fit()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.perform_epsf_photometry"><code class="docutils literal notranslate"><span class="pre">perform_epsf_photometry()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.find_sources_and_photometry_streamlit"><code class="docutils literal notranslate"><span class="pre">find_sources_and_photometry_streamlit()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.cross_match_with_gaia_streamlit"><code class="docutils literal notranslate"><span class="pre">cross_match_with_gaia_streamlit()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.calculate_zero_point_streamlit"><code class="docutils literal notranslate"><span class="pre">calculate_zero_point_streamlit()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.run_zero_point_calibration"><code class="docutils literal notranslate"><span class="pre">run_zero_point_calibration()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.enhance_catalog_with_crossmatches"><code class="docutils literal notranslate"><span class="pre">enhance_catalog_with_crossmatches()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.get_download_link"><code class="docutils literal notranslate"><span class="pre">get_download_link()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.save_header_to_txt"><code class="docutils literal notranslate"><span class="pre">save_header_to_txt()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.initialize_session_state"><code class="docutils literal notranslate"><span class="pre">initialize_session_state()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.get_base_filename"><code class="docutils literal notranslate"><span class="pre">get_base_filename()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.initialize_log"><code class="docutils literal notranslate"><span class="pre">initialize_log()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_reference.html#pfr_app.write_to_log"><code class="docutils literal notranslate"><span class="pre">write_to_log()</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Example 1: Basic Photometry Workflow</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-1-data-preparation">Step 1: Data Preparation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-2-upload-and-calibrate">Step 2: Upload and Calibrate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-3-run-photometry-analysis">Step 3: Run Photometry Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-4-review-results">Step 4: Review Results</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#image-processing">Image Processing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#photometry">Photometry</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#utilities">Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#example-2-analyzing-a-variable-star-field">Example 2: Analyzing a Variable Star Field</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-1-upload-data">Step 1: Upload Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-2-configure-parameters">Step 2: Configure Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-3-interpret-results">Step 3: Interpret Results</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#example-3-asteroid-photometry">Example 3: Asteroid Photometry</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-1-data-setup">Step 1: Data Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-2-special-configuration">Step 2: Special Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-3-analyze-results">Step 3: Analyze Results</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#advanced-example-crowded-field-photometry">Advanced Example: Crowded Field Photometry</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-1-configuration">Step 1: Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-2-specialized-settings">Step 2: Specialized Settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#step-3-interpretation">Step 3: Interpretation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#psf-photometry">PSF Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#working-with-time-series-data">Working with Time-Series Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#differential-photometry">Differential Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#custom-pipeline-integration">Custom Pipeline Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features.html#advanced-visualization">Advanced Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Functions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#image-processing">Image Processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#astrometry">Astrometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#source-detection-photometry">Source Detection &amp; Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#catalog-operations">Catalog Operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#utilities">Utilities</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html#usage-examples">Usage Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#example-load-and-calibrate-an-image">Example: Load and calibrate an image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html#example-perform-photometry-and-zero-point-calibration">Example: Perform photometry and zero-point calibration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#installation-issues">Installation Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#image-loading-issues">Image Loading Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#wcs-and-astrometry-issues">WCS and Astrometry Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#source-detection-issues">Source Detection Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#photometry-issues">Photometry Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#zero-point-calibration-issues">Zero-Point Calibration Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#performance-issues">Performance Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#output-issues">Output Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="troubleshooting.html#getting-help">Getting Help</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-1-0-upcoming">Version 1.1.0 (Upcoming)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-0-0-2023-09-01">Version 1.0.0 (2023-09-01)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-9-0-2023-07-15">Version 0.9.0 (2023-07-15)</a></li>
+</ul>
+</li>
 </ul>
 </div>
-<section id="features">
-<h2>Features<a class="headerlink" href="#features" title="Link to this heading"></a></h2>
+<section id="key-features">
+<h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>FITS image calibration (bias, dark, flat)</p></li>
-<li><p>Automatic plate solving and WCS coordinate determination</p></li>
-<li><p>Source detection and aperture photometry</p></li>
-<li><p>PSF photometry with automatic PSF modeling</p></li>
-<li><p>Zero-point calibration with Gaia DR3 catalog</p></li>
-<li><p>Cross-matching with multiple astronomical catalogs</p></li>
-<li><p>Interactive visualization</p></li>
-<li><p>Export to standard formats</p></li>
+<li><p><strong>Image Calibration</strong>: Apply bias, dark, and flat-field corrections to raw astronomical images</p></li>
+<li><p><strong>Automatic Plate Solving</strong>: Determine accurate WCS coordinates using astrometry.net</p></li>
+<li><p><strong>Source Detection</strong>: Identify astronomical sources with configurable detection parameters</p></li>
+<li><p><strong>Photometry</strong>: Perform aperture and PSF photometry on detected sources</p></li>
+<li><p><strong>Zero-point Calibration</strong>: Automatically calibrate magnitudes using GAIA DR3 catalog cross-matching</p></li>
+<li><p><strong>Catalog Integration</strong>: Cross-match detected sources with SIMBAD, SkyBoT, and AAVSO catalogs</p></li>
+<li><p><strong>Interactive Visualization</strong>: Explore results with interactive plots and an embedded Aladin Lite viewer</p></li>
+<li><p><strong>Standardized Outputs</strong>: Export results to CSV formats compatible with other astronomical software</p></li>
 </ul>
+</section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install required packages</span>
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+
+<span class="c1"># Run the application</span>
+streamlit<span class="w"> </span>run<span class="w"> </span>pfr_app.py
+</pre></div>
+</div>
+</section>
+<section id="acknowledgements">
+<h2>Acknowledgements<a class="headerlink" href="#acknowledgements" title="Link to this heading"></a></h2>
+<p>This software was developed for RAPAS (Réseau Amateur Professionnel pour les Alertes). We thank all contributors and users who have provided valuable feedback.</p>
 </section>
 </section>
 <section id="indices-and-tables">

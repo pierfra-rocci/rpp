@@ -19,7 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Basic Workflow Example" href="examples.html" />
+    <link rel="next" title="Example 1: Basic Photometry Workflow" href="examples.html" />
     <link rel="prev" title="Installation" href="installation.html" /> 
 </head>
 
@@ -47,22 +47,27 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">User Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#main-interface">Main Interface</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#image-calibration">Image Calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#plate-solving">Plate Solving</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#source-detection-and-photometry">Source Detection and Photometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#zero-point-calibration">Zero-Point Calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#output-files">Output Files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#interactive-features">Interactive Features</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#application-layout">Application Layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-1-uploading-files">Step 1: Uploading Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-2-image-calibration">Step 2: Image Calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-3-wcs-determination">Step 3: WCS Determination</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-4-photometry-and-analysis">Step 4: Photometry and Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-5-reviewing-results">Step 5: Reviewing Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-6-exporting-data">Step 6: Exporting Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-the-interactive-aladin-viewer">Using the Interactive Aladin Viewer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#best-practices-and-tips">Best Practices and Tips</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#additional-resources">Additional Resources</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Basic Workflow Example</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html#advanced-use-cases">Advanced Use Cases</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Modules</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#image-processing">Image Processing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#photometry">Photometry</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#utilities">Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Example 1: Basic Photometry Workflow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#example-2-analyzing-a-variable-star-field">Example 2: Analyzing a Variable Star Field</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#example-3-asteroid-photometry">Example 3: Asteroid Photometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#advanced-example-crowded-field-photometry">Advanced Example: Crowded Field Photometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html#usage-examples">Usage Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
 
         </div>
@@ -91,88 +96,126 @@
              
   <section id="user-guide">
 <h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading"></a></h1>
-<p>This guide provides an overview of how to use the Photometry Factory for RAPAS.</p>
 <section id="getting-started">
 <h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h2>
-<p>The application offers a streamlined workflow for astronomical image processing and photometry:</p>
-<ol class="arabic simple">
-<li><p>Upload a science image (and calibration frames if needed)</p></li>
-<li><p>Apply calibration steps as needed</p></li>
-<li><p>Run plate solving if WCS is missing</p></li>
-<li><p>Perform photometry and zero-point calibration</p></li>
-<li><p>Export and analyze results</p></li>
-</ol>
+<p>Photometry Factory for RAPAS provides a streamlined workflow for astronomical image analysis through a user-friendly web interface. This guide walks you through the complete process from image upload to final photometric catalog generation.</p>
 </section>
-<section id="main-interface">
-<h2>Main Interface<a class="headerlink" href="#main-interface" title="Link to this heading"></a></h2>
-<p>The interface is divided into several sections:</p>
+<section id="application-layout">
+<h2>Application Layout<a class="headerlink" href="#application-layout" title="Link to this heading"></a></h2>
+<a class="reference internal image-reference" href="_static/app_layout.png"><img alt="Application Layout" src="_static/app_layout.png" style="width: 700px;" />
+</a>
+<p>The interface is divided into two main sections:</p>
 <ul class="simple">
-<li><p><strong>File Upload</strong>: Upload science image and calibration frames</p></li>
-<li><p><strong>Calibration Options</strong>: Apply bias, dark, and flat field corrections</p></li>
-<li><p><strong>Analysis Parameters</strong>: Configure detection and analysis settings</p></li>
-<li><p><strong>Results Display</strong>: View and interact with analysis results</p></li>
+<li><p><strong>Left Sidebar</strong>: Contains file uploaders, configuration options, and analysis parameters</p></li>
+<li><p><strong>Main Panel</strong>: Displays results, visualizations, and interactive elements</p></li>
 </ul>
 </section>
-<section id="image-calibration">
-<h2>Image Calibration<a class="headerlink" href="#image-calibration" title="Link to this heading"></a></h2>
+<section id="step-1-uploading-files">
+<h2>Step 1: Uploading Files<a class="headerlink" href="#step-1-uploading-files" title="Link to this heading"></a></h2>
+<p>Begin by uploading your astronomical images using the file uploaders in the sidebar:</p>
 <ol class="arabic simple">
-<li><p>Upload your science image and calibration frames in FITS format</p></li>
-<li><p>Select which calibration steps to apply (bias, dark, flat)</p></li>
-<li><p>Click “Run Image Calibration”</p></li>
+<li><p><strong>Science Image</strong> (required): Your main astronomical image in FITS format</p></li>
+<li><p><strong>Master Bias</strong> (optional): Bias calibration frame</p></li>
+<li><p><strong>Master Dark</strong> (optional): Dark current calibration frame</p></li>
+<li><p><strong>Master Flat</strong> (optional): Flat field calibration frame</p></li>
 </ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The application accepts standard FITS formats (.fits, .fit, .fts) including compressed variants.</p>
+</div>
 </section>
-<section id="plate-solving">
-<h2>Plate Solving<a class="headerlink" href="#plate-solving" title="Link to this heading"></a></h2>
-<p>If your FITS file is missing WCS coordinates, the application offers:</p>
+<section id="step-2-image-calibration">
+<h2>Step 2: Image Calibration<a class="headerlink" href="#step-2-image-calibration" title="Link to this heading"></a></h2>
+<p>If you’ve uploaded calibration frames, you can apply them to your science image:</p>
 <ol class="arabic simple">
-<li><p>Manual entry of RA/DEC coordinates</p></li>
-<li><p>Automatic plate solving with astrometry.net (requires API key)</p></li>
+<li><p>Select the calibration steps you wish to apply (bias, dark, flat field)</p></li>
+<li><p>Click the “Run Image Calibration” button</p></li>
+<li><p>View the calibrated image displayed in the main panel</p></li>
 </ol>
+<p>The application automatically handles exposure time scaling for dark frames and normalization of flat fields.</p>
 </section>
-<section id="source-detection-and-photometry">
-<h2>Source Detection and Photometry<a class="headerlink" href="#source-detection-and-photometry" title="Link to this heading"></a></h2>
-<p>The application performs:</p>
+<section id="step-3-wcs-determination">
+<h2>Step 3: WCS Determination<a class="headerlink" href="#step-3-wcs-determination" title="Link to this heading"></a></h2>
+<p>Accurate World Coordinate System (WCS) information is essential for photometry and catalog matching:</p>
 <ol class="arabic simple">
-<li><p>Background estimation and subtraction</p></li>
-<li><p>Source detection with configurable threshold</p></li>
-<li><p>Aperture photometry on all detected sources</p></li>
-<li><p>PSF photometry with automatic PSF modeling</p></li>
+<li><p>The application first attempts to read WCS from the FITS header</p></li>
+<li><p>If WCS is missing or invalid, you can:
+* Enter RA/Dec coordinates manually
+* Use the astrometry.net service for plate solving (requires an API key)</p></li>
 </ol>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>For plate solving with astrometry.net, enter your API key in the sidebar field.
+If you don’t have one, you can register for free at nova.astrometry.net.</p>
+</div>
 </section>
-<section id="zero-point-calibration">
-<h2>Zero-Point Calibration<a class="headerlink" href="#zero-point-calibration" title="Link to this heading"></a></h2>
+<section id="step-4-photometry-and-analysis">
+<h2>Step 4: Photometry and Analysis<a class="headerlink" href="#step-4-photometry-and-analysis" title="Link to this heading"></a></h2>
+<p>Once your image is calibrated and WCS is determined:</p>
 <ol class="arabic simple">
-<li><p>Cross-matching with Gaia DR3</p></li>
-<li><p>Zero-point calculation using matched stars</p></li>
-<li><p>Calibrated magnitude calculation for all detected sources</p></li>
+<li><p>Click “Run Zero Point Calibration” to start the analysis pipeline</p></li>
+<li><p>The application will:
+* Detect sources in your image
+* Measure their positions and fluxes
+* Cross-match with the Gaia DR3 catalog
+* Calculate photometric zero point
+* Generate calibrated magnitudes for all sources</p></li>
 </ol>
-</section>
-<section id="output-files">
-<h2>Output Files<a class="headerlink" href="#output-files" title="Link to this heading"></a></h2>
-<p>The application generates several output files in the <cite>pfr_results</cite> directory:</p>
+<p>Advanced configuration options in the sidebar allow you to adjust:</p>
 <ul class="simple">
-<li><p>Photometry catalog (CSV)</p></li>
-<li><p>Analysis metadata (TXT)</p></li>
-<li><p>FITS header information (TXT)</p></li>
-<li><p>PSF model (FITS)</p></li>
-<li><p>Log file (LOG)</p></li>
+<li><p>Source detection threshold</p></li>
+<li><p>Border mask size</p></li>
+<li><p>Seeing estimate</p></li>
+<li><p>Gaia magnitude range for calibration</p></li>
 </ul>
 </section>
-<section id="interactive-features">
-<h2>Interactive Features<a class="headerlink" href="#interactive-features" title="Link to this heading"></a></h2>
+<section id="step-5-reviewing-results">
+<h2>Step 5: Reviewing Results<a class="headerlink" href="#step-5-reviewing-results" title="Link to this heading"></a></h2>
+<p>After processing, the application provides comprehensive results:</p>
 <ul class="simple">
-<li><p>Embedded Aladin Lite for viewing your field with catalog overlays</p></li>
-<li><p>Interactive tables for catalog exploration</p></li>
-<li><p>Direct links to online astronomy services</p></li>
+<li><p><strong>Calibrated Science Image</strong>: View the processed image</p></li>
+<li><p><strong>Source Catalog</strong>: Interactive table of detected sources</p></li>
+<li><p><strong>Calibration Plot</strong>: Zero point determination visualization</p></li>
+<li><p><strong>Cross-matched Catalog</strong>: Sources identified in other catalogs</p></li>
+<li><p><strong>Aladin Viewer</strong>: Interactive sky map with your catalog overlaid</p></li>
 </ul>
 </section>
-<section id="troubleshooting">
-<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
-<p>Common issues:</p>
+<section id="step-6-exporting-data">
+<h2>Step 6: Exporting Data<a class="headerlink" href="#step-6-exporting-data" title="Link to this heading"></a></h2>
+<p>Your analysis results are automatically saved to the <cite>pfr_results</cite> directory and can be downloaded directly:</p>
 <ul class="simple">
-<li><p><strong>WCS determination fails</strong>: Check if your image has sufficient stars or try using astrometry.net</p></li>
-<li><p><strong>No stars detected</strong>: Adjust the detection threshold or seeing estimate</p></li>
-<li><p><strong>Zero-point calibration fails</strong>: Check magnitude range for Gaia stars or adjust the detection mask</p></li>
+<li><p><strong>CSV Catalog</strong>: Complete photometry results with calibrated magnitudes</p></li>
+<li><p><strong>Metadata File</strong>: Analysis parameters and observation details</p></li>
+<li><p><strong>PSF Model</strong>: The fitted PSF model as a FITS file</p></li>
+<li><p><strong>Log File</strong>: Complete processing log</p></li>
+</ul>
+</section>
+<section id="using-the-interactive-aladin-viewer">
+<h2>Using the Interactive Aladin Viewer<a class="headerlink" href="#using-the-interactive-aladin-viewer" title="Link to this heading"></a></h2>
+<p>The embedded Aladin Lite viewer allows you to explore your field with detected sources marked:</p>
+<ul class="simple">
+<li><p>Pan and zoom the image using mouse controls</p></li>
+<li><p>Click on marked sources to view detailed information</p></li>
+<li><p>Toggle between different sky surveys using the layer control</p></li>
+<li><p>Search for specific objects using the search box</p></li>
+</ul>
+</section>
+<section id="best-practices-and-tips">
+<h2>Best Practices and Tips<a class="headerlink" href="#best-practices-and-tips" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Image Quality</strong>: Higher quality science images yield better photometric results</p></li>
+<li><p><strong>Calibration Frames</strong>: Using proper calibration frames significantly improves accuracy</p></li>
+<li><p><strong>Detection Parameters</strong>: Adjust threshold and FWHM according to your image characteristics</p></li>
+<li><p><strong>Gaia Magnitude Range</strong>: Set appropriate magnitude limits to get good calibration stars</p></li>
+<li><p><strong>Border Mask</strong>: Increase the border mask if your image has edge artifacts</p></li>
+</ul>
+</section>
+<section id="additional-resources">
+<h2>Additional Resources<a class="headerlink" href="#additional-resources" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>See the Examples section for walkthrough tutorials</p></li>
+<li><p>Check Advanced Features for specialized use cases</p></li>
+<li><p>Refer to Troubleshooting for common issues and solutions</p></li>
 </ul>
 </section>
 </section>
@@ -182,7 +225,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="examples.html" class="btn btn-neutral float-right" title="Basic Workflow Example" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="examples.html" class="btn btn-neutral float-right" title="Example 1: Basic Photometry Workflow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
