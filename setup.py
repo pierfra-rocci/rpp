@@ -1,9 +1,11 @@
-from cx_Freeze import setup, Executable
+from cx_freeze import setup, Executable
 
 # Specify the modules to include
 build_exe_options = {
-    'packages': ['streamlit.runtime.scriptrunner'],
-    'includes': ['streamlit.runtime.scriptrunner.magic_funcs'],
+    "packages": ["os", "streamlit"],
+    "includes": ["streamlit.runtime.scriptrunner.magic_funcs"],
+    "excludes": ["tkinter", "unittest", "email", "http", "html", "xml", "distutils"],
+    "include_files": [],
 }
 
 setup(

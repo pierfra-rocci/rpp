@@ -1,3 +1,9 @@
+import sys
+
+if getattr(sys, 'frozen', False):
+    import importlib.metadata
+    importlib.metadata.distributions = lambda **kwargs: []
+
 import os
 import datetime
 import base64
