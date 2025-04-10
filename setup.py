@@ -9,7 +9,7 @@ build_exe_options = {
 }
 
 setup(
-    name='PFR_RAPAS',
+    name='pfr_rapas',
     version='1.0',
     description='Photometry Factory for RAPAS',
     options={'build_exe': build_exe_options},
