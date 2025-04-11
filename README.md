@@ -8,6 +8,18 @@ A comprehensive astronomical image processing and photometry tool designed speci
 
 ![PFR Screenshot](doc/_static/pfr_screenshot.png)
 
+## Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Documentation](#documentation)
+- [Example Output](#example-output)
+- [Contributing](#contributing)
+- [Reporting Issues](#reporting-issues)
+- [License](#license)
+- [Acknowledgements](#acknowledgements)
+- [Contact](#contact)
+
 ## Features
 
 - **Complete Image Calibration Pipeline**
@@ -125,7 +137,31 @@ The application generates several output files in the pfr_results directory:
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Here's how you can contribute:
+
+1. **Fork the repository** - Create your own copy of the project
+2. **Create a branch** - `git checkout -b feature/amazing-feature`
+3. **Make your changes** - Implement your feature or bug fix
+4. **Run tests** - Ensure your changes don't break existing functionality
+5. **Commit your changes** - `git commit -m 'Add some amazing feature'`
+6. **Push to your branch** - `git push origin feature/amazing-feature`
+7. **Open a Pull Request** - Submit your changes for review
+
+Please make sure your code follows the project's coding style and includes appropriate documentation.
+
+## Reporting Issues
+
+Found a bug or have a feature request? Please submit an issue through the GitHub issue tracker:
+
+1. Go to the [Issues page](https://github.com/yourusername/pfr/issues)
+2. Click "New Issue"
+3. Provide a clear title and detailed description
+4. For bugs, include:
+   - Steps to reproduce
+   - Expected behavior
+   - Actual behavior
+   - System information (OS, Python version, etc.)
+   - Screenshots if applicable
 
 ## License
 
@@ -135,6 +171,12 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - This tool relies on numerous open-source astronomy packages including Astropy, Photutils, and Astroquery
 - Special thanks to the RAPAS team for their support and feedback
+
+## Contact
+
+Pier-Francesco Rocci - [your.email@example.com](mailto:your.email@example.com)
+
+Project Link: [https://github.com/yourusername/pfr](https://github.com/yourusername/pfr)
 
 ---
 

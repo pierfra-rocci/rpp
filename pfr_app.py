@@ -2001,15 +2001,14 @@ def run_zero_point_calibration(
                 )
                 catalog_path = os.path.join(output_dir, filename)
 
-                st.success(f"Catalog saved to {catalog_path}")
-                col1, col2 = st.columns([3, 1])
-                with col2:
-                    if st.button("📂 Open Results Folder", key="open_folder_btn", use_container_width=True):
-                        if open_results_folder(output_dir):
-                            st.success("Folder opened successfully!")
-
                 with open(catalog_path, "w") as f:
                     f.write(csv_data)
+                    
+                st.success(f"Catalog saved to {catalog_path}")
+                # Add Open Folder button in main UI area
+                if st.button("📂 Open Results Folder", key="open_folder_btn"):
+                    if open_results_folder(output_dir):
+                        st.success("Folder opened successfully!")
 
                 metadata_filename = f"{base_catalog_name}_metadata.txt"
                 metadata_path = os.path.join(output_dir, metadata_filename)
@@ -3766,6 +3765,43 @@ if science_file is not None:
 
                                             with open(catalog_path, "w") as f:
                                                 f.write(csv_data)
+                                                
+                                            st.success(f"Catalog saved to {catalog_path}")
+                                            # Add Open Folder button in main UI area
+                                            if st.button("📂 Open Results Folder", key="open_folder_btn"):
+                                                if open_results_folder(output_dir):
+                                                    st.success("Folder opened successfully!")
+
+                                            metadata_filename = f"{base_catalog_name}_metadata.txt"
+                                            metadata_path = os.path.join(output_dir, metadata_filename)
+
+                                            with open(metadata_path, "w") as f:
+                                                f.write("RAPAS Photometry Analysis Metadata\n")
+                                                f.write("================================\n\n")
+                                                f.write(
+                                                    f"Analysis Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                                                )
+                                                f.write(f"Input File: {science_file.name}\n")
+                                                f.write(f"Catalog File: {filename}\n\n")
+
+                                                f.write(
+                                                    f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n"
+                                                )
+                                                f.write(f"Airmass: {air:.3f}\n")
+                                                f.write(f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n")
+                                                f.write(
+                                                    f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n"
+                                                )
+
+                                                f.write("Detection Parameters:\n")
+                                                f.write(f"  Threshold: {threshold_sigma} sigma\n")
+                                                f.write(f"  Edge Mask: {detection_mask} pixels\n")
+                                                f.write(
+                                                    f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n"
+                                                )
+
+                                            write_to_log(log_buffer, "Saved catalog metadata")
+                                            st.success(f"Analysis metadata saved to {metadata_path}")
 
                                         except Exception as e:
                                             st.error(f"Error preparing download: {e}")
