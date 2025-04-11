@@ -4,7 +4,7 @@
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://streamlit.io/gallery)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A comprehensive astronomical image processing and photometry tool designed specifically for RAPAS (Remote Astronomical Photometry & Astrometry System) data.
+A comprehensive astronomical image processing and photometry tool designed specifically for RAPAS data.
 
 ![PFR Screenshot](doc/_static/pfr_screenshot.png)
 
