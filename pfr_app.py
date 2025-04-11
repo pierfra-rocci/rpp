@@ -2001,10 +2001,6 @@ def run_zero_point_calibration(
                 )
                 catalog_path = os.path.join(output_dir, filename)
 
-                download_link = get_download_link(
-                    csv_data, filename, link_text="Download Photometry Catalog"
-                )
-                st.markdown(download_link, unsafe_allow_html=True)
 
                 st.success(f"Catalog saved to {catalog_path}")
                 if get_open_folder_button(output_dir):
@@ -3750,15 +3746,6 @@ if science_file is not None:
 
                                             catalog_path = os.path.join(
                                                 output_dir, filename
-                                            )
-
-                                            download_link = get_download_link(
-                                                csv_data,
-                                                filename,
-                                                link_text="Download Photometry Catalog",
-                                            )
-                                            st.markdown(
-                                                download_link, unsafe_allow_html=True
                                             )
 
                                             with open(catalog_path, "w") as f:
