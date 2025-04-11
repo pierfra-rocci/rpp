@@ -153,7 +153,7 @@ Please make sure your code follows the project's coding style and includes appro
 
 Found a bug or have a feature request? Please submit an issue through the GitHub issue tracker:
 
-1. Go to the [Issues page](https://github.com/yourusername/pfr/issues)
+1. Go to the [Issues page](https://github.com/pierfra-rocci/pfr/issues)
 2. Click "New Issue"
 3. Provide a clear title and detailed description
 4. For bugs, include:
