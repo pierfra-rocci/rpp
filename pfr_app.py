@@ -2039,7 +2039,6 @@ def run_zero_point_calibration(
                     )
 
                 write_to_log(log_buffer, "Saved catalog metadata")
-                st.success(f"Analysis metadata saved to {metadata_path}")
 
             except Exception as e:
                 st.error(f"Error preparing download: {e}")
@@ -3765,12 +3764,11 @@ if science_file is not None:
 
                                             with open(catalog_path, "w") as f:
                                                 f.write(csv_data)
-                                                
-                                            st.success(f"Catalog saved to {catalog_path}")
+                                            
                                             # Add Open Folder button in main UI area
                                             if st.button("📂 Open Results Folder", key="open_folder_btn"):
                                                 if open_results_folder(output_dir):
-                                                    st.success("Folder opened successfully!")
+                                                    st.success("Folder opened successfully")
 
                                             metadata_filename = f"{base_catalog_name}_metadata.txt"
                                             metadata_path = os.path.join(output_dir, metadata_filename)
@@ -3801,7 +3799,6 @@ if science_file is not None:
                                                 )
 
                                             write_to_log(log_buffer, "Saved catalog metadata")
-                                            st.success(f"Analysis metadata saved to {metadata_path}")
 
                                         except Exception as e:
                                             st.error(f"Error preparing download: {e}")
