@@ -2998,6 +2998,33 @@ with st.sidebar:
         help="Size of border to exclude from source detection",
     )
 
+    st.header("Observatory Location")
+    observatory_name = st.text_input(
+        "Observatory Name",
+        value="TJMS",
+        help="Name of the observatory"
+    )
+    latitude = st.number_input(
+        "Latitude (°)",
+        value=48.29166,
+        min_value=-90.0,
+        max_value=90.0,
+        help="Observatory latitude in degrees (-90 to 90)"
+    )
+    longitude = st.number_input(
+        "Longitude (°)",
+        value=2.43805,
+        min_value=-180.0,
+        max_value=180.0,
+        help="Observatory longitude in degrees (-180 to 180)"
+    )
+    elevation = st.number_input(
+        "Elevation (m)",
+        value=94.0,
+        min_value=0.0,
+        help="Observatory elevation in meters above sea level"
+    )
+
     st.header("Gaia Parameters")
     gaia_band = st.selectbox(
         "Gaia Band",
@@ -3307,7 +3334,15 @@ if science_file is not None:
             science_header["DEC"] = st.session_state["valid_dec"]
 
         try:
-            air = airmass(science_header)
+            # Create observatory dictionary using user inputs
+            observatory_data = {
+                "name": observatory_name,
+                "latitude": latitude,
+                "longitude": longitude,
+                "elevation": elevation
+            }
+            
+            air = airmass(science_header, observatory=observatory_data)
             st.write(f"Airmass: {air:.2f}")
         except Exception as e:
             st.warning(f"Error calculating airmass: {e}")
