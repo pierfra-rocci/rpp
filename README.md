@@ -76,13 +76,6 @@ A comprehensive astronomical image processing and photometry tool designed speci
    streamlit run pfr_app.py
    ```
 
-### Alternative Installation
-
-A standalone Windows executable is also available:
-1. Download the latest release from the releases page
-2. Extract all files to a directory of your choice
-3. Run `PfrApp.bat`
-
 ## Usage
 
 1. **Upload your FITS files**
