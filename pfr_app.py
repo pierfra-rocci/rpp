@@ -3115,10 +3115,10 @@ with st.sidebar:
 
     st.link_button("GAIA Archive", "https://gea.esac.esa.int/archive/")
     st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
-    st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+    st.link_button("XMatch", "http://cdsxmatch.u-strasbg.fr/")
     st.link_button("SkyBoT", "http://vo.imcce.fr/webservices/skybot/")
     st.link_button("AAVSO", "https://www.aavso.org/vsx/")
-    st.link_button("XMatch", "http://cdsxmatch.u-strasbg.fr/")
+    st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
     st.link_button("NED", "https://ned.ipac.caltech.edu/")
     st.link_button("ADS", "https://ui.adsabs.harvard.edu/")
 
