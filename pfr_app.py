@@ -3771,7 +3771,30 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     log_filename = f"{st.session_state['base_filename']}.log"
     log_filepath = os.path.join(output_dir, log_filename)
 
+    # Log all sidebar parameters
+    write_to_log(log_buffer, "Analysis Parameters", level="INFO")
+    write_to_log(log_buffer, f"Seeing: {seeing} arcsec")
+    write_to_log(log_buffer, f"Detection Threshold: {threshold_sigma} sigma")
+    write_to_log(log_buffer, f"Border Mask: {detection_mask} pixels")
+    
+    write_to_log(log_buffer, "Observatory Information", level="INFO")
+    write_to_log(log_buffer, f"Observatory Name: {observatory_name}")
+    write_to_log(log_buffer, f"Latitude: {latitude}°")
+    write_to_log(log_buffer, f"Longitude: {longitude}°")
+    write_to_log(log_buffer, f"Elevation: {elevation} m")
+    
+    write_to_log(log_buffer, "Gaia Parameters", level="INFO")
+    write_to_log(log_buffer, f"Gaia Band: {gaia_band}")
+    write_to_log(log_buffer, f"Gaia Min Magnitude: {gaia_min_mag}")
+    write_to_log(log_buffer, f"Gaia Max Magnitude: {gaia_max_mag}")
+    
+    write_to_log(log_buffer, "Calibration Options", level="INFO")
+    write_to_log(log_buffer, f"Apply Bias: {calibrate_bias}")
+    write_to_log(log_buffer, f"Apply Dark: {calibrate_dark}")
+    write_to_log(log_buffer, f"Apply Flat: {calibrate_flat}")
+    
+    # Finalize and save the log
+    write_to_log(log_buffer, "Processing completed", level="INFO")
     with open(log_filepath, "w") as f:
-        write_to_log(log_buffer, "Processing completed", level="INFO")
         f.write(log_buffer.getvalue())
         write_to_log(log_buffer, f"Log saved to {log_filepath}")
