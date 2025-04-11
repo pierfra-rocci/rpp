@@ -2926,7 +2926,7 @@ def write_to_log(log_buffer, message, level="INFO"):
 
 def open_results_folder(folder_path):
     """
-    Open the specified folder in the file explorer.
+    Open the specified folder in the file explorer (cross-platform).
     
     Parameters
     ----------
@@ -2940,10 +2940,21 @@ def open_results_folder(folder_path):
     """
     try:
         import os
+        import platform
         import subprocess
         
-        # For Windows
-        os.startfile(folder_path)
+        system = platform.system()
+        
+        if system == "Windows":
+            os.startfile(folder_path)
+        elif system == "Darwin":  # macOS
+            subprocess.run(["open", folder_path], check=True)
+        elif system == "Linux":
+            subprocess.run(["xdg-open", folder_path], check=True)
+        else:
+            st.error(f"Unsupported platform: {system}")
+            return False
+            
         return True
     except Exception as e:
         st.error(f"Error opening folder: {str(e)}")
