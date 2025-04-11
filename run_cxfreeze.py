@@ -49,6 +49,7 @@ import streamlit.runtime.scriptrunner.magic_funcs
 def resolve_path(path):
     return os.path.abspath(os.path.join(os.getcwd(), path))
 
+
 if __name__ == "__main__":
     sys.argv = [
         "streamlit",
