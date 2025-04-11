@@ -2001,10 +2001,9 @@ def run_zero_point_calibration(
                 )
                 catalog_path = os.path.join(output_dir, filename)
 
-
                 st.success(f"Catalog saved to {catalog_path}")
-                if get_open_folder_button(output_dir):
-                    st.success("Results folder opened successfully.")
+                if st.button("Open Results Folder"):
+                    open_results_folder(output_dir)
 
                 with open(catalog_path, "w") as f:
                     f.write(csv_data)
