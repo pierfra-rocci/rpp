@@ -2685,9 +2685,9 @@ def display_catalog_in_aladin(
 
     with st.spinner("Loading Aladin Lite viewer..."):
         try:
-            sources_json_string = (
-                json.dumps(catalog_sources).replace("'", "\\'").replace('"', '\\"')
-            )
+            sources_json_b64 = base64.b64encode(
+                json.dumps(catalog_sources).encode("utf-8")
+            ).decode("utf-8")
 
             html_content = f"""
             <!DOCTYPE html>
@@ -2724,8 +2724,8 @@ def display_catalog_in_aladin(
                             }});
                             aladin.addCatalog(cat);
 
-                            let sourcesData = JSON.parse("{sources_json_string}");
-                           let aladinSources = [];
+                            let sourcesData = JSON.parse(atob("{sources_json_b64}"));
+                            let aladinSources = [];
 
                             sourcesData.forEach(function(source) {{
                                 let popupContent = '<div style="padding:5px;">';
@@ -2765,8 +2765,11 @@ def display_catalog_in_aladin(
             </html>
             """
 
-            components.iframe(html_content, scrolling=True)
-            st.caption("Interactive star map showing detected sources.")
+            components.html(
+                html_content,
+                height=600,  # Explicitly set a height
+                scrolling=True
+            )
 
         except Exception as e:
             st.error(f"Streamlit failed to render the Aladin HTML component: {str(e)}")
