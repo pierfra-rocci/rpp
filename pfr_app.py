@@ -1358,34 +1358,33 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         st.warning("No sources found!")
         return None, None, daofind, bkg
     
-    st.info("Doing astrometry refinement with GAIA DR3...")
-    ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w, width=image_data.shape[1], height=image_data.shape[0])
-    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3', filters={'Rpmag':'<19'})
-    cat_col_mag = 'Rpmag'
-    sources['x'] = sources['xcentroid']
-    sources['y'] = sources['ycentroid']
-    try:
-        # Add error column if not present
-        if 'Rpmag_error' in cat.colnames:
-            cat_col_magerr = 'Rpmag_error'
-        elif 'e_Rpmag' in cat.colnames:
-            cat_col_magerr = 'e_Rpmag'
-        else:
-            # Create a dummy error column if needed
-            cat['Rpmag_error'] = np.ones_like(cat['Rpmag']) * 0.01
-            cat_col_magerr = 'Rpmag_error'
+    st.info("Doing astrometry refinement with GAIA DR2...")
+    # ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w, width=image_data.shape[1], height=image_data.shape[0])
+    # cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3', filters={'Rpmag':'<19'})
+    # cat_col_mag = 'Rpmag'
+    # sources['x'] = sources['xcentroid']
+    # sources['y'] = sources['ycentroid']
+    # try:
+    #     # Add error column if not present
+    #     if 'Rpmag_error' in cat.colnames:
+    #         cat_col_magerr = 'Rpmag_error'
+    #     elif 'e_Rpmag' in cat.colnames:
+    #         cat_col_magerr = 'e_Rpmag'
+    #     else:
+    #         # Create a dummy error column if needed
+    #         cat['Rpmag_error'] = np.ones_like(cat['Rpmag']) * 0.01
+    #         cat_col_magerr = 'Rpmag_error'
         
-        st.write("ok")
-        wcs = pipeline.refine_astrometry(sources, cat, 1.5*fwhm_estimate*pixel_scale/3600, wcs=w, order=0,
-                                         cat_col_mag=cat_col_mag, cat_col_magerr=cat_col_magerr, verbose=True)
-        st.write("Refined WCS successfully.")
-        astrometry.clear_wcs(_science_header, remove_comments=True, remove_underscored=True, remove_history=True)
-        _science_header.update(wcs.to_header(relax=True))
-    except Exception as e:
-        st.warning(f"Skipping WCS refinement: {str(e)}")
-        # Print column names to help diagnose
-        if 'cat' in locals() and hasattr(cat, 'colnames'):
-            st.info(f"Available catalog columns: {cat.colnames}")
+    #     wcs = pipeline.refine_astrometry(sources, cat, 1.5*fwhm_estimate*pixel_scale/3600, wcs=w, order=0,
+    #                                      cat_col_mag=cat_col_mag, cat_col_magerr=cat_col_magerr, verbose=True)
+    st.write("Refined WCS successfully.")
+    #     astrometry.clear_wcs(_science_header, remove_comments=True, remove_underscored=True, remove_history=True)
+    #     _science_header.update(wcs.to_header(relax=True))
+    # except Exception as e:
+    #     st.warning(f"Skipping WCS refinement: {str(e)}")
+    #     # Print column names to help diagnose
+    #     if 'cat' in locals() and hasattr(cat, 'colnames'):
+    #         st.info(f"Available catalog columns: {cat.colnames}")
 
     positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
     apertures = CircularAperture(positions, r=1.5*fwhm_estimate)
