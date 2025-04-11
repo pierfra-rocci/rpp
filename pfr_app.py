@@ -2002,8 +2002,11 @@ def run_zero_point_calibration(
                 catalog_path = os.path.join(output_dir, filename)
 
                 st.success(f"Catalog saved to {catalog_path}")
-                if st.button("Open Results Folder"):
-                    open_results_folder(output_dir)
+                col1, col2 = st.columns([3, 1])
+                with col2:
+                    if st.button("📂 Open Results Folder", key="open_folder_btn", use_container_width=True):
+                        if open_results_folder(output_dir):
+                            st.success("Folder opened successfully!")
 
                 with open(catalog_path, "w") as f:
                     f.write(csv_data)
@@ -3113,6 +3116,9 @@ with st.sidebar:
     st.link_button("GAIA Archive", "https://gea.esac.esa.int/archive/")
     st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
     st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+    st.link_button("SkyBoT", "http://vo.imcce.fr/webservices/skybot/")
+    st.link_button("AAVSO", "https://www.aavso.org/vsx/")
+    st.link_button("XMatch", "http://cdsxmatch.u-strasbg.fr/")
     st.link_button("NED", "https://ned.ipac.caltech.edu/")
     st.link_button("ADS", "https://ui.adsabs.harvard.edu/")
 
