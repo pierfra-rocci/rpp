@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pfr"
+version = "1.0.0"
+description = "Photometry Factory for RAPAS"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "PFR Team"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+
+dependencies = [
+    "astropy==7.0.1",
+    "astropy-iers-data==0.2025.4.7.0.35.30",
+    "astroquery==0.4.10",
+    "astroscrappy==1.2.0",
+    "matplotlib==3.10.1",
+    "numpy==2.2.4",
+    "pandas==2.2.3",
+    "pyvo==1.6.2",
+    "regions==0.10",
+    "requests==2.32.3",
+    "statsmodels==0.14.4",
+    "stdpipe==0.2.2",
+    "streamlit==1.44.1",
+    "urllib3==2.4.0",
+    "photutils==2.2.0",
+    "pillow==11.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+]
+
+build = [
+    "cx_Freeze==8.1.0",
+    "cx_Logging==3.2.1",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/username/pfr"
+"Bug Tracker" = "https://github.com/username/pfr/issues"
+
+[project.scripts]
+pfr = "pfr.pfr_app:main"
+
+[tool.setuptools]
+packages = ["pfr"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+include = '\.pyi?$'
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
