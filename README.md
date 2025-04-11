@@ -62,8 +62,8 @@ A comprehensive astronomical image processing and photometry tool designed speci
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/P_F_R.git
-   cd P_F_R
+   git clone https://github.com/yourusername/pfr.git
+   cd pfr
    ```
 
 2. Install dependencies:
