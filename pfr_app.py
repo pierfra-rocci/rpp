@@ -2006,6 +2006,10 @@ def run_zero_point_calibration(
                 )
                 st.markdown(download_link, unsafe_allow_html=True)
 
+                st.success(f"Catalog saved to {catalog_path}")
+                if get_open_folder_button(output_dir):
+                    st.success("Results folder opened successfully.")
+
                 with open(catalog_path, "w") as f:
                     f.write(csv_data)
 
@@ -2923,6 +2927,53 @@ def write_to_log(log_buffer, message, level="INFO"):
 
     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
     log_buffer.write(f"[{timestamp}] {level}: {message}\n")
+
+
+def open_results_folder(folder_path):
+    """
+    Open the specified folder in the file explorer.
+    
+    Parameters
+    ----------
+    folder_path : str
+        Path to the folder to open
+        
+    Returns
+    -------
+    bool
+        True if successful, False otherwise
+    """
+    try:
+        import os
+        import subprocess
+        
+        # For Windows
+        os.startfile(folder_path)
+        return True
+    except Exception as e:
+        st.error(f"Error opening folder: {str(e)}")
+        return False
+
+
+def get_open_folder_button(folder_path, button_text="Open Results Folder"):
+    """
+    Generate a button to open a folder in the file explorer.
+    
+    Parameters
+    ----------
+    folder_path : str
+        Path to the folder to open
+    button_text : str, optional
+        Text to display on the button, default="Open Results Folder"
+    
+    Returns
+    -------
+    bool
+        True if button is clicked and folder opened successfully, False otherwise
+    """
+    if st.button(button_text):
+        return open_results_folder(folder_path)
+    return False
 
 
 initialize_session_state()
