@@ -1377,7 +1377,7 @@ def find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm
         
     #     wcs = pipeline.refine_astrometry(sources, cat, 1.5*fwhm_estimate*pixel_scale/3600, wcs=w, order=0,
     #                                      cat_col_mag=cat_col_mag, cat_col_magerr=cat_col_magerr, verbose=True)
-    st.write("Refined WCS successfully.")
+    st.info("Refined WCS successfully.")
     #     astrometry.clear_wcs(_science_header, remove_comments=True, remove_underscored=True, remove_history=True)
     #     _science_header.update(wcs.to_header(relax=True))
     # except Exception as e:
