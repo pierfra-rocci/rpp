@@ -171,3 +171,4 @@ pfr_results/*
 rapas_results/SN2025dr_gaia_RP_180s_processed_header.txt
 pfr-win32*
 pfr_results
+.vscode/**
