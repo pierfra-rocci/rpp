@@ -2408,6 +2408,73 @@ def enhance_catalog_with_crossmatches(
     except Exception as e:
         st.error(f"Error querying AAVSO VSX: {e}")
 
+    st.info("Querying VizieR VII/294 for quasars...")
+    try:
+        if field_center_ra is not None and field_center_dec is not None:
+
+            # Set columns to retrieve from the quasar catalog
+            v = Vizier(columns=['RAJ2000', 'DEJ2000', 'Name', 'z', 'r_mag'])
+            v.ROW_LIMIT = -1  # No row limit
+
+            # Query the VII/294 catalog around the field center
+            result = v.query_region(
+                SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg, u.deg)),
+                width=field_width_arcmin * u.arcmin,
+                catalog='VII/294'
+            )
+
+            if result and len(result) > 0:
+                qso_table = result[0]
+                
+                # Convert to pandas DataFrame for easier matching
+                qso_df = qso_table.to_pandas()
+                qso_coords = SkyCoord(ra=qso_df['RAJ2000'], dec=qso_df['DEJ2000'], unit=u.deg)
+                
+                # Create source coordinates for matching
+                source_coords = SkyCoord(ra=final_table['ra'], dec=final_table['dec'], unit=u.deg)
+                
+                # Perform cross-matching
+                idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
+                matches = d2d.arcsec <= search_radius_arcsec
+                
+                # Add matched quasar information to the final table
+                final_table['qso_name'] = None
+                final_table['qso_redshift'] = None
+                final_table['qso_r_mag'] = None
+                
+                matched_sources = np.where(matches)[0]
+                matched_qsos = idx[matches]
+                
+                for source_idx, qso_idx in zip(matched_sources, matched_qsos):
+                    final_table.loc[source_idx, 'qso_name'] = qso_df.iloc[qso_idx]['Name']
+                    final_table.loc[source_idx, 'qso_redshift'] = qso_df.iloc[qso_idx]['z']
+                    final_table.loc[source_idx, 'qso_r_mag'] = qso_df.iloc[qso_idx]['r_mag']
+                
+                # Update the catalog_matches column for matched quasars
+                has_qso = final_table['qso_name'].notna()
+                final_table.loc[has_qso, 'catalog_matches'] += 'QSO; '
+                
+                st.info(f"Found {sum(has_qso)} quasars in field from VII/294 catalog.")
+                write_to_log(
+                    st.session_state.get('log_buffer'),
+                    f"Found {sum(has_qso)} quasar matches in VII/294 catalog",
+                    "INFO"
+                )
+            else:
+                st.write("No quasars found in field from VII/294 catalog.")
+                write_to_log(
+                    st.session_state.get('log_buffer'),
+                    "No quasars found in field from VII/294 catalog",
+                    "INFO"
+                )
+    except Exception as e:
+        st.error(f"Error querying VizieR VII/294: {str(e)}")
+        write_to_log(
+            st.session_state.get('log_buffer'),
+            f"Error in VizieR VII/294 processing: {str(e)}",
+            "ERROR"
+        )
+
     status_text.write("Cross-matching complete!")
 
     final_table["catalog_matches"] = ""
@@ -2427,6 +2494,10 @@ def enhance_catalog_with_crossmatches(
     if "aavso_Name" in final_table.columns:
         has_aavso = final_table["aavso_Name"].notna()
         final_table.loc[has_aavso, "catalog_matches"] += "AAVSO; "
+    
+    if "qso_name" in final_table.columns:
+        has_qso = final_table["qso_name"].notna()
+        final_table.loc[has_qso, "catalog_matches"] += "QSO; "
 
     final_table["catalog_matches"] = final_table["catalog_matches"].str.rstrip("; ")
     final_table.loc[final_table["catalog_matches"] == "", "catalog_matches"] = None
