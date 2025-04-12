@@ -3141,7 +3141,7 @@ def get_open_folder_button(folder_path, button_text="Open Results Folder"):
     bool
         True if button is clicked and folder opened successfully, False otherwise
     """
-    if st.button(button_text):
+    if st.button("📂 Open Results Folder", key="open_folder"):
         return open_results_folder(folder_path)
     return False
 
@@ -3930,9 +3930,7 @@ if science_file is not None:
                                                 f.write(csv_data)
                                             
                                             # Add Open Folder button in main UI area
-                                            if st.button("📂 Open Results Folder", key="open_folder_btn"):
-                                                if open_results_folder(output_dir):
-                                                    st.success("Folder opened successfully")
+                                            get_open_folder_button(output_dir)
 
                                             metadata_filename = f"{base_catalog_name}_metadata.txt"
                                             metadata_path = os.path.join(output_dir, metadata_filename)
