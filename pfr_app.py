@@ -9,6 +9,8 @@ import os
 import datetime
 import base64
 import json
+import requests
+from urllib.parse import quote
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -17,8 +19,6 @@ from typing import Union, Any, Optional, Dict, Tuple
 
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
-import requests
-from urllib.parse import quote
 
 from astropy.modeling import models, fitting
 import streamlit as st
@@ -43,7 +43,7 @@ from astropy.wcs import WCS
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from astropy.nddata import NDData
 
-from stdpipe import astrometry, catalogs, pipeline
+# from stdpipe import astrometry, catalogs, pipeline
 
 import warnings
 
@@ -89,6 +89,50 @@ FIGURE_SIZES = {
     "wide": (12, 6),  # For wide plots
     "stars_grid": (10, 8),  # For grid of stars
 }
+
+URL = 'https://astro-colibri.science'
+
+
+def getJson(url: str) -> json:
+    """
+    Fetch JSON data from a given URL and handle errors gracefully.
+
+    Parameters
+    ----------
+    url : str
+        The URL to fetch JSON data from
+
+    Returns
+    -------
+    json
+        Parsed JSON data if successful, or error message in JSON format if failed
+
+    Notes
+    -----
+    - Handles network errors and JSON parsing errors.
+    - Returns an error message in JSON format if the request fails or the response is empty.
+    """
+    if not url.startswith("http"):
+        return json.dumps({"error": "invalid URL"})
+    if not url.endswith(".json"):
+        return json.dumps({"error": "not a JSON file"})
+    try:
+        # Send a GET request to the provided URL using the requests library
+        req = requests.get(url)
+        # Raise an error if the request was not successful
+        req.raise_for_status()
+        # Check if the response has any content
+        if not req.content:
+            # If the response is empty, return an error message as JSON
+            return json.dumps({"error": "empty response"})
+        # If the response has content, parse it as JSON and return it
+        return req.json()
+    except requests.exceptions.RequestException as e:
+        # If there was an error making the request, return an error message as JSON
+        return json.dumps({"error": "request exception", "message": str(e)})
+    except json.decoder.JSONDecodeError as e:
+        # If there was an error parsing the JSON, return an error message as JSON
+        return json.dumps({"error": "invalid json", "message": str(e)})
 
 
 def solve_with_astrometry_net(image_data, header=None, api_key=None):
@@ -1942,9 +1986,9 @@ def run_zero_point_calibration(
 
                     epsf_cols = {
                         "match_id": "match_id",
-                        "flux_fit": "epsf_flux_fit",
-                        "flux_unc": "epsf_flux_unc",
-                        "instrumental_mag": "epsf_instrumental_mag",
+                        "flux_fit": "psf_flux_fit",
+                        "flux_unc": "psf_flux_unc",
+                        "instrumental_mag": "psf_instrumental_mag",
                     }
 
                     if (
@@ -1961,15 +2005,15 @@ def run_zero_point_calibration(
                     )
 
                     if "epsf_instrumental_mag" in final_table.columns:
-                        final_table["epsf_calib_mag"] = (
-                            final_table["epsf_instrumental_mag"]
+                        final_table["psf_calib_mag"] = (
+                            final_table["psf_instrumental_mag"]
                             + zero_point_value
                             + 0.1 * air
                         )
 
                     final_table.drop("match_id", axis=1, inplace=True)
 
-                    st.success("Added EPSF photometry results to the catalog")
+                    st.success("Added PSF photometry results to the catalog")
 
                 csv_buffer = StringIO()
 
@@ -2048,7 +2092,7 @@ def run_zero_point_calibration(
 
 
 def enhance_catalog_with_crossmatches(
-    final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=6.0
+    final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=60
 ):
     """
     Enhance a photometric catalog with cross-matches from multiple astronomical databases.
@@ -2140,6 +2184,54 @@ def enhance_catalog_with_crossmatches(
             )
 
             st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
+
+    status_text.write("Querying Astro-Colibri for object identifications...")
+    source = {
+        "ra": [],
+        "dec": [],
+        "name": [],
+    }
+    try:
+        response = getJson(f"{URL}/known_sources")
+        sources = response['sources']
+
+        if sources is not None and len(sources) > 0:
+            for name in sources:
+                s = getJson(f"{URL}/source_details?name={name}")
+                if s is None:
+                    continue
+                source["ra"].append(s["ra"] * u.deg)
+                source["dec"].append(s["dec"] * u.deg)
+                source["name"].append(s["name"])
+            astrostars = pd.DataFrame(source)
+
+            final_table["astro_colibri_name"] = None
+
+            source_coords = SkyCoord(
+                ra=final_table["ra"].values,
+                dec=final_table["dec"].values,
+                unit="deg",
+            )
+
+            astro_colibri_coords = SkyCoord(
+                ra=astrostars["ra"],
+                dec=astrostars["dec"],
+                unit=(u.deg, u.deg),
+            )
+
+            idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
+            matches = d2d < (search_radius_arcsec * u.arcsec)
+
+            for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                if match:
+                    final_table.loc[i, "astro_colibri_name"] = astrostars[match_idx]["name"]
+
+            st.success(f"Found {sum(matches)} Astro-Colibri objects in field.")
+        else:
+            st.write("No Astro-Colibri objects found in the field.")
+    except Exception as e:
+        st.error(f"Error querying Astro-Colibri: {str(e)}")
+        st.write("No Astro-Colibri sources found.")
 
     status_text.write("Querying SIMBAD for object identifications...")
     try:
@@ -2475,7 +2567,7 @@ def enhance_catalog_with_crossmatches(
             "ERROR"
         )
 
-    status_text.write("Cross-matching complete!")
+    status_text.write("Cross-matching complete")
 
     final_table["catalog_matches"] = ""
 
@@ -3674,10 +3766,10 @@ if science_file is not None:
 
                                                 epsf_cols = {}
                                                 epsf_cols["match_id"] = "match_id"
-                                                epsf_cols["flux_fit"] = "epsf_flux_fit"
-                                                epsf_cols["flux_unc"] = "epsf_flux_unc"
+                                                epsf_cols["flux_fit"] = "psf_flux_fit"
+                                                epsf_cols["flux_unc"] = "psf_flux_unc"
                                                 epsf_cols["instrumental_mag"] = (
-                                                    "epsf_instrumental_mag"
+                                                    "psf_instrumental_mag"
                                                 )
 
                                                 if (
@@ -3702,18 +3794,18 @@ if science_file is not None:
                                                     )
 
                                                     if (
-                                                        "epsf_instrumental_mag"
+                                                        "psf_instrumental_mag"
                                                         in final_table.columns
                                                     ):
                                                         final_table["psf_calib_mag"] = (
                                                             final_table[
-                                                                "epsf_instrumental_mag"
+                                                                "psf_instrumental_mag"
                                                             ]
                                                             + zero_point_value
                                                             + 0.1 * air
                                                         )
                                                         st.success(
-                                                            "Added EPSF photometry results to the catalog"
+                                                            "Added PSF photometry results"
                                                         )
 
                                                     if (
@@ -3746,7 +3838,7 @@ if science_file is not None:
                                                                 }
                                                             )
                                                         st.success(
-                                                            "Added aperture photometry results to the catalog"
+                                                            "Added aperture photometry results"
                                                         )
 
                                                     final_table.drop(
