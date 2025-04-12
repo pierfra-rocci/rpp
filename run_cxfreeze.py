@@ -1,4 +1,5 @@
 import streamlit.web.cli as stcli
+import streamlit.runtime.scriptrunner.magic_funcs
 import sys
 
 import os
