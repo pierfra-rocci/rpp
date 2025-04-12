@@ -1,10 +1,14 @@
 import streamlit.web.cli as stcli
-import os
 import sys
 
+import os
 import datetime
 import base64
 import json
+import requests
+import platform
+import subprocess
+from urllib.parse import quote
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -13,8 +17,6 @@ from typing import Union, Any, Optional, Dict, Tuple
 
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
-import requests
-from urllib.parse import quote
 
 from astropy.modeling import models, fitting
 import streamlit as st
@@ -39,12 +41,11 @@ from astropy.wcs import WCS
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from astropy.nddata import NDData
 
-from stdpipe import astrometry, catalogs, pipeline
+# from stdpipe import astrometry, catalogs, pipeline
 
-import astropy.constants.codata2018
-import astropy.constants.iau2015
-import streamlit.runtime.scriptrunner.magic_funcs
+import warnings
 
+warnings.filterwarnings("ignore")
 
 def resolve_path(path):
     return os.path.abspath(os.path.join(os.getcwd(), path))
