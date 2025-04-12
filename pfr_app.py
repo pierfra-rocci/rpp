@@ -10,6 +10,8 @@ import datetime
 import base64
 import json
 import requests
+import platform
+import subprocess
 from urllib.parse import quote
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
@@ -3103,29 +3105,45 @@ def open_results_folder(folder_path):
         True if successful, False otherwise
     """
     try:
-        import os
-        import platform
-        import subprocess
-        
+        # Convert local path to file:// URL
         system = platform.system()
-        
         if system == "Windows":
-            os.startfile(folder_path)
-        elif system == "Darwin":  # macOS
-            subprocess.run(["open", folder_path], check=True)
-        elif system == "Linux":
-            subprocess.run(["xdg-open", folder_path], check=True)
+            # Windows paths need extra / and must replace backslashes
+            folder_url = 'file:///' + folder_path.replace('\\', '/')
         else:
-            st.error(f"Unsupported platform: {system}")
-            return False
+            folder_url = 'file://' + folder_path
+        
+        # Open in a new browser tab
+        try:
+            # Use JavaScript to open in new tab via Streamlit components
+            components.html(
+                f"""
+                <script>
+                    window.open('{folder_url}', '_blank');
+                </script>
+                """,
+                height=0,
+            )
+            return True
+        except Exception:
+            # Fallback to default system file browser if browser method fails
+            if system == "Windows":
+                os.startfile(folder_path)
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", folder_path], check=True)
+            elif system == "Linux":
+                subprocess.run(["xdg-open", folder_path], check=True)
+            else:
+                st.error(f"Unsupported platform: {system}")
+                return False
+            return True
             
-        return True
     except Exception as e:
         st.error(f"Error opening folder: {str(e)}")
         return False
 
 
-def get_open_folder_button(folder_path, button_text="Open Results Folder"):
+def get_open_folder_button(folder_path):
     """
     Generate a button to open a folder in the file explorer.
     
@@ -3141,9 +3159,19 @@ def get_open_folder_button(folder_path, button_text="Open Results Folder"):
     bool
         True if button is clicked and folder opened successfully, False otherwise
     """
-    if st.button("📂 Open Results Folder", key="open_folder"):
-        return open_results_folder(folder_path)
-    return False
+    # if os.path.exists(folder_path):
+    #     st.markdown(
+    #         f'<a href="file:///{os.path.join(os.getcwd(), folder_path)}" target="_blank">'
+    #         f"{button_text}</a>",
+    #         unsafe_allow_html=True,
+    #     )
+    if st.link_button("📂 Open Results Folder", f"file://{os.path.join(os.getcwd(), folder_path)}"):
+        try:
+            open_results_folder(os.path.join(os.getcwd(), folder_path))
+        except Exception as e:
+            st.error(f"Failed to open folder: {str(e)}")
+            return False
+    return
 
 
 initialize_session_state()
