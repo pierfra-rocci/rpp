@@ -3112,6 +3112,7 @@ with st.sidebar:
     catalog_name = st.text_input("Output Catalog Filename", default_catalog_name)
 
     st.link_button("GAIA Archive", "https://gea.esac.esa.int/archive/")
+    st.link_button("AstroColibri", "https://astro-colibri.com/")
     st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
     st.link_button("XMatch", "http://cdsxmatch.u-strasbg.fr/")
     st.link_button("SkyBoT", "http://vo.imcce.fr/webservices/skybot/")
