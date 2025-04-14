@@ -1320,12 +1320,10 @@ def perform_epsf_photometry(
         st.warning(f"Error displaying extracted stars: {e}")
 
     try:
-        progress_bar = st.progress(0)
         epsf_builder = EPSFBuilder(
-            oversampling=2, maxiters=5, progress_bar=progress_bar.update
+            oversampling=2, maxiters=5, progress_bar=True
         )
         epsf, _ = epsf_builder(stars)
-        progress_bar.empty()
         st.session_state["epsf_model"] = epsf
     except Exception as e:
         st.error(f"Error fitting PSF model: {e}")
@@ -1377,7 +1375,7 @@ def perform_epsf_photometry(
         finder=daostarfind,
         aperture_radius=fit_shape / 2,
         maxiters=3,
-        progress_bar=False,
+        progress_bar=True,
     )
 
     if img is None or not isinstance(img, np.ndarray) or img.size == 0:
@@ -1395,6 +1393,7 @@ def perform_epsf_photometry(
     psfphot.y = phot_table["ycenter"]
 
     try:
+        st.write("Performing PSF photometry...")
         phot_epsf_result = psfphot(img, mask=mask)
         st.session_state["epsf_photometry_result"] = phot_epsf_result
         st.write("PSF photometry completed successfully.")
@@ -2049,8 +2048,7 @@ def run_zero_point_calibration(
 
                 with open(catalog_path, "w") as f:
                     f.write(csv_data)
-                    
-                st.success(f"Catalog saved to {catalog_path}")
+
                 # Add Open Folder button in main UI area
                 if st.button("📂 Open Results Folder", key="open_folder_btn"):
                     if open_results_folder(output_dir):
@@ -2178,10 +2176,6 @@ def enhance_catalog_with_crossmatches(
         st.warning("No sources to cross-match with catalogs.")
         return final_table
 
-    if "ra" not in final_table.columns or "dec" not in final_table.columns:
-        st.warning("RA/DEC columns missing from catalog. Cannot cross-match.")
-        return final_table
-
     status_text = st.empty()
     status_text.write("Starting cross-match process...")
 
@@ -2227,34 +2221,25 @@ def enhance_catalog_with_crossmatches(
 
             st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
 
-    status_text.write("Querying Astro-Colibri for object identifications...")
+    st.write("Querying Astro-Colibri for object identifications...")
     source = {
         "ra": [],
         "dec": [],
         "name": [],
     }
     try:
+        sources = None
         try:
             response = getJson(f"{URL}/known_sources")
-            if not isinstance(response, dict) or 'sources' not in response:
-                raise ValueError("Invalid API response format")
             sources = response['sources']
         except Exception as e:
             st.error(f"Error querying Astro-Colibri API: {str(e)}")
-            return
+            # Continue with function instead of returning None
 
         if sources is not None and len(sources) > 0:
             # Use batching for source details requests
             source = batch_api_requests(sources)
             astrostars = pd.DataFrame(source)
-            # for name in sources:
-            #     s = getJson(f"{URL}/source_details?name={name}")
-            #     if s is None:
-            #         continue
-            #     source["ra"].append(s["ra"] * u.deg)
-            #     source["dec"].append(s["dec"] * u.deg)
-            #     source["name"].append(s["name"])
-            # astrostars = pd.DataFrame(source)
 
             final_table["astro_colibri_name"] = None
 
@@ -2278,16 +2263,16 @@ def enhance_catalog_with_crossmatches(
 
             for i, (match, match_idx) in enumerate(zip(matches, idx)):
                 if match:
-                    final_table.loc[i, "astro_colibri_name"] = astrostars[match_idx]["name"]
+                    final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
                     
             st.success(f"Found {sum(matches)} Astro-Colibri objects in field.")
-            
         else:
-            st.write("No Astro-Colibri objects found in the field.")
+            st.write("No Astro-Colibri sources found in the field.")
             
     except Exception as e:
         st.error(f"Error querying Astro-Colibri: {str(e)}")
         st.write("No Astro-Colibri sources found.")
+        # Continue with function instead of returning None
 
     status_text.write("Querying SIMBAD for object identifications...")
     try:
@@ -3197,35 +3182,35 @@ def open_results_folder(folder_path):
         return False
 
 
-def get_open_folder_button(folder_path):
-    """
-    Generate a button to open a folder in the file explorer.
+# def get_open_folder_button(folder_path):
+#     """
+#     Generate a button to open a folder in the file explorer.
     
-    Parameters
-    ----------
-    folder_path : str
-        Path to the folder to open
-    button_text : str, optional
-        Text to display on the button, default="Open Results Folder"
+#     Parameters
+#     ----------
+#     folder_path : str
+#         Path to the folder to open
+#     button_text : str, optional
+#         Text to display on the button, default="Open Results Folder"
     
-    Returns
-    -------
-    bool
-        True if button is clicked and folder opened successfully, False otherwise
-    """
-    # if os.path.exists(folder_path):
-    #     st.markdown(
-    #         f'<a href="file:///{os.path.join(os.getcwd(), folder_path)}" target="_blank">'
-    #         f"{button_text}</a>",
-    #         unsafe_allow_html=True,
-    #     )
-    if st.link_button("📂 Open Results Folder", f"file://{os.path.join(os.getcwd(), folder_path)}"):
-        try:
-            open_results_folder(os.path.join(os.getcwd(), folder_path))
-        except Exception as e:
-            st.error(f"Failed to open folder: {str(e)}")
-            return False
-    return
+#     Returns
+#     -------
+#     bool
+#         True if button is clicked and folder opened successfully, False otherwise
+#     """
+#     # if os.path.exists(folder_path):
+#     #     st.markdown(
+#     #         f'<a href="file:///{os.path.join(os.getcwd(), folder_path)}" target="_blank">'
+#     #         f"{button_text}</a>",
+#     #         unsafe_allow_html=True,
+#     #     )
+#     if st.link_button("📂 Open Results Folder", f"file://{os.path.join(os.getcwd(), folder_path)}"):
+#         try:
+#             open_results_folder(os.path.join(os.getcwd(), folder_path))
+#         except Exception as e:
+#             st.error(f"Failed to open folder: {str(e)}")
+#             return False
+#     return
 
 
 def update_observatory_inputs(science_header=None):
@@ -3250,11 +3235,15 @@ def update_observatory_inputs(science_header=None):
         defaults['elevation'] = float(science_header.get('ELEVATIO', 
                                     science_header.get('ALT-OBS', defaults['elevation'])))
 
-    # Create the input widgets with the determined values
+    # Create a unique prefix for keys based on whether we're using header values
+    prefix = "header_" if science_header is not None else "default_"
+
+    # Create the input widgets with the determined values and unique keys
     observatory_name = st.text_input(
         "Observatory Name",
         value=defaults['name'],
-        help="Name of the observatory"
+        help="Name of the observatory",
+        key=f"{prefix}observatory_name"
     )
     
     latitude = st.number_input(
@@ -3262,7 +3251,8 @@ def update_observatory_inputs(science_header=None):
         value=defaults['latitude'],
         min_value=-90.0,
         max_value=90.0,
-        help="Observatory latitude in degrees (-90 to 90)"
+        help="Observatory latitude in degrees (-90 to 90)",
+        key=f"{prefix}latitude"
     )
     
     longitude = st.number_input(
@@ -3270,14 +3260,16 @@ def update_observatory_inputs(science_header=None):
         value=defaults['longitude'],
         min_value=-180.0,
         max_value=180.0,
-        help="Observatory longitude in degrees (-180 to 180)"
+        help="Observatory longitude in degrees (-180 to 180)",
+        key=f"{prefix}longitude"
     )
     
     elevation = st.number_input(
         "Elevation (m)",
         value=defaults['elevation'],
         min_value=0.0,
-        help="Observatory elevation in meters above sea level"
+        help="Observatory elevation in meters above sea level",
+        key=f"{prefix}elevation"
     )
     
     return {
@@ -4090,7 +4082,7 @@ if science_file is not None:
                                                 f.write(csv_data)
                                             
                                             # Add Open Folder button in main UI area
-                                            get_open_folder_button(output_dir)
+                                            # get_open_folder_button(output_dir)
 
                                             metadata_filename = f"{base_catalog_name}_metadata.txt"
                                             metadata_path = os.path.join(output_dir, metadata_filename)
