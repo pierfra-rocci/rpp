@@ -3192,24 +3192,16 @@ def get_open_folder_button(folder_path):
     bool
         True if button is clicked and folder opened successfully, False otherwise
     """
+    st.link_button("📂 Open Results Folder", f"file:///{os.path.join(os.getcwd(), folder_path)}")
+    #     try:
+    #         open_results_folder(folder_path)
+    #     except Exception as e:
+    #         st.error(f"Failed to open folder: {str(e)}")
+    #         return False
     # if not os.path.exists(folder_path):
-    #     if st.link_button("📂 Open Results Folder", f"file://{os.path.join(os.getcwd(), folder_path)}"):
-    #         try:
-    #             open_results_folder(os.path.join(os.getcwd(), folder_path))
-    #         except Exception as e:
-    #             st.error(f"Failed to open folder: {str(e)}")
-    #             return
-    #     return
-    if st.link_button("📂 Open Results Folder", f"file://{os.path.join(os.getcwd(), folder_path)}"):
-        try:
-            open_results_folder(folder_path)
-        except Exception as e:
-            st.error(f"Failed to open folder: {str(e)}")
-            return False
-    if not os.path.exists(folder_path):
-        st.error(f"Folder does not exist: {folder_path}")
-        return False
-    return True
+    #     st.error(f"Folder does not exist: {folder_path}")
+    #     return False
+    # return True
 
 
 def update_observatory_inputs(science_header=None):
@@ -3423,7 +3415,7 @@ with st.sidebar:
     with col1:
         st.link_button("GAIA-Archive", "https://gea.esac.esa.int/archive/")
         st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
-        st.link_button("SkyBoT", "http://vo.imcce.fr/webservices/skybot/")
+        st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
         st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
         
     with col2:
