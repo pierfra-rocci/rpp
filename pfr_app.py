@@ -2093,6 +2093,46 @@ def run_zero_point_calibration(
         return zero_point_value, zero_point_std, final_table
 
 
+def batch_api_requests(sources, batch_size=100):
+    """
+    Process API requests in batches to avoid overloading the server.
+    
+    Parameters
+    ----------
+    sources : list
+        List of source names to query
+    batch_size : int, optional
+        Number of sources to process in each batch, default=100
+    
+    Returns
+    -------
+    dict
+        Combined results from all batches
+    """
+    results = {
+        "ra": [],
+        "dec": [],
+        "name": []
+    }
+    
+    for i in range(0, len(sources), batch_size):
+        batch = sources[i:i + batch_size]
+        st.write(f"Processing batch {i//batch_size + 1}/{(len(sources)-1)//batch_size + 1}")
+        
+        for name in batch:
+            s = getJson(f"{URL}/source_details?name={name}")
+            if s is None:
+                continue
+            results["ra"].append(s["ra"] * u.deg)
+            results["dec"].append(s["dec"] * u.deg)
+            results["name"].append(s["name"])
+            
+        # Add a small delay between batches
+        # time.sleep(0.5)
+        
+    return results
+
+
 def enhance_catalog_with_crossmatches(
     final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=60
 ):
@@ -2194,18 +2234,27 @@ def enhance_catalog_with_crossmatches(
         "name": [],
     }
     try:
-        response = getJson(f"{URL}/known_sources")
-        sources = response['sources']
+        try:
+            response = getJson(f"{URL}/known_sources")
+            if not isinstance(response, dict) or 'sources' not in response:
+                raise ValueError("Invalid API response format")
+            sources = response['sources']
+        except Exception as e:
+            st.error(f"Error querying Astro-Colibri API: {str(e)}")
+            return
 
         if sources is not None and len(sources) > 0:
-            for name in sources:
-                s = getJson(f"{URL}/source_details?name={name}")
-                if s is None:
-                    continue
-                source["ra"].append(s["ra"] * u.deg)
-                source["dec"].append(s["dec"] * u.deg)
-                source["name"].append(s["name"])
+            # Use batching for source details requests
+            source = batch_api_requests(sources)
             astrostars = pd.DataFrame(source)
+            # for name in sources:
+            #     s = getJson(f"{URL}/source_details?name={name}")
+            #     if s is None:
+            #         continue
+            #     source["ra"].append(s["ra"] * u.deg)
+            #     source["dec"].append(s["dec"] * u.deg)
+            #     source["name"].append(s["name"])
+            # astrostars = pd.DataFrame(source)
 
             final_table["astro_colibri_name"] = None
 
@@ -2221,16 +2270,21 @@ def enhance_catalog_with_crossmatches(
                 unit=(u.deg, u.deg),
             )
 
+            if not isinstance(search_radius_arcsec, (int, float)) or search_radius_arcsec <= 0:
+                raise ValueError("Search radius must be a positive number")
+            
             idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
             matches = d2d < (search_radius_arcsec * u.arcsec)
 
             for i, (match, match_idx) in enumerate(zip(matches, idx)):
                 if match:
                     final_table.loc[i, "astro_colibri_name"] = astrostars[match_idx]["name"]
-
+                    
             st.success(f"Found {sum(matches)} Astro-Colibri objects in field.")
+            
         else:
             st.write("No Astro-Colibri objects found in the field.")
+            
     except Exception as e:
         st.error(f"Error querying Astro-Colibri: {str(e)}")
         st.write("No Astro-Colibri sources found.")
@@ -3174,6 +3228,66 @@ def get_open_folder_button(folder_path):
     return
 
 
+def update_observatory_inputs(science_header=None):
+    """Update observatory inputs with values from science header or defaults"""
+    st.header("Observatory Location")
+    
+    # Default values
+    defaults = {
+        'name': 'TJMS',
+        'latitude': 48.29166,
+        'longitude': 2.43805,
+        'elevation': 94.0
+    }
+
+    # Get values from header if available
+    if science_header is not None:
+        defaults['name'] = science_header.get('OBSERVAT', defaults['name'])
+        defaults['latitude'] = float(science_header.get('LATITUDE', 
+                                   science_header.get('LAT-OBS', defaults['latitude'])))
+        defaults['longitude'] = float(science_header.get('LONGITUD', 
+                                    science_header.get('LONG-OBS', defaults['longitude'])))
+        defaults['elevation'] = float(science_header.get('ELEVATIO', 
+                                    science_header.get('ALT-OBS', defaults['elevation'])))
+
+    # Create the input widgets with the determined values
+    observatory_name = st.text_input(
+        "Observatory Name",
+        value=defaults['name'],
+        help="Name of the observatory"
+    )
+    
+    latitude = st.number_input(
+        "Latitude (°)",
+        value=defaults['latitude'],
+        min_value=-90.0,
+        max_value=90.0,
+        help="Observatory latitude in degrees (-90 to 90)"
+    )
+    
+    longitude = st.number_input(
+        "Longitude (°)",
+        value=defaults['longitude'],
+        min_value=-180.0,
+        max_value=180.0,
+        help="Observatory longitude in degrees (-180 to 180)"
+    )
+    
+    elevation = st.number_input(
+        "Elevation (m)",
+        value=defaults['elevation'],
+        min_value=0.0,
+        help="Observatory elevation in meters above sea level"
+    )
+    
+    return {
+        'name': observatory_name,
+        'latitude': latitude,
+        'longitude': longitude,
+        'elevation': elevation
+    }
+
+
 initialize_session_state()
 
 st.title("_Photometry Factory for RAPAS_")
@@ -3228,14 +3342,20 @@ with st.sidebar:
     st.caption("Get your own key at [nova.astrometry.net](http://nova.astrometry.net/)")
 
     st.header("Analysis Parameters")
-    seeing = st.number_input(
+    seeing = st.slider(
         "Seeing (arcsec)",
-        value=3.5,
+        1.0,
+        6.0,
+        3.0,
+        0.5,
         help="Estimate of the atmospheric seeing in arcseconds",
     )
-    threshold_sigma = st.number_input(
+    threshold_sigma = st.slider(
         "Detection Threshold (σ)",
-        value=3.0,
+        1.0,
+        5.0,
+        3.0,
+        0.5,
         help="Source detection threshold in sigma above background",
     )
     detection_mask = st.slider(
@@ -3247,32 +3367,36 @@ with st.sidebar:
         help="Size of border to exclude from source detection",
     )
 
-    st.header("Observatory Location")
-    observatory_name = st.text_input(
-        "Observatory Name",
-        value="TJMS",
-        help="Name of the observatory"
-    )
-    latitude = st.number_input(
-        "Latitude (°)",
-        value=48.29166,
-        min_value=-90.0,
-        max_value=90.0,
-        help="Observatory latitude in degrees (-90 to 90)"
-    )
-    longitude = st.number_input(
-        "Longitude (°)",
-        value=2.43805,
-        min_value=-180.0,
-        max_value=180.0,
-        help="Observatory longitude in degrees (-180 to 180)"
-    )
-    elevation = st.number_input(
-        "Elevation (m)",
-        value=94.0,
-        min_value=0.0,
-        help="Observatory elevation in meters above sea level"
-    )
+    # Initialize observatory with default values
+    if 'observatory_data' not in st.session_state:
+        st.session_state.observatory_data = update_observatory_inputs()
+
+    # st.header("Observatory Location")
+    # observatory_name = st.text_input(
+    #     "Observatory Name",
+    #     value=science_header.get('OBSERVAT', 'TJMS') if science_header is not None else 'TJMS',
+    #     help="Name of the observatory"
+    # )
+    # latitude = st.number_input(
+    #     "Latitude (°)", 
+    #     value=float(science_header.get('LATITUDE', science_header.get('LAT-OBS', 48.29166))) if science_header is not None else 48.29166,
+    #     min_value=-90.0,
+    #     max_value=90.0,
+    #     help="Observatory latitude in degrees (-90 to 90)"
+    # )
+    # longitude = st.number_input(
+    #     "Longitude (°)",
+    #     value=float(science_header.get('LONGITUD', science_header.get('LONG-OBS', 2.43805))) if science_header is not None else 2.43805,
+    #     min_value=-180.0,
+    #     max_value=180.0,
+    #     help="Observatory longitude in degrees (-180 to 180)" 
+    # )
+    # elevation = st.number_input(
+    #     "Elevation (m)",
+    #     value=float(science_header.get('ELEVATIO', science_header.get('ALT-OBS', 94.0))) if science_header is not None else 94.0,
+    #     min_value=0.0,
+    #     help="Observatory elevation in meters above sea level"
+    # )
 
     st.header("Gaia Parameters")
     gaia_band = st.selectbox(
@@ -3283,7 +3407,7 @@ with st.sidebar:
     )
     gaia_min_mag = st.slider(
         "Gaia Min Magnitude",
-        7.0,
+        6.0,
         12.0,
         10.0,
         0.5,
@@ -3291,7 +3415,7 @@ with st.sidebar:
     )
     gaia_max_mag = st.slider(
         "Gaia Max Magnitude",
-        16.0,
+        15.0,
         20.0,
         19.0,
         0.5,
@@ -3302,15 +3426,21 @@ with st.sidebar:
     default_catalog_name = f"{st.session_state['base_filename']}_phot.csv"
     catalog_name = st.text_input("Output Catalog Filename", default_catalog_name)
 
-    st.link_button("GAIA Archive", "https://gea.esac.esa.int/archive/")
-    st.link_button("AstroColibri", "https://astro-colibri.com/")
-    st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
-    st.link_button("XMatch", "http://cdsxmatch.u-strasbg.fr/")
-    st.link_button("SkyBoT", "http://vo.imcce.fr/webservices/skybot/")
-    st.link_button("AAVSO", "https://www.aavso.org/vsx/")
-    st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
-    st.link_button("NED", "https://ned.ipac.caltech.edu/")
-    st.link_button("ADS", "https://ui.adsabs.harvard.edu/")
+    st.header("Quick Links")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.link_button("GAIA-Archive", "https://gea.esac.esa.int/archive/")
+        st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
+        st.link_button("SkyBoT", "http://vo.imcce.fr/webservices/skybot/")
+        st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+        
+    with col2:
+        st.link_button("Astro-Colibri", "https://astro-colibri.com/")
+        st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
+        st.link_button("AAVSO", "https://www.aavso.org/vsx/")
+        st.link_button("NED", "https://ned.ipac.caltech.edu/")
+
 
 output_dir = ensure_output_directory("pfr_results")
 st.session_state["output_dir"] = output_dir
@@ -3320,6 +3450,8 @@ if science_file is not None:
     bias_data, _ = load_fits_data(bias_file)
     dark_data, dark_header = load_fits_data(dark_file)
     flat_data, _ = load_fits_data(flat_file)
+    
+    st.session_state.observatory_data = update_observatory_inputs(science_header)
 
     wcs_obj, wcs_error = safe_wcs_create(science_header)
     if wcs_obj is None:
@@ -3589,10 +3721,10 @@ if science_file is not None:
         try:
             # Create observatory dictionary using user inputs
             observatory_data = {
-                "name": observatory_name,
-                "latitude": latitude,
-                "longitude": longitude,
-                "elevation": elevation
+                "name": st.session_state.observatory_data["name"],
+                "latitude": st.session_state.observatory_data["latitude"],
+                "longitude": st.session_state.observatory_data["longitude"],
+                "elevation": st.session_state.observatory_data["elevation"]
             }
             
             air = airmass(science_header, observatory=observatory_data)
@@ -4055,10 +4187,10 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     write_to_log(log_buffer, f"Border Mask: {detection_mask} pixels")
     
     write_to_log(log_buffer, "Observatory Information", level="INFO")
-    write_to_log(log_buffer, f"Observatory Name: {observatory_name}")
-    write_to_log(log_buffer, f"Latitude: {latitude}°")
-    write_to_log(log_buffer, f"Longitude: {longitude}°")
-    write_to_log(log_buffer, f"Elevation: {elevation} m")
+    write_to_log(log_buffer, f"Observatory Name: {st.session_state.observatory_data['name']}")
+    write_to_log(log_buffer, f"Latitude: {st.session_state.observatory_data['latitude']}°")
+    write_to_log(log_buffer, f"Longitude: {st.session_state.observatory_data['longitude']}°")
+    write_to_log(log_buffer, f"Elevation: {st.session_state.observatory_data['elevation']} m")
     
     write_to_log(log_buffer, "Gaia Parameters", level="INFO")
     write_to_log(log_buffer, f"Gaia Band: {gaia_band}")
