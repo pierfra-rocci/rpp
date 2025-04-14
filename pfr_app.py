@@ -3144,8 +3144,6 @@ def open_results_folder(folder_path):
         if system == "Windows":
             # Windows paths need extra / and must replace backslashes
             folder_url = 'file:///' + folder_path.replace('\\', '/')
-        else:
-            folder_url = 'file://' + folder_path
         
         # Open in a new browser tab
         try:
@@ -3159,7 +3157,8 @@ def open_results_folder(folder_path):
                 height=0,
             )
             return True
-        except Exception:
+        except Exception as e:
+            st.error(f"Failed to open folder in browser: {str(e)}")
             # Fallback to default system file browser if browser method fails
             if system == "Windows":
                 os.startfile(folder_path)
@@ -3193,19 +3192,24 @@ def get_open_folder_button(folder_path):
     bool
         True if button is clicked and folder opened successfully, False otherwise
     """
-    # if os.path.exists(folder_path):
-    #     st.markdown(
-    #         f'<a href="file:///{os.path.join(os.getcwd(), folder_path)}" target="_blank">'
-    #         f"{button_text}</a>",
-    #         unsafe_allow_html=True,
-    #     )
+    # if not os.path.exists(folder_path):
+    #     if st.link_button("📂 Open Results Folder", f"file://{os.path.join(os.getcwd(), folder_path)}"):
+    #         try:
+    #             open_results_folder(os.path.join(os.getcwd(), folder_path))
+    #         except Exception as e:
+    #             st.error(f"Failed to open folder: {str(e)}")
+    #             return
+    #     return
     if st.link_button("📂 Open Results Folder", f"file://{os.path.join(os.getcwd(), folder_path)}"):
         try:
-            open_results_folder(os.path.join(os.getcwd(), folder_path))
+            open_results_folder(folder_path)
         except Exception as e:
             st.error(f"Failed to open folder: {str(e)}")
             return False
-    return
+    if not os.path.exists(folder_path):
+        st.error(f"Folder does not exist: {folder_path}")
+        return False
+    return True
 
 
 def update_observatory_inputs(science_header=None):
