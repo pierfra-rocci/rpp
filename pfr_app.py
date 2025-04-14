@@ -2049,11 +2049,6 @@ def run_zero_point_calibration(
                 with open(catalog_path, "w") as f:
                     f.write(csv_data)
 
-                # Add Open Folder button in main UI area
-                if st.button("📂 Open Results Folder", key="open_folder_btn"):
-                    if open_results_folder(output_dir):
-                        st.success("Folder opened successfully!")
-
                 metadata_filename = f"{base_catalog_name}_metadata.txt"
                 metadata_path = os.path.join(output_dir, metadata_filename)
 
@@ -2658,72 +2653,72 @@ def enhance_catalog_with_crossmatches(
     return final_table
 
 
-def get_download_link(data, filename, link_text="Download"):
-    """
-    Generate an HTML download link for data with styled appearance.
+# def get_download_link(data, filename, link_text="Download"):
+#     """
+#     Generate an HTML download link for data with styled appearance.
 
-    Parameters
-    ----------
-    data : str or bytes
-        String or binary data to be downloaded
-    filename : str
-        Name of the file to be downloaded
-    link_text : str, optional
-        Text to display on the download button, default="Download"
+#     Parameters
+#     ----------
+#     data : str or bytes
+#         String or binary data to be downloaded
+#     filename : str
+#         Name of the file to be downloaded
+#     link_text : str, optional
+#         Text to display on the download button, default="Download"
 
-    Returns
-    -------
-    str
-        HTML string containing the styled download link
+#     Returns
+#     -------
+#     str
+#         HTML string containing the styled download link
 
-    Notes
-    -----
-    - Uses base64 encoding to embed the data directly in the HTML link
-    - Includes CSS styling to create a button-like appearance
-    - Handles both string and binary data types
-    - Includes error handling and visual feedback if data is empty or invalid
-    """
-    if not data:
-        return '<div class="error-text">No data available to download</div>'
+#     Notes
+#     -----
+#     - Uses base64 encoding to embed the data directly in the HTML link
+#     - Includes CSS styling to create a button-like appearance
+#     - Handles both string and binary data types
+#     - Includes error handling and visual feedback if data is empty or invalid
+#     """
+#     if not data:
+#         return '<div class="error-text">No data available to download</div>'
 
-    try:
-        if isinstance(data, bytes):
-            b64 = base64.b64encode(data).decode()
-        else:
-            b64 = base64.b64encode(data.encode()).decode()
+#     try:
+#         if isinstance(data, bytes):
+#             b64 = base64.b64encode(data).decode()
+#         else:
+#             b64 = base64.b64encode(data.encode()).decode()
 
-        href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" class="download-button">{link_text}</a>'
+#         href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" class="download-button">{link_text}</a>'
 
-        button_style = """
-        <style>
-        .download-button {
-            display: inline-block;
-            padding: 0.8em 1.4em;
-            text-align: center;
-            text-decoration: none;
-            font-size: 16px;
-            font-weight: 500;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            margin-top: 15px;
-            transition: all 0.3s ease;
-            background-color: #2b70a1;
-        }
-        .download-button:hover {
-            background-color: #2b70a1;
-            transform: translateY(-1px);
-        }
-        .error-text {
-            color: red;
-            font-style: italic;
-        }
-        </style>
-        """
+#         button_style = """
+#         <style>
+#         .download-button {
+#             display: inline-block;
+#             padding: 0.8em 1.4em;
+#             text-align: center;
+#             text-decoration: none;
+#             font-size: 16px;
+#             font-weight: 500;
+#             border-radius: 4px;
+#             border: none;
+#             cursor: pointer;
+#             margin-top: 15px;
+#             transition: all 0.3s ease;
+#             background-color: #2b70a1;
+#         }
+#         .download-button:hover {
+#             background-color: #2b70a1;
+#             transform: translateY(-1px);
+#         }
+#         .error-text {
+#             color: red;
+#             font-style: italic;
+#         }
+#         </style>
+#         """
 
-        return button_style + href
-    except Exception as e:
-        return f'<div class="error-text">Error creating download link: {str(e)}</div>'
+#         return button_style + href
+#     except Exception as e:
+#         return f'<div class="error-text">Error creating download link: {str(e)}</div>'
 
 
 def save_header_to_txt(header, filename):
@@ -3182,35 +3177,35 @@ def open_results_folder(folder_path):
         return False
 
 
-# def get_open_folder_button(folder_path):
-#     """
-#     Generate a button to open a folder in the file explorer.
+def get_open_folder_button(folder_path):
+    """
+    Generate a button to open a folder in the file explorer.
     
-#     Parameters
-#     ----------
-#     folder_path : str
-#         Path to the folder to open
-#     button_text : str, optional
-#         Text to display on the button, default="Open Results Folder"
+    Parameters
+    ----------
+    folder_path : str
+        Path to the folder to open
+    button_text : str, optional
+        Text to display on the button, default="Open Results Folder"
     
-#     Returns
-#     -------
-#     bool
-#         True if button is clicked and folder opened successfully, False otherwise
-#     """
-#     # if os.path.exists(folder_path):
-#     #     st.markdown(
-#     #         f'<a href="file:///{os.path.join(os.getcwd(), folder_path)}" target="_blank">'
-#     #         f"{button_text}</a>",
-#     #         unsafe_allow_html=True,
-#     #     )
-#     if st.link_button("📂 Open Results Folder", f"file://{os.path.join(os.getcwd(), folder_path)}"):
-#         try:
-#             open_results_folder(os.path.join(os.getcwd(), folder_path))
-#         except Exception as e:
-#             st.error(f"Failed to open folder: {str(e)}")
-#             return False
-#     return
+    Returns
+    -------
+    bool
+        True if button is clicked and folder opened successfully, False otherwise
+    """
+    # if os.path.exists(folder_path):
+    #     st.markdown(
+    #         f'<a href="file:///{os.path.join(os.getcwd(), folder_path)}" target="_blank">'
+    #         f"{button_text}</a>",
+    #         unsafe_allow_html=True,
+    #     )
+    if st.link_button("📂 Open Results Folder", f"file://{os.path.join(os.getcwd(), folder_path)}"):
+        try:
+            open_results_folder(os.path.join(os.getcwd(), folder_path))
+        except Exception as e:
+            st.error(f"Failed to open folder: {str(e)}")
+            return False
+    return
 
 
 def update_observatory_inputs(science_header=None):
@@ -4082,7 +4077,7 @@ if science_file is not None:
                                                 f.write(csv_data)
                                             
                                             # Add Open Folder button in main UI area
-                                            # get_open_folder_button(output_dir)
+                                            get_open_folder_button(output_dir)
 
                                             metadata_filename = f"{base_catalog_name}_metadata.txt"
                                             metadata_path = os.path.join(output_dir, metadata_filename)
