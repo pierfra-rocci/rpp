@@ -1,57 +1,43 @@
-Photometry Factory for RAPAS Documentation
-=========================================
+Photometry Factory for RAPAS
+============================
 
 .. image:: _static/pfr_logo.png
    :width: 200px
    :align: right
-   :alt: PFR Logo
+   :alt: Photometry Factory for RAPAS logo
 
-**Photometry Factory for RAPAS (PFR)** is a comprehensive Python-based application designed for astronomical image processing and photometry with a focus on RAPAS (Réseau Amateur Professionnel pour les Alertes) data.
+**Photometry Factory for RAPAS (PFR)** is an interactive application for analyzing astronomical images and performing photometric analysis.
 
-This tool provides astronomers with a streamlined workflow for image calibration, plate solving, and photometric analysis of astronomical images through an intuitive web interface powered by Streamlit.
+It provides a complete pipeline for:
+
+* FITS image display and calibration
+* Source detection and photometry
+* Astrometric plate solving
+* Zero point calibration with GAIA DR3
+* Cross-matching with astronomical catalogs
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    installation
-   user_guide
+   usage
+   features
+   api
    examples
-   advanced_features
-   api_reference
-   troubleshooting
-   changelog
 
-Key Features
------------
+Features
+--------
 
-* **Image Calibration**: Apply bias, dark, and flat-field corrections to raw astronomical images
-* **Automatic Plate Solving**: Determine accurate WCS coordinates using astrometry.net
-* **Source Detection**: Identify astronomical sources with configurable detection parameters
-* **Photometry**: Perform aperture and PSF photometry on detected sources
-* **Zero-point Calibration**: Automatically calibrate magnitudes using GAIA DR3 catalog cross-matching
-* **Catalog Integration**: Cross-match detected sources with SIMBAD, SkyBoT, and AAVSO catalogs
-* **Interactive Visualization**: Explore results with interactive plots and an embedded Aladin Lite viewer
-* **Standardized Outputs**: Export results to CSV formats compatible with other astronomical software
-
-Quick Start
------------
-
-.. code-block:: bash
-
-   # Install required packages
-   pip install -r requirements.txt
-   
-   # Run the application
-   streamlit run pfr_app.py
-
-Acknowledgements
----------------
-
-This software was developed for RAPAS (Réseau Amateur Professionnel pour les Alertes). We thank all contributors and users who have provided valuable feedback.
+- Interactive web-based interface built with Streamlit
+- Support for FITS file handling with automatic calibration
+- Aperture and PSF photometry
+- Plate solving using astrometry.net
+- Catalog cross-matching with GAIA, SIMBAD, AAVSO, and other databases
+- Interactive sky viewing with Aladin integration
 
 Indices and tables
-==================
+-----------------
 
 * :ref:`genindex`
 * :ref:`modindex`

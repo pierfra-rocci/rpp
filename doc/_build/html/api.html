@@ -1,0 +1,843 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; Photometry Factory for RAPAS 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Examples" href="examples.html" />
+    <link rel="prev" title="Features" href="features.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Photometry Factory for RAPAS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#image-handling">Image Handling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.load_fits_data"><code class="docutils literal notranslate"><span class="pre">load_fits_data()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.calibrate_image_streamlit"><code class="docutils literal notranslate"><span class="pre">calibrate_image_streamlit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.estimate_background"><code class="docutils literal notranslate"><span class="pre">estimate_background()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#source-detection">Source Detection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.find_sources_and_photometry_streamlit"><code class="docutils literal notranslate"><span class="pre">find_sources_and_photometry_streamlit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.fwhm_fit"><code class="docutils literal notranslate"><span class="pre">fwhm_fit()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#photometry">Photometry</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.perform_epsf_photometry"><code class="docutils literal notranslate"><span class="pre">perform_epsf_photometry()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#astrometry">Astrometry</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.solve_with_astrometry_net"><code class="docutils literal notranslate"><span class="pre">solve_with_astrometry_net()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.safe_wcs_create"><code class="docutils literal notranslate"><span class="pre">safe_wcs_create()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.extract_coordinates"><code class="docutils literal notranslate"><span class="pre">extract_coordinates()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.extract_pixel_scale"><code class="docutils literal notranslate"><span class="pre">extract_pixel_scale()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#catalog-operations">Catalog Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.cross_match_with_gaia_streamlit"><code class="docutils literal notranslate"><span class="pre">cross_match_with_gaia_streamlit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.enhance_catalog_with_crossmatches"><code class="docutils literal notranslate"><span class="pre">enhance_catalog_with_crossmatches()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.calculate_zero_point_streamlit"><code class="docutils literal notranslate"><span class="pre">calculate_zero_point_streamlit()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.getJson"><code class="docutils literal notranslate"><span class="pre">getJson()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#visualization">Visualization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.create_figure"><code class="docutils literal notranslate"><span class="pre">create_figure()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.display_catalog_in_aladin"><code class="docutils literal notranslate"><span class="pre">display_catalog_in_aladin()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#utilities">Utilities</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.airmass"><code class="docutils literal notranslate"><span class="pre">airmass()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.ensure_output_directory"><code class="docutils literal notranslate"><span class="pre">ensure_output_directory()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.make_border_mask"><code class="docutils literal notranslate"><span class="pre">make_border_mask()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.write_to_log"><code class="docutils literal notranslate"><span class="pre">write_to_log()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pfr_app.initialize_session_state"><code class="docutils literal notranslate"><span class="pre">initialize_session_state()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Photometry Factory for RAPAS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<p>This page documents the key functions and modules in the Photometry Factory for RAPAS.</p>
+<section id="image-handling">
+<h2>Image Handling<a class="headerlink" href="#image-handling" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.load_fits_data">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">load_fits_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#load_fits_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.load_fits_data" title="Link to this definition"></a></dt>
+<dd><p>Load image data and header from a FITS file with robust error handling.</p>
+<p>Handles multiple FITS formats including multi-extension files, data cubes,
+and RGB images. For multi-dimensional data, extracts a 2D plane.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>file</strong> (<em>Streamlit UploadedFile</em>) – FITS file object from Streamlit file uploader</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(image_data, header) where:
+- image_data: 2D numpy array of pixel values, or None if loading failed
+- header: FITS header dictionary, or None if loading failed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>For multi-extension FITS files, uses the primary HDU if it contains data,
+otherwise uses the first HDU with valid data.</p></li>
+<li><p>For 3D data (RGB or data cube), extracts the first 2D plane with appropriate warnings.</p></li>
+<li><p>For higher dimensional data, takes the first slice along all extra dimensions.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.calibrate_image_streamlit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">calibrate_image_streamlit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">science_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">science_header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dark_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flat_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time_science</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time_dark</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_bias</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_dark</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_flat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#calibrate_image_streamlit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.calibrate_image_streamlit" title="Link to this definition"></a></dt>
+<dd><p>Calibrate an astronomical science image using bias, dark, and flat-field frames.</p>
+<p>This function performs standard CCD calibration steps with status updates in Streamlit:
+1. Bias subtraction (optional)
+2. Dark frame subtraction with exposure time scaling (optional)
+3. Flat field correction using normalized flat (optional)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>science_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – The raw science image data to be calibrated</p></li>
+<li><p><strong>science_header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.0)"><em>astropy.io.fits.Header</em></a>) – Header information from the science image</p></li>
+<li><p><strong>bias_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a><em> or </em><em>None</em>) – Bias frame data for zero-level correction</p></li>
+<li><p><strong>dark_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a><em> or </em><em>None</em>) – Dark frame data for thermal noise correction</p></li>
+<li><p><strong>flat_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a><em> or </em><em>None</em>) – Flat field data for sensitivity/vignetting correction</p></li>
+<li><p><strong>exposure_time_science</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Exposure time of the science image in seconds</p></li>
+<li><p><strong>exposure_time_dark</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Exposure time of the dark frame in seconds</p></li>
+<li><p><strong>apply_bias</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to apply bias subtraction</p></li>
+<li><p><strong>apply_dark</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to apply dark frame subtraction</p></li>
+<li><p><strong>apply_flat</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a>) – Whether to apply flat field correction</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(calibrated_science, science_header) where:
+- calibrated_science is the processed science image as numpy.ndarray
+- science_header is the unchanged header information</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>If bias correction is applied, it’s also applied to dark and flat frames before they’re used.</p></li>
+<li><p>Dark frames are scaled according to the exposure time ratio if different from science exposure.</p></li>
+<li><p>The flat field is normalized by its median value before division.</p></li>
+<li><p>Progress updates are shown in the Streamlit interface.</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.estimate_background">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">estimate_background</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#estimate_background"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.estimate_background" title="Link to this definition"></a></dt>
+<dd><p>Estimate the background and background RMS of an astronomical image.</p>
+<p>Uses photutils.Background2D to create a 2D background model with sigma-clipping
+and the SExtractor background estimation algorithm. Includes error handling
+and automatic adjustment for small images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – The 2D science image array</p></li>
+<li><p><strong>box_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><em>optional</em>) – The box size in pixels for the local background estimation.
+Will be automatically adjusted if the image is small.</p></li>
+<li><p><strong>filter_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><em>optional</em>) – Size of the filter for smoothing the background.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(background_2d_object, error_message) where:
+- background_2d_object: photutils.Background2D object if successful, None if failed
+- error_message: None if successful, string describing the error if failed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The function automatically adjusts the box_size and filter_size parameters
+if the image is too small, and handles various edge cases to ensure robust
+background estimation.</p>
+</dd></dl>
+
+</section>
+<section id="source-detection">
+<h2>Source Detection<a class="headerlink" href="#source-detection" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.find_sources_and_photometry_streamlit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">find_sources_and_photometry_streamlit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_science_header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_fwhm_pixel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detection_mask</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#find_sources_and_photometry_streamlit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.find_sources_and_photometry_streamlit" title="Link to this definition"></a></dt>
+<dd><p>Find astronomical sources and perform both aperture and PSF photometry.</p>
+<p>This comprehensive function handles the full photometry workflow:
+1. Background estimation
+2. Source detection
+3. WCS refinement with GAIA DR3
+4. Aperture photometry
+5. PSF/EPSF photometry</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – Science image data (2D array)</p></li>
+<li><p><strong>_science_header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.0)"><em>astropy.io.fits.Header</em></a>) – Header information from FITS file (underscore prevents caching issues)</p></li>
+<li><p><strong>mean_fwhm_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Estimated FWHM in pixels for aperture sizing</p></li>
+<li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Detection threshold in sigma units above background</p></li>
+<li><p><strong>detection_mask</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Border size in pixels to mask during detection</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(phot_table, epsf_table, daofind, bkg) where:
+- phot_table: Table with aperture photometry results
+- epsf_table: Table with PSF photometry results
+- daofind: The DAOStarFinder object used for detection
+- bkg: Background2D object with background model</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Uses stdpipe for astrometry refinement with GAIA DR3</p></li>
+<li><p>Automatically adds celestial coordinates (RA/Dec) to the photometry tables if WCS is available</p></li>
+<li><p>Both aperture and PSF photometry include instrumental magnitude calculations</p></li>
+<li><p>Shows progress and status updates in the Streamlit interface</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.fwhm_fit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">fwhm_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fwhm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std_lo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std_hi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#fwhm_fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.fwhm_fit" title="Link to this definition"></a></dt>
+<dd><p>Estimate the Full Width at Half Maximum (FWHM) of stars in an astronomical image.</p>
+<p>This function detects sources in the image using DAOStarFinder, filters them based on
+flux values, and fits 1D Gaussian models to the marginal distributions of each source
+to calculate FWHM values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – The 2D image array containing astronomical sources</p></li>
+<li><p><strong>fwhm</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Initial FWHM estimate in pixels, used for source detection</p></li>
+<li><p><strong>pixel_scale</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – The pixel scale of the image in arcseconds per pixel</p></li>
+<li><p><strong>mask</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a><em>, </em><em>optional</em>) – Boolean mask array where True indicates pixels to ignore during source detection</p></li>
+<li><p><strong>std_lo</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>default=0.5</em>) – Lower bound for flux filtering, in standard deviations below median flux</p></li>
+<li><p><strong>std_hi</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>default=0.5</em>) – Upper bound for flux filtering, in standard deviations above median flux</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The median FWHM value in pixels (rounded to nearest integer) if successful,
+or None if no valid sources could be measured</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a> or None</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The function uses marginal sums along the x and y dimensions and fits 1D Gaussian
+profiles to estimate FWHM. For each source, a box of size ~6×FWHM is extracted,
+and profiles are fit independently in both dimensions, with the results averaged.</p>
+<p>Progress updates and error messages are displayed using Streamlit.</p>
+</dd></dl>
+
+</section>
+<section id="photometry">
+<h2>Photometry<a class="headerlink" href="#photometry" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.perform_epsf_photometry">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">perform_epsf_photometry</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phot_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fwhm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">daostarfind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#perform_epsf_photometry"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.perform_epsf_photometry" title="Link to this definition"></a></dt>
+<dd><p>Perform PSF (Point Spread Function) photometry using an empirically-constructed PSF model.</p>
+<p>This function builds an empirical PSF (EPSF) from bright stars in the image
+and then uses this model to perform PSF photometry on all detected sources.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – Image with sky background subtracted</p></li>
+<li><p><strong>phot_table</strong> (<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.0)"><em>astropy.table.Table</em></a>) – Table containing source positions</p></li>
+<li><p><strong>fwhm</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Full Width at Half Maximum in pixels, used to define extraction and fitting sizes</p></li>
+<li><p><strong>daostarfind</strong> (<em>callable</em>) – Star detection function used as “finder” in PSF photometry</p></li>
+<li><p><strong>mask</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a><em>, </em><em>optional</em>) – Mask to exclude certain image areas from analysis</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>phot_epsf_result : Table containing PSF photometry results, including fitted fluxes and positions</p></li>
+<li><p>epsf : The fitted EPSF model used for photometry</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.0)">astropy.table.Table</a>, <a class="reference external" href="https://photutils.readthedocs.io/en/stable/api/photutils.psf.EPSFModel.html#photutils.psf.EPSFModel" title="(in photutils v2.2)">photutils.psf.EPSFModel</a>]</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The function displays the extracted stars used for PSF model building and the
+resulting PSF model in the Streamlit interface. It also saves the PSF model
+as a FITS file in the output directory.</p>
+<p>If successful, the photometry results are also stored in the Streamlit session state
+under ‘epsf_photometry_result’.</p>
+</dd></dl>
+
+</section>
+<section id="astrometry">
+<h2>Astrometry<a class="headerlink" href="#astrometry" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.solve_with_astrometry_net">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">solve_with_astrometry_net</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">api_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#solve_with_astrometry_net"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.solve_with_astrometry_net" title="Link to this definition"></a></dt>
+<dd><p>Solve astrometric plate using the astrometry.net web API.</p>
+<p>This function sends an image to the astrometry.net service to determine
+accurate WCS (World Coordinate System) information. It handles retries
+and extracting metadata from the header to aid in solving.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – The 2D image array to solve</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.0)"><em>astropy.io.fits.Header</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em>, </em><em>optional</em>) – FITS header with any available metadata to help the solver,
+such as approximate coordinates or pixel scale</p></li>
+<li><p><strong>api_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Astrometry.net API key. If not provided, will look in environment variables.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(wcs_object, updated_header, status_message) where:
+- wcs_object: astropy.wcs.WCS object if successful, None if failed
+- updated_header: Header with WCS keywords added if successful
+- status_message: String explaining the result or error</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The function will use any available metadata in the header to constrain
+the search, including RA/Dec and pixel scale, which can significantly
+improve solving speed and accuracy.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.safe_wcs_create">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">safe_wcs_create</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#safe_wcs_create"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.safe_wcs_create" title="Link to this definition"></a></dt>
+<dd><p>Create a WCS (World Coordinate System) object from a FITS header with robust error handling.</p>
+<p>This function validates the header contains required WCS keywords before attempting
+to create a WCS object, and properly handles various edge cases and errors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.0)"><em>astropy.io.fits.Header</em></a>) – FITS header containing WCS information</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(wcs_object, None) if successful, (None, error_message) if failed, where:
+- wcs_object: astropy.wcs.WCS object
+- error_message: String describing the error if WCS creation failed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The function checks for required WCS keywords and validates the resulting
+WCS object. For higher dimensional data, it will reduce the WCS to celestial
+coordinates only.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.extract_coordinates">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">extract_coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#extract_coordinates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.extract_coordinates" title="Link to this definition"></a></dt>
+<dd><p>Extract celestial coordinates (RA/Dec) from a FITS header.</p>
+<p>Tries multiple possible coordinate keywords and validates the values
+are within reasonable ranges.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.0)"><em>astropy.io.fits.Header</em></a>) – FITS header containing coordinate information</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(ra, dec, source_description) where:
+- ra: Right Ascension value in degrees or None if not found/invalid
+- dec: Declination value in degrees or None if not found/invalid
+- source_description: String describing the source keywords or error message</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Coordinates are validated to ensure RA is between -360 and 360 degrees
+and DEC is between -90 and 90 degrees. Values outside these ranges will
+be rejected with an appropriate error message.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.extract_pixel_scale">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">extract_pixel_scale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#extract_pixel_scale"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.extract_pixel_scale" title="Link to this definition"></a></dt>
+<dd><p>Extract the pixel scale (arcsec/pixel) from a FITS header.</p>
+<p>Tries multiple approaches to determine the pixel scale:
+1. Direct pixel scale keywords (PIXSIZE, PIXSCALE, etc.)
+2. WCS CDELT keywords
+3. Calculation from physical pixel size and focal length</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.0)"><em>astropy.io.fits.Header</em></a>) – FITS header with metadata</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(pixel_scale_value, source_description) where:
+- pixel_scale_value: Float value of pixel scale in arcseconds per pixel
+- source_description: String describing how the value was determined</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Returns a default value of 1.0 arcsec/pixel if no pixel scale information
+can be determined from the header.</p>
+</dd></dl>
+
+</section>
+<section id="catalog-operations">
+<h2>Catalog Operations<a class="headerlink" href="#catalog-operations" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.cross_match_with_gaia_streamlit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">cross_match_with_gaia_streamlit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_phot_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_science_header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size_arcsec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean_fwhm_pixel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_min_mag</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_max_mag</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#cross_match_with_gaia_streamlit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.cross_match_with_gaia_streamlit" title="Link to this definition"></a></dt>
+<dd><p>Cross-match detected sources with the GAIA DR3 star catalog.</p>
+<p>This function queries the GAIA catalog for a region matching the image field of view,
+applies filtering based on magnitude range, and matches GAIA sources to the detected sources.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>_phot_table</strong> (<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.0)"><em>astropy.table.Table</em></a>) – Table containing detected source positions (underscore prevents caching issues)</p></li>
+<li><p><strong>_science_header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.0)"><em>astropy.io.fits.Header</em></a>) – FITS header with WCS information (underscore prevents caching issues)</p></li>
+<li><p><strong>pixel_size_arcsec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Pixel scale in arcseconds per pixel</p></li>
+<li><p><strong>mean_fwhm_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – FWHM in pixels, used to determine matching radius</p></li>
+<li><p><strong>gaia_band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – GAIA magnitude band to use for filtering (e.g., ‘phot_g_mean_mag’)</p></li>
+<li><p><strong>gaia_min_mag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Minimum magnitude for GAIA source filtering</p></li>
+<li><p><strong>gaia_max_mag</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Maximum magnitude for GAIA source filtering</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame containing matched sources with both measured and GAIA catalog data,
+or None if the cross-match failed or found no matches</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame or None</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>The maximum separation for matching is set to twice the FWHM in arcseconds</p></li>
+<li><p>Includes filtering to exclude variable stars if the information is available</p></li>
+<li><p>Progress and status updates are displayed in the Streamlit interface</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.enhance_catalog_with_crossmatches">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">enhance_catalog_with_crossmatches</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">final_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matched_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_scale_arcsec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">search_radius_arcsec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#enhance_catalog_with_crossmatches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.enhance_catalog_with_crossmatches" title="Link to this definition"></a></dt>
+<dd><p>Enhance a photometric catalog with cross-matches from multiple astronomical databases.</p>
+<p>This function queries several catalogs and databases including:
+- GAIA DR3 (using previously matched sources)
+- Astro-Colibri (for known astronomical sources)
+- SIMBAD (for object identifications and classifications)
+- SkyBoT (for solar system objects)
+- AAVSO VSX (for variable stars)
+- VizieR VII/294 (for quasars)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>final_table</strong> (<em>pandas.DataFrame</em>) – Final photometry catalog with RA/Dec coordinates</p></li>
+<li><p><strong>matched_table</strong> (<em>pandas.DataFrame</em>) – Table of already matched GAIA sources (used for calibration)</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.0)"><em>astropy.io.fits.Header</em></a>) – FITS header with observation information</p></li>
+<li><p><strong>pixel_scale_arcsec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Pixel scale in arcseconds per pixel</p></li>
+<li><p><strong>search_radius_arcsec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>optional</em>) – Search radius for cross-matching in arcseconds, default=60</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Input dataframe with added catalog information including:
+- GAIA data for calibration stars
+- Astro-Colibri source identifications
+- SIMBAD identifications and object types
+- Solar system object identifications from SkyBoT
+- Variable star information from AAVSO VSX
+- Quasar information from VizieR VII/294
+- A summary column ‘catalog_matches’ listing all catalog matches</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The function shows progress updates in the Streamlit interface and creates
+a summary display of matched objects. Queries are made with appropriate
+error handling to prevent failures if any catalog service is unavailable.
+API requests are processed in batches to avoid overwhelming servers.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.calculate_zero_point_streamlit">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">calculate_zero_point_streamlit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_phot_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">_matched_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaia_band</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">air</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#calculate_zero_point_streamlit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.calculate_zero_point_streamlit" title="Link to this definition"></a></dt>
+<dd><p>Calculate photometric zero point from matched sources with GAIA.</p>
+<p>The zero point transforms instrumental magnitudes to the standard GAIA magnitude system,
+accounting for atmospheric extinction using the provided airmass.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>_phot_table</strong> (<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.0)"><em>astropy.table.Table</em></a><em> or </em><em>pandas.DataFrame</em>) – Photometry results table (underscore prevents caching issues)</p></li>
+<li><p><strong>_matched_table</strong> (<em>pandas.DataFrame</em>) – Table of GAIA cross-matched sources (underscore prevents caching issues)</p></li>
+<li><p><strong>gaia_band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – GAIA magnitude band used (e.g., ‘phot_g_mean_mag’)</p></li>
+<li><p><strong>air</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Airmass value for atmospheric extinction correction</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(zero_point_value, zero_point_std, matplotlib_figure) where:
+- zero_point_value: Float value of the calculated zero point
+- zero_point_std: Standard deviation of the zero point
+- matplotlib_figure: Figure object showing GAIA vs. calibrated magnitudes</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)">tuple</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Uses sigma clipping to remove outliers from zero point calculation</p></li>
+<li><p>Applies a simple atmospheric extinction correction of 0.1*airmass</p></li>
+<li><p>Stores the calibrated photometry table in session state as ‘final_phot_table’</p></li>
+<li><p>Creates and saves a plot showing the relation between GAIA and calibrated magnitudes</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.getJson">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">getJson</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">url</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#getJson"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.getJson" title="Link to this definition"></a></dt>
+<dd><p>Fetch JSON data from a given URL and handle errors gracefully.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>url</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The URL to fetch JSON data from</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Parsed JSON data if successful, or error message in JSON format if failed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>json</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Handles network errors and JSON parsing errors.</p></li>
+<li><p>Returns an error message in JSON format if the request fails or the response is empty.</p></li>
+</ul>
+</dd></dl>
+
+</section>
+<section id="visualization">
+<h2>Visualization<a class="headerlink" href="#visualization" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.create_figure">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">create_figure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'medium'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#create_figure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.create_figure" title="Link to this definition"></a></dt>
+<dd><p>Create a matplotlib figure with standardized size for consistent visualizations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>size</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Predefined size key: ‘small’, ‘medium’, ‘large’, ‘wide’, or ‘stars_grid’.
+The sizes are defined in the FIGURE_SIZES global dictionary.</p></li>
+<li><p><strong>dpi</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><em>optional</em>) – Dots per inch (resolution) for the figure</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Figure object with the specified dimensions</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>matplotlib.figure.Figure</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Uses the FIGURE_SIZES global dictionary to map size names to actual dimensions.
+If an invalid size is provided, falls back to ‘medium’.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.display_catalog_in_aladin">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">display_catalog_in_aladin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">final_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_center</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_center</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fov</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ra'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dec'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mag_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'calib_mag'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alt_mag_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'aperture_calib_mag'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalog_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'catalog_matches'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id_cols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['simbad_main_id',</span> <span class="pre">'skybot_NAME',</span> <span class="pre">'aavso_Name']</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback_id_prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Source'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">survey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'CDS/P/DSS2/color'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#display_catalog_in_aladin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.display_catalog_in_aladin" title="Link to this definition"></a></dt>
+<dd><p>Display a DataFrame catalog in an embedded Aladin Lite interactive sky viewer.</p>
+<p>This function creates an interactive astronomical image with catalog overlay
+that allows exploring detected sources and their cross-matches.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>final_table</strong> (<em>pandas.DataFrame</em>) – DataFrame containing catalog data with coordinates and photometry</p></li>
+<li><p><strong>ra_center</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Right Ascension center coordinate for the Aladin view (degrees)</p></li>
+<li><p><strong>dec_center</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Declination center coordinate for the Aladin view (degrees)</p></li>
+<li><p><strong>fov</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>optional</em>) – Initial field of view in degrees, default=0.5</p></li>
+<li><p><strong>ra_col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Name of the column containing Right Ascension values, default=’ra’</p></li>
+<li><p><strong>dec_col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Name of the column containing Declination values, default=’dec’</p></li>
+<li><p><strong>mag_col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Name of the primary magnitude column, default=’calib_mag’</p></li>
+<li><p><strong>alt_mag_col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Name of an alternative (preferred) magnitude column, default=’aperture_calib_mag’</p></li>
+<li><p><strong>catalog_col</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Name of the column containing catalog match information, default=’catalog_matches’</p></li>
+<li><p><strong>id_cols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>]</em><em>, </em><em>optional</em>) – List of column names (in order of preference) to use for source identifiers</p></li>
+<li><p><strong>fallback_id_prefix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Prefix to use for source names if no ID is found, default=”Source”</p></li>
+<li><p><strong>survey</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – The initial sky survey to display in Aladin Lite, default=”CDS/P/DSS2/color”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The function creates an interactive HTML component embedded in Streamlit that
+shows a DSS image of the field with catalog sources overlaid as interactive markers.
+Each marker shows a popup with detailed source information when clicked.</p>
+<p>Handles errors gracefully and provides feedback in the Streamlit interface
+if any issues occur.</p>
+</dd></dl>
+
+</section>
+<section id="utilities">
+<h2>Utilities<a class="headerlink" href="#utilities" title="Link to this heading"></a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.airmass">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">airmass</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observatory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_details</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#airmass"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.airmass" title="Link to this definition"></a></dt>
+<dd><p>Calculate the airmass for a celestial object from observation parameters.</p>
+<p>Airmass is a measure of the optical path length through Earth’s atmosphere.
+This function calculates it from header information and observatory location,
+handling multiple coordinate formats and performing physical validity checks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>_header</strong> (<em>Dict</em>) – FITS header or dictionary containing observation information.
+Must include:
+- Coordinates (RA/DEC or OBJRA/OBJDEC)
+- Observation date (DATE-OBS)</p></li>
+<li><p><strong>observatory</strong> (<em>Dict</em><em>, </em><em>optional</em>) – <p>Information about the observatory. If not provided, uses the default (TJMS).
+Format: {</p>
+<blockquote>
+<div><p>’name’: str,           # Observatory name
+‘latitude’: float,     # Latitude in degrees
+‘longitude’: float,    # Longitude in degrees
+‘elevation’: float     # Elevation in meters</p>
+</div></blockquote>
+<p>}</p>
+</p></li>
+<li><p><strong>return_details</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a><em>, </em><em>optional</em>) – If True, returns additional information about the observation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>If return_details=False: airmass (float)</p></li>
+<li><p>If return_details=True: (airmass, observation_details)
+where observation_details is a dictionary with:
+- observatory name
+- datetime
+- target coordinates
+- altitude/azimuth
+- sun altitude
+- observation type (night/twilight/day)</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Union[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a>, Tuple[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a>, Dict]]</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Airmass is approximately sec(z) where z is the zenith angle.
+The function enforces physical constraints (airmass ≥ 1.0) and
+displays warnings for extreme values. It also determines whether
+the observation was taken during night, twilight or day.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.ensure_output_directory">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">ensure_output_directory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pfr_results'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#ensure_output_directory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.ensure_output_directory" title="Link to this definition"></a></dt>
+<dd><p>Create an output directory if it doesn’t exist.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>directory</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the directory to create. Default is “pfr_results”.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Path to the created/existing output directory, or “.” (current directory)
+if creation failed</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Will attempt to create the directory and display a warning in Streamlit
+if creation fails. In case of failure, returns the current directory as fallback.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.make_border_mask">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">make_border_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">border=50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">invert=True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'bool'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#make_border_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.make_border_mask" title="Link to this definition"></a></dt>
+<dd><p>Create a binary mask for an image excluding one or more border regions.</p>
+<p>This function creates a mask that can be used to exclude border pixels
+from analysis, which is useful for operations that might be affected
+by edge artifacts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)"><em>numpy.ndarray</em></a>) – The input image as a NumPy array</p></li>
+<li><p><strong>border</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.13)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a><em>, </em><em>default=50</em>) – Border size(s) to exclude from the mask:
+- If int: same border size on all sides
+- If tuple of 2 elements: (vertical, horizontal) borders
+- If tuple of 4 elements: (top, bottom, left, right) borders</p></li>
+<li><p><strong>invert</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><em>bool</em></a><em>, </em><em>default=True</em>) – If True, the mask will be inverted (False for border regions)
+If False, the mask will be True for non-border regions</p></li>
+<li><p><strong>dtype</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.2)"><em>numpy.dtype</em></a><em>, </em><em>default=bool</em>) – Data type of the output mask</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Binary mask with the same height and width as the input image</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.2)">numpy.ndarray</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.13)"><strong>TypeError</strong></a> – If image is not a NumPy array or border is not of the correct type</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If image is empty, borders are negative, borders are larger than the image,
+    or border tuple has an invalid length</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a mask with 10px border on all sides</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mask</span> <span class="o">=</span> <span class="n">make_border_mask</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a mask with different vertical/horizontal borders</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mask</span> <span class="o">=</span> <span class="n">make_border_mask</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create a mask with custom borders for each side</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">mask</span> <span class="o">=</span> <span class="n">make_border_mask</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">),</span> <span class="n">invert</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.write_to_log">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">write_to_log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'INFO'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#write_to_log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.write_to_log" title="Link to this definition"></a></dt>
+<dd><p>Write a message to the log buffer with timestamp and severity level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>log_buffer</strong> (<em>StringIO</em>) – The log buffer to write to</p></li>
+<li><p><strong>message</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The message to log</p></li>
+<li><p><strong>level</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – Log severity level (INFO, WARNING, ERROR), default=”INFO”</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<ul class="simple">
+<li><p>Does nothing if log_buffer is None</p></li>
+<li><p>Prepends each log entry with a timestamp and level indicator</p></li>
+<li><p>Format: [HH:MM:SS] LEVEL: Message</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="pfr_app.initialize_session_state">
+<span class="sig-prename descclassname"><span class="pre">pfr_app.</span></span><span class="sig-name descname"><span class="pre">initialize_session_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/pfr_app.html#initialize_session_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#pfr_app.initialize_session_state" title="Link to this definition"></a></dt>
+<dd><p>Initialize all session state variables for the application.</p>
+<p>This function ensures all required session state variables are properly
+initialized with default values when the application starts or reloads.</p>
+<p>The session state includes:
+- Image data storage (calibrated data, headers, photometry tables)
+- Log handling (buffer and filenames)
+- Coordinate storage (manual input and validated coordinates)
+- Analysis parameters (seeing, thresholds, calibration options)
+- File tracking (loaded files)</p>
+<p>This centralized initialization ensures consistent state management
+throughout the application lifecycle.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="features.html" class="btn btn-neutral float-left" title="Features" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="examples.html" class="btn btn-neutral float-right" title="Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Pier-Francesco Rocci.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

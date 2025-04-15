@@ -42,16 +42,10 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Example 1: Basic Photometry Workflow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html#example-2-analyzing-a-variable-star-field">Example 2: Analyzing a Variable Star Field</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html#example-3-asteroid-photometry">Example 3: Asteroid Photometry</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html#advanced-example-crowded-field-photometry">Advanced Example: Crowded Field Photometry</a></li>
-<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Functions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#usage-examples">Usage Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 </ul>
 
         </div>
@@ -87,9 +81,13 @@
  | <a href="#D"><strong>D</strong></a>
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
+ | <a href="#G"><strong>G</strong></a>
+ | <a href="#I"><strong>I</strong></a>
  | <a href="#L"><strong>L</strong></a>
+ | <a href="#M"><strong>M</strong></a>
  | <a href="#P"><strong>P</strong></a>
  | <a href="#S"><strong>S</strong></a>
+ | <a href="#W"><strong>W</strong></a>
  
 </div>
 <h2 id="A">A</h2>
@@ -102,6 +100,10 @@
         <li><a href="api_reference.html#airmass">built-in function</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.airmass">airmass() (in module pfr_app)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -154,6 +156,8 @@
         <li><a href="api_reference.html#calculate_zero_point_streamlit">built-in function</a>
 </li>
       </ul></li>
+      <li><a href="api.html#pfr_app.calculate_zero_point_streamlit">calculate_zero_point_streamlit() (in module pfr_app)</a>
+</li>
       <li>
     calibrate_image_streamlit()
 
@@ -163,6 +167,10 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.calibrate_image_streamlit">calibrate_image_streamlit() (in module pfr_app)</a>
+</li>
+      <li><a href="api.html#pfr_app.create_figure">create_figure() (in module pfr_app)</a>
+</li>
       <li>
     cross_match_with_gaia_streamlit()
 
@@ -170,6 +178,8 @@
         <li><a href="api_reference.html#cross_match_with_gaia_streamlit">built-in function</a>
 </li>
       </ul></li>
+      <li><a href="api.html#pfr_app.cross_match_with_gaia_streamlit">cross_match_with_gaia_streamlit() (in module pfr_app)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -184,6 +194,10 @@
 </li>
       </ul></li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.display_catalog_in_aladin">display_catalog_in_aladin() (in module pfr_app)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="E">E</h2>
@@ -196,6 +210,14 @@
         <li><a href="api_reference.html#enhance_catalog_with_crossmatches">built-in function</a>
 </li>
       </ul></li>
+      <li><a href="api.html#pfr_app.enhance_catalog_with_crossmatches">enhance_catalog_with_crossmatches() (in module pfr_app)</a>
+</li>
+      <li><a href="api.html#pfr_app.ensure_output_directory">ensure_output_directory() (in module pfr_app)</a>
+</li>
+      <li><a href="api.html#pfr_app.estimate_background">estimate_background() (in module pfr_app)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     extract_coordinates()
 
@@ -203,8 +225,8 @@
         <li><a href="api_reference.html#extract_coordinates">built-in function</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.extract_coordinates">extract_coordinates() (in module pfr_app)</a>
+</li>
       <li>
     extract_pixel_scale()
 
@@ -212,6 +234,8 @@
         <li><a href="api_reference.html#extract_pixel_scale">built-in function</a>
 </li>
       </ul></li>
+      <li><a href="api.html#pfr_app.extract_pixel_scale">extract_pixel_scale() (in module pfr_app)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -225,6 +249,8 @@
         <li><a href="api_reference.html#find_sources_and_photometry_streamlit">built-in function</a>
 </li>
       </ul></li>
+      <li><a href="api.html#pfr_app.find_sources_and_photometry_streamlit">find_sources_and_photometry_streamlit() (in module pfr_app)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li>
@@ -234,6 +260,24 @@
         <li><a href="api_reference.html#fwhm_fit">built-in function</a>
 </li>
       </ul></li>
+      <li><a href="api.html#pfr_app.fwhm_fit">fwhm_fit() (in module pfr_app)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="G">G</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.getJson">getJson() (in module pfr_app)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="I">I</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.initialize_session_state">initialize_session_state() (in module pfr_app)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -248,6 +292,18 @@
 </li>
       </ul></li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.load_fits_data">load_fits_data() (in module pfr_app)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="M">M</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.make_border_mask">make_border_mask() (in module pfr_app)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="P">P</h2>
@@ -261,6 +317,10 @@
 </li>
       </ul></li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.perform_epsf_photometry">perform_epsf_photometry() (in module pfr_app)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="S">S</h2>
@@ -273,6 +333,8 @@
         <li><a href="api_reference.html#safe_wcs_create">built-in function</a>
 </li>
       </ul></li>
+      <li><a href="api.html#pfr_app.safe_wcs_create">safe_wcs_create() (in module pfr_app)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li>
@@ -282,6 +344,16 @@
         <li><a href="api_reference.html#solve_with_astrometry_net">built-in function</a>
 </li>
       </ul></li>
+      <li><a href="api.html#pfr_app.solve_with_astrometry_net">solve_with_astrometry_net() (in module pfr_app)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="W">W</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api.html#pfr_app.write_to_log">write_to_log() (in module pfr_app)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -294,7 +366,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, Pier-Francesco Rocci.</p>
+    <p>&#169; Copyright 2025, Pier-Francesco Rocci.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

@@ -1,0 +1,211 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage Guide &mdash; Photometry Factory for RAPAS 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Features" href="features.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Photometry Factory for RAPAS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#basic-workflow">Basic Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interface-overview">Interface Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#step-by-step-guide">Step-by-Step Guide</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#file-upload">File Upload</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#image-calibration">Image Calibration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#photometry-and-analysis">Photometry and Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#downloading-results">Downloading Results</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Photometry Factory for RAPAS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Usage Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="usage-guide">
+<h1>Usage Guide<a class="headerlink" href="#usage-guide" title="Link to this heading"></a></h1>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h2>
+<p>Photometry Factory for RAPAS provides a web-based interface that guides you through the process of analyzing astronomical images.</p>
+<ol class="arabic">
+<li><p>Launch the application using:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>streamlit<span class="w"> </span>run<span class="w"> </span>pfr_app.py
+</pre></div>
+</div>
+</li>
+<li><p>Open your web browser to the displayed URL (typically <a class="reference external" href="http://localhost:8501">http://localhost:8501</a>)</p></li>
+</ol>
+</section>
+<section id="basic-workflow">
+<h2>Basic Workflow<a class="headerlink" href="#basic-workflow" title="Link to this heading"></a></h2>
+<p>The typical workflow in PFR consists of:</p>
+<ol class="arabic simple">
+<li><p><strong>File Upload</strong>: Upload FITS files (science image, bias, dark, flat)</p></li>
+<li><p><strong>Image Calibration</strong>: Apply bias, dark, and flat field corrections</p></li>
+<li><p><strong>Photometry</strong>: Detect sources and measure their brightness</p></li>
+<li><p><strong>Calibration</strong>: Determine the photometric zero point using GAIA references</p></li>
+<li><p><strong>Results</strong>: Download or explore the resulting catalog</p></li>
+</ol>
+</section>
+<section id="interface-overview">
+<h2>Interface Overview<a class="headerlink" href="#interface-overview" title="Link to this heading"></a></h2>
+<a class="reference internal image-reference" href="_static/pfr_interface.png"><img alt="PFR interface screenshot" src="_static/pfr_interface.png" style="width: 100%;" />
+</a>
+<p>The interface consists of:</p>
+<ul class="simple">
+<li><p><strong>Left sidebar</strong>: File uploads and configuration options</p></li>
+<li><p><strong>Main area</strong>: Image display and analysis results</p></li>
+<li><p><strong>Result displays</strong>: Tables and plots showing photometry results</p></li>
+</ul>
+</section>
+<section id="step-by-step-guide">
+<h2>Step-by-Step Guide<a class="headerlink" href="#step-by-step-guide" title="Link to this heading"></a></h2>
+<section id="file-upload">
+<h3>File Upload<a class="headerlink" href="#file-upload" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Use the sidebar to upload your FITS files</p></li>
+<li><p>Required: Science image (.fits, .fit, or .fts format)</p></li>
+<li><p>Optional: Master bias, dark, and flat field frames</p></li>
+</ol>
+</section>
+<section id="image-calibration">
+<h3>Image Calibration<a class="headerlink" href="#image-calibration" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Select which calibration steps to apply (bias, dark, flat)</p></li>
+<li><p>Click “Run Image Calibration”</p></li>
+<li><p>Review the calibrated image results</p></li>
+</ol>
+</section>
+<section id="photometry-and-analysis">
+<h3>Photometry and Analysis<a class="headerlink" href="#photometry-and-analysis" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Configure analysis parameters in the sidebar:
+- Seeing conditions
+- Detection threshold
+- Border mask size
+- Gaia magnitude range</p></li>
+<li><p>Click “Run Zero Point Calibration” to:
+- Detect sources in the image
+- Perform aperture and PSF photometry
+- Cross-match with GAIA catalog
+- Calculate photometric zero point
+- Cross-match with other catalogs</p></li>
+<li><p>Review the results:
+- View the detected sources table
+- Examine the zero point calibration plot
+- Explore the final photometry catalog
+- Interact with the Aladin sky view</p></li>
+</ol>
+</section>
+<section id="downloading-results">
+<h3>Downloading Results<a class="headerlink" href="#downloading-results" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>All results are saved in the <cite>pfr_results</cite> directory</p></li>
+<li><p>Use the download button to retrieve a ZIP file with all results</p></li>
+<li><p>Files include:
+- Photometry catalog (.csv)
+- Metadata file (.txt)
+- Log file (.log)
+- Generated plots (.png)</p></li>
+</ol>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="features.html" class="btn btn-neutral float-right" title="Features" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Pier-Francesco Rocci.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

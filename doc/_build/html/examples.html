@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Example 1: Basic Photometry Workflow &mdash; Photometry Factory for RAPAS 0.1.0 documentation</title>
+  <title>Examples &mdash; Photometry Factory for RAPAS 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
@@ -19,8 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Advanced Features" href="advanced_features.html" />
-    <link rel="prev" title="User Guide" href="user_guide.html" /> 
+    <link rel="prev" title="API Reference" href="api.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -45,37 +44,17 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Example 1: Basic Photometry Workflow</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#step-1-data-preparation">Step 1: Data Preparation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#step-2-upload-and-calibrate">Step 2: Upload and Calibrate</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#step-3-run-photometry-analysis">Step 3: Run Photometry Analysis</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#step-4-review-results">Step 4: Review Results</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-photometry-example">Basic Photometry Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#variable-star-analysis">Variable Star Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#asteroids-and-moving-objects">Asteroids and Moving Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tutorial-complete-photometry-workflow">Tutorial: Complete Photometry Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-scripting-with-pfr-functions">Advanced: Scripting with PFR Functions</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="#example-2-analyzing-a-variable-star-field">Example 2: Analyzing a Variable Star Field</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#step-1-upload-data">Step 1: Upload Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#step-2-configure-parameters">Step 2: Configure Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#step-3-interpret-results">Step 3: Interpret Results</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="#example-3-asteroid-photometry">Example 3: Asteroid Photometry</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#step-1-data-setup">Step 1: Data Setup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#step-2-special-configuration">Step 2: Special Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#step-3-analyze-results">Step 3: Analyze Results</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="#advanced-example-crowded-field-photometry">Advanced Example: Crowded Field Photometry</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#step-1-configuration">Step 1: Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#step-2-specialized-settings">Step 2: Specialized Settings</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#step-3-interpretation">Step 3: Interpretation</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Functions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#usage-examples">Usage Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
 
         </div>
@@ -92,7 +71,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Example 1: Basic Photometry Workflow</li>
+      <li class="breadcrumb-item active">Examples</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/examples.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -102,156 +81,145 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <p>// filepath: c:UserspierfP_F_Rdocexamples.rst
-Examples
-========</p>
-<p>This section provides step-by-step examples demonstrating the capabilities of Photometry Factory for RAPAS with real astronomical data.</p>
-<section id="example-1-basic-photometry-workflow">
-<h1>Example 1: Basic Photometry Workflow<a class="headerlink" href="#example-1-basic-photometry-workflow" title="Link to this heading"></a></h1>
-<p>This example demonstrates the standard workflow using a sample image of the M67 open cluster.</p>
-<section id="step-1-data-preparation">
-<h2>Step 1: Data Preparation<a class="headerlink" href="#step-1-data-preparation" title="Link to this heading"></a></h2>
-<p>Download the example data files:
-- M67_science.fits (science image)
-- M67_bias.fits (master bias)
-- M67_dark.fits (master dark)
-- M67_flat.fits (master flat)</p>
-</section>
-<section id="step-2-upload-and-calibrate">
-<h2>Step 2: Upload and Calibrate<a class="headerlink" href="#step-2-upload-and-calibrate" title="Link to this heading"></a></h2>
+  <section id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h1>
+<p>This page provides examples of using the Photometry Factory for RAPAS for various astronomical analysis tasks.</p>
+<section id="basic-photometry-example">
+<h2>Basic Photometry Example<a class="headerlink" href="#basic-photometry-example" title="Link to this heading"></a></h2>
+<p>This example demonstrates how to perform basic photometry on a single FITS image:</p>
 <ol class="arabic simple">
-<li><p>Launch the application and upload the files using the sidebar uploaders</p></li>
-<li><p>Enable all calibration options (bias, dark, flat)</p></li>
-<li><p>Click “Run Image Calibration”</p></li>
+<li><p>Upload a science image</p></li>
+<li><p>Apply a threshold of 3.0 sigma for detection</p></li>
+<li><p>Run Zero Point Calibration</p></li>
+<li><p>Download the resulting catalog</p></li>
 </ol>
-<a class="reference internal image-reference" href="_static/example1_calibration.png"><img alt="Image Calibration" src="_static/example1_calibration.png" style="width: 600px;" />
+<a class="reference internal image-reference" href="_static/basic_example.png"><img alt="Basic photometry example" src="_static/basic_example.png" style="width: 100%;" />
 </a>
 </section>
-<section id="step-3-run-photometry-analysis">
-<h2>Step 3: Run Photometry Analysis<a class="headerlink" href="#step-3-run-photometry-analysis" title="Link to this heading"></a></h2>
-<p>Configure the analysis parameters:
-- Seeing: 3.0 arcsec
-- Detection Threshold: 4.0σ
-- Border Mask: 50 pixels
-- Gaia Band: phot_g_mean_mag
-- Gaia Magnitude Range: 12-18</p>
-<p>Click “Run Zero Point Calibration” to analyze the image.</p>
-</section>
-<section id="step-4-review-results">
-<h2>Step 4: Review Results<a class="headerlink" href="#step-4-review-results" title="Link to this heading"></a></h2>
-<p>The application will generate:</p>
+<section id="variable-star-analysis">
+<h2>Variable Star Analysis<a class="headerlink" href="#variable-star-analysis" title="Link to this heading"></a></h2>
+<p>This example shows how to analyze a variable star:</p>
 <ol class="arabic simple">
-<li><p>A source catalog with ~150 stars</p></li>
-<li><p>Zero point of approximately 22.4 ± 0.05 mag</p></li>
-<li><p>Cross-matched identifications with SIMBAD and AAVSO</p></li>
+<li><p>Upload a sequence of science images of the same field</p></li>
+<li><p>Process each image independently</p></li>
+<li><p>Compare the magnitudes across images</p></li>
+<li><p>Generate a light curve</p></li>
 </ol>
-<a class="reference internal image-reference" href="_static/example1_results.png"><img alt="Photometry Results" src="_static/example1_results.png" style="width: 600px;" />
-</a>
-</section>
-</section>
-<section id="example-2-analyzing-a-variable-star-field">
-<h1>Example 2: Analyzing a Variable Star Field<a class="headerlink" href="#example-2-analyzing-a-variable-star-field" title="Link to this heading"></a></h1>
-<p>This example focuses on analyzing a field containing known variable stars.</p>
-<section id="step-1-upload-data">
-<h2>Step 1: Upload Data<a class="headerlink" href="#step-1-upload-data" title="Link to this heading"></a></h2>
-<p>Use the included example file <cite>variable_field.fits</cite>.</p>
-</section>
-<section id="step-2-configure-parameters">
-<h2>Step 2: Configure Parameters<a class="headerlink" href="#step-2-configure-parameters" title="Link to this heading"></a></h2>
-<ul class="simple">
-<li><p>Enable automatic WCS determination through astrometry.net</p></li>
-<li><p>Set the detection threshold to 3.0σ</p></li>
-<li><p>Adjust Gaia magnitude range to 10-17</p></li>
-</ul>
-</section>
-<section id="step-3-interpret-results">
-<h2>Step 3: Interpret Results<a class="headerlink" href="#step-3-interpret-results" title="Link to this heading"></a></h2>
-<p>After processing, examine the cross-matches with the AAVSO VSX catalog:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Sample code to filter the output catalog for variable stars</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-
-<span class="n">catalog</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;variable_field_phot.csv&#39;</span><span class="p">)</span>
-<span class="n">variables</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">catalog</span><span class="p">[</span><span class="s1">&#39;aavso_Name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">variables</span><span class="p">)</span><span class="si">}</span><span class="s2"> variable stars in the field&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">variables</span><span class="p">[[</span><span class="s1">&#39;aavso_Name&#39;</span><span class="p">,</span> <span class="s1">&#39;aavso_Type&#39;</span><span class="p">,</span> <span class="s1">&#39;aperture_calib_mag&#39;</span><span class="p">]])</span>
-</pre></div>
-</div>
-</section>
-</section>
-<section id="example-3-asteroid-photometry">
-<h1>Example 3: Asteroid Photometry<a class="headerlink" href="#example-3-asteroid-photometry" title="Link to this heading"></a></h1>
-<p>This example demonstrates how to use PFR for asteroid brightness measurements.</p>
-<section id="step-1-data-setup">
-<h2>Step 1: Data Setup<a class="headerlink" href="#step-1-data-setup" title="Link to this heading"></a></h2>
-<p>Upload a series of images containing a moving asteroid.</p>
-</section>
-<section id="step-2-special-configuration">
-<h2>Step 2: Special Configuration<a class="headerlink" href="#step-2-special-configuration" title="Link to this heading"></a></h2>
-<ul class="simple">
-<li><p>Use the SkyBoT integration to automatically identify solar system objects</p></li>
-<li><p>Adjust the detection threshold to 2.5σ to catch fainter objects</p></li>
-<li><p>Set the border mask to 25 pixels to utilize more of the image area</p></li>
-</ul>
-</section>
-<section id="step-3-analyze-results">
-<h2>Step 3: Analyze Results<a class="headerlink" href="#step-3-analyze-results" title="Link to this heading"></a></h2>
-<p>The application will identify the asteroid in each image and provide:</p>
-<ol class="arabic simple">
-<li><p>Calibrated magnitude measurements</p></li>
-<li><p>Cross-match with the SkyBoT database providing asteroid identification</p></li>
-<li><p>Optional light curve generation by combining multiple measurements</p></li>
-</ol>
-<a class="reference internal image-reference" href="_static/example3_asteroid.png"><img alt="Asteroid Photometry" src="_static/example3_asteroid.png" style="width: 600px;" />
-</a>
-</section>
-</section>
-<section id="advanced-example-crowded-field-photometry">
-<h1>Advanced Example: Crowded Field Photometry<a class="headerlink" href="#advanced-example-crowded-field-photometry" title="Link to this heading"></a></h1>
-<p>This example demonstrates how to analyze images of dense star fields like globular clusters.</p>
-<section id="step-1-configuration">
-<h2>Step 1: Configuration<a class="headerlink" href="#step-1-configuration" title="Link to this heading"></a></h2>
-<ul class="simple">
-<li><p>Upload a high-resolution image of a globular cluster</p></li>
-<li><p>Enable PSF photometry which works better in crowded fields</p></li>
-<li><p>Increase the detection threshold to reduce false positives</p></li>
-</ul>
-</section>
-<section id="step-2-specialized-settings">
-<h2>Step 2: Specialized Settings<a class="headerlink" href="#step-2-specialized-settings" title="Link to this heading"></a></h2>
-<p>Adjust the following parameters for crowded field analysis:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Recommended parameters for crowded fields</span>
-<span class="n">threshold_sigma</span> <span class="o">=</span> <span class="mf">5.0</span>  <span class="c1"># Higher threshold to avoid noise detections</span>
-<span class="n">detection_mask</span> <span class="o">=</span> <span class="mi">30</span>    <span class="c1"># Smaller mask to utilize more of the image</span>
-<span class="n">seeing</span> <span class="o">=</span> <span class="mf">2.5</span>           <span class="c1"># Typical seeing in arcseconds</span>
-</pre></div>
-</div>
-</section>
-<section id="step-3-interpretation">
-<h2>Step 3: Interpretation<a class="headerlink" href="#step-3-interpretation" title="Link to this heading"></a></h2>
-<p>Compare the results of aperture vs. PSF photometry:</p>
-<ol class="arabic simple">
-<li><p>PSF photometry typically detects 20-30% more stars in crowded regions</p></li>
-<li><p>Magnitudes from PSF fitting are less affected by crowding</p></li>
-<li><p>Review the PSF model quality to ensure proper fitting</p></li>
-</ol>
-<p>Using the exported data with other tools:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example of loading results into Python for further analysis</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example code for processing multiple images and creating a light curve</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
 
-<span class="c1"># Load the catalog</span>
-<span class="n">cat</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;globular_cluster_phot.csv&#39;</span><span class="p">)</span>
+<span class="c1"># Load all catalogs</span>
+<span class="n">catalogs</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;pfr_results/*_phot.csv&quot;</span><span class="p">):</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+    <span class="c1"># Extract timestamp from filename</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">timestamp</span>
+    <span class="n">catalogs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
 
-<span class="c1"># Create a color-magnitude diagram if multiple filters were analyzed</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">cat</span><span class="p">[</span><span class="s1">&#39;b_mag&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">cat</span><span class="p">[</span><span class="s1">&#39;v_mag&#39;</span><span class="p">],</span> <span class="n">cat</span><span class="p">[</span><span class="s1">&#39;v_mag&#39;</span><span class="p">],</span> <span class="n">s</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">invert_yaxis</span><span class="p">()</span>  <span class="c1"># Astronomical convention</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;B-V Color&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;V Magnitude&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Color-Magnitude Diagram&#39;</span><span class="p">)</span>
+<span class="c1"># Combine all catalogs</span>
+<span class="n">all_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">catalogs</span><span class="p">)</span>
+
+<span class="c1"># Find a specific variable star</span>
+<span class="n">var_star</span> <span class="o">=</span> <span class="n">all_data</span><span class="p">[</span><span class="n">all_data</span><span class="p">[</span><span class="s1">&#39;aavso_Name&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;V* AB Aur&#39;</span><span class="p">]</span>
+
+<span class="c1"># Plot the light curve</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">var_star</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">],</span> <span class="n">var_star</span><span class="p">[</span><span class="s1">&#39;aperture_calib_mag&#39;</span><span class="p">],</span>
+             <span class="n">yerr</span><span class="o">=</span><span class="n">var_star</span><span class="p">[</span><span class="s1">&#39;aperture_sum_err&#39;</span><span class="p">],</span> <span class="n">fmt</span><span class="o">=</span><span class="s1">&#39;o&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">invert_yaxis</span><span class="p">()</span>  <span class="c1"># Astronomical magnitude convention</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Calibrated Magnitude&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Light Curve of V* AB Aur&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;cmd_diagram.png&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;light_curve.png&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="asteroids-and-moving-objects">
+<h2>Asteroids and Moving Objects<a class="headerlink" href="#asteroids-and-moving-objects" title="Link to this heading"></a></h2>
+<p>This example demonstrates how to detect and analyze moving objects:</p>
+<ol class="arabic simple">
+<li><p>Upload an image with potential solar system objects</p></li>
+<li><p>Run the analysis with SkyBoT cross-matching enabled</p></li>
+<li><p>Identify objects marked with “SkyBoT” in the catalog_matches column</p></li>
+<li><p>Extract their positions and magnitudes</p></li>
+</ol>
+</section>
+<section id="tutorial-complete-photometry-workflow">
+<h2>Tutorial: Complete Photometry Workflow<a class="headerlink" href="#tutorial-complete-photometry-workflow" title="Link to this heading"></a></h2>
+<p>This step-by-step tutorial covers a complete workflow:</p>
+<ol class="arabic simple">
+<li><p><strong>Preparation</strong></p>
+<ul class="simple">
+<li><p>Obtain calibration frames (bias, dark, flat)</p></li>
+<li><p>Set up your observatory parameters</p></li>
+</ul>
+</li>
+<li><p><strong>Image Calibration</strong></p>
+<ul class="simple">
+<li><p>Upload all calibration files</p></li>
+<li><p>Enable all calibration steps</p></li>
+<li><p>Run image calibration</p></li>
+</ul>
+</li>
+<li><p><strong>Source Detection and Photometry</strong></p>
+<ul class="simple">
+<li><p>Adjust seeing based on current conditions</p></li>
+<li><p>Set appropriate detection threshold</p></li>
+<li><p>Run Zero Point Calibration</p></li>
+</ul>
+</li>
+<li><p><strong>Analysis</strong></p>
+<ul class="simple">
+<li><p>Review the cross-matched catalog</p></li>
+<li><p>Examine the zero point calibration plot</p></li>
+<li><p>Explore objects in the Aladin viewer</p></li>
+</ul>
+</li>
+<li><p><strong>Results</strong></p>
+<ul class="simple">
+<li><p>Download the complete results</p></li>
+<li><p>Use the catalog for your scientific analysis</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="advanced-scripting-with-pfr-functions">
+<h2>Advanced: Scripting with PFR Functions<a class="headerlink" href="#advanced-scripting-with-pfr-functions" title="Link to this heading"></a></h2>
+<p>Though PFR is primarily a web app, you can use its functions in your own Python scripts:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example of using PFR functions in a script</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pfr_app</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_sources_and_photometry_streamlit</span><span class="p">,</span> <span class="n">cross_match_with_gaia_streamlit</span>
+
+<span class="c1"># Load your data</span>
+<span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;my_image.fits&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdul</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">hdul</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="n">hdul</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
+
+<span class="c1"># Set parameters</span>
+<span class="n">fwhm_pixels</span> <span class="o">=</span> <span class="mf">5.0</span>
+<span class="n">threshold</span> <span class="o">=</span> <span class="mf">3.0</span>
+<span class="n">border_mask</span> <span class="o">=</span> <span class="mi">50</span>
+
+<span class="c1"># Find sources</span>
+<span class="n">phot_table</span><span class="p">,</span> <span class="n">epsf_table</span><span class="p">,</span> <span class="n">daofind</span><span class="p">,</span> <span class="n">bkg</span> <span class="o">=</span> <span class="n">find_sources_and_photometry_streamlit</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">fwhm_pixels</span><span class="p">,</span> <span class="n">threshold</span><span class="p">,</span> <span class="n">border_mask</span>
+<span class="p">)</span>
+
+<span class="c1"># Cross-match with GAIA</span>
+<span class="n">pixel_scale</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># arcsec/pixel</span>
+<span class="n">matched_table</span> <span class="o">=</span> <span class="n">cross_match_with_gaia_streamlit</span><span class="p">(</span>
+    <span class="n">phot_table</span><span class="p">,</span> <span class="n">header</span><span class="p">,</span> <span class="n">pixel_scale</span><span class="p">,</span> <span class="n">fwhm_pixels</span><span class="p">,</span>
+    <span class="s1">&#39;phot_g_mean_mag&#39;</span><span class="p">,</span> <span class="mf">11.0</span><span class="p">,</span> <span class="mf">19.0</span>
+<span class="p">)</span>
+
+<span class="c1"># Now work with the results</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">phot_table</span><span class="p">)</span><span class="si">}</span><span class="s2"> sources&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Matched </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">matched_table</span><span class="p">)</span><span class="si">}</span><span class="s2"> sources with GAIA&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -261,14 +229,13 @@ Examples
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="user_guide.html" class="btn btn-neutral float-left" title="User Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="advanced_features.html" class="btn btn-neutral float-right" title="Advanced Features" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="api.html" class="btn btn-neutral float-left" title="API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, Pier-Francesco Rocci.</p>
+    <p>&#169; Copyright 2025, Pier-Francesco Rocci.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

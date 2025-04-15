@@ -19,8 +19,8 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="User Guide" href="user_guide.html" />
-    <link rel="prev" title="Photometry Factory for RAPAS Documentation" href="index.html" /> 
+    <link rel="next" title="Usage Guide" href="usage.html" />
+    <link rel="prev" title="Photometry Factory for RAPAS" href="index.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -45,25 +45,17 @@
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#system-requirements">System Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#dependencies">Dependencies</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#standard-installation">Standard Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#using-virtual-environments">Using Virtual Environments</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#standalone-executable-windows">Standalone Executable (Windows)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#docker-installation">Docker Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#troubleshooting-installation">Troubleshooting Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#system-dependencies">System Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation-steps">Installation Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-keys">API Keys</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Example 1: Basic Photometry Workflow</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html#example-2-analyzing-a-variable-star-field">Example 2: Analyzing a Variable Star Field</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html#example-3-asteroid-photometry">Example 3: Asteroid Photometry</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html#advanced-example-crowded-field-photometry">Advanced Example: Crowded Field Photometry</a></li>
-<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Functions</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference.html#usage-examples">Usage Examples</a></li>
-<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 </ul>
 
         </div>
@@ -92,106 +84,59 @@
              
   <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h1>
-<section id="system-requirements">
-<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Link to this heading"></a></h2>
-<p>Photometry Factory for RAPAS has the following system requirements:</p>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading"></a></h2>
+<p>Photometry Factory for RAPAS requires:</p>
 <ul class="simple">
-<li><p><strong>Operating Systems</strong>: Windows 10/11, macOS 10.14+, Linux (most modern distributions)</p></li>
-<li><p><strong>Python</strong>: Version 3.8 or later</p></li>
-<li><p><strong>RAM</strong>: Minimum 4GB, 8GB+ recommended for larger images</p></li>
-<li><p><strong>Disk Space</strong>: 500MB for installation + space for your astronomical images</p></li>
+<li><p>Python 3.8 or higher</p></li>
+<li><p>Several astronomical Python packages</p></li>
 </ul>
 </section>
-<section id="dependencies">
-<h2>Dependencies<a class="headerlink" href="#dependencies" title="Link to this heading"></a></h2>
-<p>PFR depends on several powerful astronomical Python packages:</p>
+<section id="system-dependencies">
+<h2>System Dependencies<a class="headerlink" href="#system-dependencies" title="Link to this heading"></a></h2>
+<p>Before installing PFR, ensure you have the following system dependencies:</p>
 <ul class="simple">
-<li><p><strong>astropy</strong> (v4.0+): Core astronomy library for coordinates, WCS, and FITS handling</p></li>
-<li><p><strong>photutils</strong> (v1.0+): Specialized package for astronomical photometry</p></li>
-<li><p><strong>astroquery</strong> (v0.4+): Tools for querying astronomical web services and databases</p></li>
-<li><p><strong>matplotlib</strong> (v3.3+): Visualization library</p></li>
-<li><p><strong>numpy</strong> (v1.20+): Numerical computing foundation</p></li>
-<li><p><strong>pandas</strong> (v1.2+): Data analysis and manipulation tools</p></li>
-<li><p><strong>streamlit</strong> (v1.10+): Interactive web application framework</p></li>
-<li><p><strong>stdpipe</strong> (v0.4+): Pipeline tools for standard astronomical data processing</p></li>
+<li><p>FITS file support (usually included with astropy)</p></li>
+<li><p>Internet connection for catalog access and plate solving</p></li>
 </ul>
 </section>
-<section id="standard-installation">
-<h2>Standard Installation<a class="headerlink" href="#standard-installation" title="Link to this heading"></a></h2>
-<p>The recommended installation method is using pip with the provided requirements file:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clone the repository (if you haven&#39;t already)</span>
-git<span class="w"> </span>clone<span class="w"> </span>https://github.com/yourusername/P_F_R.git
-<span class="nb">cd</span><span class="w"> </span>P_F_R
-
-<span class="c1"># Install dependencies</span>
-pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
-
-<span class="c1"># Run the application</span>
-streamlit<span class="w"> </span>run<span class="w"> </span>pfr_app.py
-</pre></div>
-</div>
-</section>
-<section id="using-virtual-environments">
-<h2>Using Virtual Environments<a class="headerlink" href="#using-virtual-environments" title="Link to this heading"></a></h2>
-<p>For a clean, isolated installation, using a virtual environment is recommended:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create a virtual environment</span>
-python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>pfr_env
-
-<span class="c1"># Activate the environment</span>
-<span class="c1"># On Windows:</span>
-pfr_env<span class="se">\\</span>Scripts<span class="se">\\</span>activate
-<span class="c1"># On macOS/Linux:</span>
-<span class="nb">source</span><span class="w"> </span>pfr_env/bin/activate
-
-<span class="c1"># Install dependencies</span>
-pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
-
-<span class="c1"># Run the application</span>
-streamlit<span class="w"> </span>run<span class="w"> </span>pfr_app.py
-</pre></div>
-</div>
-</section>
-<section id="standalone-executable-windows">
-<h2>Standalone Executable (Windows)<a class="headerlink" href="#standalone-executable-windows" title="Link to this heading"></a></h2>
-<p>A pre-packaged executable version is available for Windows users who prefer not to install Python:</p>
-<ol class="arabic simple">
-<li><p>Download the latest release from the project’s release page</p></li>
-<li><p>Extract all files to a directory of your choice</p></li>
-<li><p>Run <code class="docutils literal notranslate"><span class="pre">PfrApp.bat</span></code></p></li>
-</ol>
-<p>The executable includes all necessary dependencies and Python runtime.</p>
-</section>
-<section id="docker-installation">
-<h2>Docker Installation<a class="headerlink" href="#docker-installation" title="Link to this heading"></a></h2>
-<p>For containerized deployment, a Docker image is available:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pull the image</span>
-docker<span class="w"> </span>pull<span class="w"> </span>username/photometry-factory-rapas:latest
-
-<span class="c1"># Run the container</span>
-docker<span class="w"> </span>run<span class="w"> </span>-p<span class="w"> </span><span class="m">8501</span>:8501<span class="w"> </span>username/photometry-factory-rapas:latest
-</pre></div>
-</div>
-<p>Then access the application by navigating to <code class="docutils literal notranslate"><span class="pre">http://localhost:8501</span></code> in your web browser.</p>
-</section>
-<section id="troubleshooting-installation">
-<h2>Troubleshooting Installation<a class="headerlink" href="#troubleshooting-installation" title="Link to this heading"></a></h2>
-<p>Common installation issues:</p>
+<section id="installation-steps">
+<h2>Installation Steps<a class="headerlink" href="#installation-steps" title="Link to this heading"></a></h2>
 <ol class="arabic">
-<li><p><strong>Missing compiler</strong>: Some dependencies may require a C compiler. Install the appropriate compiler for your system:</p>
-<ul class="simple">
-<li><p>Windows: Microsoft Visual C++ Build Tools</p></li>
-<li><p>macOS: Xcode Command Line Tools</p></li>
-<li><p>Linux: gcc and development libraries</p></li>
-</ul>
-</li>
-<li><p><strong>SSL Certificate errors</strong>: If you’re behind a corporate firewall or proxy, you may need to configure pip to use an alternative certificate:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>--trusted-host<span class="w"> </span>pypi.org<span class="w"> </span>--trusted-host<span class="w"> </span>files.pythonhosted.org<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+<li><p>Clone the repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/your-username/pfr.git
+<span class="nb">cd</span><span class="w"> </span>pfr
 </pre></div>
 </div>
 </li>
-<li><p><strong>Version conflicts</strong>: If you encounter dependency conflicts, try installing in a fresh virtual environment.</p></li>
+<li><p>Create a virtual environment (recommended):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>pfr-env
+<span class="nb">source</span><span class="w"> </span>pfr-env/bin/activate<span class="w">  </span><span class="c1"># On Windows: pfr-env\Scripts\activate</span>
+</pre></div>
+</div>
+</li>
+<li><p>Install the required packages:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</pre></div>
+</div>
+</li>
+<li><p>Run the application:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>streamlit<span class="w"> </span>run<span class="w"> </span>pfr_app.py
+</pre></div>
+</div>
+</li>
 </ol>
-<p>For additional help, please see the troubleshooting section or open an issue on the project repository.</p>
+</section>
+<section id="api-keys">
+<h2>API Keys<a class="headerlink" href="#api-keys" title="Link to this heading"></a></h2>
+<p>Some features of PFR require API keys:</p>
+<ul class="simple">
+<li><p><strong>Astrometry.net</strong>: Register at <a class="reference external" href="http://nova.astrometry.net">http://nova.astrometry.net</a> to get an API key for plate solving</p></li>
+</ul>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p>By default, PFR saves results in the <code class="docutils literal notranslate"><span class="pre">pfr_results</span></code> directory. You can change this behavior within the application.</p>
 </section>
 </section>
 
@@ -199,14 +144,14 @@ docker<span class="w"> </span>run<span class="w"> </span>-p<span class="w"> </sp
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="index.html" class="btn btn-neutral float-left" title="Photometry Factory for RAPAS Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="user_guide.html" class="btn btn-neutral float-right" title="User Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Photometry Factory for RAPAS" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="usage.html" class="btn btn-neutral float-right" title="Usage Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, Pier-Francesco Rocci.</p>
+    <p>&#169; Copyright 2025, Pier-Francesco Rocci.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

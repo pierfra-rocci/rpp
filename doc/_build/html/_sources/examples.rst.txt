@@ -1,172 +1,142 @@
-// filepath: c:\Users\pierf\P_F_R\doc\examples.rst
 Examples
 ========
 
-This section provides step-by-step examples demonstrating the capabilities of Photometry Factory for RAPAS with real astronomical data.
+This page provides examples of using the Photometry Factory for RAPAS for various astronomical analysis tasks.
 
-Example 1: Basic Photometry Workflow
-----------------------------------
+Basic Photometry Example
+---------------------
 
-This example demonstrates the standard workflow using a sample image of the M67 open cluster.
+This example demonstrates how to perform basic photometry on a single FITS image:
 
-Step 1: Data Preparation
-^^^^^^^^^^^^^^^^^^^^^^^
+1. Upload a science image
+2. Apply a threshold of 3.0 sigma for detection
+3. Run Zero Point Calibration
+4. Download the resulting catalog
 
-Download the example data files:
-- M67_science.fits (science image)
-- M67_bias.fits (master bias)
-- M67_dark.fits (master dark)
-- M67_flat.fits (master flat)
+.. image:: _static/basic_example.png
+   :width: 100%
+   :alt: Basic photometry example
 
-Step 2: Upload and Calibrate
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Variable Star Analysis
+-------------------
 
-1. Launch the application and upload the files using the sidebar uploaders
-2. Enable all calibration options (bias, dark, flat)
-3. Click "Run Image Calibration"
+This example shows how to analyze a variable star:
 
-.. image:: _static/example1_calibration.png
-   :width: 600px
-   :alt: Image Calibration
-
-Step 3: Run Photometry Analysis
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Configure the analysis parameters:
-- Seeing: 3.0 arcsec
-- Detection Threshold: 4.0σ
-- Border Mask: 50 pixels
-- Gaia Band: phot_g_mean_mag
-- Gaia Magnitude Range: 12-18
-
-Click "Run Zero Point Calibration" to analyze the image.
-
-Step 4: Review Results
-^^^^^^^^^^^^^^^^^^^^
-
-The application will generate:
-
-1. A source catalog with ~150 stars
-2. Zero point of approximately 22.4 ± 0.05 mag
-3. Cross-matched identifications with SIMBAD and AAVSO
-
-.. image:: _static/example1_results.png
-   :width: 600px
-   :alt: Photometry Results
-
-Example 2: Analyzing a Variable Star Field
-----------------------------------------
-
-This example focuses on analyzing a field containing known variable stars.
-
-Step 1: Upload Data
-^^^^^^^^^^^^^^^^^
-
-Use the included example file `variable_field.fits`.
-
-Step 2: Configure Parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- Enable automatic WCS determination through astrometry.net
-- Set the detection threshold to 3.0σ
-- Adjust Gaia magnitude range to 10-17
-
-Step 3: Interpret Results
-^^^^^^^^^^^^^^^^^^^^^^^
-
-After processing, examine the cross-matches with the AAVSO VSX catalog:
+1. Upload a sequence of science images of the same field
+2. Process each image independently
+3. Compare the magnitudes across images
+4. Generate a light curve
 
 .. code-block:: python
-    
-    # Sample code to filter the output catalog for variable stars
-    import pandas as pd
-    
-    catalog = pd.read_csv('variable_field_phot.csv')
-    variables = catalog[catalog['aavso_Name'].notna()]
-    
-    print(f"Found {len(variables)} variable stars in the field")
-    print(variables[['aavso_Name', 'aavso_Type', 'aperture_calib_mag']])
+   
+   # Example code for processing multiple images and creating a light curve
+   import pandas as pd
+   import matplotlib.pyplot as plt
+   import glob
+   
+   # Load all catalogs
+   catalogs = []
+   for file in glob.glob("pfr_results/*_phot.csv"):
+       df = pd.read_csv(file)
+       # Extract timestamp from filename
+       timestamp = file.split('_')[-2]
+       df['timestamp'] = timestamp
+       catalogs.append(df)
+   
+   # Combine all catalogs
+   all_data = pd.concat(catalogs)
+   
+   # Find a specific variable star
+   var_star = all_data[all_data['aavso_Name'] == 'V* AB Aur']
+   
+   # Plot the light curve
+   plt.figure(figsize=(10, 6))
+   plt.errorbar(var_star['timestamp'], var_star['aperture_calib_mag'], 
+                yerr=var_star['aperture_sum_err'], fmt='o')
+   plt.gca().invert_yaxis()  # Astronomical magnitude convention
+   plt.xlabel('Time')
+   plt.ylabel('Calibrated Magnitude')
+   plt.title('Light Curve of V* AB Aur')
+   plt.grid(True, alpha=0.3)
+   plt.savefig('light_curve.png')
 
-Example 3: Asteroid Photometry
-----------------------------
+Asteroids and Moving Objects
+-------------------------
 
-This example demonstrates how to use PFR for asteroid brightness measurements.
+This example demonstrates how to detect and analyze moving objects:
 
-Step 1: Data Setup
-^^^^^^^^^^^^^^^^
+1. Upload an image with potential solar system objects
+2. Run the analysis with SkyBoT cross-matching enabled
+3. Identify objects marked with "SkyBoT" in the catalog_matches column
+4. Extract their positions and magnitudes
 
-Upload a series of images containing a moving asteroid.
+Tutorial: Complete Photometry Workflow
+-----------------------------------
 
-Step 2: Special Configuration
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+This step-by-step tutorial covers a complete workflow:
 
-- Use the SkyBoT integration to automatically identify solar system objects
-- Adjust the detection threshold to 2.5σ to catch fainter objects
-- Set the border mask to 25 pixels to utilize more of the image area
+1. **Preparation**
+   
+   * Obtain calibration frames (bias, dark, flat)
+   * Set up your observatory parameters
+   
+2. **Image Calibration**
+   
+   * Upload all calibration files
+   * Enable all calibration steps
+   * Run image calibration
+   
+3. **Source Detection and Photometry**
+   
+   * Adjust seeing based on current conditions
+   * Set appropriate detection threshold
+   * Run Zero Point Calibration
+   
+4. **Analysis**
+   
+   * Review the cross-matched catalog
+   * Examine the zero point calibration plot
+   * Explore objects in the Aladin viewer
+   
+5. **Results**
+   
+   * Download the complete results
+   * Use the catalog for your scientific analysis
 
-Step 3: Analyze Results
-^^^^^^^^^^^^^^^^^^^^^
+Advanced: Scripting with PFR Functions
+-----------------------------------
 
-The application will identify the asteroid in each image and provide:
-
-1. Calibrated magnitude measurements
-2. Cross-match with the SkyBoT database providing asteroid identification
-3. Optional light curve generation by combining multiple measurements
-
-.. image:: _static/example3_asteroid.png
-   :width: 600px
-   :alt: Asteroid Photometry
-
-Advanced Example: Crowded Field Photometry
-----------------------------------------
-
-This example demonstrates how to analyze images of dense star fields like globular clusters.
-
-Step 1: Configuration
-^^^^^^^^^^^^^^^^^^^
-
-- Upload a high-resolution image of a globular cluster
-- Enable PSF photometry which works better in crowded fields
-- Increase the detection threshold to reduce false positives
-
-Step 2: Specialized Settings
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Adjust the following parameters for crowded field analysis:
+Though PFR is primarily a web app, you can use its functions in your own Python scripts:
 
 .. code-block:: python
-    
-    # Recommended parameters for crowded fields
-    threshold_sigma = 5.0  # Higher threshold to avoid noise detections
-    detection_mask = 30    # Smaller mask to utilize more of the image
-    seeing = 2.5           # Typical seeing in arcseconds
 
-Step 3: Interpretation
-^^^^^^^^^^^^^^^^^^^^
-
-Compare the results of aperture vs. PSF photometry:
-
-1. PSF photometry typically detects 20-30% more stars in crowded regions
-2. Magnitudes from PSF fitting are less affected by crowding
-3. Review the PSF model quality to ensure proper fitting
-
-Using the exported data with other tools:
-
-.. code-block:: python
-    
-    # Example of loading results into Python for further analysis
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    
-    # Load the catalog
-    cat = pd.read_csv('globular_cluster_phot.csv')
-    
-    # Create a color-magnitude diagram if multiple filters were analyzed
-    plt.figure(figsize=(8, 10))
-    plt.scatter(cat['b_mag'] - cat['v_mag'], cat['v_mag'], s=3, alpha=0.7)
-    plt.gca().invert_yaxis()  # Astronomical convention
-    plt.xlabel('B-V Color')
-    plt.ylabel('V Magnitude')
-    plt.title('Color-Magnitude Diagram')
-    plt.grid(True, alpha=0.3)
-    plt.savefig('cmd_diagram.png')
+   # Example of using PFR functions in a script
+   from astropy.io import fits
+   import numpy as np
+   from pfr_app import find_sources_and_photometry_streamlit, cross_match_with_gaia_streamlit
+   
+   # Load your data
+   with fits.open('my_image.fits') as hdul:
+       data = hdul[0].data
+       header = hdul[0].header
+   
+   # Set parameters
+   fwhm_pixels = 5.0
+   threshold = 3.0
+   border_mask = 50
+   
+   # Find sources
+   phot_table, epsf_table, daofind, bkg = find_sources_and_photometry_streamlit(
+       data, header, fwhm_pixels, threshold, border_mask
+   )
+   
+   # Cross-match with GAIA
+   pixel_scale = 0.5  # arcsec/pixel
+   matched_table = cross_match_with_gaia_streamlit(
+       phot_table, header, pixel_scale, fwhm_pixels, 
+       'phot_g_mean_mag', 11.0, 19.0
+   )
+   
+   # Now work with the results
+   print(f"Found {len(phot_table)} sources")
+   print(f"Matched {len(matched_table)} sources with GAIA")
