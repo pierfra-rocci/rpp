@@ -92,7 +92,7 @@ FIGURE_SIZES = {
     "stars_grid": (10, 8),  # For grid of stars
 }
 
-URL = 'https://astro-colibri.science'
+URL = "https://astro-colibri.science"
 
 
 def getJson(url: str) -> json:
@@ -1320,9 +1320,7 @@ def perform_epsf_photometry(
         st.warning(f"Error displaying extracted stars: {e}")
 
     try:
-        epsf_builder = EPSFBuilder(
-            oversampling=2, maxiters=5, progress_bar=True
-        )
+        epsf_builder = EPSFBuilder(oversampling=2, maxiters=5, progress_bar=True)
         epsf, _ = epsf_builder(stars)
         st.session_state["epsf_model"] = epsf
     except Exception as e:
@@ -2089,29 +2087,27 @@ def run_zero_point_calibration(
 def batch_api_requests(sources, batch_size=100):
     """
     Process API requests in batches to avoid overloading the server.
-    
+
     Parameters
     ----------
     sources : list
         List of source names to query
     batch_size : int, optional
         Number of sources to process in each batch, default=100
-    
+
     Returns
     -------
     dict
         Combined results from all batches
     """
-    results = {
-        "ra": [],
-        "dec": [],
-        "name": []
-    }
-    
+    results = {"ra": [], "dec": [], "name": []}
+
     for i in range(0, len(sources), batch_size):
-        batch = sources[i:i + batch_size]
-        st.write(f"Processing batch {i//batch_size + 1}/{(len(sources)-1)//batch_size + 1}")
-        
+        batch = sources[i : i + batch_size]
+        st.write(
+            f"Processing batch {i // batch_size + 1}/{(len(sources) - 1) // batch_size + 1}"
+        )
+
         for name in batch:
             s = getJson(f"{URL}/source_details?name={name}")
             if s is None:
@@ -2119,10 +2115,10 @@ def batch_api_requests(sources, batch_size=100):
             results["ra"].append(s["ra"] * u.deg)
             results["dec"].append(s["dec"] * u.deg)
             results["name"].append(s["name"])
-            
+
         # Add a small delay between batches
         # time.sleep(0.5)
-        
+
     return results
 
 
@@ -2231,13 +2227,15 @@ def enhance_catalog_with_crossmatches(
         sources = None
         try:
             response = getJson(f"{URL}/known_sources")
-            
+
             # Check if response is a string (likely JSON-encoded)
             if isinstance(response, dict):
                 try:
-                    sources = response['sources']
+                    sources = response["sources"]
                 except json.JSONDecodeError:
-                    st.error(f"Failed to parse API response as JSON: {response[:100]}...")
+                    st.error(
+                        f"Failed to parse API response as JSON: {response[:100]}..."
+                    )
             else:
                 st.error(f"Unexpected API response format: {type(response)}")
         except Exception as e:
@@ -2265,19 +2263,19 @@ def enhance_catalog_with_crossmatches(
 
             # if not isinstance(search_radius_arcsec, (int, float)) or search_radius_arcsec <= 0:
             #     raise ValueError("Search radius must be a positive number")
-            
+
             # idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
             # matches = d2d < (search_radius_arcsec * u.arcsec)
 
             # for i, (match, match_idx) in enumerate(zip(matches, idx)):
             #     if match:
             #         final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
-                    
+
             matches = []
             st.success(f"Found {sum(matches)} Astro-Colibri objects in field.")
         else:
             st.write("No Astro-Colibri sources found in the field.")
-            
+
     except Exception as e:
         st.error(f"Error querying Astro-Colibri: {str(e)}")
         st.write("No Astro-Colibri sources found.")
@@ -2553,68 +2551,77 @@ def enhance_catalog_with_crossmatches(
     st.info("Querying VizieR VII/294 for quasars...")
     try:
         if field_center_ra is not None and field_center_dec is not None:
-
             # Set columns to retrieve from the quasar catalog
-            v = Vizier(columns=['RAJ2000', 'DEJ2000', 'Name', 'z', 'r_mag'])
+            v = Vizier(columns=["RAJ2000", "DEJ2000", "Name", "z", "r_mag"])
             v.ROW_LIMIT = -1  # No row limit
 
             # Query the VII/294 catalog around the field center
             result = v.query_region(
                 SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg, u.deg)),
                 width=field_width_arcmin * u.arcmin,
-                catalog='VII/294'
+                catalog="VII/294",
             )
 
             if result and len(result) > 0:
                 qso_table = result[0]
-                
+
                 # Convert to pandas DataFrame for easier matching
                 qso_df = qso_table.to_pandas()
-                qso_coords = SkyCoord(ra=qso_df['RAJ2000'], dec=qso_df['DEJ2000'], unit=u.deg)
-                
+                qso_coords = SkyCoord(
+                    ra=qso_df["RAJ2000"], dec=qso_df["DEJ2000"], unit=u.deg
+                )
+
                 # Create source coordinates for matching
-                source_coords = SkyCoord(ra=final_table['ra'], dec=final_table['dec'], unit=u.deg)
-                
+                source_coords = SkyCoord(
+                    ra=final_table["ra"], dec=final_table["dec"], unit=u.deg
+                )
+
                 # Perform cross-matching
                 idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
                 matches = d2d.arcsec <= search_radius_arcsec
-                
+
                 # Add matched quasar information to the final table
-                final_table['qso_name'] = None
-                final_table['qso_redshift'] = None
-                final_table['qso_r_mag'] = None
-                
+                final_table["qso_name"] = None
+                final_table["qso_redshift"] = None
+                final_table["qso_r_mag"] = None
+
                 matched_sources = np.where(matches)[0]
                 matched_qsos = idx[matches]
-                
+
                 for source_idx, qso_idx in zip(matched_sources, matched_qsos):
-                    final_table.loc[source_idx, 'qso_name'] = qso_df.iloc[qso_idx]['Name']
-                    final_table.loc[source_idx, 'qso_redshift'] = qso_df.iloc[qso_idx]['z']
-                    final_table.loc[source_idx, 'qso_r_mag'] = qso_df.iloc[qso_idx]['r_mag']
-                
+                    final_table.loc[source_idx, "qso_name"] = qso_df.iloc[qso_idx][
+                        "Name"
+                    ]
+                    final_table.loc[source_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
+                        "z"
+                    ]
+                    final_table.loc[source_idx, "qso_r_mag"] = qso_df.iloc[qso_idx][
+                        "r_mag"
+                    ]
+
                 # Update the catalog_matches column for matched quasars
-                has_qso = final_table['qso_name'].notna()
-                final_table.loc[has_qso, 'catalog_matches'] += 'QSO; '
-                
+                has_qso = final_table["qso_name"].notna()
+                final_table.loc[has_qso, "catalog_matches"] += "QSO; "
+
                 st.info(f"Found {sum(has_qso)} quasars in field from VII/294 catalog.")
                 write_to_log(
-                    st.session_state.get('log_buffer'),
+                    st.session_state.get("log_buffer"),
                     f"Found {sum(has_qso)} quasar matches in VII/294 catalog",
-                    "INFO"
+                    "INFO",
                 )
             else:
                 st.write("No quasars found in field from VII/294 catalog.")
                 write_to_log(
-                    st.session_state.get('log_buffer'),
+                    st.session_state.get("log_buffer"),
                     "No quasars found in field from VII/294 catalog",
-                    "INFO"
+                    "INFO",
                 )
     except Exception as e:
         st.error(f"Error querying VizieR VII/294: {str(e)}")
         write_to_log(
-            st.session_state.get('log_buffer'),
+            st.session_state.get("log_buffer"),
             f"Error in VizieR VII/294 processing: {str(e)}",
-            "ERROR"
+            "ERROR",
         )
 
     status_text.write("Cross-matching complete")
@@ -2636,7 +2643,7 @@ def enhance_catalog_with_crossmatches(
     if "aavso_Name" in final_table.columns:
         has_aavso = final_table["aavso_Name"].notna()
         final_table.loc[has_aavso, "catalog_matches"] += "AAVSO; "
-    
+
     if "qso_name" in final_table.columns:
         has_qso = final_table["qso_name"].notna()
         final_table.loc[has_qso, "catalog_matches"] += "QSO; "
@@ -2913,7 +2920,7 @@ def display_catalog_in_aladin(
             components.html(
                 html_content,
                 height=600,  # Explicitly set a height
-                scrolling=True
+                scrolling=True,
             )
 
         except Exception as e:
@@ -3073,54 +3080,58 @@ def write_to_log(log_buffer, message, level="INFO"):
 def provide_download_buttons(folder_path):
     """
     Creates a single download button for a zip file containing all files in the specified folder.
-    
+
     This function compresses all files in the given folder into a single zip archive
     and provides a download button for the archive.
-    
+
     Args:
         folder_path (str): The path to the folder containing files to be zipped and made downloadable
-    
+
     Returns:
         None: The function creates a Streamlit download button directly in the app interface
     """
     import zipfile
     from io import BytesIO
     import datetime
-    
+
     try:
-        files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+        files = [
+            f
+            for f in os.listdir(folder_path)
+            if os.path.isfile(os.path.join(folder_path, f))
+        ]
         if not files:
             st.write("No files found in output directory")
             return
-        
+
         # Create a timestamp for the zip filename
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_name = st.session_state.get('base_filename', 'pfr_results')
+        base_name = st.session_state.get("base_filename", "pfr_results")
         zip_filename = f"{base_name}_{timestamp}.zip"
-        
+
         # Create in-memory zip file
         zip_buffer = BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for file in files:
                 file_path = os.path.join(folder_path, file)
                 # Add each file to the zip archive with its filename (not the full path)
                 zip_file.write(file_path, arcname=file)
-        
+
         # Reset buffer position to the beginning
         zip_buffer.seek(0)
-        
+
         # Create download button for the zip file
         st.download_button(
             label=f"📦 Download All Results (ZIP)",
             data=zip_buffer,
             file_name=zip_filename,
             mime="application/zip",
-            on_click='ignore'
+            on_click="ignore",
         )
-        
+
         # Show number of files included
         st.caption(f"Archive contains {len(files)} files")
-        
+
     except Exception as e:
         st.error(f"Error creating zip archive: {str(e)}")
 
@@ -3128,24 +3139,33 @@ def provide_download_buttons(folder_path):
 def update_observatory_inputs(science_header=None):
     """Update observatory inputs with values from science header or defaults"""
     st.header("Observatory Location")
-    
+
     # Default values
     defaults = {
-        'name': 'TJMS',
-        'latitude': 48.29166,
-        'longitude': 2.43805,
-        'elevation': 94.0
+        "name": "TJMS",
+        "latitude": 48.29166,
+        "longitude": 2.43805,
+        "elevation": 94.0,
     }
 
     # Get values from header if available
     if science_header is not None:
-        defaults['name'] = science_header.get('OBSERVAT', defaults['name'])
-        defaults['latitude'] = float(science_header.get('LATITUDE', 
-                                   science_header.get('LAT-OBS', defaults['latitude'])))
-        defaults['longitude'] = float(science_header.get('LONGITUD', 
-                                    science_header.get('LONG-OBS', defaults['longitude'])))
-        defaults['elevation'] = float(science_header.get('ELEVATIO', 
-                                    science_header.get('ALT-OBS', defaults['elevation'])))
+        defaults["name"] = science_header.get("OBSERVAT", defaults["name"])
+        defaults["latitude"] = float(
+            science_header.get(
+                "LATITUDE", science_header.get("LAT-OBS", defaults["latitude"])
+            )
+        )
+        defaults["longitude"] = float(
+            science_header.get(
+                "LONGITUD", science_header.get("LONG-OBS", defaults["longitude"])
+            )
+        )
+        defaults["elevation"] = float(
+            science_header.get(
+                "ELEVATIO", science_header.get("ALT-OBS", defaults["elevation"])
+            )
+        )
 
     # Create a unique prefix for keys based on whether we're using header values
     prefix = "header_" if science_header is not None else "default_"
@@ -3153,42 +3173,42 @@ def update_observatory_inputs(science_header=None):
     # Create the input widgets with the determined values and unique keys
     observatory_name = st.text_input(
         "Observatory Name",
-        value=defaults['name'],
+        value=defaults["name"],
         help="Name of the observatory",
-        key=f"{prefix}observatory_name"
+        key=f"{prefix}observatory_name",
     )
-    
+
     latitude = st.number_input(
         "Latitude (°)",
-        value=defaults['latitude'],
+        value=defaults["latitude"],
         min_value=-90.0,
         max_value=90.0,
         help="Observatory latitude in degrees (-90 to 90)",
-        key=f"{prefix}latitude"
+        key=f"{prefix}latitude",
     )
-    
+
     longitude = st.number_input(
         "Longitude (°)",
-        value=defaults['longitude'],
+        value=defaults["longitude"],
         min_value=-180.0,
         max_value=180.0,
         help="Observatory longitude in degrees (-180 to 180)",
-        key=f"{prefix}longitude"
+        key=f"{prefix}longitude",
     )
-    
+
     elevation = st.number_input(
         "Elevation (m)",
-        value=defaults['elevation'],
+        value=defaults["elevation"],
         min_value=0.0,
         help="Observatory elevation in meters above sea level",
-        key=f"{prefix}elevation"
+        key=f"{prefix}elevation",
     )
-    
+
     return {
-        'name': observatory_name,
-        'latitude': latitude,
-        'longitude': longitude,
-        'elevation': elevation
+        "name": observatory_name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "elevation": elevation,
     }
 
 
@@ -3272,7 +3292,7 @@ with st.sidebar:
     )
 
     # Initialize observatory with default values
-    if 'observatory_data' not in st.session_state:
+    if "observatory_data" not in st.session_state:
         st.session_state.observatory_data = update_observatory_inputs()
 
     # st.header("Observatory Location")
@@ -3282,7 +3302,7 @@ with st.sidebar:
     #     help="Name of the observatory"
     # )
     # latitude = st.number_input(
-    #     "Latitude (°)", 
+    #     "Latitude (°)",
     #     value=float(science_header.get('LATITUDE', science_header.get('LAT-OBS', 48.29166))) if science_header is not None else 48.29166,
     #     min_value=-90.0,
     #     max_value=90.0,
@@ -3293,7 +3313,7 @@ with st.sidebar:
     #     value=float(science_header.get('LONGITUD', science_header.get('LONG-OBS', 2.43805))) if science_header is not None else 2.43805,
     #     min_value=-180.0,
     #     max_value=180.0,
-    #     help="Observatory longitude in degrees (-180 to 180)" 
+    #     help="Observatory longitude in degrees (-180 to 180)"
     # )
     # elevation = st.number_input(
     #     "Elevation (m)",
@@ -3332,13 +3352,13 @@ with st.sidebar:
 
     st.header("Quick Links")
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.link_button("GAIA-Archive", "https://gea.esac.esa.int/archive/")
         st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
         st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
         st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
-        
+
     with col2:
         st.link_button("Astro-Colibri", "https://astro-colibri.com/")
         st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
@@ -3354,7 +3374,7 @@ if science_file is not None:
     bias_data, _ = load_fits_data(bias_file)
     dark_data, dark_header = load_fits_data(dark_file)
     flat_data, _ = load_fits_data(flat_file)
-    
+
     st.session_state.observatory_data = update_observatory_inputs(science_header)
 
     wcs_obj, wcs_error = safe_wcs_create(science_header)
@@ -3628,9 +3648,9 @@ if science_file is not None:
                 "name": st.session_state.observatory_data["name"],
                 "latitude": st.session_state.observatory_data["latitude"],
                 "longitude": st.session_state.observatory_data["longitude"],
-                "elevation": st.session_state.observatory_data["elevation"]
+                "elevation": st.session_state.observatory_data["elevation"],
             }
-            
+
             air = airmass(science_header, observatory=observatory_data)
             st.write(f"Airmass: {air:.2f}")
         except Exception as e:
@@ -3992,37 +4012,57 @@ if science_file is not None:
 
                                             with open(catalog_path, "w") as f:
                                                 f.write(csv_data)
-                                            st.success(f"Catalog saved to {catalog_path}")
+                                            st.success(
+                                                f"Catalog saved to {catalog_path}"
+                                            )
 
-                                            metadata_filename = f"{base_catalog_name}_metadata.txt"
-                                            metadata_path = os.path.join(output_dir, metadata_filename)
+                                            metadata_filename = (
+                                                f"{base_catalog_name}_metadata.txt"
+                                            )
+                                            metadata_path = os.path.join(
+                                                output_dir, metadata_filename
+                                            )
 
                                             with open(metadata_path, "w") as f:
-                                                f.write("RAPAS Photometry Analysis Metadata\n")
-                                                f.write("================================\n\n")
+                                                f.write(
+                                                    "RAPAS Photometry Analysis Metadata\n"
+                                                )
+                                                f.write(
+                                                    "================================\n\n"
+                                                )
                                                 f.write(
                                                     f"Analysis Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
                                                 )
-                                                f.write(f"Input File: {science_file.name}\n")
+                                                f.write(
+                                                    f"Input File: {science_file.name}\n"
+                                                )
                                                 f.write(f"Catalog File: {filename}\n\n")
 
                                                 f.write(
                                                     f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n"
                                                 )
                                                 f.write(f"Airmass: {air:.3f}\n")
-                                                f.write(f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n")
+                                                f.write(
+                                                    f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n"
+                                                )
                                                 f.write(
                                                     f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n"
                                                 )
 
                                                 f.write("Detection Parameters:\n")
-                                                f.write(f"  Threshold: {threshold_sigma} sigma\n")
-                                                f.write(f"  Edge Mask: {detection_mask} pixels\n")
+                                                f.write(
+                                                    f"  Threshold: {threshold_sigma} sigma\n"
+                                                )
+                                                f.write(
+                                                    f"  Edge Mask: {detection_mask} pixels\n"
+                                                )
                                                 f.write(
                                                     f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n"
                                                 )
 
-                                            write_to_log(log_buffer, "Saved catalog metadata")
+                                            write_to_log(
+                                                log_buffer, "Saved catalog metadata"
+                                            )
 
                                         except Exception as e:
                                             st.error(f"Error preparing download: {e}")
@@ -4059,11 +4099,11 @@ if science_file is not None:
                             final_table=final_table,
                             ra_center=ra_center,
                             dec_center=dec_center,
-                            fov=1.,
+                            fov=1.0,
                             alt_mag_col="aperture_calib_mag",
                             id_cols=["simbad_main_id"],
                         )
-                    
+
                     st.link_button(
                         "ESA Sky Viewer",
                         f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=DSS2+color&fov=0.5&projection=SIN&cooframe=J2000&sci=true&lang=en",
@@ -4091,23 +4131,31 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     write_to_log(log_buffer, f"Seeing: {seeing} arcsec")
     write_to_log(log_buffer, f"Detection Threshold: {threshold_sigma} sigma")
     write_to_log(log_buffer, f"Border Mask: {detection_mask} pixels")
-    
+
     write_to_log(log_buffer, "Observatory Information", level="INFO")
-    write_to_log(log_buffer, f"Observatory Name: {st.session_state.observatory_data['name']}")
-    write_to_log(log_buffer, f"Latitude: {st.session_state.observatory_data['latitude']}°")
-    write_to_log(log_buffer, f"Longitude: {st.session_state.observatory_data['longitude']}°")
-    write_to_log(log_buffer, f"Elevation: {st.session_state.observatory_data['elevation']} m")
-    
+    write_to_log(
+        log_buffer, f"Observatory Name: {st.session_state.observatory_data['name']}"
+    )
+    write_to_log(
+        log_buffer, f"Latitude: {st.session_state.observatory_data['latitude']}°"
+    )
+    write_to_log(
+        log_buffer, f"Longitude: {st.session_state.observatory_data['longitude']}°"
+    )
+    write_to_log(
+        log_buffer, f"Elevation: {st.session_state.observatory_data['elevation']} m"
+    )
+
     write_to_log(log_buffer, "Gaia Parameters", level="INFO")
     write_to_log(log_buffer, f"Gaia Band: {gaia_band}")
     write_to_log(log_buffer, f"Gaia Min Magnitude: {gaia_min_mag}")
     write_to_log(log_buffer, f"Gaia Max Magnitude: {gaia_max_mag}")
-    
+
     write_to_log(log_buffer, "Calibration Options", level="INFO")
     write_to_log(log_buffer, f"Apply Bias: {calibrate_bias}")
     write_to_log(log_buffer, f"Apply Dark: {calibrate_dark}")
     write_to_log(log_buffer, f"Apply Flat: {calibrate_flat}")
-    
+
     # Finalize and save the log
     write_to_log(log_buffer, "Processing completed", level="INFO")
     with open(log_filepath, "w") as f:

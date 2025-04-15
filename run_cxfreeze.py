@@ -50,6 +50,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+
 def resolve_path(path):
     return os.path.abspath(os.path.join(os.getcwd(), path))
 
