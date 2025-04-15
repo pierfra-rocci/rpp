@@ -2653,74 +2653,6 @@ def enhance_catalog_with_crossmatches(
     return final_table
 
 
-# def get_download_link(data, filename, link_text="Download"):
-#     """
-#     Generate an HTML download link for data with styled appearance.
-
-#     Parameters
-#     ----------
-#     data : str or bytes
-#         String or binary data to be downloaded
-#     filename : str
-#         Name of the file to be downloaded
-#     link_text : str, optional
-#         Text to display on the download button, default="Download"
-
-#     Returns
-#     -------
-#     str
-#         HTML string containing the styled download link
-
-#     Notes
-#     -----
-#     - Uses base64 encoding to embed the data directly in the HTML link
-#     - Includes CSS styling to create a button-like appearance
-#     - Handles both string and binary data types
-#     - Includes error handling and visual feedback if data is empty or invalid
-#     """
-#     if not data:
-#         return '<div class="error-text">No data available to download</div>'
-
-#     try:
-#         if isinstance(data, bytes):
-#             b64 = base64.b64encode(data).decode()
-#         else:
-#             b64 = base64.b64encode(data.encode()).decode()
-
-#         href = f'<a href="data:file/csv;base64,{b64}" download="{filename}" class="download-button">{link_text}</a>'
-
-#         button_style = """
-#         <style>
-#         .download-button {
-#             display: inline-block;
-#             padding: 0.8em 1.4em;
-#             text-align: center;
-#             text-decoration: none;
-#             font-size: 16px;
-#             font-weight: 500;
-#             border-radius: 4px;
-#             border: none;
-#             cursor: pointer;
-#             margin-top: 15px;
-#             transition: all 0.3s ease;
-#             background-color: #2b70a1;
-#         }
-#         .download-button:hover {
-#             background-color: #2b70a1;
-#             transform: translateY(-1px);
-#         }
-#         .error-text {
-#             color: red;
-#             font-style: italic;
-#         }
-#         </style>
-#         """
-
-#         return button_style + href
-#     except Exception as e:
-#         return f'<div class="error-text">Error creating download link: {str(e)}</div>'
-
-
 def save_header_to_txt(header, filename):
     """
     Save a FITS header to a formatted text file.
@@ -3124,84 +3056,59 @@ def write_to_log(log_buffer, message, level="INFO"):
     log_buffer.write(f"[{timestamp}] {level}: {message}\n")
 
 
-def open_results_folder(folder_path):
+def provide_download_buttons(folder_path):
     """
-    Open the specified folder in the file explorer (cross-platform).
+    Creates a single download button for a zip file containing all files in the specified folder.
     
-    Parameters
-    ----------
-    folder_path : str
-        Path to the folder to open
-        
-    Returns
-    -------
-    bool
-        True if successful, False otherwise
+    This function compresses all files in the given folder into a single zip archive
+    and provides a download button for the archive.
+    
+    Args:
+        folder_path (str): The path to the folder containing files to be zipped and made downloadable
+    
+    Returns:
+        None: The function creates a Streamlit download button directly in the app interface
     """
+    import zipfile
+    from io import BytesIO
+    import datetime
+    
     try:
-        # Convert local path to file:// URL
-        system = platform.system()
-        if system == "Windows":
-            # Windows paths need extra / and must replace backslashes
-            folder_url = 'file:///' + folder_path.replace('\\', '/')
+        files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+        if not files:
+            st.write("No files found in output directory")
+            return
         
-        # Open in a new browser tab
-        try:
-            # Use JavaScript to open in new tab via Streamlit components
-            components.html(
-                f"""
-                <script>
-                    window.open('{folder_url}', '_blank');
-                </script>
-                """,
-                height=0,
-            )
-            return True
-        except Exception as e:
-            st.error(f"Failed to open folder in browser: {str(e)}")
-            # Fallback to default system file browser if browser method fails
-            if system == "Windows":
-                os.startfile(folder_path)
-            elif system == "Darwin":  # macOS
-                subprocess.run(["open", folder_path], check=True)
-            elif system == "Linux":
-                subprocess.run(["xdg-open", folder_path], check=True)
-            else:
-                st.error(f"Unsupported platform: {system}")
-                return False
-            return True
-            
+        # Create a timestamp for the zip filename
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_name = st.session_state.get('base_filename', 'pfr_results')
+        zip_filename = f"{base_name}_{timestamp}.zip"
+        
+        # Create in-memory zip file
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for file in files:
+                file_path = os.path.join(folder_path, file)
+                # Add each file to the zip archive with its filename (not the full path)
+                zip_file.write(file_path, arcname=file)
+        
+        # Reset buffer position to the beginning
+        zip_buffer.seek(0)
+        
+        # Create download button for the zip file
+        st.download_button(
+            label=f"📦 Download All Results (ZIP)",
+            data=zip_buffer,
+            file_name=zip_filename,
+            mime="application/zip",
+            on_click='ignore'
+        )
+        
+        # Show number of files included
+        st.caption(f"Archive contains {len(files)} files")
+        
     except Exception as e:
-        st.error(f"Error opening folder: {str(e)}")
-        return False
-
-
-def get_open_folder_button(folder_path):
-    """
-    Generate a button to open a folder in the file explorer.
-    
-    Parameters
-    ----------
-    folder_path : str
-        Path to the folder to open
-    button_text : str, optional
-        Text to display on the button, default="Open Results Folder"
-    
-    Returns
-    -------
-    bool
-        True if button is clicked and folder opened successfully, False otherwise
-    """
-    st.link_button("📂 Open Results Folder", f"file:///{os.path.join(os.getcwd(), folder_path)}")
-    #     try:
-    #         open_results_folder(folder_path)
-    #     except Exception as e:
-    #         st.error(f"Failed to open folder: {str(e)}")
-    #         return False
-    # if not os.path.exists(folder_path):
-    #     st.error(f"Folder does not exist: {folder_path}")
-    #     return False
-    # return True
+        st.error(f"Error creating zip archive: {str(e)}")
 
 
 def update_observatory_inputs(science_header=None):
@@ -4071,9 +3978,7 @@ if science_file is not None:
 
                                             with open(catalog_path, "w") as f:
                                                 f.write(csv_data)
-                                            
-                                            # Add Open Folder button in main UI area
-                                            get_open_folder_button(output_dir)
+                                            st.success(f"Catalog saved to {catalog_path}")
 
                                             metadata_filename = f"{base_catalog_name}_metadata.txt"
                                             metadata_path = os.path.join(output_dir, metadata_filename)
@@ -4140,19 +4045,23 @@ if science_file is not None:
                             final_table=final_table,
                             ra_center=ra_center,
                             dec_center=dec_center,
-                            fov=0.5,
+                            fov=1.,
                             alt_mag_col="aperture_calib_mag",
                             id_cols=["simbad_main_id"],
                         )
-
+                    
                     st.link_button(
-                        "ESA Sky",
+                        "ESA Sky Viewer",
                         f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=DSS2+color&fov=0.5&projection=SIN&cooframe=J2000&sci=true&lang=en",
                         help="Open ESA Sky with the same target coordinates",
                     )
+
+                    st.success(f"All Results are stocked in {output_dir}\ folder")
+                    provide_download_buttons(output_dir)
+
                 else:
                     st.warning(
-                        "Could not determine coordinates from image header. Cannot display PanSTARRS view."
+                        "Could not determine coordinates from image header. Cannot display ESASky."
                     )
 else:
     st.write("👆 Please upload a science image FITS file to start.")
