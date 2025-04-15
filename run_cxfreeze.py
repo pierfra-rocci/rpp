@@ -44,7 +44,7 @@ from astropy.wcs import WCS
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from astropy.nddata import NDData
 
-# from stdpipe import astrometry, catalogs, pipeline
+from stdpipe import astrometry, catalogs, pipeline
 
 import warnings
 

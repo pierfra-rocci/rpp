@@ -10,8 +10,6 @@ import datetime
 import base64
 import json
 import requests
-import platform
-import subprocess
 from urllib.parse import quote
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
@@ -45,7 +43,7 @@ from astropy.wcs import WCS
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from astropy.nddata import NDData
 
-# from stdpipe import astrometry, catalogs, pipeline
+from stdpipe import astrometry, catalogs, pipeline
 
 import warnings
 
@@ -1492,32 +1490,33 @@ def find_sources_and_photometry_streamlit(
         return None, None, daofind, bkg
 
     st.info("Doing astrometry refinement with GAIA DR3...")
-    # ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w, width=image_data.shape[1], height=image_data.shape[0])
-    # cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3', filters={'Rpmag':'<19'})
-    # cat_col_mag = 'Rpmag'
-    # sources['x'] = sources['xcentroid']
-    # sources['y'] = sources['ycentroid']
-    # try:
-    #     # Add error column if not present
-    #     if 'Rpmag_error' in cat.colnames:
-    #         cat_col_magerr = 'Rpmag_error'
-    #     elif 'e_Rpmag' in cat.colnames:
-    #         cat_col_magerr = 'e_Rpmag'
-    #     else:
-    #         # Create a dummy error column if needed
-    #         cat['Rpmag_error'] = np.ones_like(cat['Rpmag']) * 0.01
-    #         cat_col_magerr = 'Rpmag_error'
+    st.warning("This function is not yet debugged and tested !") #TODO
+    ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w, width=image_data.shape[1], height=image_data.shape[0])
+    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3', filters={'Rpmag':'<19'})
+    cat_col_mag = 'Rpmag'
+    sources['x'] = sources['xcentroid']
+    sources['y'] = sources['ycentroid']
+    try:
+        # Add error column if not present
+        if 'Rpmag_error' in cat.colnames:
+            cat_col_magerr = 'Rpmag_error'
+        elif 'e_Rpmag' in cat.colnames:
+            cat_col_magerr = 'e_Rpmag'
+        else:
+            # Create a dummy error column if needed
+            cat['Rpmag_error'] = np.ones_like(cat['Rpmag']) * 0.01
+            cat_col_magerr = 'Rpmag_error'
 
-    #     wcs = pipeline.refine_astrometry(sources, cat, 1.5*fwhm_estimate*pixel_scale/3600, wcs=w, order=0,
-    #                                      cat_col_mag=cat_col_mag, cat_col_magerr=cat_col_magerr, verbose=True)
-    st.info("Refined WCS successfully.")
-    #     astrometry.clear_wcs(_science_header, remove_comments=True, remove_underscored=True, remove_history=True)
-    #     _science_header.update(wcs.to_header(relax=True))
-    # except Exception as e:
-    #     st.warning(f"Skipping WCS refinement: {str(e)}")
-    #     # Print column names to help diagnose
-    #     if 'cat' in locals() and hasattr(cat, 'colnames'):
-    #         st.info(f"Available catalog columns: {cat.colnames}")
+        wcs = pipeline.refine_astrometry(sources, cat, 1.5*fwhm_estimate*pixel_scale/3600, wcs=w, order=0,
+                                         cat_col_mag=cat_col_mag, cat_col_magerr=cat_col_magerr, verbose=True)
+        st.info("Refined WCS successfully.")
+        astrometry.clear_wcs(_science_header, remove_comments=True, remove_underscored=True, remove_history=True)
+        _science_header.update(wcs.to_header(relax=True))
+    except Exception as e:
+        st.warning(f"Skipping WCS refinement: {str(e)}")
+        # Print column names to help diagnose
+        if 'cat' in locals() and hasattr(cat, 'colnames'):
+            st.info(f"Available catalog columns: {cat.colnames}")
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
     apertures = CircularAperture(positions, r=1.5 * fwhm_estimate)
@@ -2217,7 +2216,8 @@ def enhance_catalog_with_crossmatches(
 
             st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
 
-    st.write("Querying Astro-Colibri for object identifications...")
+    st.info("Querying Astro-Colibri for object identifications...")
+    st.warning("This function is not yet properly coded and tested.") #TODO
     source = {
         "ra": [],
         "dec": [],
@@ -3490,7 +3490,6 @@ if science_file is not None:
             try:
                 fig_preview.savefig(image_path, dpi=150, bbox_inches="tight")
                 write_to_log(log_buffer, "Saved image plot")
-                st.write("Image saved")
             except Exception as save_error:
                 write_to_log(
                     log_buffer,
@@ -4012,9 +4011,6 @@ if science_file is not None:
 
                                             with open(catalog_path, "w") as f:
                                                 f.write(csv_data)
-                                            st.success(
-                                                f"Catalog saved to {catalog_path}"
-                                            )
 
                                             metadata_filename = (
                                                 f"{base_catalog_name}_metadata.txt"
@@ -4110,7 +4106,7 @@ if science_file is not None:
                         help="Open ESA Sky with the same target coordinates",
                     )
 
-                    st.success(f"All Results are stocked in {output_dir}\ folder")
+                    st.success(f"All Results are stocked in /{output_dir}/  Folder")
                     provide_download_buttons(output_dir)
 
                 else:
