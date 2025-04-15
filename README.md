@@ -42,20 +42,23 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - SIMBAD object identification with object types
   - SkyBoT solar system object detection
   - AAVSO Variable Star cross-matching
-  - Quasars source cross-matching
+  - Quasar identification from VizieR VII/294 catalog
+  - Astro-Colibri source cross-matching
     
 - **Interactive Visualization**
   - Image display with adjustable scaling
-  - Embedded Aladin Lite for DSS2 color overlays
+  - Embedded Aladin Lite for DSS2 color overlays and catalog visualization
   - Interactive tables for data exploration
   - Direct links to ESA Sky and other astronomy resources
-  - **New:** Real-time photometry updates with live plots during pipeline execution
+  - Real-time photometry updates with live plots during pipeline execution
+  - One-click access to online astronomical databases and services
     
 - **Analysis and Export**
   - Comprehensive photometry catalog output
   - Detailed logging of all processing steps
   - Export of PSF models as FITS files
   - Metadata files with analysis parameters
+  - **New:** Unified download of all results as a ZIP archive
 
 ## Installation
 
