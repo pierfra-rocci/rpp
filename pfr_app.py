@@ -2272,7 +2272,7 @@ def enhance_catalog_with_crossmatches(
             #         final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
 
             matches = []
-            st.success(f"Found {sum(matches)} Astro-Colibri objects in field.")
+            st.write(f"Found {sum(matches)} Astro-Colibri objects in field.") #TODO
         else:
             st.write("No Astro-Colibri sources found in the field.")
 
