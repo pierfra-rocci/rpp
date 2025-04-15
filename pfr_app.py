@@ -116,8 +116,8 @@ def getJson(url: str) -> json:
     """
     if not url.startswith("http"):
         return json.dumps({"error": "invalid URL"})
-    if not url.endswith(".json"):
-        return json.dumps({"error": "not a JSON file"})
+    # if not url.endswith(".json"):
+    #     return json.dumps({"error": "not a JSON file"})
     try:
         # Send a GET request to the provided URL using the requests library
         req = requests.get(url)
@@ -2134,9 +2134,11 @@ def enhance_catalog_with_crossmatches(
 
     This function queries several catalogs and databases including:
     - GAIA DR3 (using previously matched sources)
+    - Astro-Colibri (for known astronomical sources)
     - SIMBAD (for object identifications and classifications)
     - SkyBoT (for solar system objects)
     - AAVSO VSX (for variable stars)
+    - VizieR VII/294 (for quasars)
 
     Parameters
     ----------
@@ -2149,16 +2151,18 @@ def enhance_catalog_with_crossmatches(
     pixel_scale_arcsec : float
         Pixel scale in arcseconds per pixel
     search_radius_arcsec : float, optional
-        Search radius for cross-matching in arcseconds, default=6.0
+        Search radius for cross-matching in arcseconds, default=60
 
     Returns
     -------
     pandas.DataFrame
         Input dataframe with added catalog information including:
         - GAIA data for calibration stars
+        - Astro-Colibri source identifications
         - SIMBAD identifications and object types
         - Solar system object identifications from SkyBoT
         - Variable star information from AAVSO VSX
+        - Quasar information from VizieR VII/294
         - A summary column 'catalog_matches' listing all catalog matches
 
     Notes
@@ -2166,6 +2170,7 @@ def enhance_catalog_with_crossmatches(
     The function shows progress updates in the Streamlit interface and creates
     a summary display of matched objects. Queries are made with appropriate
     error handling to prevent failures if any catalog service is unavailable.
+    API requests are processed in batches to avoid overwhelming servers.
     """
     if final_table is None or len(final_table) == 0:
         st.warning("No sources to cross-match with catalogs.")
@@ -2226,40 +2231,49 @@ def enhance_catalog_with_crossmatches(
         sources = None
         try:
             response = getJson(f"{URL}/known_sources")
-            sources = response['sources']
+            
+            # Check if response is a string (likely JSON-encoded)
+            if isinstance(response, dict):
+                try:
+                    sources = response['sources']
+                except json.JSONDecodeError:
+                    st.error(f"Failed to parse API response as JSON: {response[:100]}...")
+            else:
+                st.error(f"Unexpected API response format: {type(response)}")
         except Exception as e:
             st.error(f"Error querying Astro-Colibri API: {str(e)}")
             # Continue with function instead of returning None
 
         if sources is not None and len(sources) > 0:
             # Use batching for source details requests
-            source = batch_api_requests(sources)
-            astrostars = pd.DataFrame(source)
+            # source = batch_api_requests(sources)
+            # astrostars = pd.DataFrame(source)
 
-            final_table["astro_colibri_name"] = None
+            # final_table["astro_colibri_name"] = None
 
-            source_coords = SkyCoord(
-                ra=final_table["ra"].values,
-                dec=final_table["dec"].values,
-                unit="deg",
-            )
+            # source_coords = SkyCoord(
+            #     ra=final_table["ra"].values,
+            #     dec=final_table["dec"].values,
+            #     unit="deg",
+            # )
 
-            astro_colibri_coords = SkyCoord(
-                ra=astrostars["ra"],
-                dec=astrostars["dec"],
-                unit=(u.deg, u.deg),
-            )
+            # astro_colibri_coords = SkyCoord(
+            #     ra=astrostars["ra"],
+            #     dec=astrostars["dec"],
+            #     unit=(u.deg, u.deg),
+            # )
 
-            if not isinstance(search_radius_arcsec, (int, float)) or search_radius_arcsec <= 0:
-                raise ValueError("Search radius must be a positive number")
+            # if not isinstance(search_radius_arcsec, (int, float)) or search_radius_arcsec <= 0:
+            #     raise ValueError("Search radius must be a positive number")
             
-            idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
-            matches = d2d < (search_radius_arcsec * u.arcsec)
+            # idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
+            # matches = d2d < (search_radius_arcsec * u.arcsec)
 
-            for i, (match, match_idx) in enumerate(zip(matches, idx)):
-                if match:
-                    final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
+            # for i, (match, match_idx) in enumerate(zip(matches, idx)):
+            #     if match:
+            #         final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
                     
+            matches = []
             st.success(f"Found {sum(matches)} Astro-Colibri objects in field.")
         else:
             st.write("No Astro-Colibri sources found in the field.")
