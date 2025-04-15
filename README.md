@@ -178,10 +178,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Contact
 
-Pier-Francesco Rocci - [your.email@example.com](mailto:your.email@example.com)
-
 Project Link: [https://github.com/yourusername/pfr](https://github.com/yourusername/pfr)
 
 ---
 
-Created with ❤️ by Pier-Francesco Rocci
+Created with ❤ by Pier-Francesco Rocci
