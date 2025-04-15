@@ -175,11 +175,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - This tool relies on numerous open-source astronomy packages including Astropy, Photutils, and Astroquery
 - Special thanks to the RAPAS team for their support and feedback
-
-## Contact
-
-Project Link: [https://github.com/yourusername/pfr](https://github.com/yourusername/pfr)
-
 ---
 
 Created with ❤ by Pier-Francesco Rocci
