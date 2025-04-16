@@ -1,19 +1,26 @@
+import sys
+
+if getattr(sys, "frozen", False):
+    import importlib.metadata
+    importlib.metadata.distributions = lambda **kwargs: []
+
 import streamlit.web.cli as stcli
 import streamlit.runtime.scriptrunner.magic_funcs
-import sys
+import astropy.constants.codata2018
+import astropy.constants.iau2015
 
 import os
 import datetime
+import tempfile
+import time
 import base64
 import json
 import requests
-import platform
-import subprocess
 from urllib.parse import quote
 
+from astroquery.astrometry_net import AstrometryNetClass
+
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-import astropy.constants.codata2018
-import astropy.constants.iau2015
 from astropy.time import Time
 from astropy.coordinates import get_sun
 from typing import Union, Any, Optional, Dict, Tuple
@@ -24,6 +31,7 @@ from astroquery.vizier import Vizier
 from astropy.modeling import models, fitting
 import streamlit as st
 import streamlit.components.v1 as components
+# import streamlit_authenticator as stauth
 
 import numpy as np
 from astropy.io import fits
@@ -47,7 +55,6 @@ from astropy.nddata import NDData
 from stdpipe import astrometry, catalogs, pipeline
 
 import warnings
-
 warnings.filterwarnings("ignore")
 
 
