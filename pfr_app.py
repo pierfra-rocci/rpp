@@ -116,8 +116,6 @@ def getJson(url: str) -> json:
     """
     if not url.startswith("http"):
         return json.dumps({"error": "invalid URL"})
-    # if not url.endswith(".json"):
-    #     return json.dumps({"error": "not a JSON file"})
     try:
         # Send a GET request to the provided URL using the requests library
         req = requests.get(url)
