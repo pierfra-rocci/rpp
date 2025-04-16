@@ -84,7 +84,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Define standard figure sizes to use throughout the app
 FIGURE_SIZES = {
     "small": (6, 5),  # For small plots
     "medium": (8, 6),  # For medium plots
