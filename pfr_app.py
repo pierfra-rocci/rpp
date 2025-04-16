@@ -23,6 +23,7 @@ from astroquery.vizier import Vizier
 from astropy.modeling import models, fitting
 import streamlit as st
 import streamlit.components.v1 as components
+# import streamlit_authenticator as stauth
 
 import numpy as np
 from astropy.io import fits
@@ -128,10 +129,8 @@ def getJson(url: str) -> json:
         # If the response has content, parse it as JSON and return it
         return req.json()
     except requests.exceptions.RequestException as e:
-        # If there was an error making the request, return an error message as JSON
         return json.dumps({"error": "request exception", "message": str(e)})
     except json.decoder.JSONDecodeError as e:
-        # If there was an error parsing the JSON, return an error message as JSON
         return json.dumps({"error": "invalid json", "message": str(e)})
 
 
@@ -151,7 +150,8 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
         FITS header with any available metadata to help the solver,
         such as approximate coordinates or pixel scale
     api_key : str, optional
-        Astrometry.net API key. If not provided, will look in environment variables.
+        Astrometry.net API key. 
+        If not provided, will look in environment variables.
 
     Returns
     -------
@@ -217,13 +217,16 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
                     st.info(
                         f"Submitting image to astrometry.net (attempt {try_idx}/{max_tries})..."
                     )
-                    wcs_header = ast.solve_from_image(file_path, **solve_kwargs)
+                    wcs_header = ast.solve_from_image(file_path, 
+                                                      **solve_kwargs)
 
                 except Exception as e:
                     st.warning(
-                        f"Error with file upload: {str(e)}. Trying with image data directly..."
+                        f"Error with file upload: {str(e)}. Trying with image"
+                        "data directly..."
                     )
-                    wcs_header = ast.solve_from_image(image_data, **solve_kwargs)
+                    wcs_header = ast.solve_from_image(image_data, 
+                                                      **solve_kwargs)
 
                 if file_path and os.path.exists(file_path):
                     os.unlink(file_path)
@@ -242,7 +245,8 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
             header = fits.Header()
 
         for key in wcs_header:
-            if key in ["SIMPLE", "BITPIX", "NAXIS", "NAXIS1", "NAXIS2", "EXTEND"]:
+            if key in ["SIMPLE", "BITPIX", "NAXIS", "NAXIS1", "NAXIS2", 
+                       "EXTEND"]:
                 continue
             if key.startswith("HISTORY") or key.startswith("COMMENT"):
                 continue
@@ -271,13 +275,13 @@ def ensure_output_directory(directory="pfr_results"):
     Returns
     -------
     str
-        Path to the created/existing output directory, or "." (current directory)
+        Path to the created/existing output directory, or "." (curr directory)
         if creation failed
 
     Notes
     -----
     Will attempt to create the directory and display a warning in Streamlit
-    if creation fails. In case of failure, returns the current directory as fallback.
+    if creation fails. In case of failure, returns the current directory.
     """
     if not os.path.exists(directory):
         try:
@@ -291,10 +295,10 @@ def ensure_output_directory(directory="pfr_results"):
 
 def safe_wcs_create(header):
     """
-    Create a WCS (World Coordinate System) object from a FITS header with robust error handling.
+    Create a WCS (World Coordinate System) object from a FITS header with error handling.
 
-    This function validates the header contains required WCS keywords before attempting
-    to create a WCS object, and properly handles various edge cases and errors.
+    This function validates the header contains required WCS keywords before
+    create a WCS object, and properly handles various edge cases and errors.
 
     Parameters
     ----------
@@ -304,7 +308,7 @@ def safe_wcs_create(header):
     Returns
     -------
     tuple
-        (wcs_object, None) if successful, (None, error_message) if failed, where:
+        (wcs_object, None) if successful, (None, error_message) if failed :
         - wcs_object: astropy.wcs.WCS object
         - error_message: String describing the error if WCS creation failed
 

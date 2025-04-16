@@ -1,0 +1,17 @@
+credentials:
+  usernames:
+    pfradmin:
+      email: pierfrancesco.rocci@gmail.com
+      name: PFR Administrator
+      password: admin # To be replaced with hashed password
+    rapasuser:
+      email: user@example.com
+      name: RAPAS User
+      password: user # To be replaced with hashed password
+cookie:
+  expiry_days: 30
+  key: pfr_random_signature_key # Must be string
+  name: pfr_auth_cookie
+preauthorized:
+  emails:
+  - newuser@example.com
