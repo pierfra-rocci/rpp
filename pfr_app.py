@@ -7,10 +7,14 @@ if getattr(sys, "frozen", False):
 
 import os
 import datetime
+import tempfile
+import time
 import base64
 import json
 import requests
 from urllib.parse import quote
+
+from astroquery.astrometry_net import AstrometryNetClass
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -168,12 +172,6 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
     improve solving speed and accuracy.
     """
     try:
-        import tempfile
-        import time
-        from astroquery.astrometry_net import AstrometryNetClass
-        from astropy.io import fits
-        import os
-
         if api_key is None:
             api_key = os.environ.get("ASTROMETRY_API_KEY")
             if api_key is None:
