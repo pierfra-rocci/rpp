@@ -5,7 +5,7 @@ if getattr(sys, "frozen", False):
     importlib.metadata.distributions = lambda **kwargs: []
 
 import os
-import datetime
+from datetime import datetime, timedelta
 import tempfile
 import time
 import base64
@@ -2050,7 +2050,7 @@ def run_zero_point_calibration(
                     f.write("RAPAS Photometry Analysis Metadata\n")
                     f.write("================================\n\n")
                     f.write(
-                        f"Analysis Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                        f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
                     )
                     f.write(f"Input File: {science_file.name}\n")
                     f.write(f"Catalog File: {filename}\n\n")
@@ -2080,46 +2080,8 @@ def run_zero_point_calibration(
         return zero_point_value, zero_point_std, final_table
 
 
-def batch_api_requests(sources, batch_size=100):
-    """
-    Process API requests in batches to avoid overloading the server.
-
-    Parameters
-    ----------
-    sources : list
-        List of source names to query
-    batch_size : int, optional
-        Number of sources to process in each batch, default=100
-
-    Returns
-    -------
-    dict
-        Combined results from all batches
-    """
-    results = {"ra": [], "dec": [], "name": []}
-
-    for i in range(0, len(sources), batch_size):
-        batch = sources[i : i + batch_size]
-        st.write(
-            f"Processing batch {i // batch_size + 1}/{(len(sources) - 1) // batch_size + 1}"
-        )
-
-        for name in batch:
-            s = getJson(f"{URL}/source_details?name={name}")
-            if s is None:
-                continue
-            results["ra"].append(s["ra"] * u.deg)
-            results["dec"].append(s["dec"] * u.deg)
-            results["name"].append(s["name"])
-
-        # Add a small delay between batches
-        # time.sleep(0.5)
-
-    return results
-
-
-def enhance_catalog_with_crossmatches(
-    final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=60
+def enhance_catalog_with_crossmatches(api_key, final_table, matched_table, 
+                                      header, pixel_scale_arcsec, search_radius_arcsec=60
 ):
     """
     Enhance a photometric catalog with cross-matches from multiple astronomical databases.
@@ -2213,37 +2175,100 @@ def enhance_catalog_with_crossmatches(
 
             st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
 
-    st.info("Querying Astro-Colibri for object identifications...")
-    st.warning("This function is not yet properly coded and tested.") #TODO
-    source = {
-        "ra": [],
-        "dec": [],
-        "name": [],
-    }
-    try:
-        sources = None
-        try:
-            response = getJson(f"{URL}/known_sources")
+    st.info("Querying Astro-Colibri API...")
+    st.warning("This function is not yet properly coded and tested.")
+    
+    if api_key is None:
+        api_key = os.environ.get("ASTROCOLIBRI_API")
+        if api_key is None:
+            st.warning("No API key for ASTRO-COLIBRI provided or found")
+            pass
 
-            # Check if response is a string (likely JSON-encoded)
-            if isinstance(response, dict):
+    try:
+        field_center_ra = None
+        field_center_dec = None
+
+        if "CRVAL1" in header and "CRVAL2" in header:
+            field_center_ra = float(header["CRVAL1"])
+            field_center_dec = float(header["CRVAL2"])
+        elif "RA" in header and "DEC" in header:
+            field_center_ra = float(header["RA"])
+            field_center_dec = float(header["DEC"])
+        elif "OBJRA" in header and "OBJDEC" in header:
+            field_center_ra = float(header["OBJRA"])
+            field_center_dec = float(header["OBJDEC"])
+
+        try:
+            # Base URL of the API
+            url = 'https://astro-colibri.science/cone_search'
+
+            # Request parameters (headers, body)
+            headers = {"Content-Type": "application/json"}
+            
+            # Define date range for the query
+            observation_date = None
+            if header is not None:
+                if "DATE-OBS" in header:
+                    observation_date = header["DATE-OBS"]
+                elif "DATE" in header:
+                    observation_date = header["DATE"]
+            
+            # Set time range to ±7 days from observation date or current date
+            if observation_date:
                 try:
-                    sources = response["sources"]
-                except json.JSONDecodeError:
-                    st.error(
-                        f"Failed to parse API response as JSON: {response[:100]}..."
-                    )
+                    base_date = datetime.fromisoformat(observation_date.replace('T', ' ').split('.')[0])
+                except (ValueError, TypeError):
+                    base_date = datetime.now()
             else:
-                st.error(f"Unexpected API response format: {type(response)}")
+                base_date = datetime.now()
+                
+            date_min = (base_date - timedelta(days=14)).isoformat()
+            date_max = (base_date + timedelta(days=7)).isoformat()
+            
+            body = {
+                "uid": api_key,
+                "filter": None,
+                "time_range": {
+                    "max": date_max,
+                    "min": date_min,
+                },
+                "properties": {
+                    "type": "cone",
+                    "position": {"ra": field_center_ra, 
+                                 "dec": field_center_dec},
+                    "radius": search_radius_arcsec,
+                }
+            }
+
+            # Perform the POST request
+            response = requests.post(url, headers=headers, 
+                                     data=json.dumps(body))
+
+            # Process the response
+            try:
+                if response.status_code == 200:
+                    st.write("Response successfully received.")
+                    events = response.json()['voevents']
+                    st.success('number of events: ' + str(len(events)))
+                    st.success(json.dumps(events, indent=4))
+
+            except json.JSONDecodeError:
+                st.error("Request did NOT succeed : ", response.status_code)
+                st.error("Error message : ", response.content.decode('UTF-8'))
+
         except Exception as e:
             st.error(f"Error querying Astro-Colibri API: {str(e)}")
             # Continue with function instead of returning None
 
-        if sources is not None and len(sources) > 0:
-            # Use batching for source details requests
-            # source = batch_api_requests(sources)
+        if response is not None and len(response) > 0:
+            sources = {
+                    "ra": [],
+                    "dec": [],
+                    "type": [],
+                    "classification": []
+                    }
+            
             # astrostars = pd.DataFrame(source)
-
             # final_table["astro_colibri_name"] = None
 
             # source_coords = SkyCoord(
@@ -2268,31 +2293,17 @@ def enhance_catalog_with_crossmatches(
             #     if match:
             #         final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
 
-            matches = []
-            st.write(f"Found {sum(matches)} Astro-Colibri objects in field.") #TODO
+            # matches = []
+            st.success(f"Found {len(events)} Astro-Colibri objects in field.")
         else:
             st.write("No Astro-Colibri sources found in the field.")
 
     except Exception as e:
         st.error(f"Error querying Astro-Colibri: {str(e)}")
         st.write("No Astro-Colibri sources found.")
-        # Continue with function instead of returning None
 
     status_text.write("Querying SIMBAD for object identifications...")
     try:
-        field_center_ra = None
-        field_center_dec = None
-
-        if "CRVAL1" in header and "CRVAL2" in header:
-            field_center_ra = float(header["CRVAL1"])
-            field_center_dec = float(header["CRVAL2"])
-        elif "RA" in header and "DEC" in header:
-            field_center_ra = float(header["RA"])
-            field_center_dec = float(header["DEC"])
-        elif "OBJRA" in header and "OBJDEC" in header:
-            field_center_ra = float(header["OBJRA"])
-            field_center_dec = float(header["OBJDEC"])
-
         if field_center_ra is not None and field_center_dec is not None:
             if not (-360 <= field_center_ra <= 360) or not (
                 -90 <= field_center_dec <= 90
@@ -3038,7 +3049,7 @@ def initialize_log(base_filename):
     which will be written to a file at the end of processing.
     """
     log_buffer = StringIO()
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     log_buffer.write("Photometry Factory for RAPAS Log\n")
     log_buffer.write("===============================\n")
@@ -3070,7 +3081,7 @@ def write_to_log(log_buffer, message, level="INFO"):
     if log_buffer is None:
         return
 
-    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+    timestamp = datetime.now().strftime("%H:%M:%S")
     log_buffer.write(f"[{timestamp}] {level}: {message}\n")
 
 
@@ -3102,7 +3113,7 @@ def provide_download_buttons(folder_path):
             return
 
         # Create a timestamp for the zip filename
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         base_name = st.session_state.get("base_filename", "pfr_results")
         zip_filename = f"{base_name}_{timestamp}.zip"
 
@@ -3261,6 +3272,12 @@ with st.sidebar:
         "API Key", value="", help="Enter your astrometry.net API key", type="password"
     )
     st.caption("Get your own key at [nova.astrometry.net](http://nova.astrometry.net/)")
+
+    st.sidebar.header("Astro-Colibri")
+    colibri_api_key = st.text_input(
+        "Colibri API Key", value="", help="Enter your Astro-Colibri API key", type="password"
+    )
+    st.caption("Get your own key at [astro-colibri.science](https://astro-colibri.science)")
 
     st.header("Analysis Parameters")
     seeing = st.slider(
@@ -3431,7 +3448,7 @@ if science_file is not None:
     if science_header is not None:
         log_buffer = st.session_state["log_buffer"]
 
-        timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         header_filename = f"{st.session_state['base_filename']}_header"
         header_file_path = os.path.join(output_dir, f"{header_filename}.txt")
@@ -3480,7 +3497,7 @@ if science_file is not None:
 
             st.pyplot(fig_preview)
 
-            timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
             image_filename = f"{st.session_state['base_filename']}_image.png"
             image_path = os.path.join(output_dir, image_filename)
 
@@ -3972,6 +3989,7 @@ if science_file is not None:
                                                     * pixel_size_arcsec
                                                 )
                                                 final_table = enhance_catalog_with_crossmatches(
+                                                    api,
                                                     final_table,
                                                     matched_table,
                                                     header_to_process,
@@ -3991,7 +4009,7 @@ if science_file is not None:
                                             csv_data = csv_buffer.getvalue()
 
                                             timestamp_str = (
-                                                datetime.datetime.now().strftime(
+                                                datetime.now().strftime(
                                                     "%Y%m%d_%H%M%S"
                                                 )
                                             )
@@ -4024,7 +4042,7 @@ if science_file is not None:
                                                     "================================\n\n"
                                                 )
                                                 f.write(
-                                                    f"Analysis Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                                                    f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
                                                 )
                                                 f.write(
                                                     f"Input File: {science_file.name}\n"
