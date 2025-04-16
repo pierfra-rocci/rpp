@@ -53,7 +53,6 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-
 st.set_page_config(
     page_title="Photometry Factory for RAPAS", page_icon="🔭", layout="wide"
 )
