@@ -49,6 +49,8 @@ from astropy.nddata import NDData
 
 from stdpipe import astrometry, catalogs, pipeline
 
+from __version__ import version
+
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -58,8 +60,7 @@ st.set_page_config(
 )
 
 # Add application version to the sidebar
-APP_VERSION = "1.0.0"
-st.sidebar.markdown(f"**App Version:** {APP_VERSION}")
+st.sidebar.markdown(f"**App Version:** {version}")
 
 # Custom CSS to control plot display size
 st.markdown(
@@ -743,10 +744,10 @@ def airmass(
             else "day",
         }
 
-        st.write(f"Date & Local Time: {obstime.iso}")
+        st.write(f"Date & Local-Time: {obstime.iso}")
         st.write(
             f"Altitude: {details['altaz']['altitude']}°, "
-            f"Azimuth: {details['altaz']['azimuth']}°"
+            f" Azimuth: {details['altaz']['azimuth']}°"
         )
 
         if return_details:
@@ -2241,16 +2242,18 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             }
 
             # Perform the POST request
-            response = requests.post(url, headers=headers, 
+            response = requests.post(url, headers=headers,
                                      data=json.dumps(body))
 
             # Process the response
             try:
                 if response.status_code == 200:
                     st.write("Response successfully received.")
-                    events = response.json()['voevents']
-                    st.success('number of events: ' + str(len(events)))
+                    events = response.json().get(['voevents'])
+                    st.success(f'number of events: {len(events)}')
                     st.success(json.dumps(events, indent=4))
+                else:
+                    st.warning(f"Request failed with status code: {response.status_code}")
 
             except json.JSONDecodeError:
                 st.error("Request did NOT succeed : ", response.status_code)
@@ -2260,7 +2263,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             st.error(f"Error querying Astro-Colibri API: {str(e)}")
             # Continue with function instead of returning None
 
-        if response is not None and len(response) > 0:
+        if response is not None and response.status_code == 200:
             sources = {
                     "ra": [],
                     "dec": [],
@@ -2556,7 +2559,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
     except Exception as e:
         st.error(f"Error querying AAVSO VSX: {e}")
 
-    st.info("Querying VizieR VII/294 for quasars...")
+    st.info("Querying Milliquas Catalog for quasars...")
     try:
         if field_center_ra is not None and field_center_dec is not None:
             # Set columns to retrieve from the quasar catalog
@@ -2611,24 +2614,24 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                 has_qso = final_table["qso_name"].notna()
                 final_table.loc[has_qso, "catalog_matches"] += "QSO; "
 
-                st.info(f"Found {sum(has_qso)} quasars in field from VII/294 catalog.")
+                st.info(f"Found {sum(has_qso)} quasars in field from Milliquas catalog.")
                 write_to_log(
                     st.session_state.get("log_buffer"),
-                    f"Found {sum(has_qso)} quasar matches in VII/294 catalog",
+                    f"Found {sum(has_qso)} quasar matches in Milliquas catalog",
                     "INFO",
                 )
             else:
-                st.write("No quasars found in field from VII/294 catalog.")
+                st.write("No quasars found in field from Milliquas catalog.")
                 write_to_log(
                     st.session_state.get("log_buffer"),
-                    "No quasars found in field from VII/294 catalog",
+                    "No quasars found in field from Milliquas catalog",
                     "INFO",
                 )
     except Exception as e:
-        st.error(f"Error querying VizieR VII/294: {str(e)}")
+        st.error(f"Error querying VizieR Milliquas: {str(e)}")
         write_to_log(
             st.session_state.get("log_buffer"),
-            f"Error in VizieR VII/294 processing: {str(e)}",
+            f"Error in Milliquas catalog processing: {str(e)}",
             "ERROR",
         )
 
@@ -3180,7 +3183,7 @@ def update_observatory_inputs(science_header=None):
 
     # Create the input widgets with the determined values and unique keys
     observatory_name = st.text_input(
-        "Observatory Name",
+        "Observatory",
         value=defaults["name"],
         help="Name of the observatory",
         key=f"{prefix}observatory_name",
@@ -3222,7 +3225,7 @@ def update_observatory_inputs(science_header=None):
 
 initialize_session_state()
 
-st.title("_Photometry Factory for RAPAS_")
+st.title("🔭 _Photometry Factory for RAPAS_")
 
 with st.sidebar:
     st.sidebar.header("Upload FITS Files")
@@ -3269,15 +3272,15 @@ with st.sidebar:
 
     st.sidebar.header("Astrometry.net")
     api_key = st.text_input(
-        "API Key", value="", help="Enter your astrometry.net API key", type="password"
+        "API Key", value="", help="Enter your Astrometry.net API key", type="password"
     )
-    st.caption("Get your own key at [nova.astrometry.net](http://nova.astrometry.net/)")
+    st.caption("[Get your Key](http://nova.astrometry.net/)")
 
     st.sidebar.header("Astro-Colibri")
     colibri_api_key = st.text_input(
-        "Colibri API Key", value="", help="Enter your Astro-Colibri API key", type="password"
+        "API Key", value="", help="Enter your Astro-Colibri API key", type="password"
     )
-    st.caption("Get your own key at [astro-colibri.science](https://astro-colibri.science)")
+    st.caption("[Get your Key](https://astro-colibri.science)")
 
     st.header("Analysis Parameters")
     seeing = st.slider(
@@ -3538,7 +3541,7 @@ if science_file is not None:
         pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
         st.metric(
             "Pixel Scale (arcsec/pixel)",
-            f"{pixel_size_arcsec:.2f} (estimated from header)",
+            f"{pixel_size_arcsec:.2f} (header estimation)",
         )
         write_to_log(
             log_buffer,
@@ -3547,7 +3550,7 @@ if science_file is not None:
 
         mean_fwhm_pixel = seeing / pixel_size_arcsec
         st.metric(
-            "Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (estimated from seeing)"
+            "Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (seeing estimation)"
         )
         write_to_log(
             log_buffer,
@@ -3556,7 +3559,7 @@ if science_file is not None:
 
         ra_val, dec_val, coord_source = extract_coordinates(science_header)
         if ra_val is not None and dec_val is not None:
-            st.write(f"Target: RA={ra_val}°, DEC={dec_val}°")
+            st.write(f"Target: RA={round(ra_val, 4)}°, DEC={round(dec_val, 4)}°")
             write_to_log(
                 log_buffer,
                 f"Target coordinates: RA={ra_val}°, DEC={dec_val}° ({coord_source})",
@@ -3989,7 +3992,7 @@ if science_file is not None:
                                                     * pixel_size_arcsec
                                                 )
                                                 final_table = enhance_catalog_with_crossmatches(
-                                                    api,
+                                                    colibri_api_key,
                                                     final_table,
                                                     matched_table,
                                                     header_to_process,
@@ -4129,7 +4132,7 @@ if science_file is not None:
                         "Could not determine coordinates from image header. Cannot display ESASky."
                     )
 else:
-    st.write("👆 Please upload a science image FITS file to start.")
+    st.text("👆 Please upload a science image FITS file to start.", )
 
 
 if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not None:
