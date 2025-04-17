@@ -54,6 +54,8 @@ from astropy.nddata import NDData
 
 from stdpipe import astrometry, catalogs, pipeline
 
+from __version__ import version
+
 import warnings
 warnings.filterwarnings("ignore")
 
