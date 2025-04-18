@@ -1470,8 +1470,11 @@ def find_sources_and_photometry_streamlit(
         return None, None, daofind, bkg
 
     st.info("Doing astrometry refinement...")
-    ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w, width=image_data.shape[1], height=image_data.shape[0])
-    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3', filters={'Rpmag': '<19'})
+    ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w,
+                                                 width=image_data.shape[1],
+                                                 height=image_data.shape[0])
+    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3',
+                                  filters={'Rpmag': '<19'})
     cat_col_mag = 'Rpmag'
     try:
         # Add error column if not present
