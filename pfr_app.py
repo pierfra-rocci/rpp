@@ -2250,35 +2250,48 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                     "discoverer_internal_name": [],
                     "type": [],
                     "classification": []
-                    }   
+                    }
 
             # astrostars = pd.DataFrame(source)
-            # final_table["astro_colibri_name"] = None
+            final_table["astrocolibri_name"] = None
+            final_table["astrocolibri_type"] = None
+            final_table["astrocolibri_classification"] = None
+            for event in events:
+                if "ra" in event and "dec" in event:
+                    sources["ra"].append(event["ra"])
+                    sources["dec"].append(event["dec"])
+                    sources["discoverer_internal_name"].append(event["discoverer_internal_name"])
+                    sources["type"].append(event["type"])
+                    sources["classification"].append(event["classification"])
+            astrostars = pd.DataFrame(sources)
+            st.write("Astro-Colibri sources found in field:")
+            st.dataframe(astrostars)
+            st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.")
 
-            # source_coords = SkyCoord(
-            #     ra=final_table["ra"].values,
-            #     dec=final_table["dec"].values,
-            #     unit="deg",
-            # )
+            source_coords = SkyCoord(
+                ra = final_table["ra"].values,
+                dec = final_table["dec"].values,
+                unit = "deg",
+            )
 
-            # astro_colibri_coords = SkyCoord(
-            #     ra=astrostars["ra"],
-            #     dec=astrostars["dec"],
-            #     unit=(u.deg, u.deg),
-            # )
+            astro_colibri_coords = SkyCoord(
+                ra=astrostars["ra"],
+                dec=astrostars["dec"],
+                unit=(u.deg, u.deg),
+            )
 
-            # if not isinstance(search_radius_arcsec, (int, float)) or search_radius_arcsec <= 0:
-            #     raise ValueError("Search radius must be a positive number")
+            if not isinstance(search_radius_arcsec, (int, float)):
+                raise ValueError("Search radius must be a number")
 
-            # idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
-            # matches = d2d < (search_radius_arcsec * u.arcsec)
+            idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
+            matches = d2d < (search_radius_arcsec * u.arcsec)
 
-            # for i, (match, match_idx) in enumerate(zip(matches, idx)):
-            #     if match:
-            #         final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
+            for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                if match:
+                    final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
 
-            # matches = []
-            st.success(f"Found {len(events)} Astro-Colibri objects in field.")
+            matches = []
+            st.success(f"Matched {len(matches)} Astro-Colibri objects in field.")
         else:
             st.write("No Astro-Colibri sources found in the field.")
 
