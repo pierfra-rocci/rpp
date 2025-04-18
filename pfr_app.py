@@ -1488,7 +1488,7 @@ def find_sources_and_photometry_streamlit(
         #     cat_col_magerr = 'Rpmag_error'
         wcs = pipeline.refine_astrometry(obj, cat,
                                          1.5*fwhm_estimate*pixel_scale/3600,
-                                         wcs=w, order=0,
+                                         wcs=w, order=1,
                                          cat_col_mag=cat_col_mag,
                                          cat_col_mag_err=None,
                                          verbose=True)
