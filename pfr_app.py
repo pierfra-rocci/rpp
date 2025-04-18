@@ -6,7 +6,6 @@ if getattr(sys, "frozen", False):
 
 import os
 import zipfile
-from io import BytesIO
 from datetime import datetime, timedelta
 import time
 import base64
