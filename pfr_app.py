@@ -1486,7 +1486,7 @@ def find_sources_and_photometry_streamlit(
         #     # Create a dummy error column if needed
         #     cat['Rpmag_error'] = np.ones_like(cat['Rpmag']) * 0.01
         #     cat_col_magerr = 'Rpmag_error'
-        wcs = pipeline.refine_astrometry(obj, cat, 
+        wcs = pipeline.refine_astrometry(obj, cat,
                                          1.5*fwhm_estimate*pixel_scale/3600,
                                          wcs=w, order=0,
                                          cat_col_mag=cat_col_mag,
