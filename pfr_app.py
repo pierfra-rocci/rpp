@@ -1479,14 +1479,17 @@ def find_sources_and_photometry_streamlit(
     try:
         wcs = pipeline.refine_astrometry(obj, cat,
                                          1.5*fwhm_estimate*pixel_scale/3600,
-                                         wcs=w, order=1,
+                                         wcs=w, order=0,
                                          cat_col_mag=cat_col_mag,
                                          cat_col_mag_err=None,
                                          verbose=True)
-        st.info("Refined WCS successfully.")
-        astrometry.clear_wcs(_science_header, remove_comments=True,
-                             remove_underscored=True, remove_history=True)
-        _science_header.update(wcs.to_header(relax=True))
+        if wcs:
+            st.info("Refined WCS successfully.")
+            astrometry.clear_wcs(_science_header, remove_comments=True,
+                                remove_underscored=True, remove_history=True)
+            _science_header.update(wcs.to_header(relax=True))
+        else:
+            st.warning("WCS refinement failed.")
     except Exception as e:
         st.warning(f"Skipping WCS refinement: {str(e)}")
 
@@ -1803,12 +1806,56 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         st.session_state["final_phot_table"] = _phot_table
 
         fig, ax = plt.subplots(figsize=FIGURE_SIZES["medium"], dpi=100)
+        # ax.scatter(
+        #     _matched_table[gaia_band],
+        #     _matched_table["calib_mag"],
+        #     alpha=0.75,
+        #     label="Matched sources",
+        # )
+
+        # ax.set_xlabel(f"Gaia {gaia_band}")
+        # ax.set_ylabel("Calibrated magnitude")
+        # ax.set_title("Gaia magnitude vs Calibrated magnitude")
+        # ax.legend()
+        # ax.grid(True, alpha=0.5)
+         # Calculate residuals
+        _matched_table["residual"] = _matched_table[gaia_band] - _matched_table["calib_mag"]
+        
+        # Create bins for magnitude ranges
+        bin_width = 0.5  # 0.5 magnitude width bins
+        min_mag = _matched_table[gaia_band].min()
+        max_mag = _matched_table[gaia_band].max()
+        bins = np.arange(np.floor(min_mag), np.ceil(max_mag) + bin_width, bin_width)
+        
+        # Group data by magnitude bins
+        grouped = _matched_table.groupby(pd.cut(_matched_table[gaia_band], bins))
+        bin_centers = [(bin.left + bin.right) / 2 for bin in grouped.groups.keys()]
+        bin_means = grouped["calib_mag"].mean().values
+        bin_stds = grouped["calib_mag"].std().values
+        
+        # Plot individual points
         ax.scatter(
             _matched_table[gaia_band],
             _matched_table["calib_mag"],
-            alpha=0.75,
+            alpha=0.5,
             label="Matched sources",
+            color='blue'
         )
+        
+        # Plot binned means with error bars showing standard deviation
+        valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds)
+        ax.errorbar(
+            np.array(bin_centers)[valid_bins],
+            bin_means[valid_bins],
+            yerr=bin_stds[valid_bins],
+            fmt='ro-',
+            label='Mean ± StdDev (binned)',
+            capsize=5
+        )
+        
+        # Add a diagonal line for reference
+        ideal_mag = np.linspace(min_mag, max_mag, 10)
+        ax.plot(ideal_mag, ideal_mag, 'k--', alpha=0.7, label="y=x")
 
         ax.set_xlabel(f"Gaia {gaia_band}")
         ax.set_ylabel("Calibrated magnitude")
@@ -2151,7 +2198,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
 
     st.info("Querying Astro-Colibri API...")
-    
+
     if api_key is None:
         api_key = os.environ.get("ASTROCOLIBRI_API")
         if api_key is None:
