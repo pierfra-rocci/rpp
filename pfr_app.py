@@ -26,7 +26,6 @@ from astroquery.vizier import Vizier
 from astropy.modeling import models, fitting
 import streamlit as st
 import streamlit.components.v1 as components
-# import streamlit_authenticator as stauth
 
 import numpy as np
 from astropy.io import fits
@@ -47,7 +46,7 @@ from astropy.wcs import WCS
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from astropy.nddata import NDData
 
-from stdpipe import astrometry, catalogs, pipeline
+from stdpipe import photometry, astrometry, catalogs, pipeline
 
 from __version__ import version
 
@@ -169,8 +168,6 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
     """
     try:
         ast = AstrometryNet()
-        # st.write("Allowed Astrometry.net settings:")
-        # st.write(ast.show_allowed_settings())
         ast.api_key = api_key
 
         # solve_kwargs = {}
@@ -1461,18 +1458,21 @@ def find_sources_and_photometry_streamlit(
         fwhm=1.5 * fwhm_estimate,
         threshold=threshold_sigma * np.std(image_data - bkg.background),
     )
+
     sources = daofind(image_data - bkg.background, mask=mask)
+
+    obj = photometry.get_objects_sep(image_data - bkg.background, mask=mask, 
+                                     aper=fwhm_estimate, gain=1, edge=25
+                                     )
 
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
         return None, None, daofind, bkg
 
-    st.info("Doing astrometry refinement with GAIA DR3...")
+    st.info("Doing astrometry refinement...")
     ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w, width=image_data.shape[1], height=image_data.shape[0])
     cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3', filters={'Rpmag': '<19'})
     cat_col_mag = 'Rpmag'
-    sources['x'] = sources['xcentroid']
-    sources['y'] = sources['ycentroid']
     try:
         # Add error column if not present
         # if 'Rpmag_error' in cat.colnames:
@@ -1483,7 +1483,7 @@ def find_sources_and_photometry_streamlit(
         #     # Create a dummy error column if needed
         #     cat['Rpmag_error'] = np.ones_like(cat['Rpmag']) * 0.01
         #     cat_col_magerr = 'Rpmag_error'
-        wcs = pipeline.refine_astrometry(sources, cat, 
+        wcs = pipeline.refine_astrometry(obj, cat, 
                                          1.5*fwhm_estimate*pixel_scale/3600,
                                          wcs=w, order=0,
                                          cat_col_mag=cat_col_mag,
