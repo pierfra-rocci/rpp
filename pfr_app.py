@@ -6,14 +6,14 @@ if getattr(sys, "frozen", False):
 
 import os
 from datetime import datetime, timedelta
-import tempfile
 import time
+import tempfile
 import base64
 import json
 import requests
 from urllib.parse import quote
 
-from astroquery.astrometry_net import AstrometryNetClass
+from astroquery.astrometry_net import AstrometryNet
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -134,7 +134,7 @@ def getJson(url: str) -> json:
         return json.dumps({"error": "invalid json", "message": str(e)})
 
 
-def solve_with_astrometry_net(image_data, header=None, api_key=None):
+def solve_with_astrometry_net(file_path, header=None, api_key=None):
     """
     Solve astrometric plate using the astrometry.net web API.
 
@@ -168,16 +168,9 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
     improve solving speed and accuracy.
     """
     try:
-        if api_key is None:
-            api_key = os.environ.get("ASTROMETRY_API_KEY")
-            if api_key is None:
-                return (
-                    None,
-                    header,
-                    "No API key provided or found in environment variables",
-                )
-
-        ast = AstrometryNetClass()
+        ast = AstrometryNet()
+        # st.write("Allowed Astrometry.net settings:")
+        # st.write(ast.show_allowed_settings())
         ast.api_key = api_key
 
         solve_kwargs = {}
@@ -187,7 +180,6 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
             if ra is not None and dec is not None:
                 solve_kwargs["center_ra"] = ra
                 solve_kwargs["center_dec"] = dec
-                solve_kwargs["radius"] = 1.0
 
             scale, _ = extract_pixel_scale(header)
             if scale > 0:
@@ -200,30 +192,10 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
 
         while try_idx <= max_tries and wcs_header is None:
             try:
-                file_path = None
-
-                with tempfile.NamedTemporaryFile(suffix=".fits", delete=False) as f:
-                    file_path = f.name
-                    hdu = fits.PrimaryHDU(data=image_data, header=fits.Header())
-                    hdu.writeto(file_path, overwrite=True)
-
-                try:
-                    st.info(
+                st.info(
                         f"Submitting image to astrometry.net (attempt {try_idx}/{max_tries})..."
                     )
-                    wcs_header = ast.solve_from_image(file_path, 
-                                                      **solve_kwargs)
-
-                except Exception as e:
-                    st.warning(
-                        f"Error with file upload: {str(e)}. Trying with image"
-                        "data directly..."
-                    )
-                    wcs_header = ast.solve_from_image(image_data, 
-                                                      **solve_kwargs)
-
-                if file_path and os.path.exists(file_path):
-                    os.unlink(file_path)
+                wcs_header = ast.solve_from_image(file_path, **solve_kwargs)
 
             except Exception as e:
                 try_idx += 1
@@ -793,6 +765,7 @@ def load_fits_data(file):
         hdul = fits.open(BytesIO(file_content), mode="readonly")
         try:
             data = hdul[0].data
+            hdul.verify("fix")
             header = hdul[0].header
 
             if data is None:
@@ -3178,8 +3151,16 @@ def update_observatory_inputs(science_header=None):
             )
         )
 
-    # Create a unique prefix for keys based on whether we're using header values
-    prefix = "header_" if science_header is not None else "default_"
+    # Create a unique widget ID for this call
+    if "observatory_widget_id" not in st.session_state:
+        st.session_state.observatory_widget_id = 0
+    else:
+        st.session_state.observatory_widget_id += 1
+    
+    widget_id = st.session_state.observatory_widget_id
+    
+    # Use a unique prefix for widget keys
+    prefix = f"obs_{widget_id}_"
 
     # Create the input widgets with the determined values and unique keys
     observatory_name = st.text_input(
@@ -3272,13 +3253,13 @@ with st.sidebar:
 
     st.sidebar.header("Astrometry.net")
     api_key = st.text_input(
-        "API Key", value="", help="Enter your Astrometry.net API key", type="password"
+        "API Key", value=None, help="Enter your Astrometry.net API key", type="password"
     )
     st.caption("[Get your Key](http://nova.astrometry.net/)")
 
     st.sidebar.header("Astro-Colibri")
     colibri_api_key = st.text_input(
-        "API Key", value="", help="Enter your Astro-Colibri API key", type="password"
+        "API Key", value=None, help="Enter your Astro-Colibri API key", type="password"
     )
     st.caption("[Get your Key](https://astro-colibri.science)")
 
@@ -3311,33 +3292,6 @@ with st.sidebar:
     # Initialize observatory with default values
     if "observatory_data" not in st.session_state:
         st.session_state.observatory_data = update_observatory_inputs()
-
-    # st.header("Observatory Location")
-    # observatory_name = st.text_input(
-    #     "Observatory Name",
-    #     value=science_header.get('OBSERVAT', 'TJMS') if science_header is not None else 'TJMS',
-    #     help="Name of the observatory"
-    # )
-    # latitude = st.number_input(
-    #     "Latitude (°)",
-    #     value=float(science_header.get('LATITUDE', science_header.get('LAT-OBS', 48.29166))) if science_header is not None else 48.29166,
-    #     min_value=-90.0,
-    #     max_value=90.0,
-    #     help="Observatory latitude in degrees (-90 to 90)"
-    # )
-    # longitude = st.number_input(
-    #     "Longitude (°)",
-    #     value=float(science_header.get('LONGITUD', science_header.get('LONG-OBS', 2.43805))) if science_header is not None else 2.43805,
-    #     min_value=-180.0,
-    #     max_value=180.0,
-    #     help="Observatory longitude in degrees (-180 to 180)"
-    # )
-    # elevation = st.number_input(
-    #     "Elevation (m)",
-    #     value=float(science_header.get('ELEVATIO', science_header.get('ALT-OBS', 94.0))) if science_header is not None else 94.0,
-    #     min_value=0.0,
-    #     help="Observatory elevation in meters above sea level"
-    # )
 
     st.header("Gaia Parameters")
     gaia_band = st.selectbox(
@@ -3405,13 +3359,16 @@ if science_file is not None:
         )
 
         if use_astrometry:
+            if api_key is None:
+                api_key = os.environ.get("ASTROMETRY_API_KEY")
+                if api_key is None:
+                    st.warning("No API key provided or found in environment variables")
             if api_key:
                 with st.spinner(
                     "Running plate solve with astrometry.net (this may take a while)..."
                 ):
                     wcs_obj, science_header, astrometry_msg = solve_with_astrometry_net(
-                        science_data, science_header, api_key
-                    )
+                        science_file, header=science_header, api_key=api_key)
 
                     log_buffer = st.session_state["log_buffer"]
 
