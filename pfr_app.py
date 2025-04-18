@@ -7,7 +7,6 @@ if getattr(sys, "frozen", False):
 import os
 from datetime import datetime, timedelta
 import time
-import tempfile
 import base64
 import json
 import requests
