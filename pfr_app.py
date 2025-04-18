@@ -1473,19 +1473,10 @@ def find_sources_and_photometry_streamlit(
     ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w,
                                                  width=image_data.shape[1],
                                                  height=image_data.shape[0])
-    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiadr3',
-                                  filters={'Rpmag': '<19'})
-    cat_col_mag = 'Rpmag'
+    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiaedr3',
+                                  filters={'RPmag': '<19'})
+    cat_col_mag = 'RPmag'
     try:
-        # Add error column if not present
-        # if 'Rpmag_error' in cat.colnames:
-        #     st.write("Using existing error column in catalog")
-        #     st.info(f"Available catalog columns: {cat.colnames}")
-        #     cat_col_magerr = 'Rpmag_error'
-        # else:
-        #     # Create a dummy error column if needed
-        #     cat['Rpmag_error'] = np.ones_like(cat['Rpmag']) * 0.01
-        #     cat_col_magerr = 'Rpmag_error'
         wcs = pipeline.refine_astrometry(obj, cat,
                                          1.5*fwhm_estimate*pixel_scale/3600,
                                          wcs=w, order=1,
@@ -2160,7 +2151,6 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
 
     st.info("Querying Astro-Colibri API...")
-    st.warning("This function is not yet properly coded and tested.")
     
     if api_key is None:
         api_key = os.environ.get("ASTROCOLIBRI_API")
