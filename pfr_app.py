@@ -2269,9 +2269,9 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.")
 
             source_coords = SkyCoord(
-                ra = final_table["ra"].values,
-                dec = final_table["dec"].values,
-                unit = "deg",
+                ra=final_table["ra"].values,
+                dec=final_table["dec"].values,
+                unit="deg",
             )
 
             astro_colibri_coords = SkyCoord(
@@ -2288,7 +2288,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
 
             for i, (match, match_idx) in enumerate(zip(matches, idx)):
                 if match:
-                    final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
+                    final_table.loc[i, "astro_colibri_name"] = astrostars["discoverer_internal_name"][match_idx]
 
             matches = []
             st.success(f"Matched {len(matches)} Astro-Colibri objects in field.")
