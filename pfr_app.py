@@ -5,6 +5,8 @@ if getattr(sys, "frozen", False):
     importlib.metadata.distributions = lambda **kwargs: []
 
 import os
+import zipfile
+from io import BytesIO
 from datetime import datetime, timedelta
 import time
 import base64
@@ -133,7 +135,7 @@ def getJson(url: str) -> json:
         return json.dumps({"error": "invalid json", "message": str(e)})
 
 
-def solve_with_astrometry_net(file_path, header=None, api_key=None):
+def solve_with_astrometry_net(image_data, header=None, api_key=None):
     """
     Solve astrometric plate using the astrometry.net web API.
 
@@ -172,18 +174,18 @@ def solve_with_astrometry_net(file_path, header=None, api_key=None):
         # st.write(ast.show_allowed_settings())
         ast.api_key = api_key
 
-        solve_kwargs = {}
+        # solve_kwargs = {}
 
-        if header is not None:
-            ra, dec, _ = extract_coordinates(header)
-            if ra is not None and dec is not None:
-                solve_kwargs["center_ra"] = ra
-                solve_kwargs["center_dec"] = dec
+        # if header is not None:
+        #     ra, dec, _ = extract_coordinates(header)
+        #     if ra is not None and dec is not None:
+        #         solve_kwargs["center_ra"] = ra
+        #         solve_kwargs["center_dec"] = dec
 
-            scale, _ = extract_pixel_scale(header)
-            if scale > 0:
-                solve_kwargs["scale_lower"] = scale * 0.8
-                solve_kwargs["scale_upper"] = scale * 1.2
+        #     scale, _ = extract_pixel_scale(header)
+        #     if scale > 0:
+        #         solve_kwargs["scale_lower"] = scale * 0.8
+        #         solve_kwargs["scale_upper"] = scale * 1.2
 
         try_idx = 1
         max_tries = 3
@@ -194,7 +196,7 @@ def solve_with_astrometry_net(file_path, header=None, api_key=None):
                 st.info(
                         f"Submitting image to astrometry.net (attempt {try_idx}/{max_tries})..."
                     )
-                wcs_header = ast.solve_from_image(file_path, **solve_kwargs)
+                wcs_header = ast.solve_from_image(image_data)
 
             except Exception as e:
                 try_idx += 1
@@ -288,6 +290,14 @@ def safe_wcs_create(header):
 
     required_keys = ["CTYPE1", "CTYPE2", "CRVAL1", "CRVAL2", "CRPIX1", "CRPIX2"]
     missing_keys = [key for key in required_keys if key not in header]
+
+    try:
+        header.remove('XPIXELSZ')
+        header.remove('YPIXELSZ')
+        header.remove('CDELTM1')
+        header.remove('CDELTM2')
+    except KeyError:
+        pass
 
     if missing_keys:
         return None, f"Missing required WCS keywords: {', '.join(missing_keys)}"
@@ -2221,7 +2231,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             try:
                 if response.status_code == 200:
                     st.write("Response successfully received.")
-                    events = response.json().get(['voevents'])
+                    events = response.json()['voevents']
                     st.success(f'number of events: {len(events)}')
                     st.success(json.dumps(events, indent=4))
                 else:
@@ -2269,7 +2279,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             #         final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
 
             # matches = []
-            st.success(f"Found {len(events)} Astro-Colibri objects in field.")
+            st.success(f"Found {events} Astro-Colibri objects in field.")
         else:
             st.write("No Astro-Colibri sources found in the field.")
 
@@ -2535,7 +2545,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
     try:
         if field_center_ra is not None and field_center_dec is not None:
             # Set columns to retrieve from the quasar catalog
-            v = Vizier(columns=["RAJ2000", "DEJ2000", "Name", "z", "r_mag"])
+            v = Vizier(columns=["RAJ2000", "DEJ2000", "Name", "z", "Rmag"])
             v.ROW_LIMIT = -1  # No row limit
 
             # Query the VII/294 catalog around the field center
@@ -2566,7 +2576,11 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                 # Add matched quasar information to the final table
                 final_table["qso_name"] = None
                 final_table["qso_redshift"] = None
-                final_table["qso_r_mag"] = None
+                final_table["qso_Rmag"] = None
+
+                # Initialize catalog_matches column if it doesn't exist
+                if "catalog_matches" not in final_table.columns:
+                    final_table["catalog_matches"] = ""
 
                 matched_sources = np.where(matches)[0]
                 matched_qsos = idx[matches]
@@ -2578,8 +2592,8 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                     final_table.loc[source_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
                         "z"
                     ]
-                    final_table.loc[source_idx, "qso_r_mag"] = qso_df.iloc[qso_idx][
-                        "r_mag"
+                    final_table.loc[source_idx, "qso_Rmag"] = qso_df.iloc[qso_idx][
+                        "Rmag"
                     ]
 
                 # Update the catalog_matches column for matched quasars
@@ -3073,10 +3087,6 @@ def provide_download_buttons(folder_path):
     Returns:
         None: The function creates a Streamlit download button directly in the app interface
     """
-    import zipfile
-    from io import BytesIO
-    import datetime
-
     try:
         files = [
             f
@@ -3273,8 +3283,8 @@ with st.sidebar:
     )
     threshold_sigma = st.slider(
         "Detection Threshold (σ)",
-        1.0,
-        5.0,
+        0.5,
+        4.0,
         3.0,
         0.5,
         help="Source detection threshold in sigma above background",
@@ -3367,7 +3377,7 @@ if science_file is not None:
                     "Running plate solve with astrometry.net (this may take a while)..."
                 ):
                     wcs_obj, science_header, astrometry_msg = solve_with_astrometry_net(
-                        science_file, header=science_header, api_key=api_key)
+                        science_data, header=science_header, api_key=api_key)
 
                     log_buffer = st.session_state["log_buffer"]
 
