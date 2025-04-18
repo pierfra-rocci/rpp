@@ -2231,7 +2231,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                     st.write("Response successfully received.")
                     events = response.json()['voevents']
                     st.success(f'number of events: {len(events)}')
-                    st.success(json.dumps(events, indent=4))
+                    # st.success(json.dumps(events, indent=4))
                 else:
                     st.warning(f"Request failed with status code: {response.status_code}")
 
@@ -2278,7 +2278,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             #         final_table.loc[i, "astro_colibri_name"] = astrostars["name"][match_idx]
 
             # matches = []
-            st.success(f"Found {events} Astro-Colibri objects in field.")
+            st.success(f"Found {len(events)} Astro-Colibri objects in field.")
         else:
             st.write("No Astro-Colibri sources found in the field.")
 
