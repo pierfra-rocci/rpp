@@ -1103,7 +1103,7 @@ def fwhm_fit(
             fitted_row = fitter(model_row, row_indices, sum_rows)
             center_row_fit = fitted_row.mean.value + row_start
             fwhm_row = 2 * np.sqrt(2 * np.log(2)) * fitted_row.stddev.value
-        except Exception as e:
+        except Exception:
             return None
 
         try:
@@ -1117,7 +1117,7 @@ def fwhm_fit(
             fitted_col = fitter(model_col, col_indices, sum_cols)
             center_col_fit = fitted_col.mean.value + col_start
             fwhm_col = 2 * np.sqrt(2 * np.log(2)) * fitted_col.stddev.value
-        except Exception as e:
+        except Exception:
             return None
 
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit
@@ -1168,7 +1168,7 @@ def fwhm_fit(
                 fwhm_source = np.mean([fwhm_row, fwhm_col])
                 fwhm_values.append(fwhm_source)
 
-            except Exception as e:
+            except Exception:
                 skipped_sources += 1
                 continue
 
@@ -1461,7 +1461,7 @@ def find_sources_and_photometry_streamlit(
 
     sources = daofind(image_data - bkg.background, mask=mask)
 
-    obj = photometry.get_objects_sep(image_data - bkg.background, mask=mask, 
+    obj = photometry.get_objects_sep(image_data - bkg.background, mask=mask,
                                      aper=fwhm_estimate, gain=1, edge=25
                                      )
 
