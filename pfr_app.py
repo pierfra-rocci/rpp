@@ -174,7 +174,6 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
         ast.api_key = api_key
 
         # solve_kwargs = {}
-
         # if header is not None:
         #     ra, dec, _ = extract_coordinates(header)
         #     if ra is not None and dec is not None:
@@ -2248,10 +2247,11 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             sources = {
                     "ra": [],
                     "dec": [],
+                    "discoverer_internal_name": [],
                     "type": [],
                     "classification": []
-                    }
-            
+                    }   
+
             # astrostars = pd.DataFrame(source)
             # final_table["astro_colibri_name"] = None
 
