@@ -161,8 +161,8 @@ def solve_with_siril(file_path, header=None):
     improve solving speed and accuracy.
     """
     try:
-        app = Siril()                                 # Starts pySiril
-        cmd = Wrapper(app)    
+        app = Siril()
+        cmd = Wrapper(app)
 
         cmd.load(file_path)
         cmd.platesolve(platesolve=True)
@@ -171,8 +171,11 @@ def solve_with_siril(file_path, header=None):
         header = cmd.get_header()
 
         cmd.close()
+    except Exception as e:
+        st.error(f"Error solving with Siril: {str(e)}")
+        return None, None
 
-        return wcs_obj, header
+    return wcs_obj, header
 
 
 def ensure_output_directory(directory="pfr_results"):
