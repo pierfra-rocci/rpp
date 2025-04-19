@@ -170,15 +170,6 @@ Found a bug or have a feature request? Please submit an issue through the GitHub
 1. Go to the [Issues page](https://github.com/pierfra-rocci/pfr/issues)
 2. Click "New Issue"
 3. Provide a clear title and detailed description
-4. For bugs, include:
-   - Steps to reproduce the issue
-   - Expected behavior
-   - Actual behavior
-   - System information (OS, Python version, package versions)
-   - FITS header information if relevant (with sensitive data removed)
-   - Screenshots or error logs if applicable
-
-For urgent issues or questions, you can also reach out via email at the address listed in the project contact section.
 
 ## License
 
@@ -194,9 +185,10 @@ The MIT License allows you to use, modify, and distribute this software for both
   - [Astroquery](https://astroquery.readthedocs.io/) for accessing astronomical databases
   - [Streamlit](https://streamlit.io/) for the web interface
   - [stdpipe](https://github.com/karpov-sv/stdpipe) for astrometric calibration
-- Special thanks to the RAPAS team for their support and feedback
-- Thanks to the Astro-Colibri team for API access to transient event data
-- [SIRIL](https://siril.org/) - An open-source astronomical image processing software that provides the plate-solving functionality used in this project. SIRIL offers powerful tools for deep sky image processing, photometric analysis, and sequence alignment.
+- Thanks to the RAPAS team for their support and feedback
+- Thanks to the [Astro-Colibri](https://astro-colibri.science/#/) for API access to transient event data
+- [SIRIL](https://siril.org/) - An open-source astronomical image processing software that provides the plate-solving functionality used in this project.
+  SIRIL offers powerful tools for deep sky image processing, photometric analysis, and sequence alignment.
 
 ---
 
