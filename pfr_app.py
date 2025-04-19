@@ -174,7 +174,7 @@ def solve_with_siril(file_path, header=None):
         file_path_list = file_path.split(".")
         file_path = file_path_list[0]+"_solved.fits"
         hdu = fits.open(file_path, mode="readonly")
-        head = hdu[1].header
+        head = hdu[0].header
         wcs_obj = WCS(head)
 
         return wcs_obj, head
