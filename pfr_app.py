@@ -1,4 +1,5 @@
 import sys
+import subprocess
 
 if getattr(sys, "frozen", False):
     import importlib.metadata
@@ -162,32 +163,29 @@ def solve_with_siril(file_path, header=None):
     improve solving speed and accuracy.
     """
     try:
-        app = Siril()
-        cmd = Wrapper(app)
-
-        st.write(file_path)
-
-        status = cmd.load(file_path.replace("\\", "/"))
-
-        st.write(status)
-        
-        if status:
-            cmd.platesolve(platesolve=True)
+        if os.path.exists(file_path):
+            command = [
+                "powershell.exe",
+                "-ExecutionPolicy", "Bypass",
+                "-File", "run_siril_script.ps1",
+                "-filepath",
+                f"{file_path}"
+            ]
+            subprocess.run(command, check=True)
         else:
-            st.error("Failed to load image into Siril.")
-            return None, None
-        
-        wcs_obj = cmd.get_wcs()
-        head = cmd.get_header()
+            st.warning(f"File {file_path} does not exist.")
 
-        cmd.close()
-        del cmd
-        del app
     except Exception as e:
         st.error(f"Error solving with Siril: {str(e)}")
-        return None, None
+        return None
 
-    return wcs_obj, head
+    file_path_list = file_path.split(".")
+    file_path = file_path_list[0]+"_solved."+file_path_list[1]
+    hdu = fits.open(file_path, mode="readonly")
+    head = hdu[1].header
+    wcs_obj = WCS(head)
+
+    return wcs_obj
 
 
 def ensure_output_directory(directory="pfr_results"):
