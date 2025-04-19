@@ -185,7 +185,7 @@ def solve_with_siril(file_path, header=None):
     head = hdu[1].header
     wcs_obj = WCS(head)
 
-    return wcs_obj
+    return wcs_obj, head
 
 
 def ensure_output_directory(directory="pfr_results"):
