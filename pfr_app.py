@@ -172,12 +172,13 @@ def solve_with_siril(file_path, header=None):
         return None
     try:
         file_path_list = file_path.split(".")
-        file_path = file_path_list[0]+"_solved."+file_path_list[1]
+        file_path = file_path_list[0]+"_solved.fits"
         hdu = fits.open(file_path, mode="readonly")
         head = hdu[1].header
         wcs_obj = WCS(head)
 
         return wcs_obj, head
+    
     except Exception as e:
         st.error(f"Error reading solved file: {str(e)}")
 

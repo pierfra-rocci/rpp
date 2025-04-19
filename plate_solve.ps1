@@ -7,7 +7,7 @@ $filepath = $filepath -replace '\\', '/'
 $filename = [System.IO.Path]::GetFileName($filepath)
 $basename = [System.IO.Path]::GetFileNameWithoutExtension($filepath)
 $directory = [System.IO.Path]::GetDirectoryName($filepath) -replace '\\', '/'
-$solvedname = "$basename`_solved.fit"
+$solvedname = "$basename`_solved.fits"
 
 $scriptContent = @"
 requires 1.2.6
