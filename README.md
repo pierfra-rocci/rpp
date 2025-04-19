@@ -171,20 +171,33 @@ Found a bug or have a feature request? Please submit an issue through the GitHub
 2. Click "New Issue"
 3. Provide a clear title and detailed description
 4. For bugs, include:
-   - Steps to reproduce
+   - Steps to reproduce the issue
    - Expected behavior
    - Actual behavior
-   - System information (OS, Python version, etc.)
-   - Screenshots if applicable
+   - System information (OS, Python version, package versions)
+   - FITS header information if relevant (with sensitive data removed)
+   - Screenshots or error logs if applicable
+
+For urgent issues or questions, you can also reach out via email at the address listed in the project contact section.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+The MIT License allows you to use, modify, and distribute this software for both private and commercial purposes, provided you include the original copyright notice and disclaimer.
 
 ## Acknowledgements
 
-- This tool relies on numerous open-source astronomy packages including Astropy, Photutils, and Astroquery
+- This tool relies on numerous open-source astronomy packages including:
+  - [Astropy](https://www.astropy.org/) for core astronomical functionality
+  - [Photutils](https://photutils.readthedocs.io/) for photometry algorithms
+  - [Astroquery](https://astroquery.readthedocs.io/) for accessing astronomical databases
+  - [Streamlit](https://streamlit.io/) for the web interface
+  - [stdpipe](https://github.com/karpov-sv/stdpipe) for astrometric calibration
 - Special thanks to the RAPAS team for their support and feedback
+- Thanks to the Astro-Colibri team for API access to transient event data
+- [SIRIL](https://siril.org/) - An open-source astronomical image processing software that provides the plate-solving functionality used in this project. SIRIL offers powerful tools for deep sky image processing, photometric analysis, and sequence alignment.
+
 ---
 
 Created with ❤ by Pier-Francesco Rocci
