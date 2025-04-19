@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import base64
 import json
 import requests
+import tempfile
 from urllib.parse import quote
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
@@ -164,18 +165,29 @@ def solve_with_siril(file_path, header=None):
         app = Siril()
         cmd = Wrapper(app)
 
-        cmd.load(file_path)
-        cmd.platesolve(platesolve=True)
+        st.write(file_path)
 
+        status = cmd.load(file_path.replace("\\", "/"))
+
+        st.write(status)
+        
+        if status:
+            cmd.platesolve(platesolve=True)
+        else:
+            st.error("Failed to load image into Siril.")
+            return None, None
+        
         wcs_obj = cmd.get_wcs()
-        header = cmd.get_header()
+        head = cmd.get_header()
 
         cmd.close()
+        del cmd
+        del app
     except Exception as e:
         st.error(f"Error solving with Siril: {str(e)}")
         return None, None
 
-    return wcs_obj, header
+    return wcs_obj, head
 
 
 def ensure_output_directory(directory="pfr_results"):
@@ -3243,9 +3255,25 @@ with st.sidebar:
     if flat_file is not None:
         st.session_state.files_loaded["flat_file"] = flat_file
 
+    # File uploader for science image
     science_file = st.file_uploader(
         "Science Image (required)", type=["fits", "fit", "fts"], key="science_uploader"
     )
+    
+    # Get absolute path if we need it (for tools like Siril that need direct file access)
+    science_file_path = None
+    if science_file is not None:
+        # Save the uploaded file to a temporary location to get an absolute path
+        
+        # Create temporary file with the same extension as the uploaded file
+        suffix = os.path.splitext(science_file.name)[1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+            # Write the uploaded file content to the temporary file
+            tmp_file.write(science_file.getvalue())
+            science_file_path = tmp_file.name
+        
+        st.session_state["science_file_path"] = science_file_path
+        st.info(f"File saved temporarily at: {science_file_path}")
     if science_file is not None:
         st.session_state.files_loaded["science_file"] = science_file
 
@@ -3377,7 +3405,7 @@ if science_file is not None:
                 "Running plate solve (this may take a while)..."
             ):
                 wcs_obj, science_header = solve_with_siril(
-                    science_file, header=science_header)
+                    science_file_path, header=science_header)
 
                 log_buffer = st.session_state["log_buffer"]
 
