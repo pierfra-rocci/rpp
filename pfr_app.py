@@ -4143,7 +4143,6 @@ if science_file is not None:
 
                     cleanup_temp_files()
 
-
                 else:
                     st.warning(
                         "Could not determine coordinates from image header. Cannot display ESASky."
