@@ -133,7 +133,7 @@ def getJson(url: str) -> json:
         return json.dumps({"error": "invalid json", "message": str(e)})
 
 
-def solve_with_astrometry_net(image_data, header=None, api_key=None):
+def solve_with_astrometry_net(image_data, fwhm=5, header=None, api_key=None):
     """
     Solve astrometric plate using the astrometry.net web API.
 
@@ -170,28 +170,24 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
         ast = AstrometryNet()
         ast.api_key = api_key
 
-        # solve_kwargs = {}
-        # if header is not None:
-        #     ra, dec, _ = extract_coordinates(header)
-        #     if ra is not None and dec is not None:
-        #         solve_kwargs["center_ra"] = ra
-        #         solve_kwargs["center_dec"] = dec
-
-        #     scale, _ = extract_pixel_scale(header)
-        #     if scale > 0:
-        #         solve_kwargs["scale_lower"] = scale * 0.8
-        #         solve_kwargs["scale_upper"] = scale * 1.2
-
         try_idx = 1
         max_tries = 3
         wcs_header = None
+
+        daofind = DAOStarFinder(fwhm=fwhm,
+                                threshold=3.0,
+                                exclude_border=True)
+        source_list = daofind(image_data - np.median(image_data), mask=None)
 
         while try_idx <= max_tries and wcs_header is None:
             try:
                 st.info(
                         f"Submitting image to astrometry.net (attempt {try_idx}/{max_tries})..."
                     )
-                wcs_header = ast.solve_from_image(image_data)
+                wcs_header = ast.solve_from_source_list(source_list['xcentroid'],
+                                                        source_list['ycentroid'],
+                                                        image_height=header["NAXIS2"],
+                                                        image_width=header["NAXIS1"])
 
             except Exception as e:
                 try_idx += 1
@@ -217,12 +213,52 @@ def solve_with_astrometry_net(image_data, header=None, api_key=None):
         header["ASTRSRC"] = "astrometry.net"
         header["ASTRTRY"] = try_idx
 
-        return wcs_obj, header, "Astrometry.net solution successful"
+        save_wcs_to_fits(wcs_obj, filename="wcs_solution", output_dir="pfr_results")
+
+        return wcs_obj, header, st.success("Astrometry.net solution successful")
 
     except ImportError as e:
         return None, header, f"Required packages not installed: {str(e)}"
     except Exception as e:
         return None, header, f"Error solving with astrometry.net: {str(e)}"
+
+
+def save_wcs_to_fits(wcs_obj, filename=None, output_dir=None):
+    """
+    Save a WCS object as a FITS file.
+
+    Parameters
+    ----------
+    wcs_obj : astropy.wcs.WCS
+        WCS object to save
+    filename : str
+        Base filename to use (without extension)
+    output_dir : str
+        Directory to save the FITS file in
+
+    Returns
+    -------
+    str or None
+        Full path to the saved file, or None if saving failed
+    """
+    if wcs_obj is None:
+        return None
+
+    try:
+        # Create a new HDU with the WCS header
+        hdu = fits.PrimaryHDU(header=wcs_obj.to_header())
+        hdu.header['COMMENT'] = "WCS solution from astrometry.net"
+        hdu.header['HISTORY'] = f"Created by Photometry Factory for RAPAS on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        # Save the HDU to a FITS file
+        fits_filename = f"{filename}.fits"
+        fits_path = os.path.join(output_dir, fits_filename)
+        hdu.writeto(fits_path, overwrite=True)
+        
+        return fits_path
+    except Exception as e:
+        st.warning(f"Error saving WCS to FITS: {e}")
+        return None
 
 
 def ensure_output_directory(directory="pfr_results"):
