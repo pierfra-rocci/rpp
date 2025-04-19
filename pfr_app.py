@@ -3223,6 +3223,39 @@ def update_observatory_inputs(science_header=None):
     }
 
 
+def cleanup_temp_files():
+    """
+    Remove temporary files created during processing.
+
+    Cleans up:
+    1. The temporary file created when uploading the science image
+    2. The solved FITS file created during plate solving
+    """
+    # Clean up temp science file
+    if "science_file_path" in st.session_state and st.session_state["science_file_path"]:
+        temp_file = st.session_state["science_file_path"]
+        try:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+                # st.success(f"Removed temporary file: {temp_file}")
+        except Exception as e:
+            st.warning(f"Could not remove temporary file {temp_file}: {str(e)}")
+
+    # Clean up solved fits file
+    if "science_file_path" in st.session_state and st.session_state["science_file_path"]:
+        temp_file = st.session_state["science_file_path"]
+        file_path_list = temp_file.split(".")
+        solved_file = file_path_list[0] + "_solved.fits"
+        try:
+            if os.path.exists(solved_file):
+                os.remove(solved_file)
+                # st.success(f"Removed plate-solved file: {solved_file}")
+        except Exception as e:
+            st.warning(f"Could not remove solved file {solved_file}: {str(e)}")
+
+################################################################################
+
+# Main Streamlit app
 initialize_session_state()
 
 st.title("🔭 _Photometry Factory for RAPAS_")
@@ -3388,12 +3421,6 @@ if science_file is not None:
         )
 
         if use_astrometry:
-            # if api_key is None:
-            #     api_key = os.environ.get("ASTROMETRY_API_KEY")
-            #     if api_key is None:
-            #         st.warning("No API key provided or found in environment variables")
-            # if api_key:
-
             with st.spinner(
                 "Running plate solve (this may take a while)..."
             ):
@@ -4113,6 +4140,9 @@ if science_file is not None:
 
                     st.success(f"All Results are stocked in /{output_dir}")
                     provide_download_buttons(output_dir)
+
+                    cleanup_temp_files()
+
 
                 else:
                     st.warning(
