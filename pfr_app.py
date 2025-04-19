@@ -175,44 +175,6 @@ def solve_with_siril(file_path, header=None):
         return wcs_obj, header
 
 
-def save_wcs_to_fits(wcs_obj, filename=None, output_dir=None):
-    """
-    Save a WCS object as a FITS file.
-
-    Parameters
-    ----------
-    wcs_obj : astropy.wcs.WCS
-        WCS object to save
-    filename : str
-        Base filename to use (without extension)
-    output_dir : str
-        Directory to save the FITS file in
-
-    Returns
-    -------
-    str or None
-        Full path to the saved file, or None if saving failed
-    """
-    if wcs_obj is None:
-        return None
-
-    try:
-        # Create a new HDU with the WCS header
-        hdu = fits.PrimaryHDU(header=wcs_obj.to_header())
-        hdu.header['COMMENT'] = "WCS solution from astrometry.net"
-        hdu.header['HISTORY'] = f"Created by Photometry Factory for RAPAS on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        
-        # Save the HDU to a FITS file
-        fits_filename = f"{filename}.fits"
-        fits_path = os.path.join(output_dir, fits_filename)
-        hdu.writeto(fits_path, overwrite=True)
-        
-        return fits_path
-    except Exception as e:
-        st.warning(f"Error saving WCS to FITS: {e}")
-        return None
-
-
 def ensure_output_directory(directory="pfr_results"):
     """
     Create an output directory if it doesn't exist.
