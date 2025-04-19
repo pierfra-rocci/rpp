@@ -3228,32 +3228,31 @@ def cleanup_temp_files():
     Remove temporary files created during processing.
 
     Cleans up:
-    1. The temporary file created when uploading the science image
-    2. The solved FITS file created during plate solving
+    1. The temporary files created when uploading the science image
+    2. The solved files created during plate solving
     """
     # Clean up temp science file
     if "science_file_path" in st.session_state and st.session_state["science_file_path"]:
-        temp_file = st.session_state["science_file_path"]
         try:
+            temp_file = st.session_state["science_file_path"]
             if os.path.exists(temp_file):
-                os.remove(temp_file)
-                # st.success(f"Removed temporary file: {temp_file}")
+                base_dir = os.path.dirname(temp_file)
+                temp_dir_files = [f for f in os.listdir(base_dir)
+                                  if os.path.isfile(os.path.join(base_dir, f)) and
+                                  f.lower().endswith(('.fits', '.fit', '.fts'))]
+                for file in temp_dir_files:
+                    try:
+                        os.remove(os.path.join(base_dir, file))
+                        st.write(f"Removed: {file}")
+                    except Exception as e:
+                        st.warning(f"Could not remove {file}: {str(e)}")
+                st.success("Removed temporary file")
         except Exception as e:
-            st.warning(f"Could not remove temporary file {temp_file}: {str(e)}")
+            st.warning(f"Could not remove temporary files: {str(e)}")
 
-    # Clean up solved fits file
-    if "science_file_path" in st.session_state and st.session_state["science_file_path"]:
-        temp_file = st.session_state["science_file_path"]
-        file_path_list = temp_file.split(".")
-        solved_file = file_path_list[0] + "_solved.fits"
-        try:
-            if os.path.exists(solved_file):
-                os.remove(solved_file)
-                # st.success(f"Removed plate-solved file: {solved_file}")
-        except Exception as e:
-            st.warning(f"Could not remove solved file {solved_file}: {str(e)}")
 
-################################################################################
+###################################################################
+
 
 # Main Streamlit app
 initialize_session_state()
@@ -3264,7 +3263,8 @@ with st.sidebar:
     st.sidebar.header("Upload FITS Files")
 
     bias_file = st.file_uploader(
-        "Master Bias (optional)", type=["fits", "fit", "fts"], key="bias_uploader"
+        "Master Bias (optional)", type=["fits", "fit", "fts"],
+        key="bias_uploader"
     )
     if bias_file is not None:
         st.session_state.files_loaded["bias_file"] = bias_file
