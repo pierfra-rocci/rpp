@@ -187,8 +187,7 @@ The MIT License allows you to use, modify, and distribute this software for both
   - [stdpipe](https://github.com/karpov-sv/stdpipe) for astrometric calibration
 - Thanks to the [RAPAS](https://rapas.imcce.fr/) team for their support and feedback
 - Thanks to the [Astro-Colibri](https://astro-colibri.science/#/) for API access to transient event data
-- [SIRIL](https://siril.org/) - An open-source astronomical image processing software that provides the plate-solving functionality used in this project.
-  SIRIL offers powerful tools for deep sky image processing, photometric analysis, and sequence alignment.
+- Thanks to [SIRIL](https://siril.org/) that provides the plate-solving functionality used in this project.
 
 ---
 Created with by Pier-Francesco Rocci and helped by Github COPILOT
