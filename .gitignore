@@ -174,3 +174,5 @@ pfr_results
 .vscode/**
 .ruff-cache
 *.ruff_cache
+test.py
+*.ipynb_checkpoints
