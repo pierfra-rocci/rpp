@@ -132,7 +132,7 @@ def getJson(url: str) -> json:
         return json.dumps({"error": "invalid json", "message": str(e)})
 
 
-def solve_with_astrometry_net(file_path, header=None):
+def solve_with_siril(file_path, header=None):
     """
     Solve astrometric plate using the astrometry.net web API.
 
@@ -142,23 +142,18 @@ def solve_with_astrometry_net(file_path, header=None):
 
     Parameters
     ----------
-    image_data : numpy.ndarray
+    file_path : numpy.ndarray
         The 2D image array to solve
     header : astropy.io.fits.Header or dict, optional
         FITS header with any available metadata to help the solver,
         such as approximate coordinates or pixel scale
-    api_key : str, optional
-        Astrometry.net API key. 
-        If not provided, will look in environment variables.
 
     Returns
     -------
     tuple
-        (wcs_object, updated_header, status_message) where:
+        (wcs_object, updated_header) where:
         - wcs_object: astropy.wcs.WCS object if successful, None if failed
         - updated_header: Header with WCS keywords added if successful
-        - status_message: String explaining the result or error
-
     Notes
     -----
     The function will use any available metadata in the header to constrain
@@ -169,14 +164,15 @@ def solve_with_astrometry_net(file_path, header=None):
         app = Siril()                                 # Starts pySiril
         cmd = Wrapper(app)    
 
+        cmd.load(file_path)
+        cmd.platesolve(platesolve=True)
 
+        wcs_obj = cmd.get_wcs()
+        header = cmd.get_header()
+
+        cmd.close()
 
         return wcs_obj, header
-
-    except ImportError as e:
-        return None, header, f"Required packages not installed: {str(e)}"
-    except Exception as e:
-        return None, header, f"Error solving with astrometry.net: {str(e)}"
 
 
 def save_wcs_to_fits(wcs_obj, filename=None, output_dir=None):
@@ -3304,12 +3300,6 @@ with st.sidebar:
         "Apply Flat Field", value=False, help="Divide science image by flat field"
     )
 
-    st.sidebar.header("Astrometry.net")
-    api_key = st.text_input(
-        "API Key", value=None, help="Enter your Astrometry.net API key", type="password"
-    )
-    st.caption("[Get your Key](http://nova.astrometry.net/)")
-
     st.sidebar.header("Astro-Colibri")
     colibri_api_key = st.text_input(
         "API Key", value=None, help="Enter your Astro-Colibri API key", type="password"
@@ -3406,53 +3396,54 @@ if science_file is not None:
         st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
 
         use_astrometry = st.checkbox(
-            "Attempt plate solving with astrometry.net?",
+            "Attempt plate solving with Siril?",
             value=True,
-            help="Uses the online astrometry.net service to determine WCS coordinates",
+            help="Uses the Siril platesolve to determine WCS coordinates",
         )
 
         if use_astrometry:
-            if api_key is None:
-                api_key = os.environ.get("ASTROMETRY_API_KEY")
-                if api_key is None:
-                    st.warning("No API key provided or found in environment variables")
-            if api_key:
-                with st.spinner(
-                    "Running plate solve with astrometry.net (this may take a while)..."
-                ):
-                    wcs_obj, science_header, astrometry_msg = solve_with_astrometry_net(
-                        science_data, header=science_header, api_key=api_key)
+            # if api_key is None:
+            #     api_key = os.environ.get("ASTROMETRY_API_KEY")
+            #     if api_key is None:
+            #         st.warning("No API key provided or found in environment variables")
+            # if api_key:
 
-                    log_buffer = st.session_state["log_buffer"]
+            with st.spinner(
+                "Running plate solve (this may take a while)..."
+            ):
+                wcs_obj, science_header = solve_with_siril(
+                    science_file, header=science_header)
 
-                    if wcs_obj is not None:
-                        st.success("Astrometry.net plate solving successful!")
-                        write_to_log(
-                            log_buffer,
-                            f"Solved plate with astrometry.net: {astrometry_msg}",
-                        )
+                log_buffer = st.session_state["log_buffer"]
 
-                        wcs_header_filename = (
-                            f"{st.session_state['base_filename']}_wcs_header"
-                        )
-                        wcs_header_file_path = save_header_to_txt(
-                            science_header, wcs_header_filename
-                        )
-                        if wcs_header_file_path:
-                            st.info("Updated WCS header saved")
-                    else:
-                        st.error(
-                            f"Astrometry.net plate solving failed: {astrometry_msg}"
-                        )
-                        write_to_log(
-                            log_buffer,
-                            f"Failed to solve plate: {astrometry_msg}",
-                            level="ERROR",
-                        )
-            else:
-                st.info(
-                    "Please enter your astrometry.net API key to proceed with plate solving."
-                )
+                if wcs_obj is not None:
+                    st.success("Siril plate solving successful!")
+                    write_to_log(
+                        log_buffer,
+                        f"Solved plate with Siril",
+                    )
+
+                    wcs_header_filename = (
+                        f"{st.session_state['base_filename']}_wcs_header"
+                    )
+                    wcs_header_file_path = save_header_to_txt(
+                        science_header, wcs_header_filename
+                    )
+                    if wcs_header_file_path:
+                        st.info("Updated WCS header saved")
+                else:
+                    st.error(
+                        "Plate solving failed"
+                    )
+                    write_to_log(
+                        log_buffer,
+                        "Failed to solve plat",
+                        level="ERROR",
+                    )
+        else:
+            st.info(
+                "Please enter your astrometry.net API key to proceed with plate solving."
+            )
     else:
         st.success("Valid WCS found in the FITS header.")
         log_buffer = st.session_state["log_buffer"]
