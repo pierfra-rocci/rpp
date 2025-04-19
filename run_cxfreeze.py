@@ -9,16 +9,15 @@ import streamlit.runtime.scriptrunner.magic_funcs
 import astropy.constants.codata2018
 import astropy.constants.iau2015
 
+import subprocess
 import os
 import zipfile
 from datetime import datetime, timedelta
-import time
 import base64
 import json
 import requests
+import tempfile
 from urllib.parse import quote
-
-from astroquery.astrometry_net import AstrometryNet
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -58,7 +57,6 @@ from __version__ import version
 import warnings
 
 warnings.filterwarnings("ignore")
-
 
 def resolve_path(path):
     return os.path.abspath(os.path.join(os.getcwd(), path))
