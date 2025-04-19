@@ -3243,7 +3243,6 @@ def cleanup_temp_files():
                 for file in temp_dir_files:
                     try:
                         os.remove(os.path.join(base_dir, file))
-                        st.write(f"Removed: {file}")
                     except Exception as e:
                         st.warning(f"Could not remove {file}: {str(e)}")
                 st.success("Removed temporary file")
