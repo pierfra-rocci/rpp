@@ -649,7 +649,7 @@ def airmass(
         airmass_value = float(altaz.secz)
 
         if airmass_value < 1.0:
-            st.warning("Calculated airmass is less than 1 (physically impossible)")
+            st.warning("Calculated airmass is less than 1 (impossible)")
             airmass_value = 1.0
         elif airmass_value > 40.0:
             st.warning("Extremely high airmass (>40), object near horizon")
@@ -1442,7 +1442,7 @@ def find_sources_and_photometry_streamlit(
         if wcs:
             st.info("Refined WCS successfully.")
             astrometry.clear_wcs(_science_header, remove_comments=True,
-                                remove_underscored=True, remove_history=True)
+                                 remove_underscored=True, remove_history=True)
             _science_header.update(wcs.to_header(relax=True))
         else:
             st.warning("WCS refinement failed.")
@@ -1768,27 +1768,29 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         #     alpha=0.75,
         #     label="Matched sources",
         # )
-
         # ax.set_xlabel(f"Gaia {gaia_band}")
         # ax.set_ylabel("Calibrated magnitude")
         # ax.set_title("Gaia magnitude vs Calibrated magnitude")
         # ax.legend()
         # ax.grid(True, alpha=0.5)
-         # Calculate residuals
+
+        # Calculate residuals
         _matched_table["residual"] = _matched_table[gaia_band] - _matched_table["calib_mag"]
         
         # Create bins for magnitude ranges
         bin_width = 0.5  # 0.5 magnitude width bins
         min_mag = _matched_table[gaia_band].min()
         max_mag = _matched_table[gaia_band].max()
-        bins = np.arange(np.floor(min_mag), np.ceil(max_mag) + bin_width, bin_width)
+        bins = np.arange(np.floor(min_mag), np.ceil(max_mag) + bin_width,
+                         bin_width)
         
         # Group data by magnitude bins
-        grouped = _matched_table.groupby(pd.cut(_matched_table[gaia_band], bins))
+        grouped = _matched_table.groupby(pd.cut(_matched_table[gaia_band],
+                                                bins))
         bin_centers = [(bin.left + bin.right) / 2 for bin in grouped.groups.keys()]
         bin_means = grouped["calib_mag"].mean().values
         bin_stds = grouped["calib_mag"].std().values
-        
+
         # Plot individual points
         ax.scatter(
             _matched_table[gaia_band],
@@ -1797,7 +1799,7 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
             label="Matched sources",
             color='blue'
         )
-        
+
         # Plot binned means with error bars showing standard deviation
         valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds)
         ax.errorbar(
@@ -1808,7 +1810,7 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
             label='Mean ± StdDev (binned)',
             capsize=5
         )
-        
+
         # Add a diagonal line for reference
         ideal_mag = np.linspace(min_mag, max_mag, 10)
         ax.plot(ideal_mag, ideal_mag, 'k--', alpha=0.7, label="y=x")
@@ -1891,7 +1893,7 @@ def run_zero_point_calibration(
     aperture photometry results.
     """
     with st.spinner("Finding sources and performing photometry..."):
-        phot_table_qtable, epsf_table, daofind, bkg = (
+        phot_table_qtable, epsf_table, _, _ = (
             find_sources_and_photometry_streamlit(
                 image_to_process,
                 header_to_process,
@@ -2059,10 +2061,11 @@ def run_zero_point_calibration(
 
 
 def enhance_catalog_with_crossmatches(api_key, final_table, matched_table, 
-                                      header, pixel_scale_arcsec, search_radius_arcsec=60
-):
+                                      header, pixel_scale_arcsec,
+                                      search_radius_arcsec=60):
     """
-    Enhance a photometric catalog with cross-matches from multiple astronomical databases.
+    Enhance a photometric catalog with cross-matches from multiple 
+    astronomical databases.
 
     This function queries several catalogs and databases including:
     - GAIA DR3 (using previously matched sources)
@@ -2630,7 +2633,6 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
         )
 
     status_text.write("Cross-matching complete")
-
     final_table["catalog_matches"] = ""
 
     if "gaia_calib_star" in final_table.columns:
@@ -3123,7 +3125,7 @@ def provide_download_buttons(folder_path):
 
         # Create download button for the zip file
         st.download_button(
-            label=f"📦 Download All Results (ZIP)",
+            label="📦 Download All Results (ZIP)",
             data=zip_buffer,
             file_name=zip_filename,
             mime="application/zip",
@@ -3264,7 +3266,7 @@ with st.sidebar:
             science_file_path = tmp_file.name
         
         st.session_state["science_file_path"] = science_file_path
-        st.info(f"File saved temporarily at: {science_file_path}")
+        # st.info(f"File saved temporarily at: {science_file_path}")
     if science_file is not None:
         st.session_state.files_loaded["science_file"] = science_file
 
@@ -3404,7 +3406,7 @@ if science_file is not None:
                     st.success("Siril plate solving successful!")
                     write_to_log(
                         log_buffer,
-                        f"Solved plate with Siril",
+                        "Solved plate with Siril",
                     )
 
                     wcs_header_filename = (
@@ -4109,7 +4111,7 @@ if science_file is not None:
                         help="Open ESA Sky with the same target coordinates",
                     )
 
-                    st.success(f"All Results are stocked in /{output_dir}/  Folder")
+                    st.success(f"All Results are stocked in /{output_dir}")
                     provide_download_buttons(output_dir)
 
                 else:
