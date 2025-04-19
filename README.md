@@ -36,14 +36,15 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - PSF photometry with automatic PSF modeling and visualization
   - Zero-point calibration with Gaia DR3
   - Automatic airmass calculation and correction
+  - Observatory information management and customization
     
 - **Extensive Catalog Cross-matching**
-  - Gaia DR3 source matching
+  - Gaia DR3 source matching and calibration
   - SIMBAD object identification with object types
   - SkyBoT solar system object detection
   - AAVSO Variable Star cross-matching
   - Quasar identification from VizieR VII/294 catalog
-  - Astro-Colibri source cross-matching
+  - Astro-Colibri source cross-matching for transient events
     
 - **Interactive Visualization**
   - Image display with adjustable scaling
@@ -58,7 +59,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - Detailed logging of all processing steps
   - Export of PSF models as FITS files
   - Metadata files with analysis parameters
-  - **New:** Unified download of all results as a ZIP archive
+  - Unified download of all results as a ZIP archive
 
 ## Installation
 
@@ -73,6 +74,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - numpy
   - pandas
   - streamlit
+  - stdpipe
 
 ### Quick Start
 
@@ -102,17 +104,23 @@ A comprehensive astronomical image processing and photometry tool designed speci
    - Set seeing estimate
    - Adjust detection threshold
    - Configure border mask size
+   - Set observatory information (location, elevation)
    - Select Gaia parameters for calibration
+   - Provide API keys for services like astrometry.net and Astro-Colibri
 
 3. **Run the analysis pipeline**
    - Apply calibration frames if needed
+   - Run plate solving if WCS coordinates are missing
+   - Perform source detection and photometry
    - Run zero-point calibration
+   - Cross-match with astronomical catalogs
    - View results and interactive visualizations
 
 4. **Export and analyze results**
-   - Download photometry catalog
-   - Examine cross-matched objects
+   - Download photometry catalog and metadata
+   - Examine cross-matched objects in interactive Aladin viewer
    - Link directly to online resources for further analysis
+   - Download all results as a single ZIP archive
 
 ## Documentation
 
@@ -138,6 +146,8 @@ The application generates several output files in the pfr_results directory:
 - `[filename].log` - Processing log
 - `[filename]_image.png` - Preview image
 - `[filename]_epsf.fits` - PSF model file
+- `[filename]_metadata.txt` - Analysis parameters and results
+- `[filename]_wcs_header.txt` - WCS solution from plate solving
 
 ## Contributing
 
