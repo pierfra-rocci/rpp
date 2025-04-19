@@ -46,8 +46,6 @@ from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from astropy.nddata import NDData
 
 from stdpipe import photometry, astrometry, catalogs, pipeline
-from pysiril.siril import Siril
-from pysiril.wrapper import Wrapper
 
 from __version__ import version
 
