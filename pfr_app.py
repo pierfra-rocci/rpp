@@ -136,31 +136,23 @@ def getJson(url: str) -> json:
 
 def solve_with_siril(file_path, header=None):
     """
-    Solve astrometric plate using the astrometry.net web API.
+    Solve astrometric plate using Siril through a PowerShell script.
+    This function sends an image file path to a PowerShell script that uses Siril
+    to determine accurate WCS (World Coordinate System) information for the image.
+    It then reads the resulting solved file to extract the WCS data.
 
-    This function sends an image to the astrometry.net service to determine
-    accurate WCS (World Coordinate System) information. It handles retries
-    and extracting metadata from the header to aid in solving.
-
-    Parameters
-    ----------
-    file_path : numpy.ndarray
-        The 2D image array to solve
-    header : astropy.io.fits.Header or dict, optional
-        FITS header with any available metadata to help the solver,
-        such as approximate coordinates or pixel scale
-
+    file_path : str
+        Path to the image file that needs astrometric solving
+        FITS header parameter (not used in current implementation but kept
+        for interface compatibility)
     Returns
     -------
-    tuple
-        (wcs_object, updated_header) where:
-        - wcs_object: astropy.wcs.WCS object if successful, None if failed
-        - updated_header: Header with WCS keywords added if successful
-    Notes
-    -----
-    The function will use any available metadata in the header to constrain
-    the search, including RA/Dec and pixel scale, which can significantly
-    improve solving speed and accuracy.
+    - wcs_object: astropy.wcs.WCS object containing the WCS solution
+    - updated_header: Header with WCS keywords from the solved image
+
+    The function expects a PowerShell script named 'plate_solve.ps1' to be available
+    in the current directory. The solved image will be saved with '_solved' appended
+    to the original filename.
     """
     try:
         if os.path.exists(file_path):
@@ -178,15 +170,16 @@ def solve_with_siril(file_path, header=None):
     except Exception as e:
         st.error(f"Error solving with Siril: {str(e)}")
         return None
+    try:
+        file_path_list = file_path.split(".")
+        file_path = file_path_list[0]+"_solved."+file_path_list[1]
+        hdu = fits.open(file_path, mode="readonly")
+        head = hdu[1].header
+        wcs_obj = WCS(head)
 
-    file_path_list = file_path.split(".")
-    file_path = file_path_list[0]+"_solved."+file_path_list[1]
-    hdu = fits.open(file_path, mode="readonly")
-    head = hdu[1].header
-    wcs_obj = WCS(head)
-
-    return wcs_obj, head
-
+        return wcs_obj, head
+    except Exception as e:
+        st.error(f"Error reading solved file: {str(e)}")
 
 def ensure_output_directory(directory="pfr_results"):
     """
