@@ -167,7 +167,7 @@ def solve_with_siril(file_path, header=None):
             command = [
                 "powershell.exe",
                 "-ExecutionPolicy", "Bypass",
-                "-File", "run_siril_script.ps1",
+                "-File", "plate_solve.ps1",
                 "-filepath",
                 f"{file_path}"
             ]
