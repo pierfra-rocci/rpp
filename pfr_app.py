@@ -181,6 +181,7 @@ def solve_with_siril(file_path, header=None):
     except Exception as e:
         st.error(f"Error reading solved file: {str(e)}")
 
+
 def ensure_output_directory(directory="pfr_results"):
     """
     Create an output directory if it doesn't exist.
