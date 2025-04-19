@@ -7,13 +7,10 @@ if getattr(sys, "frozen", False):
 import os
 import zipfile
 from datetime import datetime, timedelta
-import time
 import base64
 import json
 import requests
 from urllib.parse import quote
-
-from astroquery.astrometry_net import AstrometryNet
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
@@ -47,6 +44,8 @@ from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from astropy.nddata import NDData
 
 from stdpipe import photometry, astrometry, catalogs, pipeline
+from pysiril.siril import Siril
+from pysiril.wrapper import Wrapper
 
 from __version__ import version
 
@@ -133,7 +132,7 @@ def getJson(url: str) -> json:
         return json.dumps({"error": "invalid json", "message": str(e)})
 
 
-def solve_with_astrometry_net(image_data, fwhm=5, header=None, api_key=None):
+def solve_with_astrometry_net(file_path, header=None):
     """
     Solve astrometric plate using the astrometry.net web API.
 
@@ -167,55 +166,12 @@ def solve_with_astrometry_net(image_data, fwhm=5, header=None, api_key=None):
     improve solving speed and accuracy.
     """
     try:
-        ast = AstrometryNet()
-        ast.api_key = api_key
+        app = Siril()                                 # Starts pySiril
+        cmd = Wrapper(app)    
 
-        try_idx = 1
-        max_tries = 3
-        wcs_header = None
 
-        daofind = DAOStarFinder(fwhm=fwhm,
-                                threshold=3.0,
-                                exclude_border=True)
-        source_list = daofind(image_data - np.median(image_data), mask=None)
 
-        while try_idx <= max_tries and wcs_header is None:
-            try:
-                st.info(
-                        f"Submitting image to astrometry.net (attempt {try_idx}/{max_tries})..."
-                    )
-                wcs_header = ast.solve_from_source_list(source_list['xcentroid'],
-                                                        source_list['ycentroid'],
-                                                        image_height=header["NAXIS2"],
-                                                        image_width=header["NAXIS1"])
-
-            except Exception as e:
-                try_idx += 1
-                st.warning(f"Astrometry.net attempt {try_idx - 1} failed: {str(e)}")
-                time.sleep(2)
-
-        if wcs_header is None:
-            return None, header, f"Astrometry.net failed after {max_tries} attempts"
-
-        wcs_obj = WCS(wcs_header)
-
-        if header is None:
-            header = fits.Header()
-
-        for key in wcs_header:
-            if key in ["SIMPLE", "BITPIX", "NAXIS", "NAXIS1", "NAXIS2", 
-                       "EXTEND"]:
-                continue
-            if key.startswith("HISTORY") or key.startswith("COMMENT"):
-                continue
-            header[key] = wcs_header[key]
-
-        header["ASTRSRC"] = "astrometry.net"
-        header["ASTRTRY"] = try_idx
-
-        save_wcs_to_fits(wcs_obj, filename="wcs_solution", output_dir="pfr_results")
-
-        return wcs_obj, header, st.success("Astrometry.net solution successful")
+        return wcs_obj, header
 
     except ImportError as e:
         return None, header, f"Required packages not installed: {str(e)}"
