@@ -3135,88 +3135,88 @@ def provide_download_buttons(folder_path):
         st.error(f"Error creating zip archive: {str(e)}")
 
 
-def update_observatory_inputs(science_header=None):
-    """Update observatory inputs with values from science header or defaults"""
-    st.header("Observatory Location")
+# def update_observatory_inputs(science_header=None):
+#     """Update observatory inputs with values from science header or defaults"""
+#     st.header("Observatory Location")
 
-    # Default values
-    defaults = {
-        "name": "",
-        "latitude": 0.,
-        "longitude": 0.,
-        "elevation": 0.,
-    }
+#     # Default values
+#     defaults = {
+#         "name": "",
+#         "latitude": 0.,
+#         "longitude": 0.,
+#         "elevation": 0.,
+#     }
 
-    # Get values from header if available
-    if science_header is not None:
-        defaults["name"] = science_header.get("OBSERVAT", defaults["name"])
-        defaults["latitude"] = float(
-            science_header.get(
-                "LATITUDE", science_header.get("LAT-OBS", defaults["latitude"])
-            )
-        )
-        defaults["longitude"] = float(
-            science_header.get(
-                "LONGITUD", science_header.get("LONG-OBS", defaults["longitude"])
-            )
-        )
-        defaults["elevation"] = float(
-            science_header.get(
-                "ELEVATIO", science_header.get("ALT-OBS", defaults["elevation"])
-            )
-        )
+#     # Get values from header if available
+#     if science_header is not None:
+#         defaults["name"] = science_header.get("OBSERVAT", defaults["name"])
+#         defaults["latitude"] = float(
+#             science_header.get(
+#                 "LATITUDE", science_header.get("LAT-OBS", defaults["latitude"])
+#             )
+#         )
+#         defaults["longitude"] = float(
+#             science_header.get(
+#                 "LONGITUD", science_header.get("LONG-OBS", defaults["longitude"])
+#             )
+#         )
+#         defaults["elevation"] = float(
+#             science_header.get(
+#                 "ELEVATIO", science_header.get("ALT-OBS", defaults["elevation"])
+#             )
+#         )
 
-    # Create a unique widget ID for this call
-    if "observatory_widget_id" not in st.session_state:
-        st.session_state.observatory_widget_id = 0
-    else:
-        st.session_state.observatory_widget_id += 1
+#     # Create a unique widget ID for this call
+#     if "observatory_widget_id" not in st.session_state:
+#         st.session_state.observatory_widget_id = 0
+#     else:
+#         st.session_state.observatory_widget_id += 1
     
-    widget_id = st.session_state.observatory_widget_id
+#     widget_id = st.session_state.observatory_widget_id
     
-    # Use a unique prefix for widget keys
-    prefix = f"obs_{widget_id}_"
+#     # Use a unique prefix for widget keys
+#     prefix = f"obs_{widget_id}_"
 
-    # Create the input widgets with the determined values and unique keys
-    observatory_name = st.text_input(
-        "Observatory",
-        value=defaults["name"],
-        help="Name of the observatory",
-        key=f"{prefix}observatory_name",
-    )
+#     # Create the input widgets with the determined values and unique keys
+#     observatory_name = st.text_input(
+#         "Observatory",
+#         value=defaults["name"],
+#         help="Name of the observatory",
+#         key=f"{prefix}observatory_name",
+#     )
 
-    latitude = st.number_input(
-        "Latitude (°)",
-        value=defaults["latitude"],
-        min_value=-90.0,
-        max_value=90.0,
-        help="Observatory latitude in degrees (-90 to 90)",
-        key=f"{prefix}latitude",
-    )
+#     latitude = st.number_input(
+#         "Latitude (°)",
+#         value=defaults["latitude"],
+#         min_value=-90.0,
+#         max_value=90.0,
+#         help="Observatory latitude in degrees (-90 to 90)",
+#         key=f"{prefix}latitude",
+#     )
 
-    longitude = st.number_input(
-        "Longitude (°)",
-        value=defaults["longitude"],
-        min_value=-180.0,
-        max_value=180.0,
-        help="Observatory longitude in degrees (-180 to 180)",
-        key=f"{prefix}longitude",
-    )
+#     longitude = st.number_input(
+#         "Longitude (°)",
+#         value=defaults["longitude"],
+#         min_value=-180.0,
+#         max_value=180.0,
+#         help="Observatory longitude in degrees (-180 to 180)",
+#         key=f"{prefix}longitude",
+#     )
 
-    elevation = st.number_input(
-        "Elevation (m)",
-        value=defaults["elevation"],
-        min_value=0.0,
-        help="Observatory elevation in meters above sea level",
-        key=f"{prefix}elevation",
-    )
+#     elevation = st.number_input(
+#         "Elevation (m)",
+#         value=defaults["elevation"],
+#         min_value=0.0,
+#         help="Observatory elevation in meters above sea level",
+#         key=f"{prefix}elevation",
+#     )
 
-    return {
-        "name": observatory_name,
-        "latitude": latitude,
-        "longitude": longitude,
-        "elevation": elevation,
-    }
+#     return {
+#         "name": observatory_name,
+#         "latitude": latitude,
+#         "longitude": longitude,
+#         "elevation": elevation,
+#     }
 
 
 def cleanup_temp_files():
