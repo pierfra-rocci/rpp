@@ -3476,12 +3476,8 @@ if science_file is not None:
             st.session_state.observatory_longitude = lon
             st.experimental_rerun()
         if st.session_state.observatory_elevation == 0.:
-            try:
-                elev = float(science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0)))
-                st.session_state.observatory_elevation = elev
-                st.experimental_rerun()
-            except Exception:
-                pass
+            elev = float(science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0)))
+            st.session_state.observatory_elevation = elev
         
         # Update the dictionary
         st.session_state.observatory_data = {
