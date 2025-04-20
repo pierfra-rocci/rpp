@@ -170,6 +170,12 @@ Found a bug or have a feature request? Please submit an issue through the GitHub
 1. Go to the [Issues page](https://github.com/pierfra-rocci/pfr/issues)
 2. Click "New Issue"
 3. Provide a clear title and detailed description
+4. Include relevant information such as:
+   - Steps to reproduce the bug
+   - Expected behavior vs actual behavior
+   - Screenshots if applicable
+   - The version of PFR you're using
+   - Your operating system and Python version
 
 ## License
 
@@ -185,9 +191,16 @@ The MIT License allows you to use, modify, and distribute this software for both
   - [Astroquery](https://astroquery.readthedocs.io/) for accessing astronomical databases
   - [Streamlit](https://streamlit.io/) for the web interface
   - [stdpipe](https://github.com/karpov-sv/stdpipe) for astrometric calibration
+  - [astroscrappy](https://github.com/astropy/astroscrappy) for cosmic ray removal
 - Thanks to the [RAPAS](https://rapas.imcce.fr/) team for their support and feedback
-- Thanks to the [Astro-Colibri](https://astro-colibri.science/#/) for API access to transient event data
-- Thanks to [SIRIL](https://siril.org/) that provides the plate-solving functionality used in this project.
+- Thanks to the [Astro-Colibri](https://astro-colibri.science/#/) project for API access to transient event data
+- Thanks to [SIRIL](https://siril.org/) for the plate-solving functionality used in this project
+- Thanks to the various catalog services that power this tool:
+  - [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3)
+  - [SIMBAD](http://simbad.u-strasbg.fr/simbad/)
+  - [VizieR](https://vizier.u-strasbg.fr/)
+  - [SkyBoT](https://ssp.imcce.fr/webservices/skybot/)
+  - [AAVSO VSX](https://www.aavso.org/vsx/)
 
 ---
-Created with by Pier-Francesco Rocci and helped by Github COPILOT
+Created with ❤️ by Pier-Francesco Rocci and helped by Github Copilot
