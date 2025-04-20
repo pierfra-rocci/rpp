@@ -203,4 +203,4 @@ The MIT License allows you to use, modify, and distribute this software for both
   - [AAVSO VSX](https://www.aavso.org/vsx/)
 
 ---
-Created with ❤️ by Pier-Francesco Rocci and helped by Github Copilot
+Created with ❤️ by Pier-Francesco Rocci and helped by GitHub Copilot
