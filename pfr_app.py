@@ -3171,9 +3171,7 @@ def provide_download_buttons(folder_path):
 #         st.session_state.observatory_widget_id = 0
 #     else:
 #         st.session_state.observatory_widget_id += 1
-    
 #     widget_id = st.session_state.observatory_widget_id
-    
 #     # Use a unique prefix for widget keys
 #     prefix = f"obs_{widget_id}_"
 
