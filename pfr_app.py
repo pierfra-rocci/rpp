@@ -3932,9 +3932,20 @@ if science_file is not None:
                         calibrate_bias,
                         calibrate_dark,
                         calibrate_flat,
+                        apply_cr_removal=calibrate_cosmic_rays,
+                        cr_gain=cr_gain,
+                        cr_readnoise=cr_readnoise,
+                        cr_sigclip=cr_sigclip
                     )
                     st.session_state["calibrated_data"] = calibrated_data
                     st.session_state["calibrated_header"] = calibrated_header
+                    
+                    # Add to log
+                    if calibrate_cosmic_rays:
+                        write_to_log(
+                            log_buffer,
+                            f"Applied cosmic ray removal: detected {calibrated_header.get('CRCOUNT', 'unknown')} cosmic rays",
+                        )
 
                     if calibrated_data is not None:
                         st.header("Calibrated Science Image")
