@@ -1344,7 +1344,7 @@ def find_sources_and_photometry_streamlit(
     2. Source detection
     3. WCS refinement with GAIA DR3
     4. Aperture photometry
-    5. PSF/EPSF photometry
+    5. PSF photometry
 
     Parameters
     ----------
