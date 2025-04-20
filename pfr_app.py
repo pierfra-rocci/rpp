@@ -1333,7 +1333,8 @@ def perform_epsf_photometry(
 
 @st.cache_data
 def find_sources_and_photometry_streamlit(
-    image_data, _science_header, mean_fwhm_pixel, threshold_sigma, detection_mask
+    image_data, _science_header, mean_fwhm_pixel, threshold_sigma,
+    detection_mask
 ):
     """
     Find astronomical sources and perform both aperture and PSF photometry.
@@ -3127,7 +3128,6 @@ def provide_download_buttons(folder_path):
             mime="application/zip",
             on_click="ignore",
         )
-
         # Show number of files included
         st.caption(f"Archive contains {len(files)} files")
 
