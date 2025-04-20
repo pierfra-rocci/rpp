@@ -3141,10 +3141,10 @@ def update_observatory_inputs(science_header=None):
 
     # Default values
     defaults = {
-        "name": "TJMS",
-        "latitude": 48.29166,
-        "longitude": 2.43805,
-        "elevation": 94.0,
+        "name": "",
+        "latitude": 0.,
+        "longitude": 0.,
+        "elevation": 0.,
     }
 
     # Get values from header if available
@@ -3346,10 +3346,6 @@ with st.sidebar:
         help="Size of border to exclude from source detection",
     )
 
-    # Initialize observatory with default values
-    if "observatory_data" not in st.session_state:
-        st.session_state.observatory_data = update_observatory_inputs()
-
     st.header("Gaia Parameters")
     gaia_band = st.selectbox(
         "Gaia Band",
@@ -3397,13 +3393,99 @@ with st.sidebar:
 output_dir = ensure_output_directory("pfr_results")
 st.session_state["output_dir"] = output_dir
 
+with st.sidebar:
+    st.header("Observatory Location")
+    
+    # Initialize default values if not in session state
+    if "observatory_name" not in st.session_state:
+        st.session_state.observatory_name = "Greenwich"
+    if "observatory_latitude" not in st.session_state:
+        st.session_state.observatory_latitude = 51.477
+    if "observatory_longitude" not in st.session_state:
+        st.session_state.observatory_longitude = -0.001
+    if "observatory_elevation" not in st.session_state:
+        st.session_state.observatory_elevation = 46.0
+    
+    # Create the input widgets with permanent keys
+    observatory_name = st.text_input(
+        "Observatory",
+        value=st.session_state.observatory_name,
+        help="Name of the observatory",
+        key="obs_name_input"
+    )
+    
+    latitude = st.number_input(
+        "Latitude (°)",
+        value=st.session_state.observatory_latitude,
+        min_value=-90.0,
+        max_value=90.0,
+        help="Observatory latitude in degrees (-90 to 90)",
+        key="obs_lat_input"
+    )
+    
+    longitude = st.number_input(
+        "Longitude (°)",
+        value=st.session_state.observatory_longitude,
+        min_value=-180.0,
+        max_value=180.0,
+        help="Observatory longitude in degrees (-180 to 180)",
+        key="obs_lon_input"
+    )
+    
+    elevation = st.number_input(
+        "Elevation (m)",
+        value=st.session_state.observatory_elevation,
+        min_value=0.0,
+        help="Observatory elevation in meters above sea level",
+        key="obs_elev_input"
+    )
+    
+    # Update session state with current values
+    st.session_state.observatory_name = observatory_name
+    st.session_state.observatory_latitude = latitude
+    st.session_state.observatory_longitude = longitude
+    st.session_state.observatory_elevation = elevation
+    
+    # Store in the observatory_data dict for consistency with existing code
+    st.session_state.observatory_data = {
+        "name": observatory_name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "elevation": elevation,
+    }
+
 if science_file is not None:
     science_data, science_header = load_fits_data(science_file)
     bias_data, _ = load_fits_data(bias_file)
     dark_data, dark_header = load_fits_data(dark_file)
     flat_data, _ = load_fits_data(flat_file)
 
-    st.session_state.observatory_data = update_observatory_inputs(science_header)
+    # Update observatory values from header if available, but don't recreate widgets
+    if science_header is not None:
+        # Only update if values aren't already set by the user (non-default)
+        if st.session_state.observatory_name == "":
+            obs_name = science_header.get("OBSERVAT", "")
+            st.session_state.observatory_name = obs_name
+            
+        if st.session_state.observatory_latitude == 0.0:
+            lat = float(science_header.get("LATITUDE", science_header.get("LAT-OBS", 0.0)))
+            st.session_state.observatory_latitude = lat
+            
+        if st.session_state.observatory_longitude == 0.0:
+            lon = float(science_header.get("LONGITUD", science_header.get("LONG-OBS", 0.0)))
+            st.session_state.observatory_longitude = lon
+            
+        if st.session_state.observatory_elevation == 0.0:
+            elev = float(science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0)))
+            st.session_state.observatory_elevation = elev
+        
+        # Update the dictionary
+        st.session_state.observatory_data = {
+            "name": st.session_state.observatory_name,
+            "latitude": st.session_state.observatory_latitude,
+            "longitude": st.session_state.observatory_longitude,
+            "elevation": st.session_state.observatory_elevation,
+        }
 
     wcs_obj, wcs_error = safe_wcs_create(science_header)
     if wcs_obj is None:
