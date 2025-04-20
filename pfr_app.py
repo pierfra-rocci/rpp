@@ -3314,6 +3314,65 @@ with st.sidebar:
         "Apply Flat Field", value=False, help="Divide science image by flat field"
     )
 
+    st.sidebar.header("Observatory Location")
+    # Initialize default values if not in session state
+    if "observatory_name" not in st.session_state:
+        st.session_state.observatory_name = ""
+    if "observatory_latitude" not in st.session_state:
+        st.session_state.observatory_latitude = 0.
+    if "observatory_longitude" not in st.session_state:
+        st.session_state.observatory_longitude = 0.
+    if "observatory_elevation" not in st.session_state:
+        st.session_state.observatory_elevation = 0.
+    
+    # Create the input widgets with permanent keys
+    observatory_name = st.text_input(
+        "Observatory/Telescope",
+        value=st.session_state.observatory_name,
+        help="Name of the observatory",
+        key="obs_name_input"
+    )
+    
+    latitude = st.number_input(
+        "Latitude (°)",
+        value=st.session_state.observatory_latitude,
+        min_value=-90.0,
+        max_value=90.0,
+        help="Observatory latitude in degrees (-90 to 90)",
+        key="obs_lat_input"
+    )
+    
+    longitude = st.number_input(
+        "Longitude (°)",
+        value=st.session_state.observatory_longitude,
+        min_value=-180.0,
+        max_value=180.0,
+        help="Observatory longitude in degrees (-180 to 180)",
+        key="obs_lon_input"
+    )
+    
+    elevation = st.number_input(
+        "Elevation (m)",
+        value=st.session_state.observatory_elevation,
+        min_value=0.0,
+        help="Observatory elevation in meters above sea level",
+        key="obs_elev_input"
+    )
+    
+    # Update session state with current values
+    st.session_state.observatory_name = observatory_name
+    st.session_state.observatory_latitude = latitude
+    st.session_state.observatory_longitude = longitude
+    st.session_state.observatory_elevation = elevation
+    
+    # Store in the observatory_data dict for consistency with existing code
+    st.session_state.observatory_data = {
+        "name": observatory_name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "elevation": elevation,
+    }
+
     st.sidebar.header("Astro-Colibri")
     colibri_api_key = st.text_input(
         "API Key", value=None, help="Enter your Astro-Colibri API key", type="password"
@@ -3392,67 +3451,6 @@ with st.sidebar:
 
 output_dir = ensure_output_directory("pfr_results")
 st.session_state["output_dir"] = output_dir
-
-with st.sidebar:
-    st.header("Observatory Location")
-    
-    # Initialize default values if not in session state
-    if "observatory_name" not in st.session_state:
-        st.session_state.observatory_name = ""
-    if "observatory_latitude" not in st.session_state:
-        st.session_state.observatory_latitude = 0.
-    if "observatory_longitude" not in st.session_state:
-        st.session_state.observatory_longitude = 0.
-    if "observatory_elevation" not in st.session_state:
-        st.session_state.observatory_elevation = 0.
-    
-    # Create the input widgets with permanent keys
-    observatory_name = st.text_input(
-        "Observatory/Telescope",
-        value=st.session_state.observatory_name,
-        help="Name of the observatory",
-        key="obs_name_input"
-    )
-    
-    latitude = st.number_input(
-        "Latitude (°)",
-        value=st.session_state.observatory_latitude,
-        min_value=-90.0,
-        max_value=90.0,
-        help="Observatory latitude in degrees (-90 to 90)",
-        key="obs_lat_input"
-    )
-    
-    longitude = st.number_input(
-        "Longitude (°)",
-        value=st.session_state.observatory_longitude,
-        min_value=-180.0,
-        max_value=180.0,
-        help="Observatory longitude in degrees (-180 to 180)",
-        key="obs_lon_input"
-    )
-    
-    elevation = st.number_input(
-        "Elevation (m)",
-        value=st.session_state.observatory_elevation,
-        min_value=0.0,
-        help="Observatory elevation in meters above sea level",
-        key="obs_elev_input"
-    )
-    
-    # Update session state with current values
-    st.session_state.observatory_name = observatory_name
-    st.session_state.observatory_latitude = latitude
-    st.session_state.observatory_longitude = longitude
-    st.session_state.observatory_elevation = elevation
-    
-    # Store in the observatory_data dict for consistency with existing code
-    st.session_state.observatory_data = {
-        "name": observatory_name,
-        "latitude": latitude,
-        "longitude": longitude,
-        "elevation": elevation,
-    }
 
 if science_file is not None:
     science_data, science_header = load_fits_data(science_file)
