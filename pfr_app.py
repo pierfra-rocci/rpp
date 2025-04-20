@@ -3408,7 +3408,7 @@ with st.sidebar:
     
     # Create the input widgets with permanent keys
     observatory_name = st.text_input(
-        "Observatory",
+        "Observatory/Telescope",
         value=st.session_state.observatory_name,
         help="Name of the observatory",
         key="obs_name_input"
@@ -3464,20 +3464,33 @@ if science_file is not None:
     if science_header is not None:
         # Only update if values aren't already set by the user (non-default)
         if st.session_state.observatory_name == "":
-            obs_name = science_header.get("TELESCOP", science_header.get("OBSERVER", ""))
-            st.session_state.observatory_name = obs_name
-            
+            try:
+                obs_name = science_header.get("TELESCOP", science_header.get("OBSERVER", ""))
+                st.session_state.observatory_name = obs_name
+                st.experimental_rerun()
+            except Exception:
+                pass
         if st.session_state.observatory_latitude == 0.:
-            lat = float(science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0)))
-            st.session_state.observatory_latitude = lat
-            
+            try:
+                lat = float(science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0)))
+                st.session_state.observatory_latitude = lat
+                st.experimental_rerun()
+            except Exception:
+                pass
         if st.session_state.observatory_longitude == 0.:
-            lon = float(science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0)))
-            st.session_state.observatory_longitude = lon
-            
+            try:
+                lon = float(science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0)))
+                st.session_state.observatory_longitude = lon
+                st.experimental_rerun()
+            except Exception:
+                pass
         if st.session_state.observatory_elevation == 0.:
-            elev = float(science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0)))
-            st.session_state.observatory_elevation = elev
+            try:
+                elev = float(science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0)))
+                st.session_state.observatory_elevation = elev
+                st.experimental_rerun()
+            except Exception:
+                pass
         
         # Update the dictionary
         st.session_state.observatory_data = {
