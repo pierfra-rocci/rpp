@@ -3464,7 +3464,7 @@ if science_file is not None:
     if science_header is not None:
         # Only update if values aren't already set by the user (non-default)
         if st.session_state.observatory_name == "":
-            obs_name = science_header.get("OBSERVAT", science_header.get("TELESCOP", ""))
+            obs_name = science_header.get("TELESCOP", science_header.get("OBSERVER", ""))
             st.session_state.observatory_name = obs_name
             
         if st.session_state.observatory_latitude == 0.:
