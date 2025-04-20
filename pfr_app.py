@@ -3465,13 +3465,13 @@ if science_file is not None:
             obs_name = science_header.get("TELESCOP", science_header.get("OBSERVER", ""))
             st.session_state.observatory_name = obs_name
         if st.session_state.observatory_latitude == 0.:
-            lat = float(science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0)))
+            lat = science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0)))
             st.session_state.observatory_latitude = lat
         if st.session_state.observatory_longitude == 0.:
-            lon = float(science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0)))
+            lon = science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0)))
             st.session_state.observatory_longitude = lon
         if st.session_state.observatory_elevation == 0.:
-            elev = float(science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0)))
+            elev = science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0)))
             st.session_state.observatory_elevation = elev
         
         # Update the dictionary
