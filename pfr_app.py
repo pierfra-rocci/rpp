@@ -3417,6 +3417,38 @@ with st.sidebar:
         "Apply Flat Field", value=False, help="Divide science image by flat field"
     )
 
+    st.header("Cosmic Ray Removal")
+    calibrate_cosmic_rays = st.checkbox(
+        "Remove Cosmic Rays",
+        value=False,
+        help="Detect and remove cosmic rays using the L.A.Cosmic algorithm"
+    )
+
+    cr_params = st.expander("Advanced CR Parameters", expanded=False)
+    with cr_params:
+        cr_gain = st.number_input(
+            "Detector Gain (e-/ADU)",
+            min_value=0.1,
+            value=1.0,
+            step=0.1,
+            help="CCD gain in electrons per ADU"
+        )
+        cr_readnoise = st.number_input(
+            "Read Noise (e-)",
+            min_value=0.0,
+            value=6.5,
+            step=0.5,
+            help="CCD read noise in electrons"
+        )
+        cr_sigclip = st.number_input(
+            "Detection Threshold (σ)",
+            min_value=3.0,
+            max_value=10.0,
+            value=4.5,
+            step=0.5,
+            help="Sigma threshold for cosmic ray detection"
+        )
+
     st.sidebar.header("Observatory Location")
     # Initialize default values if not in session state
     if "observatory_name" not in st.session_state:
