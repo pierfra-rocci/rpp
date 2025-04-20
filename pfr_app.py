@@ -14,6 +14,7 @@ import requests
 import tempfile
 from urllib.parse import quote
 
+import astroscrappy
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
 from astropy.coordinates import get_sun
@@ -268,6 +269,69 @@ def safe_wcs_create(header):
         return wcs_obj, None
     except Exception as e:
         return None, f"WCS creation error: {str(e)}"
+
+
+def detect_remove_cosmic_rays(image_data, gain=1.0, readnoise=6.5, sigclip=4.5,
+                              sigfrac=0.3, objlim=5.0, verbose=False):
+    """
+    Detect and remove cosmic rays from an astronomical image using astroscrappy.
+    
+    Parameters
+    ----------
+    image_data : numpy.ndarray
+        The 2D science image array
+    gain : float, optional
+        CCD gain (electrons/ADU), default=1.0
+    readnoise : float, optional
+        CCD read noise (electrons), default=6.5
+    sigclip : float, optional
+        Detection sigma threshold, default=4.5
+    sigfrac : float, optional
+        Fractional detection threshold, default=0.3
+    objlim : float, optional
+        Minimum contrast between cosmic ray and underlying object, default=5.0
+    verbose : bool, optional
+        Whether to print verbose output, default=False
+        
+    Returns
+    -------
+    tuple
+        (cleaned_image, mask, num_cosmic_rays) where:
+        - cleaned_image: numpy.ndarray with cosmic rays removed
+        - mask: boolean numpy.ndarray showing cosmic ray locations (True where cosmic rays were detected)
+        - num_cosmic_rays: int, number of cosmic rays detected
+    
+    Notes
+    -----
+    Uses the L.A.Cosmic algorithm implemented in astroscrappy.
+    The algorithm detects cosmic rays using Laplacian edge detection.
+    """
+    try:
+        # Ensure the image is in the correct format (float32 required by astroscrappy)
+        image_data = image_data.astype(np.float32)
+        
+        # Detect and remove cosmic rays using astroscrappy's implementation of L.A.Cosmic
+        cleaned_image, mask = astroscrappy.detect_cosmics(
+            image_data,
+            gain=gain,
+            readnoise=readnoise,
+            sigclip=sigclip,
+            sigfrac=sigfrac,
+            objlim=objlim,
+            verbose=verbose
+        )
+        
+        # Count the number of detected cosmic rays
+        num_cosmic_rays = np.sum(mask)
+        
+        return cleaned_image, mask, num_cosmic_rays
+    
+    except ImportError:
+        st.error("astroscrappy package is not installed. Cannot remove cosmic rays.")
+        return image_data, None, 0
+    except Exception as e:
+        st.error(f"Error during cosmic ray removal: {str(e)}")
+        return image_data, None, 0
 
 
 def estimate_background(image_data, box_size=100, filter_size=5):
@@ -785,6 +849,10 @@ def calibrate_image_streamlit(
     apply_bias,
     apply_dark,
     apply_flat,
+    apply_cr_removal=False,
+    cr_gain=1.0,
+    cr_readnoise=6.5,
+    cr_sigclip=4.5
 ):
     """
     Calibrate an astronomical science image using bias, dark, and flat-field frames.
@@ -793,6 +861,7 @@ def calibrate_image_streamlit(
     1. Bias subtraction (optional)
     2. Dark frame subtraction with exposure time scaling (optional)
     3. Flat field correction using normalized flat (optional)
+    4. Cosmic ray removal (optional)
 
     Parameters
     ----------
@@ -816,20 +885,21 @@ def calibrate_image_streamlit(
         Whether to apply dark frame subtraction
     apply_flat : bool
         Whether to apply flat field correction
+    apply_cr_removal : bool, optional
+        Whether to apply cosmic ray removal, default=False
+    cr_gain : float, optional
+        CCD gain for cosmic ray detection, default=1.0
+    cr_readnoise : float, optional
+        CCD read noise for cosmic ray detection, default=6.5
+    cr_sigclip : float, optional
+        Detection threshold in sigma for cosmic rays, default=4.5
 
     Returns
     -------
     tuple
         (calibrated_science, science_header) where:
         - calibrated_science is the processed science image as numpy.ndarray
-        - science_header is the unchanged header information
-
-    Notes
-    -----
-    - If bias correction is applied, it's also applied to dark and flat frames before they're used.
-    - Dark frames are scaled according to the exposure time ratio if different from science exposure.
-    - The flat field is normalized by its median value before division.
-    - Progress updates are shown in the Streamlit interface.
+        - science_header is the updated header information with calibration metadata
     """
     if not apply_bias and not apply_dark and not apply_flat:
         st.write("Calibration steps are disabled. Returning raw science data.")
@@ -866,6 +936,41 @@ def calibrate_image_streamlit(
         calibrated_science /= normalized_flat
         steps_applied.append("Correction du Flat Field")
 
+    if apply_cr_removal:
+        st.write("Detecting and removing cosmic rays...")
+        
+        # Try to get gain and readnoise from header if available
+        if science_header is not None:
+            gain_from_header = science_header.get('GAIN', science_header.get('EGAIN', cr_gain))
+            readnoise_from_header = science_header.get('READNOIS', science_header.get('RDNOISE', cr_readnoise))
+            try:
+                cr_gain = float(gain_from_header)
+                cr_readnoise = float(readnoise_from_header)
+            except (ValueError, TypeError):
+                st.warning("Could not parse gain/readnoise from header. Using default values.")
+        
+        # Apply cosmic ray removal
+        cleaned_image, cr_mask, num_cr = detect_remove_cosmic_rays(
+            calibrated_science,
+            gain=cr_gain,
+            readnoise=cr_readnoise,
+            sigclip=cr_sigclip
+        )
+        
+        calibrated_science = cleaned_image
+        steps_applied.append(f"Cosmic Ray Removal ({int(num_cr)} detected)")
+        
+        # Display cosmic ray mask if available
+        if cr_mask is not None and num_cr > 0:
+            st.write(f"Removed {int(num_cr)} cosmic rays")
+            
+            # Create a figure showing the cosmic ray mask
+            fig_cr, ax_cr = plt.subplots(figsize=FIGURE_SIZES["medium"])
+            im_cr = ax_cr.imshow(cr_mask, cmap='hot', origin='lower')
+            fig_cr.colorbar(im_cr, ax=ax_cr, label='Cosmic Ray Mask')
+            ax_cr.set_title(f"Detected Cosmic Rays: {int(num_cr)}")
+            st.pyplot(fig_cr)
+
     if not steps_applied:
         st.write(
             "No calibration steps were applied because files are missing or options are disabled."
@@ -873,7 +978,7 @@ def calibrate_image_streamlit(
         return science_data, science_header
 
     st.success(f"Calibration steps applied: {', '.join(steps_applied)}")
-    return calibrated_science, science_header
+    return calibrated_science
 
 
 @st.cache_data
