@@ -19,6 +19,7 @@ import requests
 import tempfile
 from urllib.parse import quote
 
+import astroscrappy
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 from astropy.time import Time
 from astropy.coordinates import get_sun
