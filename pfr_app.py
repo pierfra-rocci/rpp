@@ -1265,7 +1265,7 @@ def perform_epsf_photometry(
             hdu.header["OVERSAMP"] = (2, "Oversampling factor")
 
             psf_filename = (
-                f"{st.session_state.get('base_filename', 'psf_model')}_epsf.fits"
+                f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
             )
             psf_filepath = os.path.join(
                 st.session_state.get("output_dir", "."), psf_filename
@@ -1826,7 +1826,8 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         )
 
         try:
-            zero_point_plot_path = os.path.join(output_dir, "zero_point_plot.png")
+            base_name = st.session_state.get('base_filename', 'photometry')
+            zero_point_plot_path = os.path.join(output_dir, f"{base_name}_zero_point_plot.png")
             plt.savefig(zero_point_plot_path)
         except Exception as e:
             st.warning(f"Could not save plot to file: {e}")
@@ -3098,10 +3099,14 @@ def provide_download_buttons(folder_path):
         None: The function creates a Streamlit download button directly in the app interface
     """
     try:
+        base_filename = st.session_state.get("base_filename", "")
+        
+        # Filter files to only include those starting with the base filename prefix
         files = [
             f
             for f in os.listdir(folder_path)
-            if os.path.isfile(os.path.join(folder_path, f))
+            if os.path.isfile(os.path.join(folder_path, f)) and
+            f.startswith(base_filename)
         ]
         if not files:
             st.write("No files found in output directory")
@@ -3117,7 +3122,6 @@ def provide_download_buttons(folder_path):
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for file in files:
                 file_path = os.path.join(folder_path, file)
-                # Add each file to the zip archive with its filename (not the full path)
                 zip_file.write(file_path, arcname=file)
 
         # Reset buffer position to the beginning
