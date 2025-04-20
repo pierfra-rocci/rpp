@@ -145,7 +145,7 @@ The application generates several output files in the pfr_results directory:
 - `[filename]_header.txt` - FITS header information
 - `[filename].log` - Processing log
 - `[filename]_image.png` - Preview image
-- `[filename]_epsf.fits` - PSF model file
+- `[filename]_psf.fits` - PSF model file
 - `[filename]_metadata.txt` - Analysis parameters and results
 - `[filename]_wcs_header.txt` - WCS solution from plate solving
 
