@@ -3317,13 +3317,13 @@ with st.sidebar:
     st.sidebar.header("Observatory Location")
     # Initialize default values if not in session state
     if "observatory_name" not in st.session_state:
-        st.session_state.observatory_name = ""
+        st.session_state.observatory_name = "Greenwich"
     if "observatory_latitude" not in st.session_state:
-        st.session_state.observatory_latitude = 0.
+        st.session_state.observatory_latitude = 51.477
     if "observatory_longitude" not in st.session_state:
-        st.session_state.observatory_longitude = 0.
+        st.session_state.observatory_longitude = -0.001
     if "observatory_elevation" not in st.session_state:
-        st.session_state.observatory_elevation = 0.
+        st.session_state.observatory_elevation = 46.
     
     # Create the input widgets with permanent keys
     observatory_name = st.text_input(
@@ -3333,27 +3333,42 @@ with st.sidebar:
         key="obs_name_input"
     )
     
+    try:
+        lat_value = float(st.session_state.observatory_latitude)
+    except (ValueError, TypeError):
+        lat_value = 0.0
+
+    try:
+        lon_value = float(st.session_state.observatory_longitude)
+    except (ValueError, TypeError):
+        lon_value = 0.0
+
+    try:
+        elev_value = float(st.session_state.observatory_elevation)
+    except (ValueError, TypeError):
+        elev_value = 0.0
+
     latitude = st.number_input(
         "Latitude (°)",
-        value=st.session_state.observatory_latitude,
+        value=lat_value,
         min_value=-90.0,
         max_value=90.0,
         help="Observatory latitude in degrees (-90 to 90)",
         key="obs_lat_input"
     )
-    
+        
     longitude = st.number_input(
         "Longitude (°)",
-        value=st.session_state.observatory_longitude,
+        value=lon_value,
         min_value=-180.0,
         max_value=180.0,
         help="Observatory longitude in degrees (-180 to 180)",
         key="obs_lon_input"
     )
-    
+        
     elevation = st.number_input(
         "Elevation (m)",
-        value=st.session_state.observatory_elevation,
+        value=elev_value,
         min_value=0.0,
         help="Observatory elevation in meters above sea level",
         key="obs_elev_input"
@@ -3465,13 +3480,13 @@ if science_file is not None:
             obs_name = science_header.get("TELESCOP", science_header.get("OBSERVER", ""))
             st.session_state.observatory_name = obs_name
         if st.session_state.observatory_latitude == 0.:
-            lat = science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0))
+            lat = float(science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0)))
             st.session_state.observatory_latitude = lat
         if st.session_state.observatory_longitude == 0.:
-            lon = science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0))
+            lon = float(science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0)))
             st.session_state.observatory_longitude = lon
         if st.session_state.observatory_elevation == 0.:
-            elev = science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0))
+            elev = float(science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0)))
             st.session_state.observatory_elevation = elev
         
         # Update the dictionary
