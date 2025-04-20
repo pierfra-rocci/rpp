@@ -1762,17 +1762,6 @@ def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
         st.session_state["final_phot_table"] = _phot_table
 
         fig, ax = plt.subplots(figsize=FIGURE_SIZES["medium"], dpi=100)
-        # ax.scatter(
-        #     _matched_table[gaia_band],
-        #     _matched_table["calib_mag"],
-        #     alpha=0.75,
-        #     label="Matched sources",
-        # )
-        # ax.set_xlabel(f"Gaia {gaia_band}")
-        # ax.set_ylabel("Calibrated magnitude")
-        # ax.set_title("Gaia magnitude vs Calibrated magnitude")
-        # ax.legend()
-        # ax.grid(True, alpha=0.5)
 
         # Calculate residuals
         _matched_table["residual"] = _matched_table[gaia_band] - _matched_table["calib_mag"]
@@ -2291,7 +2280,10 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                     final_table.loc[i, "astro_colibri_name"] = astrostars["discoverer_internal_name"][match_idx]
 
             matches = []
-            st.success(f"Matched {len(matches)} Astro-Colibri objects in field.")
+            if len(matches) == 0:
+                st.write(f"{len(matches)} Astro-Colibri matched objects in field.")
+            else:
+                st.success(f"{len(matches)} Astro-Colibri matched objects in field.")
         else:
             st.write("No Astro-Colibri sources found in the field.")
 
