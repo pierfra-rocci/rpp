@@ -171,12 +171,6 @@ Found a bug or have a feature request? Please submit an issue through the GitHub
 1. Go to the [Issues page](https://github.com/pierfra-rocci/pfr/issues)
 2. Click "New Issue"
 3. Provide a clear title and detailed description
-4. Include relevant information such as:
-   - Steps to reproduce the bug
-   - Expected behavior vs actual behavior
-   - Screenshots if applicable
-   - The version of PFR you're using
-   - Your operating system and Python version
 
 ## License
 
