@@ -28,7 +28,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
     
 - **Advanced Astrometry**
   - WCS coordinate determination from image headers
-  - Automatic plate solving via astrometry.net API integration
+  - Automatic plate solving via SIRIL script integration
   - Manual coordinate entry for challenging fields
     
 - **Comprehensive Photometry Tools**
