@@ -65,7 +65,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 
 ### Requirements
 
-- Python 3.8 or later
+- Python 3.10 or later
 - Key dependencies:
   - astropy
   - photutils
@@ -75,6 +75,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - pandas
   - streamlit
   - stdpipe
+  - SIRIL 1.2.6+
 
 ### Quick Start
 
