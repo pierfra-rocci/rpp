@@ -193,8 +193,8 @@ The MIT License allows you to use, modify, and distribute this software for both
   - [Streamlit](https://streamlit.io/) for the web interface
   - [stdpipe](https://github.com/karpov-sv/stdpipe) for astrometric calibration
   - [astroscrappy](https://github.com/astropy/astroscrappy) for cosmic ray removal
-- Thanks to the [RAPAS](https://rapas.imcce.fr/) team for their support and feedback
-- Thanks to the [Astro-Colibri](https://astro-colibri.science/#/) project for API access to transient event data
+- Thanks to the [RAPAS](https://rapas.imcce.fr/) team for support and feedback
+- Thanks to the [Astro-Colibri](https://astro-colibri.science/#/) for API access to transient event data
 - Thanks to [SIRIL](https://siril.org/) for the plate-solving functionality used in this project
 - Thanks to the various catalog services that power this tool:
   - [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3)
