@@ -47,7 +47,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - Astro-Colibri source cross-matching for transient events
     
 - **Interactive Visualization**
-  - Image display with adjustable scaling
+  - Image display
   - Embedded Aladin Lite for DSS2 color overlays and catalog visualization
   - Interactive tables for data exploration
   - Direct links to ESA Sky and other astronomy resources
