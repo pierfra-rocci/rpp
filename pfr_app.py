@@ -977,6 +977,13 @@ def calibrate_image(
         return science_data, science_header
 
     st.success(f"Calibration steps applied: {', '.join(steps_applied)}")
+    # Update header with calibration information
+    updated_header = science_header.copy()
+    updated_header['HISTORY'] = f"Calibration steps: {', '.join(steps_applied)}"
+    
+    if apply_cr_removal and 'num_cr' in locals():
+        updated_header['CRCOUNT'] = num_cr
+
     return calibrated_science
 
 
