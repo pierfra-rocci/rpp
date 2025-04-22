@@ -4091,7 +4091,7 @@ if science_file is not None:
                                                                 }
                                                             )
                                                         st.success(
-                                                            "Added aperture photometry results"
+                                                            "Added Aperture photometry results"
                                                         )
 
                                                     final_table.drop(
