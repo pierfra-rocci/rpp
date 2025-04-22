@@ -278,7 +278,7 @@ def detect_remove_cosmic_rays(image_data, gain=1.0, readnoise=6.5, sigclip=4.5,
     Parameters
     ----------
     image_data : numpy.ndarray
-        The 2D science image array
+        The 2D image array
     gain : float, optional
         CCD gain (electrons/ADU), default=1.0
     readnoise : float, optional
@@ -344,7 +344,7 @@ def estimate_background(image_data, box_size=128, filter_size=7):
     Parameters
     ----------
     image_data : numpy.ndarray
-        The 2D science image array
+        The 2D image array
     box_size : int, optional
         The box size in pixels for the local background estimation.
         Will be automatically adjusted if the image is small.
@@ -854,7 +854,7 @@ def calibrate_image(
     cr_sigclip=4.,
 ):
     """
-    Calibrate an astronomical science image using bias, dark, and flat-field frames.
+    Calibrate an astronomical Image using bias, dark, and flat-field frames.
 
     This function performs standard CCD calibration steps with status updates in Streamlit:
     1. Bias subtraction (optional)
@@ -865,9 +865,9 @@ def calibrate_image(
     Parameters
     ----------
     science_data : numpy.ndarray
-        The raw science image data to be calibrated
+        The raw Image data to be calibrated
     science_header : dict or astropy.io.fits.Header
-        Header information from the science image
+        Header information from the Image
     bias_data : numpy.ndarray or None
         Bias frame data for zero-level correction
     dark_data : numpy.ndarray or None
@@ -875,7 +875,7 @@ def calibrate_image(
     flat_data : numpy.ndarray or None
         Flat field data for sensitivity/vignetting correction
     exposure_time_science : float
-        Exposure time of the science image in seconds
+        Exposure time of the Image in seconds
     exposure_time_dark : float
         Exposure time of the dark frame in seconds
     apply_bias : bool
@@ -897,7 +897,7 @@ def calibrate_image(
     -------
     tuple
         (calibrated_science, science_header) where:
-        - calibrated_science is the processed science image as numpy.ndarray
+        - calibrated_science is the processed Image as numpy.ndarray
         - science_header is the updated header information with calibration metadata
     """
     if not apply_bias and not apply_dark and not apply_flat:
@@ -1385,7 +1385,7 @@ def perform_epsf_photometry(
                 epsf.data,
                 norm=norm_epsf,
                 origin="lower",
-                cmap="viridis",
+                cmap="cool",
                 interpolation="nearest",
             )
             ax_epsf_model.set_title("Fitted PSF Model")
@@ -1452,7 +1452,7 @@ def find_sources_and_photometry(
     Parameters
     ----------
     image_data : numpy.ndarray
-        Science image data (2D array)
+        Image data (2D array)
     _science_header : dict or astropy.io.fits.Header
         Header information from FITS file (underscore prevents caching issues)
     mean_fwhm_pixel : float
@@ -1747,13 +1747,6 @@ def cross_match_with_gaia(
     if gaia_table is None or len(gaia_table) == 0:
         st.warning("No Gaia sources found within search radius.")
         return None
-
-    if gaia_band == "G":
-        gaia_band = "phot_g_mean_mag"
-    elif gaia_band == "Bp":
-        gaia_band = "phot_bp_mean_mag"
-    elif gaia_band == "Rp":
-        gaia_band = "phot_rp_mean_mag"
 
     try:
         mag_filter = (gaia_table[gaia_band] < gaia_max_mag) & (
@@ -3072,23 +3065,23 @@ def initialize_session_state():
     if "base_filename" not in st.session_state:
         st.session_state["base_filename"] = "photometry"
 
-    if "manual_ra" not in st.session_state:
-        st.session_state["manual_ra"] = ""
-    if "manual_dec" not in st.session_state:
-        st.session_state["manual_dec"] = ""
-    if "valid_ra" not in st.session_state:
-        st.session_state["valid_ra"] = None
-    if "valid_dec" not in st.session_state:
-        st.session_state["valid_dec"] = None
+    # if "manual_ra" not in st.session_state:
+    #     st.session_state["manual_ra"] = ""
+    # if "manual_dec" not in st.session_state:
+    #     st.session_state["manual_dec"] = ""
+    # if "valid_ra" not in st.session_state:
+    #     st.session_state["valid_ra"] = None
+    # if "valid_dec" not in st.session_state:
+    #     st.session_state["valid_dec"] = None
 
     if "analysis_parameters" not in st.session_state:
         st.session_state["analysis_parameters"] = {
-            "seeing": 3.5,
-            "threshold_sigma": 3.0,
-            "detection_mask": 50,
+            "seeing": 3.,
+            "threshold_sigma": 2.5,
+            "detection_mask": 25,
             "gaia_band": "phot_g_mean_mag",
-            "gaia_min_mag": 11.0,
-            "gaia_max_mag": 19.0,
+            "gaia_min_mag": 7.0,
+            "gaia_max_mag": 20.0,
             "calibrate_bias": False,
             "calibrate_dark": False,
             "calibrate_flat": False,
@@ -3250,7 +3243,7 @@ def cleanup_temp_files():
     Remove temporary files created during processing.
 
     Cleans up:
-    1. The temporary files created when uploading the science image
+    1. The temporary files created when uploading the Image
     2. The solved files created during plate solving
     """
     # Clean up temp science file
@@ -3302,9 +3295,9 @@ with st.sidebar:
     if flat_file is not None:
         st.session_state.files_loaded["flat_file"] = flat_file
 
-    # File uploader for science image
+    # File uploader for Image
     science_file = st.file_uploader(
-        "Science Image (required)", type=["fits", "fit", "fts"], key="science_uploader"
+        "Image (required)", type=["fits", "fit", "fts"], key="science_uploader"
     )
     
     # Get absolute path if we need it (for tools like Siril that need direct file access)
@@ -3331,13 +3324,13 @@ with st.sidebar:
 
     st.header("Calibration Options")
     calibrate_bias = st.checkbox(
-        "Apply Bias", value=False, help="Subtract bias frame from science image"
+        "Apply Bias", value=False, help="Subtract bias frame from Image"
     )
     calibrate_dark = st.checkbox(
-        "Apply Dark", value=False, help="Subtract dark frame from science image"
+        "Apply Dark", value=False, help="Subtract dark frame from Image"
     )
     calibrate_flat = st.checkbox(
-        "Apply Flat Field", value=False, help="Divide science image by flat field"
+        "Apply Flat Field", value=False, help="Divide Image by flat field"
     )
 
     st.header("Cosmic Ray Removal")
@@ -3469,7 +3462,7 @@ with st.sidebar:
     st.header("Gaia Parameters")
     gaia_band = st.selectbox(
         "Gaia Band",
-        ["G", "Bp", "Rp"],
+        ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"],
         index=0,
         help="Gaia magnitude band to use for calibration",
     )
@@ -3608,7 +3601,7 @@ if science_file is not None:
             write_to_log(log_buffer, f"Saved header to {header_file}")
 
     log_buffer = st.session_state["log_buffer"]
-    write_to_log(log_buffer, f"Loaded science image: {science_file.name}")
+    write_to_log(log_buffer, f"Loaded Image: {science_file.name}")
     if bias_file:
         write_to_log(log_buffer, f"Loaded bias frame: {bias_file.name}")
     if dark_file:
@@ -3621,7 +3614,7 @@ if science_file is not None:
     if dark_header is None:
         dark_header = {}
 
-    st.header("Science Image", anchor="science-image")
+    st.header("Image", anchor="science-image")
 
     if science_data is not None:
         try:
@@ -3672,13 +3665,13 @@ if science_file is not None:
             "No image data available to display. Check if the file was loaded correctly."
         )
 
-    with st.expander("Science Image Header"):
+    with st.expander("Image Header"):
         if science_header:
             st.text(repr(science_header))
         else:
-            st.warning("No header information available for science image.")
+            st.warning("No header information available for Image.")
 
-    st.subheader("Science Image Statistics")
+    st.subheader("Image Statistics")
     if science_data is not None:
         stats_col1, stats_col2, stats_col3, stats_col4, stats_col5 = st.columns(5)
         stats_col1.metric("Mean", f"{np.mean(science_data):.3f}")
@@ -3861,7 +3854,7 @@ if science_file is not None:
                         )
 
                     if calibrated_data is not None:
-                        st.header("Calibrated Science Image")
+                        st.header("Calibrated Image")
                         norm_calibrated = ImageNormalize(
                             calibrated_data, interval=ZScaleInterval()
                         )
@@ -4294,7 +4287,7 @@ if science_file is not None:
                         "Could not determine coordinates from image header. Cannot display ESASky."
                     )
 else:
-    st.text("👆 Please upload a science image FITS file to start.", )
+    st.text("👆 Please upload an image FITS file to start.", )
 
 
 if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not None:
