@@ -2322,7 +2322,6 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             # Process the response
             try:
                 if response.status_code == 200:
-                    st.write("Response successfully received.")
                     events = response.json()['voevents']
                 else:
                     st.warning(f"Request failed with status code: {response.status_code}")
