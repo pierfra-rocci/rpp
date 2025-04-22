@@ -3352,6 +3352,7 @@ with st.sidebar:
         cr_gain = st.number_input(
             "Detector Gain (e-/ADU)",
             min_value=0.1,
+            max_value=200.0,
             value=1.0,
             step=0.2,
             help="CCD gain in electrons per ADU"
@@ -3359,6 +3360,7 @@ with st.sidebar:
         cr_readnoise = st.number_input(
             "Read Noise (e-)",
             min_value=0.0,
+            max_value=10.0,
             value=2.5,
             step=0.5,
             help="CCD read noise in electrons"
@@ -3367,7 +3369,7 @@ with st.sidebar:
             "Detection Threshold (σ)",
             min_value=3.0,
             max_value=10.0,
-            value=4.5,
+            value=5.,
             step=0.5,
             help="Threshold for cosmic ray detection"
         )
