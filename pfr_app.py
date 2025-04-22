@@ -1233,7 +1233,7 @@ def fwhm_fit(
 
         if skipped_sources > 0:
             st.write(
-                f"FWHM calculation failed for {skipped_sources} sources out of {len(filtered_sources)} and were skipped."
+                f"FWHM calculation failed for {skipped_sources} sources out of {len(filtered_sources)}."
             )
 
         if len(fwhm_values) == 0:
