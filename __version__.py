@@ -1,6 +1,6 @@
-version = "0.2.2.dev0"
+version = "0.2.3.dev0"
 release = False
-version_info = (0, 2, 2, 0, "dev0")
+version_info = (0, 2, 3, 0, "dev0")
 # The version is a tuple of the form (major, minor, micro, release level, serial)
 # where release level is one of 'alpha', 'beta', 'candidate', or 'final'
 # and serial is an integer that is incremented for each release of that level.
