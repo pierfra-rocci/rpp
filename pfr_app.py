@@ -837,7 +837,7 @@ def load_fits_data(file):
     return None, None
 
 
-def calibrate_image_streamlit(
+def calibrate_image(
     science_data,
     science_header,
     bias_data,
@@ -1435,7 +1435,7 @@ def perform_epsf_photometry(
 
 
 @st.cache_data
-def find_sources_and_photometry_streamlit(
+def find_sources_and_photometry(
     image_data, _science_header, mean_fwhm_pixel, threshold_sigma,
     detection_mask
 ):
@@ -1995,7 +1995,7 @@ def run_zero_point_calibration(
     """
     with st.spinner("Finding sources and performing photometry..."):
         phot_table_qtable, epsf_table, _, _ = (
-            find_sources_and_photometry_streamlit(
+            find_sources_and_photometry(
                 image_to_process,
                 header_to_process,
                 mean_fwhm_pixel,
@@ -3517,7 +3517,7 @@ if science_file is not None:
     dark_data, dark_header = load_fits_data(dark_file)
     flat_data, _ = load_fits_data(flat_file)
 
-    # Update observatory values from header if available, but don't recreate widgets
+    # Update observatory values from header if available
     if science_header is not None:
         # Only update if values aren't already set by the user (non-default)
         if st.session_state.observatory_name == "":
@@ -3830,7 +3830,7 @@ if science_file is not None:
         if st.button("Run Image Calibration", disabled=calibration_disabled):
             with st.spinner("Calibrating image..."):
                 try:
-                    calibrated_data, calibrated_header = calibrate_image_streamlit(
+                    calibrated_data, calibrated_header = calibrate_image(
                         science_data,
                         science_header,
                         bias_data,
@@ -3898,7 +3898,7 @@ if science_file is not None:
                         "Background Extraction, Find Sources and Perform Photometry..."
                     ):
                         phot_table_qtable, epsf_table, daofind, bkg = (
-                            find_sources_and_photometry_streamlit(
+                            find_sources_and_photometry(
                                 image_to_process,
                                 header_to_process,
                                 mean_fwhm_pixel,
