@@ -4277,7 +4277,7 @@ if science_file is not None:
                         help="Open ESA Sky with the same target coordinates",
                     )
 
-                    st.success(f"All Results are stocked in /{output_dir}")
+                    st.write(f"Results are stocked in /{output_dir}")
                     provide_download_buttons(output_dir)
 
                     cleanup_temp_files()
