@@ -1182,7 +1182,7 @@ def fwhm_fit(
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit
 
     try:
-        daofind = DAOStarFinder(fwhm=1.4 * fwhm, threshold=5 * np.std(img))
+        daofind = DAOStarFinder(fwhm=1.5*fwhm, threshold=5*np.std(img))
         sources = daofind(img, mask=mask)
         if sources is None:
             st.warning("No sources found !")
@@ -1515,14 +1515,14 @@ def find_sources_and_photometry(
         fwhm_estimate = mean_fwhm_pixel
 
     daofind = DAOStarFinder(
-        fwhm=1.4 * fwhm_estimate,
-        threshold=threshold_sigma * np.std(image_data - bkg.background),
+        fwhm=1.5*fwhm_estimate,
+        threshold=threshold_sigma*np.std(image_data - bkg.background),
     )
 
     sources = daofind(image_data - bkg.background, mask=mask)
 
-    obj = photometry.get_objects_sep(image_data - bkg.background, mask=mask,
-                                     aper=fwhm_estimate, gain=1, edge=25
+    obj = photometry.get_objects_sep(image_data - bkg.background, mask=None,
+                                     aper=1.5*fwhm_estimate, gain=1, edge=25
                                      )
 
     if sources is None or len(sources) == 0:
@@ -1534,11 +1534,11 @@ def find_sources_and_photometry(
                                                  width=image_data.shape[1],
                                                  height=image_data.shape[0])
     cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiaedr3',
-                                  filters={'RPmag': '<19'})
+                                  filters={'RPmag': '<20'})
     cat_col_mag = 'RPmag'
     try:
         wcs = pipeline.refine_astrometry(obj, cat,
-                                         1.4*fwhm_estimate*pixel_scale/3600,
+                                         1.5*fwhm_estimate*pixel_scale/3600,
                                          wcs=w, order=1,
                                          cat_col_mag=cat_col_mag,
                                          cat_col_mag_err=None,
@@ -1556,7 +1556,7 @@ def find_sources_and_photometry(
         st.warning(f"Skipping WCS refinement: {str(e)}")
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
-    apertures = CircularAperture(positions, r=1.4 * fwhm_estimate)
+    apertures = CircularAperture(positions, r=1.5*fwhm_estimate)
 
     try:
         wcs_obj = None
@@ -1649,7 +1649,7 @@ def find_sources_and_photometry(
                 f"WCS transformation failed: {e}. RA and Dec not added to tables."
             )
 
-        st.success(f"Found {len(phot_table)} sources and performed photometry.")
+        st.write(f"Found {len(phot_table)} sources and performed photometry.")
         return phot_table, epsf_table, daofind, bkg
     except Exception as e:
         st.error(f"Error performing aperture photometry: {e}")
