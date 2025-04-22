@@ -1182,7 +1182,7 @@ def fwhm_fit(
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit
 
     try:
-        daofind = DAOStarFinder(fwhm=1.5 * fwhm, threshold=6 * np.std(img))
+        daofind = DAOStarFinder(fwhm=1.4 * fwhm, threshold=5 * np.std(img))
         sources = daofind(img, mask=mask)
         if sources is None:
             st.warning("No sources found !")
@@ -3678,10 +3678,12 @@ if science_file is not None:
 
     st.subheader("Science Image Statistics")
     if science_data is not None:
-        stats_col1, stats_col2, stats_col3 = st.columns(3)
+        stats_col1, stats_col2, stats_col3, stats_col4, stats_col5 = st.columns(5)
         stats_col1.metric("Mean", f"{np.mean(science_data):.3f}")
         stats_col2.metric("Median", f"{np.median(science_data):.3f}")
         stats_col3.metric("Std Dev", f"{np.std(science_data):.3f}")
+        stats_col4.metric("Min", f"{np.min(science_data):.3f}")
+        stats_col5.metric("Max", f"{np.max(science_data):.3f}") 
 
         pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
         st.metric(
