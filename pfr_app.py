@@ -2356,9 +2356,8 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                     sources["type"].append(event["type"])
                     sources["classification"].append(event["classification"])
             astrostars = pd.DataFrame(sources)
-            st.write("Astro-Colibri sources found in field:")
-            st.dataframe(astrostars)
             st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.")
+            st.dataframe(astrostars)
 
             source_coords = SkyCoord(
                 ra=final_table["ra"].values,
