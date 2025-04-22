@@ -984,7 +984,7 @@ def calibrate_image(
     if apply_cr_removal and 'num_cr' in locals():
         updated_header['CRCOUNT'] = num_cr
 
-    return calibrated_science
+    return calibrated_science, science_header
 
 
 @st.cache_data
