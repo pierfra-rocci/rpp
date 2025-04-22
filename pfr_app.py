@@ -3452,8 +3452,8 @@ with st.sidebar:
     threshold_sigma = st.slider(
         "Detection Threshold (σ)",
         0.5,
-        4.0,
-        3.0,
+        5.0,
+        2.5,
         0.5,
         help="Source detection threshold in sigma above background",
     )
