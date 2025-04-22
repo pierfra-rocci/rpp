@@ -1544,6 +1544,7 @@ def find_sources_and_photometry(
                                          cat_col_mag_err=None,
                                          n_iter=5,
                                          min_matches=3,
+                                         use_photometry=False,
                                          verbose=True)
         if wcs:
             st.info("Refined WCS successfully.")
