@@ -1345,7 +1345,7 @@ def perform_epsf_photometry(
         n_disp = min(len(stars), nrows * ncols)
         for i in range(n_disp):
             norm = simple_norm(stars[i].data, "log", percent=99.0)
-            ax_stars[i].imshow(stars[i].data, norm=norm, origin="lower", cmap="cool")
+            ax_stars[i].imshow(stars[i].data, norm=norm, origin="lower", cmap="inferno")
         plt.tight_layout()
         st.pyplot(fig_stars)
     except Exception as e:
@@ -1385,7 +1385,7 @@ def perform_epsf_photometry(
                 epsf.data,
                 norm=norm_epsf,
                 origin="lower",
-                cmap="cool",
+                cmap="inferno",
                 interpolation="nearest",
             )
             ax_epsf_model.set_title("Fitted PSF Model")
@@ -3623,7 +3623,7 @@ if science_file is not None:
             try:
                 norm = ImageNormalize(science_data, interval=ZScaleInterval())
                 im = ax_preview.imshow(
-                    science_data, norm=norm, origin="lower", cmap="cool"
+                    science_data, norm=norm, origin="lower", cmap="inferno"
                 )
             except Exception as norm_error:
                 st.warning(
@@ -3631,7 +3631,7 @@ if science_file is not None:
                 )
                 vmin, vmax = np.percentile(science_data, [1, 99])
                 im = ax_preview.imshow(
-                    science_data, vmin=vmin, vmax=vmax, origin="lower", cmap="cool"
+                    science_data, vmin=vmin, vmax=vmax, origin="lower", cmap="inferno"
                 )
 
             fig_preview.colorbar(im, ax=ax_preview, label="Pixel Value")
@@ -3865,7 +3865,7 @@ if science_file is not None:
                             calibrated_data,
                             norm=norm_calibrated,
                             origin="lower",
-                            cmap="cool",
+                            cmap="inferno",
                         )
                         fig_calibrated.colorbar(
                             im_calibrated, ax=ax_calibrated, label="pixel value"
