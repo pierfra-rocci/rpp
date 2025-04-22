@@ -3681,16 +3681,16 @@ if science_file is not None:
     st.subheader("Science Image Statistics")
     if science_data is not None:
         stats_col1, stats_col2, stats_col3, stats_col4, stats_col5 = st.columns(5)
-        stats_col1.metric("Avg", f"{np.mean(science_data):.3f}")
-        stats_col2.metric("Med", f"{np.median(science_data):.3f}")
+        stats_col1.metric("Mean", f"{np.mean(science_data):.3f}")
+        stats_col2.metric("Median", f"{np.median(science_data):.3f}")
         stats_col3.metric("Rms", f"{np.std(science_data):.3f}")
         stats_col4.metric("Min", f"{np.min(science_data):.3f}")
         stats_col5.metric("Max", f"{np.max(science_data):.3f}") 
 
         pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
         st.metric(
-            "Pixel Scale (arcsec/pixel)",
-            f"{pixel_size_arcsec:.2f} (header estimation)",
+            "Mean Pixel Scale (arcsec/pixel)",
+            f"{pixel_size_arcsec:.2f}",
         )
         write_to_log(
             log_buffer,
