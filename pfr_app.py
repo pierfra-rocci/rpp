@@ -3347,7 +3347,7 @@ with st.sidebar:
         help="Detect and remove cosmic rays using the L.A.Cosmic algorithm"
     )
 
-    cr_params = st.expander("Advanced CR Parameters", expanded=False)
+    cr_params = st.expander("CRR Parameters", expanded=False)
     with cr_params:
         cr_gain = st.number_input(
             "Detector Gain (e-/ADU)",
