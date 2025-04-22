@@ -1249,7 +1249,7 @@ def fwhm_fit(
             raise ValueError(msg)
 
         mean_fwhm = np.median(fwhm_values_arr[valid])
-        st.write(f"FWHM estimate based on Gaussian model: {round(mean_fwhm, 2)} pixels")
+        st.success(f"FWHM based on Gaussian model: {round(mean_fwhm, 2)} pixels")
 
         return round(mean_fwhm)
     except ValueError as e:
@@ -1375,7 +1375,7 @@ def perform_epsf_photometry(
             )
 
             hdu.writeto(psf_filepath, overwrite=True)
-            st.success("PSF model saved as FITS file")
+            st.write("PSF model saved as FITS file")
 
             norm_epsf = simple_norm(epsf.data, "log", percent=99.0)
             fig_epsf_model, ax_epsf_model = plt.subplots(
