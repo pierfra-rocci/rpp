@@ -1529,7 +1529,7 @@ def find_sources_and_photometry(
         st.warning("No sources found!")
         return None, None, daofind, bkg
 
-    st.info("Doing astrometry refinement...")
+    st.write("Doing astrometry refinement using Stdpipe and Astropy...")
     ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w,
                                                  width=image_data.shape[1],
                                                  height=image_data.shape[0])
