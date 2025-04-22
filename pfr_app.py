@@ -1198,7 +1198,7 @@ def fwhm_fit(
 
         filtered_sources = filtered_sources[~np.isnan(filtered_sources["flux"])]
 
-        st.write(f"Number of sources after flux filtering: {len(filtered_sources)}")
+        st.write(f"Sources after flux filtering: {len(filtered_sources)}")
 
         if len(filtered_sources) == 0:
             msg = "No valid sources for fitting found after filtering."
@@ -1233,7 +1233,7 @@ def fwhm_fit(
 
         if skipped_sources > 0:
             st.write(
-                f"FWHM calculation failed for {skipped_sources} sources out of {len(filtered_sources)}."
+                f"FWHM failed for {skipped_sources} sources out of {len(filtered_sources)}."
             )
 
         if len(fwhm_values) == 0:
@@ -1776,8 +1776,8 @@ def cross_match_with_gaia(
         )
         idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
-        max_sep_constraint = 2 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
-        gaia_matches = d2d <= max_sep_constraint
+        max_sep_constraint = 3 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
+        gaia_matches = d2d < max_sep_constraint
 
         matched_indices_gaia = idx[gaia_matches]
         matched_indices_phot = np.where(gaia_matches)[0]
@@ -1915,7 +1915,7 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         ax.grid(True, alpha=0.5)
 
         st.success(
-            f"Calculated Zero Point: {zero_point_value:.3f} ± {zero_point_std:.3f}"
+            f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f}"
         )
 
         try:
@@ -1925,7 +1925,7 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         except Exception as e:
             st.warning(f"Could not save plot to file: {e}")
 
-        return zero_point_value, zero_point_std, fig
+        return round(zero_point_value,2), round(zero_point_std,2), fig
     except Exception as e:
         st.error(f"Error calculating zero point: {e}")
         return None, None, None
