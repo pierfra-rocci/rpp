@@ -1778,7 +1778,7 @@ def cross_match_with_gaia(
         idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
         max_sep_constraint = 1.5 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
-        gaia_matches = d2d < max_sep_constraint
+        gaia_matches = d2d <= max_sep_constraint
 
         matched_indices_gaia = idx[gaia_matches]
         matched_indices_phot = np.where(gaia_matches)[0]
