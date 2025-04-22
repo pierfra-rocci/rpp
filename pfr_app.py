@@ -850,8 +850,8 @@ def calibrate_image_streamlit(
     apply_flat,
     apply_cr_removal=False,
     cr_gain=1.0,
-    cr_readnoise=6.5,
-    cr_sigclip=4.5
+    cr_readnoise=2.5,
+    cr_sigclip=4.,
 ):
     """
     Calibrate an astronomical science image using bias, dark, and flat-field frames.
@@ -1352,7 +1352,7 @@ def perform_epsf_photometry(
         st.warning(f"Error displaying extracted stars: {e}")
 
     try:
-        epsf_builder = EPSFBuilder(oversampling=2, maxiters=5, progress_bar=True)
+        epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
         epsf, _ = epsf_builder(stars)
         st.session_state["epsf_model"] = epsf
     except Exception as e:
@@ -1539,7 +1539,7 @@ def find_sources_and_photometry_streamlit(
     try:
         wcs = pipeline.refine_astrometry(obj, cat,
                                          1.4*fwhm_estimate*pixel_scale/3600,
-                                         wcs=w, order=0,
+                                         wcs=w, order=1,
                                          cat_col_mag=cat_col_mag,
                                          cat_col_mag_err=None,
                                          n_iter=5,
@@ -1556,7 +1556,7 @@ def find_sources_and_photometry_streamlit(
         st.warning(f"Skipping WCS refinement: {str(e)}")
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
-    apertures = CircularAperture(positions, r=1.5 * fwhm_estimate)
+    apertures = CircularAperture(positions, r=1.4 * fwhm_estimate)
 
     try:
         wcs_obj = None
@@ -1736,7 +1736,7 @@ def cross_match_with_gaia_streamlit(
         radius_query = gaia_search_radius_arcsec * u.arcsec
 
         st.write(
-            f"Querying Gaia DR3 in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
+            f"Querying Gaia in a radius of {round(radius_query.value / 60., 2)} arcmin."
         )
         job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
         gaia_table = job.get_results()
@@ -1753,11 +1753,9 @@ def cross_match_with_gaia_streamlit(
             gaia_table[gaia_band] > gaia_min_mag
         )
 
-        if "phot_variable_flag" in gaia_table.colnames:
-            var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
-            combined_filter = mag_filter & var_filter
-        else:
-            combined_filter = mag_filter
+        var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
+        color_index_filter = gaia_table["bp_rp"] < 1.0
+        combined_filter = mag_filter & var_filter & color_index_filter
 
         gaia_table_filtered = gaia_table[combined_filter]
 
