@@ -1522,7 +1522,7 @@ def find_sources_and_photometry(
     sources = daofind(image_data - bkg.background, mask=mask)
 
     obj = photometry.get_objects_sep(image_data - bkg.background, mask=None,
-                                     aper=1.5*fwhm_estimate, gain=1, edge=25
+                                     aper=1.5*fwhm_estimate, gain=1, edge=0
                                      )
 
     if sources is None or len(sources) == 0:
@@ -1534,12 +1534,12 @@ def find_sources_and_photometry(
                                                  width=image_data.shape[1],
                                                  height=image_data.shape[0])
     cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiaedr3',
-                                  filters={'RPmag': '<20'})
-    cat_col_mag = 'RPmag'
+                                  filters={'Gmag': '<20'})
+    cat_col_mag = 'Gmag'
     try:
         wcs = pipeline.refine_astrometry(obj, cat,
                                          1.5*fwhm_estimate*pixel_scale/3600,
-                                         wcs=w, order=1,
+                                         wcs=w, order=2,
                                          cat_col_mag=cat_col_mag,
                                          cat_col_mag_err=None,
                                          n_iter=5,
