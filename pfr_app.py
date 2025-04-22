@@ -334,7 +334,7 @@ def detect_remove_cosmic_rays(image_data, gain=1.0, readnoise=6.5, sigclip=4.5,
         return image_data, None, 0
 
 
-def estimate_background(image_data, box_size=100, filter_size=5):
+def estimate_background(image_data, box_size=128, filter_size=7):
     """
     Estimate the background and background RMS of an astronomical image.
 
@@ -1054,7 +1054,7 @@ def make_border_mask(
         elif len(border) == 4:
             top, bottom, left, right = border
         else:
-            raise ValueError("border must be an int or a tuple of 2 or 4 elements")
+            raise ValueError("border must be an int or a tuple of 2 or 4 el")
     else:
         raise TypeError("border must be an int or a tuple")
 
@@ -1074,7 +1074,6 @@ def make_border_mask(
 def fwhm_fit(
     img: np.ndarray,
     fwhm: float,
-    pixel_scale: float,
     mask: Optional[np.ndarray] = None,
     std_lo: float = 0.5,
     std_hi: float = 0.5,
@@ -1115,8 +1114,8 @@ def fwhm_fit(
 
     Progress updates and error messages are displayed using Streamlit.
     """
-
-    def compute_fwhm_marginal_sums(image_data, center_row, center_col, box_size):
+    def compute_fwhm_marginal_sums(image_data, center_row, center_col,
+                                   box_size):
         half_box = box_size // 2
 
         if box_size < 5:
@@ -1251,7 +1250,7 @@ def fwhm_fit(
             raise ValueError(msg)
 
         mean_fwhm = np.median(fwhm_values_arr[valid])
-        st.write(f"FWHM estimate based on Gaussian model: {round(mean_fwhm)} pixels")
+        st.write(f"FWHM estimate based on Gaussian model: {round(mean_fwhm, 2)} pixels")
 
         return round(mean_fwhm)
     except ValueError as e:
@@ -1509,7 +1508,7 @@ def find_sources_and_photometry_streamlit(
 
     st.write("Estimating FWHM...")
     fwhm_estimate = fwhm_fit(
-        image_data - bkg.background, mean_fwhm_pixel, pixel_scale, mask
+        image_data - bkg.background, mean_fwhm_pixel, mask
     )
 
     if fwhm_estimate is None:
@@ -1517,7 +1516,7 @@ def find_sources_and_photometry_streamlit(
         fwhm_estimate = mean_fwhm_pixel
 
     daofind = DAOStarFinder(
-        fwhm=1.5 * fwhm_estimate,
+        fwhm=1.4 * fwhm_estimate,
         threshold=threshold_sigma * np.std(image_data - bkg.background),
     )
 
@@ -1540,10 +1539,12 @@ def find_sources_and_photometry_streamlit(
     cat_col_mag = 'RPmag'
     try:
         wcs = pipeline.refine_astrometry(obj, cat,
-                                         1.5*fwhm_estimate*pixel_scale/3600,
+                                         1.4*fwhm_estimate*pixel_scale/3600,
                                          wcs=w, order=0,
                                          cat_col_mag=cat_col_mag,
                                          cat_col_mag_err=None,
+                                         n_iter=5,
+                                         min_matches=3,
                                          verbose=True)
         if wcs:
             st.info("Refined WCS successfully.")
