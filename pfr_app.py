@@ -1657,7 +1657,7 @@ def find_sources_and_photometry_streamlit(
 
 
 @st.cache_data
-def cross_match_with_gaia_streamlit(
+def cross_match_with_gaia(
     _phot_table,
     _science_header,
     pixel_size_arcsec,
@@ -1748,6 +1748,13 @@ def cross_match_with_gaia_streamlit(
         st.warning("No Gaia sources found within search radius.")
         return None
 
+    if gaia_band == "G":
+        gaia_band = "phot_g_mean_mag"
+    elif gaia_band == "Bp":
+        gaia_band = "phot_bp_mean_mag"
+    elif gaia_band == "Rp":
+        gaia_band = "phot_rp_mean_mag"
+
     try:
         mag_filter = (gaia_table[gaia_band] < gaia_max_mag) & (
             gaia_table[gaia_band] > gaia_min_mag
@@ -1804,7 +1811,7 @@ def cross_match_with_gaia_streamlit(
 
 
 @st.cache_data
-def calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air):
+def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
     """
     Calculate photometric zero point from matched sources with GAIA.
 
@@ -2002,7 +2009,7 @@ def run_zero_point_calibration(
             return None, None, None
 
     with st.spinner("Cross-matching with Gaia..."):
-        matched_table = cross_match_with_gaia_streamlit(
+        matched_table = cross_match_with_gaia(
             phot_table_qtable,
             header,
             pixel_size_arcsec,
@@ -2020,7 +2027,7 @@ def run_zero_point_calibration(
     st.dataframe(matched_table.head(10))
 
     with st.spinner("Calculating zero point..."):
-        zero_point_value, zero_point_std, zp_plot = calculate_zero_point_streamlit(
+        zero_point_value, zero_point_std, zp_plot = calculate_zero_point(
             phot_table_qtable, matched_table, gaia_band, air
         )
 
@@ -3238,88 +3245,6 @@ def provide_download_buttons(folder_path):
         st.error(f"Error creating zip archive: {str(e)}")
 
 
-# def update_observatory_inputs(science_header=None):
-#     """Update observatory inputs with values from science header or defaults"""
-#     st.header("Observatory Location")
-
-#     # Default values
-#     defaults = {
-#         "name": "",
-#         "latitude": 0.,
-#         "longitude": 0.,
-#         "elevation": 0.,
-#     }
-
-#     # Get values from header if available
-#     if science_header is not None:
-#         defaults["name"] = science_header.get("OBSERVAT", defaults["name"])
-#         defaults["latitude"] = float(
-#             science_header.get(
-#                 "LATITUDE", science_header.get("LAT-OBS", defaults["latitude"])
-#             )
-#         )
-#         defaults["longitude"] = float(
-#             science_header.get(
-#                 "LONGITUD", science_header.get("LONG-OBS", defaults["longitude"])
-#             )
-#         )
-#         defaults["elevation"] = float(
-#             science_header.get(
-#                 "ELEVATIO", science_header.get("ALT-OBS", defaults["elevation"])
-#             )
-#         )
-
-#     # Create a unique widget ID for this call
-#     if "observatory_widget_id" not in st.session_state:
-#         st.session_state.observatory_widget_id = 0
-#     else:
-#         st.session_state.observatory_widget_id += 1
-#     widget_id = st.session_state.observatory_widget_id
-#     # Use a unique prefix for widget keys
-#     prefix = f"obs_{widget_id}_"
-
-#     # Create the input widgets with the determined values and unique keys
-#     observatory_name = st.text_input(
-#         "Observatory",
-#         value=defaults["name"],
-#         help="Name of the observatory",
-#         key=f"{prefix}observatory_name",
-#     )
-
-#     latitude = st.number_input(
-#         "Latitude (°)",
-#         value=defaults["latitude"],
-#         min_value=-90.0,
-#         max_value=90.0,
-#         help="Observatory latitude in degrees (-90 to 90)",
-#         key=f"{prefix}latitude",
-#     )
-
-#     longitude = st.number_input(
-#         "Longitude (°)",
-#         value=defaults["longitude"],
-#         min_value=-180.0,
-#         max_value=180.0,
-#         help="Observatory longitude in degrees (-180 to 180)",
-#         key=f"{prefix}longitude",
-#     )
-
-#     elevation = st.number_input(
-#         "Elevation (m)",
-#         value=defaults["elevation"],
-#         min_value=0.0,
-#         help="Observatory elevation in meters above sea level",
-#         key=f"{prefix}elevation",
-#     )
-
-#     return {
-#         "name": observatory_name,
-#         "latitude": latitude,
-#         "longitude": longitude,
-#         "elevation": elevation,
-#     }
-
-
 def cleanup_temp_files():
     """
     Remove temporary files created during processing.
@@ -3428,13 +3353,13 @@ with st.sidebar:
             "Detector Gain (e-/ADU)",
             min_value=0.1,
             value=1.0,
-            step=0.1,
+            step=0.2,
             help="CCD gain in electrons per ADU"
         )
         cr_readnoise = st.number_input(
             "Read Noise (e-)",
             min_value=0.0,
-            value=6.5,
+            value=2.5,
             step=0.5,
             help="CCD read noise in electrons"
         )
@@ -3444,7 +3369,7 @@ with st.sidebar:
             max_value=10.0,
             value=4.5,
             step=0.5,
-            help="Sigma threshold for cosmic ray detection"
+            help="Threshold for cosmic ray detection"
         )
 
     st.sidebar.header("Observatory Location")
@@ -3457,7 +3382,7 @@ with st.sidebar:
         st.session_state.observatory_longitude = -0.001
     if "observatory_elevation" not in st.session_state:
         st.session_state.observatory_elevation = 46.
-    
+
     # Create the input widgets with permanent keys
     observatory_name = st.text_input(
         "Observatory/Telescope",
@@ -3465,43 +3390,28 @@ with st.sidebar:
         help="Name of the observatory",
         key="obs_name_input"
     )
-    
-    try:
-        lat_value = float(st.session_state.observatory_latitude)
-    except (ValueError, TypeError):
-        lat_value = 0.0
-
-    try:
-        lon_value = float(st.session_state.observatory_longitude)
-    except (ValueError, TypeError):
-        lon_value = 0.0
-
-    try:
-        elev_value = float(st.session_state.observatory_elevation)
-    except (ValueError, TypeError):
-        elev_value = 0.0
 
     latitude = st.number_input(
         "Latitude (°)",
-        value=lat_value,
+        value=float(st.session_state.observatory_latitude),
         min_value=-90.0,
         max_value=90.0,
-        help="Observatory latitude in degrees (-90 to 90)",
+        help="Observatory latitude in degrees",
         key="obs_lat_input"
     )
         
     longitude = st.number_input(
         "Longitude (°)",
-        value=lon_value,
+        value=float(st.session_state.observatory_longitude),
         min_value=-180.0,
         max_value=180.0,
-        help="Observatory longitude in degrees (-180 to 180)",
+        help="Observatory longitude in degrees",
         key="obs_lon_input"
     )
         
     elevation = st.number_input(
         "Elevation (m)",
-        value=elev_value,
+        value=float(st.session_state.observatory_elevation),
         min_value=0.0,
         help="Observatory elevation in meters above sea level",
         key="obs_elev_input"
@@ -3523,7 +3433,8 @@ with st.sidebar:
 
     st.sidebar.header("Astro-Colibri")
     colibri_api_key = st.text_input(
-        "API Key", value=None, help="Enter your Astro-Colibri API key", type="password"
+        "API Key", value=None, help="Enter your Astro-Colibri API key",
+        type="password"
     )
     st.caption("[Get your Key](https://astro-colibri.science)")
 
@@ -3548,7 +3459,7 @@ with st.sidebar:
         "Border Mask (pixels)",
         25,
         200,
-        50,
+        25,
         25,
         help="Size of border to exclude from source detection",
     )
@@ -3556,15 +3467,15 @@ with st.sidebar:
     st.header("Gaia Parameters")
     gaia_band = st.selectbox(
         "Gaia Band",
-        ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"],
+        ["G", "Bp", "Rp"],
         index=0,
         help="Gaia magnitude band to use for calibration",
     )
     gaia_min_mag = st.slider(
         "Gaia Min Magnitude",
-        6.0,
+        7.0,
         12.0,
-        10.0,
+        7.0,
         0.5,
         help="Minimum magnitude for Gaia sources",
     )
@@ -3572,7 +3483,7 @@ with st.sidebar:
         "Gaia Max Magnitude",
         15.0,
         20.0,
-        19.0,
+        20.0,
         0.5,
         help="Maximum magnitude for Gaia sources",
     )
@@ -4006,7 +3917,7 @@ if science_file is not None:
 
                     if phot_table_df is not None:
                         with st.spinner("Cross-matching with Gaia..."):
-                            matched_table = cross_match_with_gaia_streamlit(
+                            matched_table = cross_match_with_gaia(
                                 phot_table_qtable,
                                 header_to_process,
                                 pixel_size_arcsec,
@@ -4022,7 +3933,7 @@ if science_file is not None:
 
                             with st.spinner("Calculating zero point..."):
                                 zero_point_value, zero_point_std, zp_plot = (
-                                    calculate_zero_point_streamlit(
+                                    calculate_zero_point(
                                         phot_table_qtable, matched_table, gaia_band, air
                                     )
                                 )
