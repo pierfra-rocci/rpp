@@ -707,8 +707,8 @@ def airmass(
         if airmass_value < 1.0:
             st.warning("Calculated airmass is less than 1 (impossible)")
             airmass_value = 1.0
-        elif airmass_value > 40.0:
-            st.warning("Extremely high airmass (>40), object near horizon")
+        elif airmass_value > 30.0:
+            st.warning("Extremely high airmass (>30), object near horizon")
 
         sun_altaz = get_sun(obstime).transform_to(altaz_frame)
         sun_alt = float(sun_altaz.alt.deg)
