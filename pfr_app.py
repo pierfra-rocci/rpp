@@ -1379,7 +1379,7 @@ def perform_epsf_photometry(
 
             norm_epsf = simple_norm(epsf.data, "log", percent=99.0)
             fig_epsf_model, ax_epsf_model = plt.subplots(
-                figsize=FIGURE_SIZES["medium"], dpi=100
+                figsize=FIGURE_SIZES["medium"], dpi=120
             )
             ax_epsf_model.imshow(
                 epsf.data,
