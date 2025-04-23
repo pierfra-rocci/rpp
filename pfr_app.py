@@ -91,7 +91,7 @@ FIGURE_SIZES = {
     "stars_grid": (10, 8),  # For grid of stars
 }
 
-URL = "https://astro-colibri.science"
+URL = "https://astro-colibri.science/"
 
 
 def getJson(url: str) -> json:
@@ -2306,7 +2306,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
 
         try:
             # Base URL of the API
-            url = 'https://astro-colibri.science/cone_search'
+            url = URL + 'cone_search'
 
             # Request parameters (headers, body)
             headers = {"Content-Type": "application/json"}
@@ -2513,7 +2513,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             st.error(f"SIMBAD query execution failed: {str(e)}")
 
     status_text.write("Querying SkyBoT for solar system objects...")
-    
+
     try:
         if field_center_ra is not None and field_center_dec is not None:
             if "DATE-OBS" in header:
