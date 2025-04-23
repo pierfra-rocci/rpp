@@ -2,6 +2,7 @@ import sys
 
 if getattr(sys, "frozen", False):
     import importlib.metadata
+
     importlib.metadata.distributions = lambda **kwargs: []
 
 import streamlit.web.cli as stcli
@@ -58,6 +59,7 @@ from __version__ import version
 import warnings
 
 warnings.filterwarnings("ignore")
+
 
 def resolve_path(path):
     return os.path.abspath(os.path.join(os.getcwd(), path))
