@@ -1946,7 +1946,7 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
 
         ax.set_xlabel(f"Gaia {gaia_band}")
-        ax.set_ylabel("Calibrated magnitude")
+        ax.set_ylabel("Calib mag")
         ax.set_title("Gaia magnitude vs Calibrated magnitude")
         ax.legend()
         ax.grid(True, alpha=0.5)
