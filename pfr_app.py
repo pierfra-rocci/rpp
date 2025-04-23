@@ -3289,7 +3289,6 @@ def cleanup_temp_files():
                         os.remove(os.path.join(base_dir, file))
                     except Exception as e:
                         st.warning(f"Could not remove {file}: {str(e)}")
-                st.write("Removed temporary file")
         except Exception as e:
             st.warning(f"Could not remove temporary files: {str(e)}")
 
