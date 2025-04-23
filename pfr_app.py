@@ -3369,13 +3369,13 @@ with st.sidebar:
     st.sidebar.header("Observatory Location")
     # Initialize default values if not in session state
     if "observatory_name" not in st.session_state:
-        st.session_state.observatory_name = "Greenwich"
+        st.session_state.observatory_name = "TJMS"
     if "observatory_latitude" not in st.session_state:
-        st.session_state.observatory_latitude = 51.477
+        st.session_state.observatory_latitude = 48.29166
     if "observatory_longitude" not in st.session_state:
-        st.session_state.observatory_longitude = -0.001
+        st.session_state.observatory_longitude = 2.43805
     if "observatory_elevation" not in st.session_state:
-        st.session_state.observatory_elevation = 46.
+        st.session_state.observatory_elevation = 94.
 
     # Create the input widgets with permanent keys
     observatory_name = st.text_input(
