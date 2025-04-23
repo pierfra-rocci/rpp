@@ -1520,7 +1520,6 @@ def find_sources_and_photometry(
     daofind = DAOStarFinder(
         fwhm=1.5*fwhm_estimate,
         threshold=threshold_sigma*np.std(image_data - bkg.background), peakmax=peak_max)
-    )
 
     sources = daofind(image_data - bkg.background, mask=mask)
 
