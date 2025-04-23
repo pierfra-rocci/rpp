@@ -132,7 +132,7 @@ def getJson(url: str) -> json:
         return json.dumps({"error": "invalid json", "message": str(e)})
 
 
-def solve_with_siril(file_path, header=None):
+def solve_with_siril(file_path):
     """
     Solve astrometric plate using Siril through a PowerShell script.
     This function sends an image file path to a PowerShell script that uses Siril
@@ -3550,7 +3550,7 @@ if science_file is not None:
                 "Running plate solve (this may take a while)..."
             ):
                 wcs_obj, science_header = solve_with_siril(
-                    science_file_path, header=science_header)
+                    science_file_path)
 
                 log_buffer = st.session_state["log_buffer"]
 
