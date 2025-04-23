@@ -3,6 +3,7 @@ import subprocess
 
 if getattr(sys, "frozen", False):
     import importlib.metadata
+
     importlib.metadata.distributions = lambda **kwargs: []
 
 import os
@@ -53,9 +54,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-st.set_page_config(
-    page_title="RAPAS Photometry Factory", page_icon="🔭", layout="wide"
-)
+st.set_page_config(page_title="RAPAS Photometry Factory", page_icon="🔭", layout="wide")
 
 # Add application version to the sidebar
 st.sidebar.markdown(f"**App Version:** {version}")
@@ -156,10 +155,12 @@ def solve_with_siril(file_path):
         if os.path.exists(file_path):
             command = [
                 "powershell.exe",
-                "-ExecutionPolicy", "Bypass",
-                "-File", "plate_solve.ps1",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "plate_solve.ps1",
                 "-filepath",
-                f"{file_path}"
+                f"{file_path}",
             ]
             subprocess.run(command, check=True)
         else:
@@ -170,13 +171,13 @@ def solve_with_siril(file_path):
         return None
     try:
         file_path_list = file_path.split(".")
-        file_path = file_path_list[0]+"_solved.fits"
+        file_path = file_path_list[0] + "_solved.fits"
         hdu = fits.open(file_path, mode="readonly")
         head = hdu[0].header
         wcs_obj = WCS(head)
 
         return wcs_obj, head
-    
+
     except Exception as e:
         st.error(f"Error reading solved file: {str(e)}")
 
@@ -243,10 +244,10 @@ def safe_wcs_create(header):
     missing_keys = [key for key in required_keys if key not in header]
 
     try:
-        header.remove('XPIXELSZ')
-        header.remove('YPIXELSZ')
-        header.remove('CDELTM1')
-        header.remove('CDELTM2')
+        header.remove("XPIXELSZ")
+        header.remove("YPIXELSZ")
+        header.remove("CDELTM1")
+        header.remove("CDELTM2")
     except KeyError:
         pass
 
@@ -270,11 +271,18 @@ def safe_wcs_create(header):
         return None, f"WCS creation error: {str(e)}"
 
 
-def detect_remove_cosmic_rays(image_data, gain=1.0, readnoise=6.5, sigclip=4.5,
-                              sigfrac=0.3, objlim=5.0, verbose=False):
+def detect_remove_cosmic_rays(
+    image_data,
+    gain=1.0,
+    readnoise=6.5,
+    sigclip=4.5,
+    sigfrac=0.3,
+    objlim=5.0,
+    verbose=False,
+):
     """
     Detect and remove cosmic rays from an astronomical image using astroscrappy.
-    
+
     Parameters
     ----------
     image_data : numpy.ndarray
@@ -291,7 +299,7 @@ def detect_remove_cosmic_rays(image_data, gain=1.0, readnoise=6.5, sigclip=4.5,
         Minimum contrast between cosmic ray and underlying object, default=5.0
     verbose : bool, optional
         Whether to print verbose output, default=False
-        
+
     Returns
     -------
     tuple
@@ -299,7 +307,7 @@ def detect_remove_cosmic_rays(image_data, gain=1.0, readnoise=6.5, sigclip=4.5,
         - cleaned_image: numpy.ndarray with cosmic rays removed
         - mask: boolean numpy.ndarray showing cosmic ray locations (True where cosmic rays were detected)
         - num_cosmic_rays: int, number of cosmic rays detected
-    
+
     Notes
     -----
     Uses the L.A.Cosmic algorithm implemented in astroscrappy.
@@ -308,7 +316,7 @@ def detect_remove_cosmic_rays(image_data, gain=1.0, readnoise=6.5, sigclip=4.5,
     try:
         # Ensure the image is in the correct format (float32 required by astroscrappy)
         image_data = image_data.astype(np.float32)
-        
+
         # Detect and remove cosmic rays using astroscrappy's implementation of L.A.Cosmic
         cleaned_image, mask = astroscrappy.detect_cosmics(
             image_data,
@@ -317,14 +325,14 @@ def detect_remove_cosmic_rays(image_data, gain=1.0, readnoise=6.5, sigclip=4.5,
             sigclip=sigclip,
             sigfrac=sigfrac,
             objlim=objlim,
-            verbose=verbose
+            verbose=verbose,
         )
-        
+
         # Count the number of detected cosmic rays
         num_cosmic_rays = np.sum(mask)
-        
+
         return cleaned_image, mask, num_cosmic_rays
-    
+
     except ImportError:
         st.error("astroscrappy package is not installed. Cannot remove cosmic rays.")
         return image_data, None, 0
@@ -844,7 +852,7 @@ def calibrate_image(
     apply_cr_removal=False,
     cr_gain=1.0,
     cr_readnoise=2.5,
-    cr_sigclip=4.,
+    cr_sigclip=4.0,
 ):
     """
     Calibrate an astronomical Image using bias, dark, and flat-field frames.
@@ -930,36 +938,39 @@ def calibrate_image(
 
     if apply_cr_removal:
         st.write("Detecting and removing cosmic rays...")
-        
+
         # Try to get gain and readnoise from header if available
         if science_header is not None:
-            gain_from_header = science_header.get('GAIN', science_header.get('EGAIN', cr_gain))
-            readnoise_from_header = science_header.get('READNOIS', science_header.get('RDNOISE', cr_readnoise))
+            gain_from_header = science_header.get(
+                "GAIN", science_header.get("EGAIN", cr_gain)
+            )
+            readnoise_from_header = science_header.get(
+                "READNOIS", science_header.get("RDNOISE", cr_readnoise)
+            )
             try:
                 cr_gain = float(gain_from_header)
                 cr_readnoise = float(readnoise_from_header)
             except (ValueError, TypeError):
-                st.warning("Could not parse gain/readnoise from header. Using default values.")
-        
+                st.warning(
+                    "Could not parse gain/readnoise from header. Using default values."
+                )
+
         # Apply cosmic ray removal
         cleaned_image, cr_mask, num_cr = detect_remove_cosmic_rays(
-            calibrated_science,
-            gain=cr_gain,
-            readnoise=cr_readnoise,
-            sigclip=cr_sigclip
+            calibrated_science, gain=cr_gain, readnoise=cr_readnoise, sigclip=cr_sigclip
         )
-        
+
         calibrated_science = cleaned_image
         steps_applied.append(f"Cosmic Ray Removal ({int(num_cr)} detected)")
-        
+
         # Display cosmic ray mask if available
         if cr_mask is not None and num_cr > 0:
             st.write(f"Removed {int(num_cr)} cosmic rays")
-            
+
             # Create a figure showing the cosmic ray mask
             fig_cr, ax_cr = plt.subplots(figsize=FIGURE_SIZES["medium"])
-            im_cr = ax_cr.imshow(cr_mask, cmap='hot', origin='lower')
-            fig_cr.colorbar(im_cr, ax=ax_cr, label='Cosmic Ray Mask')
+            im_cr = ax_cr.imshow(cr_mask, cmap="hot", origin="lower")
+            fig_cr.colorbar(im_cr, ax=ax_cr, label="Cosmic Ray Mask")
             ax_cr.set_title(f"Detected Cosmic Rays: {int(num_cr)}")
             st.pyplot(fig_cr)
 
@@ -972,10 +983,10 @@ def calibrate_image(
     st.success(f"Calibration steps applied: {', '.join(steps_applied)}")
     # Update header with calibration information
     updated_header = science_header.copy()
-    updated_header['HISTORY'] = f"Calibration steps: {', '.join(steps_applied)}"
+    updated_header["HISTORY"] = f"Calibration steps: {', '.join(steps_applied)}"
 
-    if apply_cr_removal and 'num_cr' in locals():
-        updated_header['CRCOUNT'] = num_cr
+    if apply_cr_removal and "num_cr" in locals():
+        updated_header["CRCOUNT"] = num_cr
 
     return calibrated_science, science_header
 
@@ -1074,8 +1085,8 @@ def fwhm_fit(
     img: np.ndarray,
     fwhm: float,
     mask: Optional[np.ndarray] = None,
-    std_lo: float = 1.,
-    std_hi: float = 1.,
+    std_lo: float = 1.0,
+    std_hi: float = 1.0,
 ) -> Optional[float]:
     """
     Estimate the Full Width at Half Maximum (FWHM) of stars in an astronomical image.
@@ -1113,8 +1124,8 @@ def fwhm_fit(
 
     Progress updates and error messages are displayed using Streamlit.
     """
-    def compute_fwhm_marginal_sums(image_data, center_row, center_col,
-                                   box_size):
+
+    def compute_fwhm_marginal_sums(image_data, center_row, center_col, box_size):
         half_box = box_size // 2
 
         if box_size < 5:
@@ -1182,8 +1193,10 @@ def fwhm_fit(
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit
 
     try:
-        peak = 0.90*np.nanmax(img)
-        daofind = DAOStarFinder(fwhm=1.5*fwhm, threshold=5*np.std(img), peakmax=peak)
+        peak = 0.90 * np.nanmax(img)
+        daofind = DAOStarFinder(
+            fwhm=1.5 * fwhm, threshold=5 * np.std(img), peakmax=peak
+        )
         sources = daofind(img, mask=mask)
         if sources is None:
             st.warning("No sources found !")
@@ -1406,7 +1419,7 @@ def perform_psf_photometry(
         finder=daostarfind,
         aperture_radius=fit_shape / 2,
         maxiters=3,
-        mode='new',
+        mode="new",
         progress_bar=True,
     )
 
@@ -1438,8 +1451,13 @@ def perform_psf_photometry(
 
 @st.cache_data
 def find_sources_and_photometry(
-    image_data, _science_header, mean_fwhm_pixel, threshold_sigma,
-    detection_mask, gaia_band, gb="Gmag"
+    image_data,
+    _science_header,
+    mean_fwhm_pixel,
+    threshold_sigma,
+    detection_mask,
+    gaia_band,
+    gb="Gmag",
 ):
     """
     Find astronomical sources and perform both aperture and PSF photometry.
@@ -1508,55 +1526,66 @@ def find_sources_and_photometry(
     )
 
     st.write("Estimating FWHM...")
-    fwhm_estimate = fwhm_fit(
-        image_data - bkg.background, mean_fwhm_pixel, mask
-    )
+    fwhm_estimate = fwhm_fit(image_data - bkg.background, mean_fwhm_pixel, mask)
 
     if fwhm_estimate is None:
         st.warning("Failed to estimate FWHM. Using the initial estimate.")
         fwhm_estimate = mean_fwhm_pixel
 
-    peak_max = 0.95*np.max(image_data - bkg.background)
+    peak_max = 0.95 * np.max(image_data - bkg.background)
     daofind = DAOStarFinder(
-        fwhm=1.5*fwhm_estimate,
-        threshold=threshold_sigma*np.std(image_data - bkg.background), peakmax=peak_max)
+        fwhm=1.5 * fwhm_estimate,
+        threshold=threshold_sigma * np.std(image_data - bkg.background),
+        peakmax=peak_max,
+    )
 
     sources = daofind(image_data - bkg.background, mask=mask)
 
-    obj = photometry.get_objects_sep(image_data - bkg.background, mask=None,
-                                     aper=1.75*fwhm_estimate, gain=1, edge=10
-                                     )
+    obj = photometry.get_objects_sep(
+        image_data - bkg.background,
+        mask=None,
+        aper=1.75 * fwhm_estimate,
+        gain=1,
+        edge=10,
+    )
 
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
         return None, None, daofind, bkg
 
     st.write("Doing astrometry refinement using Stdpipe and Astropy...")
-    ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w,
-                                                 width=image_data.shape[1],
-                                                 height=image_data.shape[0])
-   
+    ra0, dec0, sr0 = astrometry.get_frame_center(
+        wcs=w, width=image_data.shape[1], height=image_data.shape[0]
+    )
+
     if gaia_band == "phot_bp_mean_mag":
         gb = "Bpmag"
     if gaia_band == "phot_rp_mean_mag":
         gb = "Rpmag"
-    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiaedr3',
-                                  filters={gb: '<20'})
+    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3", filters={gb: "<20"})
     cat_col_mag = gb
     try:
-        wcs = pipeline.refine_astrometry(obj, cat,
-                                         1.75*fwhm_estimate*pixel_scale/3600,
-                                         wcs=w, order=2,
-                                         cat_col_mag=cat_col_mag,
-                                         cat_col_mag_err=None,
-                                         n_iter=5,
-                                         min_matches=3,
-                                         use_photometry=True,
-                                         verbose=True)
+        wcs = pipeline.refine_astrometry(
+            obj,
+            cat,
+            1.75 * fwhm_estimate * pixel_scale / 3600,
+            wcs=w,
+            order=2,
+            cat_col_mag=cat_col_mag,
+            cat_col_mag_err=None,
+            n_iter=5,
+            min_matches=3,
+            use_photometry=True,
+            verbose=True,
+        )
         if wcs:
             st.info("Refined WCS successfully.")
-            astrometry.clear_wcs(_science_header, remove_comments=True,
-                                 remove_underscored=True, remove_history=True)
+            astrometry.clear_wcs(
+                _science_header,
+                remove_comments=True,
+                remove_underscored=True,
+                remove_history=True,
+            )
             _science_header.update(wcs.to_header(relax=True))
         else:
             st.warning("WCS refinement failed.")
@@ -1564,7 +1593,7 @@ def find_sources_and_photometry(
         st.warning(f"Skipping WCS refinement: {str(e)}")
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
-    apertures = CircularAperture(positions, r=1.5*fwhm_estimate)
+    apertures = CircularAperture(positions, r=1.5 * fwhm_estimate)
 
     try:
         wcs_obj = None
@@ -1744,7 +1773,7 @@ def cross_match_with_gaia(
         radius_query = gaia_search_radius_arcsec * u.arcsec
 
         st.write(
-            f"Querying Gaia in a radius of {round(radius_query.value / 60., 2)} arcmin."
+            f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
         )
         job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
         gaia_table = job.get_results()
@@ -1876,18 +1905,18 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         fig, ax = plt.subplots(figsize=FIGURE_SIZES["medium"], dpi=100)
 
         # Calculate residuals
-        _matched_table["residual"] = _matched_table[gaia_band] - _matched_table["calib_mag"]
-        
+        _matched_table["residual"] = (
+            _matched_table[gaia_band] - _matched_table["calib_mag"]
+        )
+
         # Create bins for magnitude ranges
         bin_width = 0.5  # 0.5 magnitude width bins
         min_mag = _matched_table[gaia_band].min()
         max_mag = _matched_table[gaia_band].max()
-        bins = np.arange(np.floor(min_mag), np.ceil(max_mag) + bin_width,
-                         bin_width)
-        
+        bins = np.arange(np.floor(min_mag), np.ceil(max_mag) + bin_width, bin_width)
+
         # Group data by magnitude bins
-        grouped = _matched_table.groupby(pd.cut(_matched_table[gaia_band],
-                                                bins))
+        grouped = _matched_table.groupby(pd.cut(_matched_table[gaia_band], bins))
         bin_centers = [(bin.left + bin.right) / 2 for bin in grouped.groups.keys()]
         bin_means = grouped["calib_mag"].mean().values
         bin_stds = grouped["calib_mag"].std().values
@@ -1898,7 +1927,7 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
             _matched_table["calib_mag"],
             alpha=0.5,
             label="Matched sources",
-            color='blue'
+            color="blue",
         )
 
         # Plot binned means with error bars showing standard deviation
@@ -1907,14 +1936,14 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
             np.array(bin_centers)[valid_bins],
             bin_means[valid_bins],
             yerr=bin_stds[valid_bins],
-            fmt='ro-',
-            label='Mean ± StdDev (binned)',
-            capsize=5
+            fmt="ro-",
+            label="Mean ± StdDev (binned)",
+            capsize=5,
         )
 
         # Add a diagonal line for reference
         ideal_mag = np.linspace(min_mag, max_mag, 10)
-        ax.plot(ideal_mag, ideal_mag, 'k--', alpha=0.7, label="y=x")
+        ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
 
         ax.set_xlabel(f"Gaia {gaia_band}")
         ax.set_ylabel("Calibrated magnitude")
@@ -1927,13 +1956,15 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         )
 
         try:
-            base_name = st.session_state.get('base_filename', 'photometry')
-            zero_point_plot_path = os.path.join(output_dir, f"{base_name}_zero_point_plot.png")
+            base_name = st.session_state.get("base_filename", "photometry")
+            zero_point_plot_path = os.path.join(
+                output_dir, f"{base_name}_zero_point_plot.png"
+            )
             plt.savefig(zero_point_plot_path)
         except Exception as e:
             st.warning(f"Could not save plot to file: {e}")
 
-        return round(zero_point_value,2), round(zero_point_std,2), fig
+        return round(zero_point_value, 2), round(zero_point_std, 2), fig
     except Exception as e:
         st.error(f"Error calculating zero point: {e}")
         return None, None, None
@@ -1995,14 +2026,13 @@ def run_zero_point_calibration(
     aperture photometry results.
     """
     with st.spinner("Finding sources and performing photometry..."):
-        phot_table_qtable, epsf_table, _, _ = (
-            find_sources_and_photometry(
-                image_to_process,
-                header_to_process,
-                mean_fwhm_pixel,
-                threshold_sigma,
-                detection_mask, gaia_band
-            )
+        phot_table_qtable, epsf_table, _, _ = find_sources_and_photometry(
+            image_to_process,
+            header_to_process,
+            mean_fwhm_pixel,
+            threshold_sigma,
+            detection_mask,
+            gaia_band,
         )
 
         if phot_table_qtable is None:
@@ -2162,11 +2192,16 @@ def run_zero_point_calibration(
         return zero_point_value, zero_point_std, final_table
 
 
-def enhance_catalog_with_crossmatches(api_key, final_table, matched_table, 
-                                      header, pixel_scale_arcsec,
-                                      search_radius_arcsec=60):
+def enhance_catalog_with_crossmatches(
+    api_key,
+    final_table,
+    matched_table,
+    header,
+    pixel_scale_arcsec,
+    search_radius_arcsec=60,
+):
     """
-    Enhance a photometric catalog with cross-matches from multiple 
+    Enhance a photometric catalog with cross-matches from multiple
     astronomical databases.
 
     This function queries several catalogs and databases including:
@@ -2259,23 +2294,21 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
             st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
 
     if field_center_ra is not None and field_center_dec is not None:
-            if not (-360 <= field_center_ra <= 360) or not (
-                -90 <= field_center_dec <= 90
-            ):
-                st.warning(
-                    f"Invalid coordinates: RA={field_center_ra}, DEC={field_center_dec}"
+        if not (-360 <= field_center_ra <= 360) or not (-90 <= field_center_dec <= 90):
+            st.warning(
+                f"Invalid coordinates: RA={field_center_ra}, DEC={field_center_dec}"
+            )
+        else:
+            if "NAXIS1" in header and "NAXIS2" in header:
+                field_width_arcmin = (
+                    max(header.get("NAXIS1", 1000), header.get("NAXIS2", 1000))
+                    * pixel_scale_arcsec
+                    / 60.0
                 )
             else:
-                if "NAXIS1" in header and "NAXIS2" in header:
-                    field_width_arcmin = (
-                        max(header.get("NAXIS1", 1000), header.get("NAXIS2", 1000))
-                        * pixel_scale_arcsec
-                        / 60.0
-                    )
-                else:
-                    field_width_arcmin = 30.0
+                field_width_arcmin = 30.0
     else:
-    st.warning("Could not extract field center coordinates from header")
+        st.warning("Could not extract field center coordinates from header")
 
     st.info("Querying Astro-Colibri API...")
 
@@ -2301,11 +2334,11 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
 
         try:
             # Base URL of the API
-            url = URL + 'cone_search'
+            url = URL + "cone_search"
 
             # Request parameters (headers, body)
             headers = {"Content-Type": "application/json"}
-            
+
             # Define date range for the query
             observation_date = None
             if header is not None:
@@ -2313,19 +2346,21 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                     observation_date = header["DATE-OBS"]
                 elif "DATE" in header:
                     observation_date = header["DATE"]
-            
+
             # Set time range to ±7 days from observation date or current date
             if observation_date:
                 try:
-                    base_date = datetime.fromisoformat(observation_date.replace('T', ' ').split('.')[0])
+                    base_date = datetime.fromisoformat(
+                        observation_date.replace("T", " ").split(".")[0]
+                    )
                 except (ValueError, TypeError):
                     base_date = datetime.now()
             else:
                 base_date = datetime.now()
-                
+
             date_min = (base_date - timedelta(days=14)).isoformat()
             date_max = (base_date + timedelta(days=7)).isoformat()
-            
+
             body = {
                 "uid": api_key,
                 "filter": None,
@@ -2335,26 +2370,26 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                 },
                 "properties": {
                     "type": "cone",
-                    "position": {"ra": field_center_ra, 
-                                 "dec": field_center_dec},
+                    "position": {"ra": field_center_ra, "dec": field_center_dec},
                     "radius": field_width_arcmin * 60.0,
-                }
+                },
             }
 
             # Perform the POST request
-            response = requests.post(url, headers=headers,
-                                     data=json.dumps(body))
+            response = requests.post(url, headers=headers, data=json.dumps(body))
 
             # Process the response
             try:
                 if response.status_code == 200:
-                    events = response.json()['voevents']
+                    events = response.json()["voevents"]
                 else:
-                    st.warning(f"Request failed with status code: {response.status_code}")
+                    st.warning(
+                        f"Request failed with status code: {response.status_code}"
+                    )
 
             except json.JSONDecodeError:
                 st.error("Request did NOT succeed : ", response.status_code)
-                st.error("Error message : ", response.content.decode('UTF-8'))
+                st.error("Error message : ", response.content.decode("UTF-8"))
 
         except Exception as e:
             st.error(f"Error querying Astro-Colibri API: {str(e)}")
@@ -2362,12 +2397,12 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
 
         if response is not None and response.status_code == 200:
             sources = {
-                    "ra": [],
-                    "dec": [],
-                    "discoverer_internal_name": [],
-                    "type": [],
-                    "classification": []
-                    }
+                "ra": [],
+                "dec": [],
+                "discoverer_internal_name": [],
+                "type": [],
+                "classification": [],
+            }
 
             # astrostars = pd.DataFrame(source)
             final_table["astrocolibri_name"] = None
@@ -2377,7 +2412,9 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                 if "ra" in event and "dec" in event:
                     sources["ra"].append(event["ra"])
                     sources["dec"].append(event["dec"])
-                    sources["discoverer_internal_name"].append(event["discoverer_internal_name"])
+                    sources["discoverer_internal_name"].append(
+                        event["discoverer_internal_name"]
+                    )
                     sources["type"].append(event["type"])
                     sources["classification"].append(event["classification"])
             astrostars = pd.DataFrame(sources)
@@ -2404,7 +2441,9 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
 
             for i, (match, match_idx) in enumerate(zip(matches, idx)):
                 if match:
-                    final_table.loc[i, "astro_colibri_name"] = astrostars["discoverer_internal_name"][match_idx]
+                    final_table.loc[i, "astro_colibri_name"] = astrostars[
+                        "discoverer_internal_name"
+                    ][match_idx]
 
             matches = []
             if len(matches) == 0:
@@ -2425,87 +2464,75 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
 
     st.info("Querying SIMBAD")
 
-        try:
-            center_coord = SkyCoord(
-                ra=field_center_ra, dec=field_center_dec, unit="deg"
-            )
-            simbad_result, error = safe_catalog_query(
-                custom_simbad.query_region,
-                "SIMBAD query failed",
-                center_coord,
-                radius=field_width_arcmin * u.arcmin,
-            )
-            if error:
-                st.warning(error)
-            else:
-                if simbad_result is not None and len(simbad_result) > 0:
-                    final_table["simbad_main_id"] = None
-                    final_table["simbad_otype"] = None
-                    final_table["simbad_ids"] = None
-                    final_table["simbad_B"] = None
-                    final_table["simbad_V"] = None
+    try:
+        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit="deg")
+        simbad_result, error = safe_catalog_query(
+            custom_simbad.query_region,
+            "SIMBAD query failed",
+            center_coord,
+            radius=field_width_arcmin * u.arcmin,
+        )
+        if error:
+            st.warning(error)
+        else:
+            if simbad_result is not None and len(simbad_result) > 0:
+                final_table["simbad_main_id"] = None
+                final_table["simbad_otype"] = None
+                final_table["simbad_ids"] = None
+                final_table["simbad_B"] = None
+                final_table["simbad_V"] = None
 
-                    source_coords = SkyCoord(
-                        ra=final_table["ra"].values,
-                        dec=final_table["dec"].values,
-                        unit="deg",
-                    )
+                source_coords = SkyCoord(
+                    ra=final_table["ra"].values,
+                    dec=final_table["dec"].values,
+                    unit="deg",
+                )
 
-                    if all(
-                        col in simbad_result.colnames for col in ["ra", "dec"]
-                    ):
-                        try:
-                            simbad_coords = SkyCoord(
-                                ra=simbad_result["ra"],
-                                dec=simbad_result["dec"],
-                                unit=(u.hourangle, u.deg),
-                            )
-
-                            idx, d2d, _ = source_coords.match_to_catalog_sky(
-                                simbad_coords
-                            )
-                            matches = d2d <= (10 * u.arcsec)
-
-                            for i, (match, match_idx) in enumerate(
-                                zip(matches, idx)
-                            ):
-                                if match:
-                                    final_table.loc[i, "simbad_main_id"] = (
-                                        simbad_result["main_id"][match_idx]
-                                    )
-                                    final_table.loc[i, "simbad_otype"] = (
-                                        simbad_result["otype"][match_idx]
-                                    )
-                                    final_table.loc[i, "simbad_B"] = (
-                                        simbad_result["B"][match_idx]
-                                    )
-                                    final_table.loc[i, "simbad_V"] = (
-                                        simbad_result["V"][match_idx]
-                                    )
-                                    if "ids" in simbad_result.colnames:
-                                        final_table.loc[i, "simbad_ids"] = (
-                                            simbad_result["ids"][match_idx]
-                                        )
-
-                            st.success(
-                                f"Found {sum(matches)} SIMBAD objects in field."
-                            )
-                        except Exception as e:
-                            st.error(
-                                f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
-                            )
-                            st.write(
-                                f"Available SIMBAD columns: {simbad_result.colnames}"
-                            )
-                    else:
-                        available_cols = ", ".join(simbad_result.colnames)
-                        st.error(
-                            f"SIMBAD result missing required columns. Available columns: {available_cols}"
+                if all(col in simbad_result.colnames for col in ["ra", "dec"]):
+                    try:
+                        simbad_coords = SkyCoord(
+                            ra=simbad_result["ra"],
+                            dec=simbad_result["dec"],
+                            unit=(u.hourangle, u.deg),
                         )
+
+                        idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
+                        matches = d2d <= (10 * u.arcsec)
+
+                        for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                            if match:
+                                final_table.loc[i, "simbad_main_id"] = simbad_result[
+                                    "main_id"
+                                ][match_idx]
+                                final_table.loc[i, "simbad_otype"] = simbad_result[
+                                    "otype"
+                                ][match_idx]
+                                final_table.loc[i, "simbad_B"] = simbad_result["B"][
+                                    match_idx
+                                ]
+                                final_table.loc[i, "simbad_V"] = simbad_result["V"][
+                                    match_idx
+                                ]
+                                if "ids" in simbad_result.colnames:
+                                    final_table.loc[i, "simbad_ids"] = simbad_result[
+                                        "ids"
+                                    ][match_idx]
+
+                        st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+                    except Exception as e:
+                        st.error(
+                            f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
+                        )
+                        st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
                 else:
-                    st.write("No SIMBAD objects found in the field.")
-        except Exception as e:
-            st.error(f"SIMBAD query execution failed: {str(e)}")
+                    available_cols = ", ".join(simbad_result.colnames)
+                    st.error(
+                        f"SIMBAD result missing required columns. Available columns: {available_cols}"
+                    )
+            else:
+                st.write("No SIMBAD objects found in the field.")
+    except Exception as e:
+        st.error(f"SIMBAD query execution failed: {str(e)}")
 
     status_text.write("Querying SkyBoT for solar system objects...")
 
@@ -2711,7 +2738,9 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                 has_qso = final_table["qso_name"].notna()
                 final_table.loc[has_qso, "catalog_matches"] += "QSO; "
 
-                st.info(f"Found {sum(has_qso)} quasars in field from Milliquas catalog.")
+                st.info(
+                    f"Found {sum(has_qso)} quasars in field from Milliquas catalog."
+                )
                 write_to_log(
                     st.session_state.get("log_buffer"),
                     f"Found {sum(has_qso)} quasar matches in Milliquas catalog",
@@ -2825,7 +2854,7 @@ def display_catalog_in_aladin(
     final_table: pd.DataFrame,
     ra_center: float,
     dec_center: float,
-    fov: float = 1.,
+    fov: float = 1.0,
     ra_col: str = "ra",
     dec_col: str = "dec",
     mag_col: str = "calib_mag",
@@ -3070,7 +3099,7 @@ def initialize_session_state():
 
     if "analysis_parameters" not in st.session_state:
         st.session_state["analysis_parameters"] = {
-            "seeing": 3.,
+            "seeing": 3.0,
             "threshold_sigma": 2.5,
             "detection_mask": 25,
             "gaia_band": "phot_g_mean_mag",
@@ -3190,13 +3219,13 @@ def provide_download_buttons(folder_path):
     """
     try:
         base_filename = st.session_state.get("base_filename", "")
-        
+
         # Filter files to only include those starting with the base filename prefix
         files = [
             f
             for f in os.listdir(folder_path)
-            if os.path.isfile(os.path.join(folder_path, f)) and
-            f.startswith(base_filename)
+            if os.path.isfile(os.path.join(folder_path, f))
+            and f.startswith(base_filename)
         ]
         if not files:
             st.write("No files found in output directory")
@@ -3241,14 +3270,20 @@ def cleanup_temp_files():
     2. The solved files created during plate solving
     """
     # Clean up temp science file
-    if "science_file_path" in st.session_state and st.session_state["science_file_path"]:
+    if (
+        "science_file_path" in st.session_state
+        and st.session_state["science_file_path"]
+    ):
         try:
             temp_file = st.session_state["science_file_path"]
             if os.path.exists(temp_file):
                 base_dir = os.path.dirname(temp_file)
-                temp_dir_files = [f for f in os.listdir(base_dir)
-                                  if os.path.isfile(os.path.join(base_dir, f)) and
-                                  f.lower().endswith(('.fits', '.fit', '.fts'))]
+                temp_dir_files = [
+                    f
+                    for f in os.listdir(base_dir)
+                    if os.path.isfile(os.path.join(base_dir, f))
+                    and f.lower().endswith((".fits", ".fit", ".fts"))
+                ]
                 for file in temp_dir_files:
                     try:
                         os.remove(os.path.join(base_dir, file))
@@ -3271,8 +3306,7 @@ with st.sidebar:
     st.sidebar.header("Upload FITS Files")
 
     bias_file = st.file_uploader(
-        "Master Bias (optional)", type=["fits", "fit", "fts"],
-        key="bias_uploader"
+        "Master Bias (optional)", type=["fits", "fit", "fts"], key="bias_uploader"
     )
     if bias_file is not None:
         st.session_state.files_loaded["bias_file"] = bias_file
@@ -3293,19 +3327,19 @@ with st.sidebar:
     science_file = st.file_uploader(
         "Image (required)", type=["fits", "fit", "fts"], key="science_uploader"
     )
-    
+
     # Get absolute path if we need it (for tools like Siril that need direct file access)
     science_file_path = None
     if science_file is not None:
         # Save the uploaded file to a temporary location to get an absolute path
-        
+
         # Create temporary file with the same extension as the uploaded file
         suffix = os.path.splitext(science_file.name)[1]
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
             # Write the uploaded file content to the temporary file
             tmp_file.write(science_file.getvalue())
             science_file_path = tmp_file.name
-        
+
         st.session_state["science_file_path"] = science_file_path
         # st.info(f"File saved temporarily at: {science_file_path}")
     if science_file is not None:
@@ -3331,7 +3365,7 @@ with st.sidebar:
     calibrate_cosmic_rays = st.checkbox(
         "Remove Cosmic Rays",
         value=False,
-        help="Detect and remove cosmic rays using the L.A.Cosmic algorithm"
+        help="Detect and remove cosmic rays using the L.A.Cosmic algorithm",
     )
 
     cr_params = st.expander("CRR Parameters", expanded=False)
@@ -3342,7 +3376,7 @@ with st.sidebar:
             max_value=200.0,
             value=1.0,
             step=0.2,
-            help="CCD gain in electrons per ADU"
+            help="CCD gain in electrons per ADU",
         )
         cr_readnoise = st.number_input(
             "Read Noise (e-)",
@@ -3350,15 +3384,15 @@ with st.sidebar:
             max_value=10.0,
             value=2.5,
             step=0.5,
-            help="CCD read noise in electrons"
+            help="CCD read noise in electrons",
         )
         cr_sigclip = st.number_input(
             "Detection Threshold (σ)",
             min_value=3.0,
             max_value=10.0,
-            value=5.,
+            value=5.0,
             step=0.5,
-            help="Threshold for cosmic ray detection"
+            help="Threshold for cosmic ray detection",
         )
 
     st.sidebar.header("Observatory Location")
@@ -3370,14 +3404,14 @@ with st.sidebar:
     if "observatory_longitude" not in st.session_state:
         st.session_state.observatory_longitude = 2.43805
     if "observatory_elevation" not in st.session_state:
-        st.session_state.observatory_elevation = 94.
+        st.session_state.observatory_elevation = 94.0
 
     # Create the input widgets with permanent keys
     observatory_name = st.text_input(
         "Observatory/Telescope",
         value=st.session_state.observatory_name,
         help="Name of the observatory",
-        key="obs_name_input"
+        key="obs_name_input",
     )
 
     latitude = st.number_input(
@@ -3386,32 +3420,32 @@ with st.sidebar:
         min_value=-90.0,
         max_value=90.0,
         help="Observatory latitude in degrees",
-        key="obs_lat_input"
+        key="obs_lat_input",
     )
-        
+
     longitude = st.number_input(
         "Longitude (°)",
         value=float(st.session_state.observatory_longitude),
         min_value=-180.0,
         max_value=180.0,
         help="Observatory longitude in degrees",
-        key="obs_lon_input"
+        key="obs_lon_input",
     )
-        
+
     elevation = st.number_input(
         "Elevation (m)",
         value=float(st.session_state.observatory_elevation),
         min_value=0.0,
         help="Observatory elevation in meters above sea level",
-        key="obs_elev_input"
+        key="obs_elev_input",
     )
-    
+
     # Update session state with current values
     st.session_state.observatory_name = observatory_name
     st.session_state.observatory_latitude = latitude
     st.session_state.observatory_longitude = longitude
     st.session_state.observatory_elevation = elevation
-    
+
     # Store in the observatory_data dict for consistency with existing code
     st.session_state.observatory_data = {
         "name": observatory_name,
@@ -3422,8 +3456,7 @@ with st.sidebar:
 
     st.sidebar.header("Astro-Colibri")
     colibri_api_key = st.text_input(
-        "API Key", value=None, help="Enter your Astro-Colibri API key",
-        type="password"
+        "API Key", value=None, help="Enter your Astro-Colibri API key", type="password"
     )
     st.caption("[Get your Key](https://astro-colibri.science)")
 
@@ -3510,18 +3543,26 @@ if science_file is not None:
     if science_header is not None:
         # Only update if values aren't already set by the user (non-default)
         if st.session_state.observatory_name == "":
-            obs_name = science_header.get("TELESCOP", science_header.get("OBSERVER", ""))
+            obs_name = science_header.get(
+                "TELESCOP", science_header.get("OBSERVER", "")
+            )
             st.session_state.observatory_name = obs_name
-        if st.session_state.observatory_latitude == 0.:
-            lat = float(science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0)))
+        if st.session_state.observatory_latitude == 0.0:
+            lat = float(
+                science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0))
+            )
             st.session_state.observatory_latitude = lat
-        if st.session_state.observatory_longitude == 0.:
-            lon = float(science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0)))
+        if st.session_state.observatory_longitude == 0.0:
+            lon = float(
+                science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0))
+            )
             st.session_state.observatory_longitude = lon
-        if st.session_state.observatory_elevation == 0.:
-            elev = float(science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0)))
+        if st.session_state.observatory_elevation == 0.0:
+            elev = float(
+                science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0))
+            )
             st.session_state.observatory_elevation = elev
-        
+
         # Update the dictionary
         st.session_state.observatory_data = {
             "name": st.session_state.observatory_name,
@@ -3541,11 +3582,8 @@ if science_file is not None:
         )
 
         if use_astrometry:
-            with st.spinner(
-                "Running plate solve (this may take a while)..."
-            ):
-                wcs_obj, science_header = solve_with_siril(
-                    science_file_path)
+            with st.spinner("Running plate solve (this may take a while)..."):
+                wcs_obj, science_header = solve_with_siril(science_file_path)
 
                 log_buffer = st.session_state["log_buffer"]
 
@@ -3565,9 +3603,7 @@ if science_file is not None:
                     if wcs_header_file_path:
                         st.info("Updated WCS header saved")
                 else:
-                    st.error(
-                        "Plate solving failed"
-                    )
+                    st.error("Plate solving failed")
                     write_to_log(
                         log_buffer,
                         "Failed to solve plat",
@@ -3672,7 +3708,7 @@ if science_file is not None:
         stats_col2.metric("Median", f"{np.median(science_data):.3f}")
         stats_col3.metric("Rms", f"{np.std(science_data):.3f}")
         stats_col4.metric("Min", f"{np.min(science_data):.3f}")
-        stats_col5.metric("Max", f"{np.max(science_data):.3f}") 
+        stats_col5.metric("Max", f"{np.max(science_data):.3f}")
 
         pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
         st.metric(
@@ -3685,9 +3721,7 @@ if science_file is not None:
         )
 
         mean_fwhm_pixel = seeing / pixel_size_arcsec
-        st.metric(
-            "Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (from seeing)"
-        )
+        st.metric("Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (from seeing)")
         write_to_log(
             log_buffer,
             f"Seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
@@ -3835,11 +3869,11 @@ if science_file is not None:
                         apply_cr_removal=calibrate_cosmic_rays,
                         cr_gain=cr_gain,
                         cr_readnoise=cr_readnoise,
-                        cr_sigclip=cr_sigclip
+                        cr_sigclip=cr_sigclip,
                     )
                     st.session_state["calibrated_data"] = calibrated_data
                     st.session_state["calibrated_header"] = calibrated_header
-                    
+
                     # Add to log
                     if calibrate_cosmic_rays:
                         write_to_log(
@@ -3894,7 +3928,8 @@ if science_file is not None:
                                 header_to_process,
                                 mean_fwhm_pixel,
                                 threshold_sigma,
-                                detection_mask, gaia_band
+                                detection_mask,
+                                gaia_band,
                             )
                         )
 
@@ -4158,10 +4193,8 @@ if science_file is not None:
                                             final_table.to_csv(csv_buffer, index=False)
                                             csv_data = csv_buffer.getvalue()
 
-                                            timestamp_str = (
-                                                datetime.now().strftime(
-                                                    "%Y%m%d_%H%M%S"
-                                                )
+                                            timestamp_str = datetime.now().strftime(
+                                                "%Y%m%d_%H%M%S"
                                             )
                                             base_catalog_name = catalog_name
                                             if base_catalog_name.endswith(".csv"):
@@ -4279,7 +4312,9 @@ if science_file is not None:
                         "Could not determine coordinates from image header. Cannot display ESASky."
                     )
 else:
-    st.text("👆 Please upload an image FITS file to start.", )
+    st.text(
+        "👆 Please upload an image FITS file to start.",
+    )
 
 
 if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not None:
