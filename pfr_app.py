@@ -1858,7 +1858,7 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         _matched_table["zero_point_error"] = np.std(zero_points)
 
         clipped_zero_points = sigma_clip(zero_points, sigma=3)
-        zero_point_value = np.mean(clipped_zero_points)
+        zero_point_value = np.median(clipped_zero_points)
         zero_point_std = np.std(clipped_zero_points)
 
         _matched_table["calib_mag"] = (
