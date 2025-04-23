@@ -2447,7 +2447,7 @@ def enhance_catalog_with_crossmatches(
 
             matches = []
             if len(matches) == 0:
-                st.write(f"No matched Astro-colibri objects in field.")
+                st.write("No matched Astro-colibri objects in field.")
             else:
                 st.success(f"{len(matches)} Astro-Colibri matched objects in field.")
         else:
