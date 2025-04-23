@@ -1614,7 +1614,9 @@ def detction_and_photometry(
         phot_table["xcenter"] = sources["xcentroid"]
         phot_table["ycenter"] = sources["ycentroid"]
 
-        instrumental_mags = -2.5 * np.log10(phot_table["aperture_sum"])
+        exposure_time = _science_header.get("EXPTIME", 1.0)
+
+        instrumental_mags = -2.5 * np.log10(phot_table["aperture_sum"]/exposure_time)
         phot_table["instrumental_mag"] = instrumental_mags
 
         try:
@@ -1622,7 +1624,7 @@ def detction_and_photometry(
                 image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask
             )
 
-            epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"])
+            epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"]/exposure_time)
             epsf_table["instrumental_mag"] = epsf_instrumental_mags
         except Exception as e:
             st.error(f"Error performing EPSF photometry: {e}")
