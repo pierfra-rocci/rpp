@@ -25,6 +25,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 - **Complete Image Calibration Pipeline**
   - Bias, dark and flat field correction with exposure time scaling
   - Background estimation and subtraction with robust outlier detection
+  - Cosmic ray removal using L.A.Cosmic algorithm with configurable parameters
     
 - **Advanced Astrometry**
   - WCS coordinate determination from image headers
@@ -47,7 +48,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - Astro-Colibri source cross-matching for transient events
     
 - **Interactive Visualization**
-  - Image display
+  - Image display with multiple scaling options
   - Embedded Aladin Lite for DSS2 color overlays and catalog visualization
   - Interactive tables for data exploration
   - Direct links to ESA Sky and other astronomy resources
@@ -70,12 +71,13 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - astropy
   - photutils
   - astroquery
+  - astroscrappy
   - matplotlib
   - numpy
   - pandas
   - streamlit
   - stdpipe
-  - SIRIL 1.2.6+
+  - SIRIL 1.2.6+ (for plate solving)
 
 ### Quick Start
 
@@ -107,10 +109,11 @@ A comprehensive astronomical image processing and photometry tool designed speci
    - Configure border mask size
    - Set observatory information (location, elevation)
    - Select Gaia parameters for calibration
-   - Provide API keys for services like astrometry.net and Astro-Colibri
+   - Provide API keys for services like Astro-Colibri
 
 3. **Run the analysis pipeline**
    - Apply calibration frames if needed
+   - Apply cosmic ray removal if selected
    - Run plate solving if WCS coordinates are missing
    - Perform source detection and photometry
    - Run zero-point calibration
@@ -144,11 +147,12 @@ The application generates several output files in the pfr_results directory:
 
 - `[filename]_phot.csv` - Photometry catalog with calibrated magnitudes
 - `[filename]_header.txt` - FITS header information
-- `[filename].log` - Processing log
+- `[filename].log` - Processing log with parameter details and analysis steps
 - `[filename]_image.png` - Preview image
 - `[filename]_psf.fits` - PSF model file
 - `[filename]_metadata.txt` - Analysis parameters and results
 - `[filename]_wcs_header.txt` - WCS solution from plate solving
+- `[filename]_zero_point_plot.png` - Visualization of zero-point calibration
 
 ## Contributing
 
