@@ -675,14 +675,7 @@ def airmass(
     displays warnings for extreme values. It also determines whether
     the observation was taken during night, twilight or day.
     """
-    DEFAULT_OBSERVATORY = {
-        "name": "TJMS",
-        "latitude": 48.29166,
-        "longitude": 2.43805,
-        "elevation": 94.0,
-    }
-
-    obs_data = observatory or DEFAULT_OBSERVATORY
+    obs_data = observatory
 
     try:
         ra = _header.get("RA", _header.get("OBJRA", _header.get("RA---")))
