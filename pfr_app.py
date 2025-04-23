@@ -1259,7 +1259,7 @@ def fwhm_fit(
         raise ValueError(f"Unexpected error in fwhm_fit: {e}")
 
 
-def perform_epsf_photometry(
+def perform_psf_photometry(
     img: np.ndarray,
     phot_table: Table,
     fwhm: float,
@@ -1544,7 +1544,7 @@ def find_sources_and_photometry(
     cat_col_mag = gb
     try:
         wcs = pipeline.refine_astrometry(obj, cat,
-                                         1.5*fwhm_estimate*pixel_scale/3600,
+                                         1.75*fwhm_estimate*pixel_scale/3600,
                                          wcs=w, order=2,
                                          cat_col_mag=cat_col_mag,
                                          cat_col_mag_err=None,
@@ -1588,7 +1588,7 @@ def find_sources_and_photometry(
         phot_table["instrumental_mag"] = instrumental_mags
 
         try:
-            epsf_table, _ = perform_epsf_photometry(
+            epsf_table, _ = perform_psf_photometry(
                 image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask
             )
 
