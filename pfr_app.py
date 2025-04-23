@@ -1614,7 +1614,10 @@ def detction_and_photometry(
         phot_table["xcenter"] = sources["xcentroid"]
         phot_table["ycenter"] = sources["ycentroid"]
 
-        exposure_time = _science_header.get("EXPTIME", 1.0)
+        if np.mean(image_data - bkg.background) > 1.:
+            exposure_time = _science_header.get("EXPTIME", 1.0)
+        else:
+            exposure_time = 1.0
 
         instrumental_mags = -2.5 * np.log10(phot_table["aperture_sum"]/exposure_time)
         phot_table["instrumental_mag"] = instrumental_mags
