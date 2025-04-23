@@ -1365,7 +1365,7 @@ def perform_epsf_photometry(
 
             hdu.header["COMMENT"] = "PSF model created with photutils.EPSFBuilder"
             hdu.header["FWHMPIX"] = (fwhm, "FWHM in pixels used for extraction")
-            hdu.header["OVERSAMP"] = (2, "Oversampling factor")
+            hdu.header["OVERSAMP"] = (3, "Oversampling factor")
 
             psf_filename = (
                 f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
@@ -1405,6 +1405,7 @@ def perform_epsf_photometry(
         finder=daostarfind,
         aperture_radius=fit_shape / 2,
         maxiters=3,
+        mode='new',
         progress_bar=True,
     )
 
