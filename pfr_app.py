@@ -2002,7 +2002,7 @@ def run_zero_point_calibration(
                 header_to_process,
                 mean_fwhm_pixel,
                 threshold_sigma,
-                detection_mask,
+                detection_mask, gaia_band
             )
         )
 
@@ -3895,7 +3895,7 @@ if science_file is not None:
                                 header_to_process,
                                 mean_fwhm_pixel,
                                 threshold_sigma,
-                                detection_mask,
+                                detection_mask, gaia_band
                             )
                         )
 
