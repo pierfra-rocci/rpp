@@ -2248,6 +2248,22 @@ def enhance_catalog_with_crossmatches(
         st.warning("No sources to cross-match with catalogs.")
         return final_table
 
+    # Initialize field center variables at the beginning of the function
+    field_center_ra = None
+    field_center_dec = None
+
+    # Extract field center coordinates from header
+    if header is not None:
+        if "CRVAL1" in header and "CRVAL2" in header:
+            field_center_ra = float(header["CRVAL1"])
+            field_center_dec = float(header["CRVAL2"])
+        elif "RA" in header and "DEC" in header:
+            field_center_ra = float(header["RA"])
+            field_center_dec = float(header["DEC"])
+        elif "OBJRA" in header and "OBJDEC" in header:
+            field_center_ra = float(header["OBJRA"])
+            field_center_dec = float(header["OBJDEC"])
+
     status_text = st.empty()
     status_text.write("Starting cross-match process...")
 
@@ -4167,11 +4183,8 @@ if science_file is not None:
                                                 st.subheader(
                                                     "Cross-matching with Astronomical Catalogs"
                                                 )
-                                                search_radius = (
-                                                    2
-                                                    * mean_fwhm_pixel
-                                                    * pixel_size_arcsec
-                                                )
+                                                search_radius = (max(header_to_process["NAXIS1"],
+                                                                     header_to_process["NAXIS2"]) * pixel_size_arcsec / 2.0)
                                                 final_table = enhance_catalog_with_crossmatches(
                                                     colibri_api_key,
                                                     final_table,
