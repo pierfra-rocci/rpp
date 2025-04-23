@@ -1182,7 +1182,8 @@ def fwhm_fit(
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit
 
     try:
-        daofind = DAOStarFinder(fwhm=1.5*fwhm, threshold=5*np.std(img))
+        peak = 0.90*np.nanmax(img)
+        daofind = DAOStarFinder(fwhm=1.5*fwhm, threshold=5*np.std(img), peakmax=peak)
         sources = daofind(img, mask=mask)
         if sources is None:
             st.warning("No sources found !")
