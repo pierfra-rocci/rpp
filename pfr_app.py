@@ -1074,8 +1074,8 @@ def fwhm_fit(
     img: np.ndarray,
     fwhm: float,
     mask: Optional[np.ndarray] = None,
-    std_lo: float = 0.5,
-    std_hi: float = 0.5,
+    std_lo: float = 1.,
+    std_hi: float = 1.,
 ) -> Optional[float]:
     """
     Estimate the Full Width at Half Maximum (FWHM) of stars in an astronomical image.
@@ -1251,7 +1251,7 @@ def fwhm_fit(
         mean_fwhm = np.median(fwhm_values_arr[valid])
         st.success(f"FWHM based on Gaussian model: {round(mean_fwhm, 2)} pixels")
 
-        return round(mean_fwhm)
+        return round(mean_fwhm, 2)
     except ValueError as e:
         raise e
     except Exception as e:
@@ -1336,20 +1336,20 @@ def perform_epsf_photometry(
         st.error(f"Error extracting stars: {e}")
         raise
 
-    try:
-        nrows, ncols = 5, 5
-        fig_stars, ax_stars = plt.subplots(
-            nrows=nrows, ncols=ncols, figsize=FIGURE_SIZES["stars_grid"], squeeze=False
-        )
-        ax_stars = ax_stars.ravel()
-        n_disp = min(len(stars), nrows * ncols)
-        for i in range(n_disp):
-            norm = simple_norm(stars[i].data, "log", percent=99.0)
-            ax_stars[i].imshow(stars[i].data, norm=norm, origin="lower", cmap="inferno")
-        plt.tight_layout()
-        st.pyplot(fig_stars)
-    except Exception as e:
-        st.warning(f"Error displaying extracted stars: {e}")
+    # try:
+    #     nrows, ncols = 5, 5
+    #     fig_stars, ax_stars = plt.subplots(
+    #         nrows=nrows, ncols=ncols, figsize=FIGURE_SIZES["stars_grid"], squeeze=False
+    #     )
+    #     ax_stars = ax_stars.ravel()
+    #     n_disp = min(len(stars), nrows * ncols)
+    #     for i in range(n_disp):
+    #         norm = simple_norm(stars[i].data, "log", percent=99.0)
+    #         ax_stars[i].imshow(stars[i].data, norm=norm, origin="lower", cmap="inferno")
+    #     plt.tight_layout()
+    #     st.pyplot(fig_stars)
+    # except Exception as e:
+    #     st.warning(f"Error displaying extracted stars: {e}")
 
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
@@ -1494,7 +1494,7 @@ def find_sources_and_photometry(
         _science_header.get("PIXSIZE", _science_header.get("PIXELSCAL", 1.0)),
     )
 
-    bkg, bkg_error = estimate_background(image_data, box_size=100, filter_size=5)
+    bkg, bkg_error = estimate_background(image_data, box_size=128, filter_size=7)
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None
