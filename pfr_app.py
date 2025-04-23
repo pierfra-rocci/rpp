@@ -54,7 +54,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 st.set_page_config(
-    page_title="Photometry Factory for RAPAS", page_icon="🔭", layout="wide"
+    page_title="RAPAS Photometry Factory", page_icon="🔭", layout="wide"
 )
 
 # Add application version to the sidebar
@@ -1444,7 +1444,7 @@ def perform_epsf_photometry(
 @st.cache_data
 def find_sources_and_photometry(
     image_data, _science_header, mean_fwhm_pixel, threshold_sigma,
-    detection_mask
+    detection_mask, gaia_band, gb="Gmag"
 ):
     """
     Find astronomical sources and perform both aperture and PSF photometry.
@@ -1529,7 +1529,7 @@ def find_sources_and_photometry(
     sources = daofind(image_data - bkg.background, mask=mask)
 
     obj = photometry.get_objects_sep(image_data - bkg.background, mask=None,
-                                     aper=1.5*fwhm_estimate, gain=1, edge=0
+                                     aper=1.75*fwhm_estimate, gain=1, edge=10
                                      )
 
     if sources is None or len(sources) == 0:
@@ -1540,9 +1540,14 @@ def find_sources_and_photometry(
     ra0, dec0, sr0 = astrometry.get_frame_center(wcs=w,
                                                  width=image_data.shape[1],
                                                  height=image_data.shape[0])
+   
+    if gaia_band == "phot_bp_mean_mag":
+        gb = "Bpmag"
+    if gaia_band == "phot_rp_mean_mag":
+        gb = "Rpmag"
     cat = catalogs.get_cat_vizier(ra0, dec0, sr0, 'gaiaedr3',
-                                  filters={'Gmag': '<20'})
-    cat_col_mag = 'Gmag'
+                                  filters={gb: '<20'})
+    cat_col_mag = gb
     try:
         wcs = pipeline.refine_astrometry(obj, cat,
                                          1.5*fwhm_estimate*pixel_scale/3600,
@@ -1551,7 +1556,7 @@ def find_sources_and_photometry(
                                          cat_col_mag_err=None,
                                          n_iter=5,
                                          min_matches=3,
-                                         use_photometry=False,
+                                         use_photometry=True,
                                          verbose=True)
         if wcs:
             st.info("Refined WCS successfully.")
@@ -1784,8 +1789,8 @@ def cross_match_with_gaia(
         )
         idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
-        max_sep_constraint = 1.5 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
-        gaia_matches = d2d <= max_sep_constraint
+        max_sep_constraint = 1.75 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
+        gaia_matches = d2d < max_sep_constraint
 
         matched_indices_gaia = idx[gaia_matches]
         matched_indices_phot = np.where(gaia_matches)[0]
@@ -2148,7 +2153,7 @@ def run_zero_point_calibration(
 
                     f.write("Detection Parameters:\n")
                     f.write(f"  Threshold: {threshold_sigma} sigma\n")
-                    f.write(f"  Edge Mask: {detection_mask} pixels\n")
+                    f.write(f"  Border Mask: {detection_mask} pixels\n")
                     f.write(
                         f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n"
                     )
@@ -2258,6 +2263,25 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
 
             st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
 
+    if field_center_ra is not None and field_center_dec is not None:
+            if not (-360 <= field_center_ra <= 360) or not (
+                -90 <= field_center_dec <= 90
+            ):
+                st.warning(
+                    f"Invalid coordinates: RA={field_center_ra}, DEC={field_center_dec}"
+                )
+            else:
+                if "NAXIS1" in header and "NAXIS2" in header:
+                    field_width_arcmin = (
+                        max(header.get("NAXIS1", 1000), header.get("NAXIS2", 1000))
+                        * pixel_scale_arcsec
+                        / 60.0
+                    )
+                else:
+                    field_width_arcmin = 30.0
+    else:
+    st.warning("Could not extract field center coordinates from header")
+
     st.info("Querying Astro-Colibri API...")
 
     if api_key is None:
@@ -2318,7 +2342,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                     "type": "cone",
                     "position": {"ra": field_center_ra, 
                                  "dec": field_center_dec},
-                    "radius": search_radius_arcsec,
+                    "radius": field_width_arcmin * 60.0,
                 }
             }
 
@@ -2381,7 +2405,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                 raise ValueError("Search radius must be a number")
 
             idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
-            matches = d2d < (search_radius_arcsec * u.arcsec)
+            matches = d2d < (30 * u.arcsec)
 
             for i, (match, match_idx) in enumerate(zip(matches, idx)):
                 if match:
@@ -2400,116 +2424,96 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
         st.write("No Astro-Colibri sources found.")
 
     status_text.write("Querying SIMBAD for object identifications...")
-    try:
-        if field_center_ra is not None and field_center_dec is not None:
-            if not (-360 <= field_center_ra <= 360) or not (
-                -90 <= field_center_dec <= 90
-            ):
-                st.warning(
-                    f"Invalid coordinates: RA={field_center_ra}, DEC={field_center_dec}"
-                )
+
+    custom_simbad = Simbad()
+    custom_simbad.add_votable_fields("otype", "main_id", "ids", "B", "V")
+
+    st.info("Querying SIMBAD")
+
+        try:
+            center_coord = SkyCoord(
+                ra=field_center_ra, dec=field_center_dec, unit="deg"
+            )
+            simbad_result, error = safe_catalog_query(
+                custom_simbad.query_region,
+                "SIMBAD query failed",
+                center_coord,
+                radius=field_width_arcmin * u.arcmin,
+            )
+            if error:
+                st.warning(error)
             else:
-                if "NAXIS1" in header and "NAXIS2" in header:
-                    field_width_arcmin = (
-                        max(header.get("NAXIS1", 1000), header.get("NAXIS2", 1000))
-                        * pixel_scale_arcsec
-                        / 60.0
+                if simbad_result is not None and len(simbad_result) > 0:
+                    final_table["simbad_main_id"] = None
+                    final_table["simbad_otype"] = None
+                    final_table["simbad_ids"] = None
+                    final_table["simbad_B"] = None
+                    final_table["simbad_V"] = None
+
+                    source_coords = SkyCoord(
+                        ra=final_table["ra"].values,
+                        dec=final_table["dec"].values,
+                        unit="deg",
                     )
-                else:
-                    field_width_arcmin = 30.0
 
-                custom_simbad = Simbad()
-                custom_simbad.add_votable_fields("otype", "main_id", "ids", "B", "V")
-
-                st.info("Querying SIMBAD")
-
-                try:
-                    center_coord = SkyCoord(
-                        ra=field_center_ra, dec=field_center_dec, unit="deg"
-                    )
-                    simbad_result, error = safe_catalog_query(
-                        custom_simbad.query_region,
-                        "SIMBAD query failed",
-                        center_coord,
-                        radius=field_width_arcmin * u.arcmin,
-                    )
-                    if error:
-                        st.warning(error)
-                    else:
-                        if simbad_result is not None and len(simbad_result) > 0:
-                            final_table["simbad_main_id"] = None
-                            final_table["simbad_otype"] = None
-                            final_table["simbad_ids"] = None
-                            final_table["simbad_B"] = None
-                            final_table["simbad_V"] = None
-
-                            source_coords = SkyCoord(
-                                ra=final_table["ra"].values,
-                                dec=final_table["dec"].values,
-                                unit="deg",
+                    if all(
+                        col in simbad_result.colnames for col in ["ra", "dec"]
+                    ):
+                        try:
+                            simbad_coords = SkyCoord(
+                                ra=simbad_result["ra"],
+                                dec=simbad_result["dec"],
+                                unit=(u.hourangle, u.deg),
                             )
 
-                            if all(
-                                col in simbad_result.colnames for col in ["ra", "dec"]
+                            idx, d2d, _ = source_coords.match_to_catalog_sky(
+                                simbad_coords
+                            )
+                            matches = d2d <= (10 * u.arcsec)
+
+                            for i, (match, match_idx) in enumerate(
+                                zip(matches, idx)
                             ):
-                                try:
-                                    simbad_coords = SkyCoord(
-                                        ra=simbad_result["ra"],
-                                        dec=simbad_result["dec"],
-                                        unit=(u.hourangle, u.deg),
+                                if match:
+                                    final_table.loc[i, "simbad_main_id"] = (
+                                        simbad_result["main_id"][match_idx]
                                     )
+                                    final_table.loc[i, "simbad_otype"] = (
+                                        simbad_result["otype"][match_idx]
+                                    )
+                                    final_table.loc[i, "simbad_B"] = (
+                                        simbad_result["B"][match_idx]
+                                    )
+                                    final_table.loc[i, "simbad_V"] = (
+                                        simbad_result["V"][match_idx]
+                                    )
+                                    if "ids" in simbad_result.colnames:
+                                        final_table.loc[i, "simbad_ids"] = (
+                                            simbad_result["ids"][match_idx]
+                                        )
 
-                                    idx, d2d, _ = source_coords.match_to_catalog_sky(
-                                        simbad_coords
-                                    )
-                                    matches = d2d < (search_radius_arcsec * u.arcsec)
-
-                                    for i, (match, match_idx) in enumerate(
-                                        zip(matches, idx)
-                                    ):
-                                        if match:
-                                            final_table.loc[i, "simbad_main_id"] = (
-                                                simbad_result["main_id"][match_idx]
-                                            )
-                                            final_table.loc[i, "simbad_otype"] = (
-                                                simbad_result["otype"][match_idx]
-                                            )
-                                            final_table.loc[i, "simbad_B"] = (
-                                                simbad_result["B"][match_idx]
-                                            )
-                                            final_table.loc[i, "simbad_V"] = (
-                                                simbad_result["V"][match_idx]
-                                            )
-                                            if "ids" in simbad_result.colnames:
-                                                final_table.loc[i, "simbad_ids"] = (
-                                                    simbad_result["ids"][match_idx]
-                                                )
-
-                                    st.success(
-                                        f"Found {sum(matches)} SIMBAD objects in field."
-                                    )
-                                except Exception as e:
-                                    st.error(
-                                        f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
-                                    )
-                                    st.write(
-                                        f"Available SIMBAD columns: {simbad_result.colnames}"
-                                    )
-                            else:
-                                available_cols = ", ".join(simbad_result.colnames)
-                                st.error(
-                                    f"SIMBAD result missing required columns. Available columns: {available_cols}"
-                                )
-                        else:
-                            st.write("No SIMBAD objects found in the field.")
-                except Exception as e:
-                    st.error(f"SIMBAD query execution failed: {str(e)}")
-        else:
-            st.warning("Could not extract field center coordinates from header")
-    except Exception as e:
-        st.error(f"Error in SIMBAD processing: {str(e)}")
+                            st.success(
+                                f"Found {sum(matches)} SIMBAD objects in field."
+                            )
+                        except Exception as e:
+                            st.error(
+                                f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
+                            )
+                            st.write(
+                                f"Available SIMBAD columns: {simbad_result.colnames}"
+                            )
+                    else:
+                        available_cols = ", ".join(simbad_result.colnames)
+                        st.error(
+                            f"SIMBAD result missing required columns. Available columns: {available_cols}"
+                        )
+                else:
+                    st.write("No SIMBAD objects found in the field.")
+        except Exception as e:
+            st.error(f"SIMBAD query execution failed: {str(e)}")
 
     status_text.write("Querying SkyBoT for solar system objects...")
+    
     try:
         if field_center_ra is not None and field_center_dec is not None:
             if "DATE-OBS" in header:
@@ -2566,7 +2570,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                                 idx, d2d, _ = source_coords.match_to_catalog_sky(
                                     skybot_coords
                                 )
-                                matches = d2d < (search_radius_arcsec * u.arcsec)
+                                matches = d2d <= (10 * u.arcsec)
 
                                 for i, (match, match_idx) in enumerate(
                                     zip(matches, idx)
@@ -2632,7 +2636,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
                 )
 
                 idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
-                matches = d2d < (search_radius_arcsec * u.arcsec)
+                matches = d2d <= (10 * u.arcsec)
 
                 final_table["aavso_Name"] = None
                 final_table["aavso_Type"] = None
@@ -2683,7 +2687,7 @@ def enhance_catalog_with_crossmatches(api_key, final_table, matched_table,
 
                 # Perform cross-matching
                 idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
-                matches = d2d.arcsec <= search_radius_arcsec
+                matches = d2d.arcsec <= 10
 
                 # Add matched quasar information to the final table
                 final_table["qso_name"] = None
@@ -2826,7 +2830,7 @@ def display_catalog_in_aladin(
     final_table: pd.DataFrame,
     ra_center: float,
     dec_center: float,
-    fov: float = 0.5,
+    fov: float = 1.,
     ra_col: str = "ra",
     dec_col: str = "dec",
     mag_col: str = "calib_mag",
@@ -3027,7 +3031,7 @@ def display_catalog_in_aladin(
 
             components.html(
                 html_content,
-                height=600,  # Explicitly set a height
+                height=600,
                 scrolling=True,
             )
 
@@ -3068,15 +3072,6 @@ def initialize_session_state():
         st.session_state["log_buffer"] = None
     if "base_filename" not in st.session_state:
         st.session_state["base_filename"] = "photometry"
-
-    # if "manual_ra" not in st.session_state:
-    #     st.session_state["manual_ra"] = ""
-    # if "manual_dec" not in st.session_state:
-    #     st.session_state["manual_dec"] = ""
-    # if "valid_ra" not in st.session_state:
-    #     st.session_state["valid_ra"] = None
-    # if "valid_dec" not in st.session_state:
-    #     st.session_state["valid_dec"] = None
 
     if "analysis_parameters" not in st.session_state:
         st.session_state["analysis_parameters"] = {
@@ -3151,7 +3146,7 @@ def initialize_log(base_filename):
     log_buffer = StringIO()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    log_buffer.write("Photometry Factory for RAPAS Log\n")
+    log_buffer.write("RAPAS Photometry Factory Log\n")
     log_buffer.write("===============================\n")
     log_buffer.write(f"Processing started: {timestamp}\n")
     log_buffer.write(f"Input file: {base_filename}\n\n")
@@ -3275,7 +3270,7 @@ def cleanup_temp_files():
 # Main Streamlit app
 initialize_session_state()
 
-st.title("🔭 _Photometry Factory for RAPAS_")
+st.title("🔭 _RAPAS Photometry Factory_")
 
 with st.sidebar:
     st.sidebar.header("Upload FITS Files")
@@ -4225,7 +4220,7 @@ if science_file is not None:
                                                     f"  Threshold: {threshold_sigma} sigma\n"
                                                 )
                                                 f.write(
-                                                    f"  Edge Mask: {detection_mask} pixels\n"
+                                                    f"  Border Mask: {detection_mask} pixels\n"
                                                 )
                                                 f.write(
                                                     f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n"
@@ -4281,9 +4276,7 @@ if science_file is not None:
                         help="Open ESA Sky with the same target coordinates",
                     )
 
-                    st.write(f"Results are stocked in /{output_dir}")
                     provide_download_buttons(output_dir)
-
                     cleanup_temp_files()
 
                 else:
