@@ -1793,7 +1793,7 @@ def cross_match_with_gaia(
         )
 
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
-        color_index_filter = gaia_table["bp_rp"] < 1.3
+        color_index_filter = gaia_table["bp_rp"] < 1.5
         combined_filter = mag_filter & var_filter & color_index_filter
 
         gaia_table_filtered = gaia_table[combined_filter]
@@ -1815,7 +1815,7 @@ def cross_match_with_gaia(
         )
         idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
-        max_sep_constraint = 1.6 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
+        max_sep_constraint = 2 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
         gaia_matches = d2d < max_sep_constraint
 
         matched_indices_gaia = idx[gaia_matches]
