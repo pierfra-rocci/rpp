@@ -1450,7 +1450,7 @@ def perform_psf_photometry(
 
 
 @st.cache_data
-def find_sources_and_photometry(
+def detction_and_photometry(
     image_data,
     _science_header,
     mean_fwhm_pixel,
@@ -2026,7 +2026,7 @@ def run_zero_point_calibration(
     aperture photometry results.
     """
     with st.spinner("Finding sources and performing photometry..."):
-        phot_table_qtable, epsf_table, _, _ = find_sources_and_photometry(
+        phot_table_qtable, epsf_table, _, _ = detction_and_photometry(
             image_to_process,
             header_to_process,
             mean_fwhm_pixel,
@@ -3920,10 +3920,10 @@ if science_file is not None:
             if image_to_process is not None:
                 try:
                     with st.spinner(
-                        "Background Extraction, Find Sources and Perform Photometry..."
+                        "Background Extraction, Detection and Photometry..."
                     ):
                         phot_table_qtable, epsf_table, daofind, bkg = (
-                            find_sources_and_photometry(
+                            detction_and_photometry(
                                 image_to_process,
                                 header_to_process,
                                 mean_fwhm_pixel,
