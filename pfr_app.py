@@ -1559,9 +1559,9 @@ def detction_and_photometry(
     )
 
     if gaia_band == "phot_bp_mean_mag":
-        gb = "Bpmag"
+        gb = "BPmag"
     if gaia_band == "phot_rp_mean_mag":
-        gb = "Rpmag"
+        gb = "RPmag"
     cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3", filters={gb: "<20"})
     cat_col_mag = gb
     try:
