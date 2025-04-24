@@ -3092,7 +3092,6 @@ with st.sidebar:
         st.link_button("NED", "https://ned.ipac.caltech.edu/")
 
     # --- Save Session Parameters as JSON to results directory and backend DB ---
-    st.sidebar.header("Session Config Save")
     if st.sidebar.button("Save Session Parameters"):
         # Collect parameters
         analysis_params = dict(st.session_state.get("analysis_parameters", {}))
