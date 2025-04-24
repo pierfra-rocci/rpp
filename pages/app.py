@@ -3093,7 +3093,7 @@ with st.sidebar:
 
     # --- Save Session Parameters as JSON to results directory and backend DB ---
     st.sidebar.header("Session Config Save")
-    if st.sidebar.button("Save Session Parameters to Config File & DB"):
+    if st.sidebar.button("Save Session Parameters"):
         # Collect parameters
         analysis_params = dict(st.session_state.get("analysis_parameters", {}))
         # Only keep relevant keys
@@ -3122,8 +3122,8 @@ with st.sidebar:
             st.sidebar.success(f"Session parameters saved to {config_path}")
         except Exception as e:
             st.sidebar.error(f"Failed to save config: {e}")
+        
         # Save to backend DB
-        import requests
         try:
             backend_url = "http://localhost:5000/save_config"
             resp = requests.post(backend_url, json={"username": username, "config_json": json.dumps(params)})
@@ -3133,36 +3133,6 @@ with st.sidebar:
                 st.sidebar.warning(f"Could not save config to DB: {resp.text}")
         except Exception as e:
             st.sidebar.warning(f"Could not connect to backend: {e}")
-    # --- Save Session Parameters as JSON to results directory ---
-    st.sidebar.header("Session Config Save")
-    if st.sidebar.button("Save Session Parameters to Config File"):
-        # Collect parameters
-        analysis_params = dict(st.session_state.get("analysis_parameters", {}))
-        for k in list(analysis_params.keys()):
-            if k not in ["seeing", "threshold_sigma", "detection_mask"]:
-                analysis_params.pop(k)
-        gaia_params = {
-            "gaia_band": st.session_state.get("gaia_band"),
-            "gaia_min_mag": st.session_state.get("gaia_min_mag"),
-            "gaia_max_mag": st.session_state.get("gaia_max_mag"),
-        }
-        observatory_params = dict(st.session_state.get("observatory_data", {}))
-        colibri_api_key = st.session_state.get("colibri_api_key")
-        params = {
-            "analysis_parameters": analysis_params,
-            "gaia_parameters": gaia_params,
-            "observatory_parameters": observatory_params,
-            "astro_colibri_api_key": colibri_api_key,
-        }
-        username = st.session_state.get("username", "user")
-        config_filename = f"{username}_config.json"
-        config_path = os.path.join(st.session_state.get("output_dir", "pfr_results"), config_filename)
-        try:
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(params, f, indent=2)
-            st.sidebar.success(f"Session parameters saved to {config_path}")
-        except Exception as e:
-            st.sidebar.error(f"Failed to save config: {e}")
 
 
 output_dir = ensure_output_directory("pfr_results")
@@ -3995,5 +3965,5 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
         f.write(log_buffer.getvalue())
         write_to_log(log_buffer, f"Log saved to {log_filepath}")
 
-#at the end archive a zip version and remove all the results
+# at the end archive a zip version and remove all the results
 atexit.register(partial(zip_pfr_results_on_exit, science_file))
