@@ -3095,7 +3095,7 @@ with st.sidebar:
             "calibrate_flat",
         ]:
             analysis_params.pop(k, None)
-            
+
         # Only keep relevant keys
         gaia_params = {
             "gaia_band": st.session_state.get("gaia_band"),
