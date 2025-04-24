@@ -176,3 +176,4 @@ pfr_results
 *.ruff_cache
 test.py
 *.ipynb_checkpoints
+users.db
