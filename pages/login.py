@@ -72,6 +72,11 @@ else:
             # Set session state for each parameter group if present
             if "analysis_parameters" in config:
                 st.session_state["analysis_parameters"] = config["analysis_parameters"]
+                # Also update individual keys for direct use in the app
+                ap = config["analysis_parameters"]
+                st.session_state["seeing"] = ap.get("seeing")
+                st.session_state["threshold_sigma"] = ap.get("threshold_sigma")
+                st.session_state["detection_mask"] = ap.get("detection_mask")
             if "gaia_parameters" in config:
                 gaia = config["gaia_parameters"]
                 st.session_state["gaia_band"] = gaia.get("gaia_band")
