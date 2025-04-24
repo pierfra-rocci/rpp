@@ -3074,7 +3074,7 @@ with st.sidebar:
 
     # st.header("Output Options")
     default_catalog_name = f"{st.session_state['base_filename']}_phot.csv"
-    catalog_name = st.text_input("Output Catalog Filename", default_catalog_name)
+    catalog_name = st.text_input("Output Catalog", default_catalog_name)
 
     # --- Save Session Parameters as JSON to results directory and backend DB
     if st.sidebar.button("Save Session Parameters"):
@@ -3112,40 +3112,6 @@ with st.sidebar:
                 st.sidebar.warning(f"Could not save config to DB: {resp.text}")
         except Exception as e:
             st.sidebar.warning(f"Could not connect to backend: {e}")
-
-    # --- Load Session Parameters from backend DB and update session state
-    if st.sidebar.button("Load Session Parameters"):
-        username = st.session_state.get("username", "user")
-        backend_url = f"http://localhost:5000/get_config?username={username}"
-        try:
-            resp = requests.get(backend_url)
-            if resp.status_code == 200:
-                config = resp.json()
-                # Load analysis parameters
-                analysis_params = config.get("analysis_parameters", {})
-                for key in ["seeing", "threshold_sigma", "detection_mask"]:
-                    if key in analysis_params:
-                        st.session_state[key] = analysis_params[key]
-                # Load Gaia parameters
-                gaia_params = config.get("gaia_parameters", {})
-                for key in ["gaia_band", "gaia_min_mag", "gaia_max_mag"]:
-                    if key in gaia_params:
-                        st.session_state[key] = gaia_params[key]
-                # Load observatory parameters
-                observatory_params = config.get("observatory_parameters", {})
-                for key in ["name", "latitude", "longitude", "elevation"]:
-                    if key in observatory_params:
-                        obs_key = f"observatory_{key}"
-                        st.session_state[obs_key] = observatory_params[key]
-                st.session_state["observatory_data"] = observatory_params
-                # Load Astro-Colibri API key
-                if "astro_colibri_api_key" in config:
-                    st.session_state["colibri_api_key"] = config["astro_colibri_api_key"]
-                st.sidebar.success("Session parameters loaded from DB and applied.")
-            else:
-                st.sidebar.warning(f"Could not load config from DB: {resp.text}")
-        except Exception as e:
-            st.sidebar.error(f"Failed to load config from DB: {e}")
 
     st.header("Quick Links")
     col1, col2 = st.columns(2)
