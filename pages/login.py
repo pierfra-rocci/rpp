@@ -69,14 +69,14 @@ else:
         resp = requests.get(backend_url, params={"username": st.session_state.username})
         if resp.status_code == 200 and resp.text and resp.text != '{}':
             config = json.loads(resp.text)
-            # Set session state for each parameter group if present
+            # Restore all parameter groups
             if "analysis_parameters" in config:
                 st.session_state["analysis_parameters"] = config["analysis_parameters"]
                 # Also update individual keys for direct use in the app
                 ap = config["analysis_parameters"]
-                st.session_state["seeing"] = ap.get("seeing")
-                st.session_state["threshold_sigma"] = ap.get("threshold_sigma")
-                st.session_state["detection_mask"] = ap.get("detection_mask")
+                for key in ["seeing", "threshold_sigma", "detection_mask"]:
+                    if key in ap:
+                        st.session_state[key] = ap[key]
             if "gaia_parameters" in config:
                 gaia = config["gaia_parameters"]
                 st.session_state["gaia_band"] = gaia.get("gaia_band")
@@ -84,6 +84,12 @@ else:
                 st.session_state["gaia_max_mag"] = gaia.get("gaia_max_mag")
             if "observatory_parameters" in config:
                 st.session_state["observatory_data"] = config["observatory_parameters"]
+                # Also update individual keys for direct use
+                obs = config["observatory_parameters"]
+                st.session_state["observatory_name"] = obs.get("name", "")
+                st.session_state["observatory_latitude"] = obs.get("latitude", 0.0)
+                st.session_state["observatory_longitude"] = obs.get("longitude", 0.0)
+                st.session_state["observatory_elevation"] = obs.get("elevation", 0.0)
             if "astro_colibri_api_key" in config:
                 st.session_state["colibri_api_key"] = config["astro_colibri_api_key"]
     except Exception as e:

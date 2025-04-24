@@ -2850,6 +2850,29 @@ def provide_download_buttons(folder_path):
 # Main Streamlit app
 initialize_session_state()
 
+# --- Sync session state with loaded config before creating widgets ---
+if "observatory_data" in st.session_state:
+    obs = st.session_state["observatory_data"]
+    st.session_state["observatory_name"] = obs.get("name", "")
+    st.session_state["observatory_latitude"] = obs.get("latitude", 0.0)
+    st.session_state["observatory_longitude"] = obs.get("longitude", 0.0)
+    st.session_state["observatory_elevation"] = obs.get("elevation", 0.0)
+
+if "analysis_parameters" in st.session_state:
+    ap = st.session_state["analysis_parameters"]
+    for key in ["seeing", "threshold_sigma", "detection_mask"]:
+        if key in ap:
+            st.session_state[key] = ap[key]
+
+if "gaia_parameters" in st.session_state:
+    gaia = st.session_state["gaia_parameters"]
+    st.session_state["gaia_band"] = gaia.get("gaia_band", "phot_g_mean_mag")
+    st.session_state["gaia_min_mag"] = gaia.get("gaia_min_mag", 7.0)
+    st.session_state["gaia_max_mag"] = gaia.get("gaia_max_mag", 20.0)
+
+if "colibri_api_key" in st.session_state:
+    st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
+
 st.title("🔭 _RAPAS Photometry Factory_")
 
 with st.sidebar:
