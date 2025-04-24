@@ -12,6 +12,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Authentication & Backend](#authentication--backend)
 - [Documentation](#documentation)
 - [Example Output](#example-output)
 - [Contributing](#contributing)
@@ -77,6 +78,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - pandas
   - streamlit
   - stdpipe
+  - Flask (for backend)
   - SIRIL 1.2.6+ (for plate solving)
 
 ### Quick Start
@@ -92,39 +94,45 @@ A comprehensive astronomical image processing and photometry tool designed speci
    pip install -r requirements.txt
    ```
 
-3. Run the application:
+3. Start the backend server (for authentication and config storage):
    ```bash
-   streamlit run pfr_app.py
+   python backend.py
    ```
+
+4. In a new terminal, start the frontend Streamlit app:
+   ```bash
+   streamlit run run_frontend.py
+   ```
+
+   This will redirect you to the login page. Register or log in to access the main app.
 
 ## Usage
 
-1. **Upload your FITS files**
+1. **Login/Register**
+   - On first use, register a new account. Credentials are stored in `users.db` (SQLite).
+   - Login to access the main photometry app.
+
+2. **Upload your FITS files**
    - Required: Science image
    - Optional: Bias, dark, and flat field calibration frames
 
-2. **Configure parameters**
-   - Set seeing estimate
-   - Adjust detection threshold
-   - Configure border mask size
-   - Set observatory information (location, elevation)
-   - Select Gaia parameters for calibration
-   - Provide API keys for services like Astro-Colibri
+3. **Configure parameters**
+   - Set seeing estimate, detection threshold, border mask size, observatory info, Gaia calibration parameters, and API keys as needed.
 
-3. **Run the analysis pipeline**
-   - Apply calibration frames if needed
-   - Apply cosmic ray removal if selected
-   - Run plate solving if WCS coordinates are missing
-   - Perform source detection and photometry
-   - Run zero-point calibration
-   - Cross-match with astronomical catalogs
-   - View results and interactive visualizations
+4. **Run the analysis pipeline**
+   - Apply calibration, cosmic ray removal, plate solving, source detection, photometry, zero-point calibration, and catalog cross-matching.
+   - View results and interactive visualizations (including Aladin Lite and ESA Sky links).
 
-4. **Export and analyze results**
-   - Download photometry catalog and metadata
-   - Examine cross-matched objects in interactive Aladin viewer
-   - Link directly to online resources for further analysis
-   - Download all results as a single ZIP archive
+5. **Export and analyze results**
+   - Download photometry catalog, metadata, and all results as a ZIP archive from the `pfr_results` directory.
+   - Session parameters can be saved to both the backend and as a JSON file.
+
+## Authentication & Backend
+
+- The backend (`backend.py`) is a Flask server handling user registration, login, password recovery, and config storage.
+- User data is stored in `users.db` (SQLite).
+- The frontend communicates with the backend via HTTP (default: `http://localhost:5000`).
+- Utility scripts: `hash_passwords.py` (password hashing), `tools.py` (misc helpers).
 
 ## Documentation
 
