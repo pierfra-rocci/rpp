@@ -3091,7 +3091,7 @@ with st.sidebar:
         # st.link_button("NED", "https://ned.ipac.caltech.edu/")
         st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
 
-    # --- Save Session Parameters as JSON to results directory and backend DB ---
+    # --- Save Session Parameters as JSON to results directory and backend DB
     if st.sidebar.button("Save Session Parameters"):
         # Collect parameters
         analysis_params = dict(st.session_state.get("analysis_parameters", {}))
