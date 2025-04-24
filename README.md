@@ -1,4 +1,4 @@
-# Photometry Factory for RAPAS (PFR)
+# RAPAS Photometry Factory (RPF)
 
 [![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://streamlit.io/gallery)
