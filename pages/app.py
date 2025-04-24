@@ -3100,7 +3100,7 @@ with st.sidebar:
         try:
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(params, f, indent=2)
-            st.sidebar.success(f"Session parameters saved to {config_path}")
+            st.sidebar.success("Session parameters saved")
         except Exception as e:
             st.sidebar.error(f"Failed to save config: {e}")
         
@@ -3108,9 +3108,7 @@ with st.sidebar:
         try:
             backend_url = "http://localhost:5000/save_config"
             resp = requests.post(backend_url, json={"username": username, "config_json": json.dumps(params)})
-            if resp.status_code == 200:
-                st.sidebar.success("Session parameters also saved to user database.")
-            else:
+            if resp.status_code != 200:
                 st.sidebar.warning(f"Could not save config to DB: {resp.text}")
         except Exception as e:
             st.sidebar.warning(f"Could not connect to backend: {e}")
