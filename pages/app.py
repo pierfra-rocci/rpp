@@ -3043,6 +3043,12 @@ with st.sidebar:
     st.session_state["seeing"] = seeing
     st.session_state["threshold_sigma"] = threshold_sigma
     st.session_state["detection_mask"] = detection_mask
+
+    st.session_state["analysis_parameters"].update({
+        "seeing": seeing,
+        "threshold_sigma": threshold_sigma,
+        "detection_mask": detection_mask,
+    })
     
     st.header("Gaia Parameters")
     gaia_band = st.selectbox(
