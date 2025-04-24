@@ -3080,7 +3080,7 @@ with st.sidebar:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.link_button("GAIA-Archive", "https://gea.esac.esa.int/archive/")
+        st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
         st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
         st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
 
