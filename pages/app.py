@@ -3096,9 +3096,6 @@ with st.sidebar:
         # Collect parameters
         analysis_params = dict(st.session_state.get("analysis_parameters", {}))
         # Only keep relevant keys
-        for k in list(analysis_params.keys()):
-            if k not in ["seeing", "threshold_sigma", "detection_mask"]:
-                analysis_params.pop(k)
         gaia_params = {
             "gaia_band": st.session_state.get("gaia_band"),
             "gaia_min_mag": st.session_state.get("gaia_min_mag"),
