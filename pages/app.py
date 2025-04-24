@@ -3042,7 +3042,7 @@ with st.sidebar:
         "Seeing (arcsec)",
         1.0,
         6.0,
-        3.0,
+        float(st.session_state.get("seeing", 3.0)),
         0.5,
         help="Estimate of the atmospheric seeing in arcseconds",
     )
@@ -3050,7 +3050,7 @@ with st.sidebar:
         "Detection Threshold (σ)",
         0.5,
         5.0,
-        2.5,
+        float(st.session_state.get("threshold_sigma", 2.5)),
         0.5,
         help="Source detection threshold in sigma above background",
     )
@@ -3058,7 +3058,7 @@ with st.sidebar:
         "Border Mask (pixels)",
         25,
         200,
-        25,
+        int(st.session_state.get("detection_mask", 25)),
         25,
         help="Size of border to exclude from source detection",
     )
@@ -3077,14 +3077,16 @@ with st.sidebar:
     gaia_band = st.selectbox(
         "Gaia Band",
         ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"],
-        index=0,
+        index=["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"].index(
+                st.session_state.get("gaia_band", "phot_g_mean_mag")
+        ),
         help="Gaia magnitude band to use for calibration",
     )
     gaia_min_mag = st.slider(
         "Gaia Min Magnitude",
         7.0,
         12.0,
-        7.0,
+        float(st.session_state.get("gaia_min_mag", 7.0)),
         0.5,
         help="Minimum magnitude for Gaia sources",
     )
@@ -3092,7 +3094,7 @@ with st.sidebar:
         "Gaia Max Magnitude",
         15.0,
         20.0,
-        20.0,
+        float(st.session_state.get("gaia_max_mag", 20.0)),
         0.5,
         help="Maximum magnitude for Gaia sources",
     )
