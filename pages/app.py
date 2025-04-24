@@ -1092,7 +1092,6 @@ def perform_psf_photometry(
     return phot_epsf_result, epsf
 
 
-@st.cache_data
 def detction_and_photometry(
     image_data,
     _science_header,
@@ -1343,7 +1342,6 @@ def detction_and_photometry(
         return None, None, daofind, bkg
 
 
-@st.cache_data
 def cross_match_with_gaia(
     _phot_table,
     _science_header,
