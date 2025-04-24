@@ -1,6 +1,61 @@
+# [theme]
+# primaryColor = "#F63366"
+# backgroundColor = "black"
+
 [global]
 developmentMode = false
+
+[logger]
+level = "info"
+messageFormat = "%(asctime)s %(message)s"
 
 [server]
 port = 8501
 enableStaticServing = true
+
+[client]
+
+# Controls whether uncaught app exceptions and deprecation warnings
+# are displayed in the browser. This can be one of the following:
+# - "full"       : In the browser, Streamlit displays app deprecation
+#                  warnings and exceptions, including exception types,
+#                  exception messages, and associated tracebacks.
+# - "stacktrace" : In the browser, Streamlit displays exceptions,
+#                  including exception types, generic exception messages,
+#                  and associated tracebacks. Deprecation warnings and
+#                  full exception messages will only print to the
+#                  console.
+# - "type"       : In the browser, Streamlit displays exception types and
+#                  generic exception messages. Deprecation warnings, full
+#                  exception messages, and associated tracebacks only
+#                  print to the console.
+# - "none"       : In the browser, Streamlit displays generic exception
+#                  messages. Deprecation warnings, full exception
+#                  messages, associated tracebacks, and exception types
+#                  will only print to the console.
+# - True         : This is deprecated. Streamlit displays "full"
+#                  error details.
+# - False        : This is deprecated. Streamlit displays "stacktrace"
+#                  error details.
+# Default: "full"
+showErrorDetails = "full"
+
+# Change the visibility of items in the toolbar, options menu,
+# and settings dialog (top right of the app).
+# Allowed values:
+# - "auto"      : Show the developer options if the app is accessed through
+#                 localhost or through Streamlit Community Cloud as a developer.
+#                 Hide them otherwise.
+# - "developer" : Show the developer options.
+# - "viewer"    : Hide the developer options.
+# - "minimal"   : Show only options set externally (e.g. through
+#                 Streamlit Community Cloud) or through st.set_page_config.
+#                 If there are no options left, hide the menu.
+# Default: "auto"
+toolbarMode = "viewer"
+
+# Controls whether to display the default sidebar page navigation in a
+# multi-page app. This only applies when app's pages are defined by the
+# `pages/` directory.
+# Default: true
+showSidebarNavigation = false
