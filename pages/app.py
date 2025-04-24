@@ -3076,21 +3076,6 @@ with st.sidebar:
     default_catalog_name = f"{st.session_state['base_filename']}_phot.csv"
     catalog_name = st.text_input("Output Catalog Filename", default_catalog_name)
 
-    st.header("Quick Links")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
-        st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
-        st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
-
-    with col2:
-        # st.link_button("Astro-Colibri", "https://astro-colibri.com/")
-        st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
-        st.link_button("AAVSO", "https://www.aavso.org/vsx/")
-        # st.link_button("NED", "https://ned.ipac.caltech.edu/")
-        st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
-
     # --- Save Session Parameters as JSON to results directory and backend DB
     if st.sidebar.button("Save Session Parameters"):
         # Collect parameters
@@ -3129,6 +3114,21 @@ with st.sidebar:
                 st.sidebar.warning(f"Could not save config to DB: {resp.text}")
         except Exception as e:
             st.sidebar.warning(f"Could not connect to backend: {e}")
+
+    st.header("Quick Links")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
+        st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
+        st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
+
+    with col2:
+        # st.link_button("Astro-Colibri", "https://astro-colibri.com/")
+        st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
+        st.link_button("AAVSO", "https://www.aavso.org/vsx/")
+        # st.link_button("NED", "https://ned.ipac.caltech.edu/")
+        st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
 
 
 output_dir = ensure_output_directory("pfr_results")
