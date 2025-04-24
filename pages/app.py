@@ -3084,8 +3084,18 @@ with st.sidebar:
 
     # --- Save Session Parameters as JSON to results directory and backend DB
     if st.sidebar.button("Save Session Parameters"):
-        # Collect parameters
         analysis_params = dict(st.session_state.get("analysis_parameters", {}))
+        # Remove unwanted keys from analysis_params
+        for k in [
+            "gaia_band",
+            "gaia_min_mag",
+            "gaia_max_mag",
+            "calibrate_bias",
+            "calibrate_dark",
+            "calibrate_flat",
+        ]:
+            analysis_params.pop(k, None)
+            
         # Only keep relevant keys
         gaia_params = {
             "gaia_band": st.session_state.get("gaia_band"),
