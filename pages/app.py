@@ -159,7 +159,6 @@ def solve_with_siril(file_path):
         st.error(f"Error reading solved file: {str(e)}")
 
 
-@st.cache_data
 def detect_remove_cosmic_rays(
     image_data,
     gain=1.0,
@@ -230,7 +229,6 @@ def detect_remove_cosmic_rays(
         return image_data, None, 0
 
 
-@st.cache_data
 def make_border_mask(
     image: np.ndarray,
     border: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 50,
@@ -319,7 +317,6 @@ def make_border_mask(
     return ~mask if invert else mask
 
 
-@st.cache_data
 def estimate_background(image_data, box_size=128, filter_size=7):
     """
     Estimate the background and background RMS of an astronomical image.
