@@ -988,7 +988,7 @@ def perform_psf_photometry(
                 epsf.data,
                 norm=norm_epsf,
                 origin="lower",
-                cmap="inferno",
+                cmap="viridis",
                 interpolation="nearest",
             )
             ax_epsf_model.set_title("Fitted PSF Model")
@@ -3252,54 +3252,90 @@ if science_file is not None:
 
     if science_data is not None:
         try:
-            fig_preview, ax_preview = plt.subplots(figsize=FIGURE_SIZES["medium"])
-
+            # Create a side-by-side plot using matplotlib subplots
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2 * FIGURE_SIZES["medium"][0], FIGURE_SIZES["medium"][1]))
+            # ZScale Visualization
+            ax1.set_title("ZScale Visualization")
             try:
                 norm = ImageNormalize(science_data, interval=ZScaleInterval())
-                im = ax_preview.imshow(
-                    science_data, norm=norm, origin="lower", cmap="inferno"
-                )
+                im1 = ax1.imshow(science_data, norm=norm, origin="lower", cmap="viridis")
             except Exception as norm_error:
-                st.warning(
-                    f"ZScale normalization failed: {norm_error}. Using simple normalization."
-                )
+                st.warning(f"ZScale normalization failed: {norm_error}. Using simple normalization.")
                 vmin, vmax = np.percentile(science_data, [1, 99])
-                im = ax_preview.imshow(
-                    science_data, vmin=vmin, vmax=vmax, origin="lower", cmap="inferno"
+                im1 = ax1.imshow(science_data, vmin=vmin, vmax=vmax, origin="lower", cmap="viridis")
+            fig.colorbar(im1, ax=ax1, label="Pixel Value")
+            ax1.axis("off")
+
+            # Histogram Equalization
+            ax2.set_title("Histogram Equalization")
+            try:
+                data_finite = science_data[np.isfinite(science_data)]
+                if len(data_finite) > 0:
+                    vmin, vmax = np.percentile(data_finite, [0.5, 99.5])
+                    data_scaled = np.clip(science_data, vmin, vmax)
+                    data_scaled = (data_scaled - vmin) / (vmax - vmin)
+                    im2 = ax2.imshow(data_scaled, origin="lower", cmap="viridis")
+                    fig.colorbar(im2, ax=ax2, label="Normalized Value")
+                    ax2.axis("off")
+                    # Add small histogram inset
+                    ax_inset = fig.add_axes([0.65, 0.15, 0.15, 0.25])
+                    ax_inset.hist(data_scaled.flatten(), bins=50, color='skyblue', alpha=0.8)
+                    ax_inset.set_title('Pixel Distribution', fontsize=8)
+                    ax_inset.tick_params(axis='both', which='major', labelsize=6)
+                else:
+                    st.warning("No finite values in image data for histogram equalization")
+            except Exception as hist_error:
+                st.warning(f"Histogram equalization failed: {hist_error}")
+
+            fig.suptitle(f"{science_file.name}")
+            st.pyplot(fig)
+
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            image_filename = f"{st.session_state['base_filename']}_image.png"
+            image_path = os.path.join(output_dir, image_filename)
+
+            try:
+                fig.savefig(image_path, dpi=120, bbox_inches="tight")
+                write_to_log(log_buffer, "Saved image plot")
+                # Save histogram visualization too (just the right panel)
+                hist_image_filename = f"{st.session_state['base_filename']}_image_hist.png"
+                hist_image_path = os.path.join(output_dir, hist_image_filename)
+                # Save only the histogram equalization panel
+                fig_hist, ax_hist = plt.subplots(figsize=FIGURE_SIZES["medium"])
+                try:
+                    if len(data_finite) > 0:
+                        im_hist = ax_hist.imshow(data_scaled, origin="lower", cmap="viridis")
+                        fig_hist.colorbar(im_hist, ax=ax_hist, label="Normalized Value")
+                        ax_hist.axis("off")
+                        ax_hist.set_title(f"{science_file.name}")
+                        ax_inset = fig_hist.add_axes([0.15, 0.15, 0.25, 0.25])
+                        ax_inset.hist(data_scaled.flatten(), bins=50, color='skyblue', alpha=0.8)
+                        ax_inset.set_title('Pixel Distribution', fontsize=8)
+                        ax_inset.tick_params(axis='both', which='major', labelsize=6)
+                        fig_hist.savefig(hist_image_path, dpi=120, bbox_inches="tight")
+                        write_to_log(log_buffer, "Saved histogram equalization plot")
+                except Exception as save_hist_error:
+                    write_to_log(log_buffer, f"Failed to save histogram plot: {str(save_hist_error)}", level="ERROR")
+                plt.close(fig_hist)
+            except Exception as save_error:
+                write_to_log(
+                    log_buffer,
+                    f"Failed to save image plot: {str(save_error)}",
+                    level="ERROR",
                 )
+                st.error(f"Error saving image: {str(save_error)}")
 
-            fig_preview.colorbar(im, ax=ax_preview, label="Pixel Value")
-            ax_preview.set_title(f"{science_file.name}")
-            ax_preview.axis("off")
-
-            st.pyplot(fig_preview)
-
-            # timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-            # image_filename = f"{st.session_state['base_filename']}_image.png"
-            # image_path = os.path.join(output_dir, image_filename)
-
-            # try:
-            #     fig_preview.savefig(image_path, dpi=150, bbox_inches="tight")
-            #     write_to_log(log_buffer, "Saved image plot")
-            # except Exception as save_error:
-            #     write_to_log(
-            #         log_buffer,
-            #         f"Failed to save image plot: {str(save_error)}",
-            #         level="ERROR",
-            #     )
-            #     st.error(f"Error saving image: {str(save_error)}")
-
-            plt.close(fig_preview)
+            plt.close(fig)
 
         except Exception as e:
             st.error(f"Error displaying image: {str(e)}")
             st.exception(e)
-    else:
-        st.error(
-            "No image data available to display. Check if the file was loaded correctly."
-        )
+        else:
+            st.error(
+                "No image data available to display. Check if the file was loaded correctly."
+            )
 
-    with st.expander("Image Header"):
+        with st.expander("Image Header"):
         if science_header:
             st.text(repr(science_header))
         else:
