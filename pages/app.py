@@ -67,48 +67,6 @@ warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="RAPAS Photometry Factory", page_icon="🔭", layout="wide")
 
-st.markdown("""
-<style>
-.top-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    background: #22223b;
-    color: #fff;
-    z-index: 9999;
-    padding: 0.5rem 0;
-    border-bottom: 2px solid #4a4e69;
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-}
-.top-bar a {
-    color: #f2e9e4;
-    text-decoration: none;
-    font-weight: bold;
-    padding: 0.25rem 1rem;
-    border-radius: 4px;
-    transition: background 0.2s;
-}
-.top-bar a:hover {
-    background: #4a4e69;
-    color: #fff;
-}
-.block-container {
-    padding-top: 3.5rem !important; /* Push content below the top bar */
-}
-</style>
-<div class="top-bar">
-    <a href="https://gea.esac.esa.int/archive/" target="_blank">GAIA</a>
-    <a href="http://simbad.u-strasbg.fr/simbad/" target="_blank">Simbad</a>
-    <a href="https://ssp.imcce.fr/webservices/skybot/" target="_blank">SkyBoT</a>
-    <a href="http://cdsxmatch.u-strasbg.fr/" target="_blank">X-Match</a>
-    <a href="https://www.aavso.org/vsx/" target="_blank">AAVSO</a>
-    <a href="http://vizier.u-strasbg.fr/viz-bin/VizieR" target="_blank">VizieR</a>
-</div>
-""", unsafe_allow_html=True)
-
 # Redirect to login if not authenticated
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("You must log in to access this page.")
@@ -3012,18 +2970,18 @@ with st.sidebar:
         except Exception as e:
             st.sidebar.warning(f"Could not connect to backend: {e}")
 
-    # st.header("Quick Links")
-    # col1, col2 = st.columns(2)
+    st.header("Quick Links")
+    col1, col2 = st.columns(2)
 
-    # with col1:
-    #     st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
-    #     st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
-    #     st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
+    with col1:
+        st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
+        st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
+        st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
 
-    # with col2:
-    #     st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
-    #     st.link_button("AAVSO", "https://www.aavso.org/vsx/")
-    #     st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+    with col2:
+        st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
+        st.link_button("AAVSO", "https://www.aavso.org/vsx/")
+        st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
 
 
 output_dir = ensure_output_directory("pfr_results")
