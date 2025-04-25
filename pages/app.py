@@ -1218,7 +1218,7 @@ def detection_and_photometry(
                 phot_table["aperture_sum"] / phot_table["aperture_sum_err"]
             )
         elif "aperture_sum" in phot_table.colnames and total_error is not None:
-            phot_table["snr"] = phot_table["aperture_sum"] / total_error
+            phot_table["snr"] = 10 * phot_table["aperture_sum"] / total_error
         else:
             phot_table["snr"] = np.nan
 
