@@ -1034,14 +1034,6 @@ def detection_and_photometry(
 
     sources = daofind(image_data - bkg.background, mask=mask)
 
-    obj = photometry.get_objects_sep(
-        image_data - bkg.background,
-        mask=None,
-        aper=1.75 * fwhm_estimate,
-        gain=1,
-        edge=10,
-    )
-
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
         return None, None, daofind, bkg
@@ -1049,6 +1041,15 @@ def detection_and_photometry(
     # Check astrometry++ option before refinement
     if hasattr(st, 'session_state') and st.session_state.get('astrometry_check', False):
         st.write("Doing astrometry refinement using Stdpipe and Astropy...")
+
+        obj = photometry.get_objects_sep(
+            image_data - bkg.background,
+            mask=None,
+            aper=1.75 * fwhm_estimate,
+            gain=1,
+            edge=10,
+        )
+
         ra0, dec0, sr0 = astrometry.get_frame_center(
             wcs=w, width=image_data.shape[1], height=image_data.shape[0]
         )
