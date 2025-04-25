@@ -3178,20 +3178,20 @@ if science_file is not None:
 
             st.pyplot(fig_preview)
 
-            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-            image_filename = f"{st.session_state['base_filename']}_image.png"
-            image_path = os.path.join(output_dir, image_filename)
+            # timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # image_filename = f"{st.session_state['base_filename']}_image.png"
+            # image_path = os.path.join(output_dir, image_filename)
 
-            try:
-                fig_preview.savefig(image_path, dpi=150, bbox_inches="tight")
-                write_to_log(log_buffer, "Saved image plot")
-            except Exception as save_error:
-                write_to_log(
-                    log_buffer,
-                    f"Failed to save image plot: {str(save_error)}",
-                    level="ERROR",
-                )
-                st.error(f"Error saving image: {str(save_error)}")
+            # try:
+            #     fig_preview.savefig(image_path, dpi=150, bbox_inches="tight")
+            #     write_to_log(log_buffer, "Saved image plot")
+            # except Exception as save_error:
+            #     write_to_log(
+            #         log_buffer,
+            #         f"Failed to save image plot: {str(save_error)}",
+            #         level="ERROR",
+            #     )
+            #     st.error(f"Error saving image: {str(save_error)}")
 
             plt.close(fig_preview)
 
