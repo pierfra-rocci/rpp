@@ -83,13 +83,12 @@ A comprehensive astronomical image processing and photometry tool designed speci
 
 2. **Upload your FITS files**
    - Required: Science image
-   - Optional: Bias, dark, and flat field calibration frames
 
 3. **Configure parameters**
    - Set seeing estimate, detection threshold, border mask size, observatory info, Gaia calibration parameters, and API keys as needed.
 
 4. **Run the analysis pipeline**
-   - Apply calibration, cosmic ray removal, plate solving, source detection, photometry, zero-point calibration, and catalog cross-matching.
+   - Apply cosmic ray removal, plate solving, source detection, photometry, zero-point calibration, and catalog cross-matching.
    - View results and interactive visualizations (including Aladin Lite and ESA Sky links).
 
 5. **Export and analyze results**
@@ -171,9 +170,9 @@ Found a bug or have a feature request? Please submit an issue through the GitHub
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE).
 
-The MIT License allows you to use, modify, and distribute this software for both private and commercial purposes, provided you include the original copyright notice and disclaimer.
+The MIT License allows you to use, modify, and distribute this software, provided you include the original copyright notice and disclaimer.
 
 ## Acknowledgements
 
