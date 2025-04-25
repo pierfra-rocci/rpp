@@ -1044,21 +1044,24 @@ def detection_and_photometry(
 
         obj = photometry.get_objects_sep(
             image_data - bkg.background,
+            header=_science_header,
             mask=None,
-            aper=1.75 * fwhm_estimate,
-            gain=1,
-            edge=10,
+            sn=5,
+            aper=1.5 * fwhm_estimate,
         )
 
-        ra0, dec0, sr0 = astrometry.get_frame_center(
-            wcs=w, width=image_data.shape[1], height=image_data.shape[0]
-        )
+        ra0, dec0, sr0 = astrometry.get_frame_center(header=_science_header,
+                                                     wcs=w,
+                                                     width=image_data.shape[1],
+                                                     height=image_data.shape[0]
+                                                     )
 
         if gaia_band == "phot_bp_mean_mag":
             gb = "BPmag"
         if gaia_band == "phot_rp_mean_mag":
             gb = "RPmag"
-        cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3", filters={gb: "<20"})
+        cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3",
+                                      filters={gb: "<20"})
         cat_col_mag = gb
         try:
             wcs = pipeline.refine_astrometry(
