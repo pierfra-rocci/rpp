@@ -61,7 +61,7 @@ from tools import (
 )
 
 from tools import initialize_log, write_to_log
-from tools import zip_rpf_results_on_exit
+from tools import zip_rpp_results_on_exit
 
 from __version__ import version
 
@@ -407,7 +407,7 @@ def estimate_background(image_data, box_size=128, filter_size=7):
             
             # Save background as FITS file
             base_filename = st.session_state.get("base_filename", "photometry")
-            output_dir = ensure_output_directory("rpf_results")
+            output_dir = ensure_output_directory("rpp_results")
             bkg_filename = f"{base_filename}_bkg.fits"
             bkg_filepath = os.path.join(output_dir, bkg_filename)
             
@@ -855,7 +855,7 @@ def fwhm_fit(
         # Save the FWHM histogram figure
         try:
             base_filename = st.session_state.get("base_filename", "photometry")
-            output_dir = ensure_output_directory("rpf_results")
+            output_dir = ensure_output_directory("rpp_results")
             fwhm_filename = f"{base_filename}_fwhm.png"
             fwhm_filepath = os.path.join(output_dir, fwhm_filename)
             
@@ -2775,7 +2775,7 @@ def provide_download_buttons(folder_path):
 
         # Create a timestamp for the zip filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_name = st.session_state.get("base_filename", "rpf_results")
+        base_name = st.session_state.get("base_filename", "rpp_results")
         zip_filename = f"{base_name}_{timestamp}.zip"
 
         # Create in-memory zip file
@@ -3089,7 +3089,7 @@ with st.sidebar:
         username = st.session_state.get("username", "user")
         config_filename = f"{username}_config.json"
         config_path = os.path.join(
-            st.session_state.get("output_dir", "rpf_results"), config_filename
+            st.session_state.get("output_dir", "rpp_results"), config_filename
         )
         try:
             with open(config_path, "w", encoding="utf-8") as f:
@@ -3124,7 +3124,7 @@ with st.sidebar:
         st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
 
 
-output_dir = ensure_output_directory("rpf_results")
+output_dir = ensure_output_directory("rpp_results")
 st.session_state["output_dir"] = output_dir
 
 if science_file is not None:
@@ -3934,4 +3934,4 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
         write_to_log(log_buffer, f"Log saved to {log_filepath}")
 
 # at the end archive a zip version and remove all the results
-atexit.register(partial(zip_rpf_results_on_exit, science_file))
+atexit.register(partial(zip_rpp_results_on_exit, science_file))
