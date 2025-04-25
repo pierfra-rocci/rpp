@@ -459,7 +459,7 @@ def initialize_log(base_filename):
     log_buffer = StringIO()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    log_buffer.write("RAPAS Photometry Factory Log\n")
+    log_buffer.write("RAPAS Photometry Pipeline Log\n")
     log_buffer.write("===============================\n")
     log_buffer.write(f"Processing started: {timestamp}\n")
     log_buffer.write(f"Input file: {base_filename}\n\n")

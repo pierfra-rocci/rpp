@@ -69,7 +69,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-st.set_page_config(page_title="RAPAS Photometry Factory", page_icon="🔭", layout="wide")
+st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide")
 
 # Redirect to login if not authenticated
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
@@ -2832,7 +2832,7 @@ if "gaia_parameters" in st.session_state:
 if "colibri_api_key" in st.session_state:
     st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
 
-st.title("🔭 _RAPAS Photometry Factory_")
+st.title("🔭 _RAPAS Photometry Pipeline_")
 
 with st.sidebar:
     st.sidebar.header("Upload Image File")

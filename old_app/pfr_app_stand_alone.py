@@ -54,7 +54,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-st.set_page_config(page_title="RAPAS Photometry Factory", page_icon="🔭", layout="wide")
+st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide")
 
 # Add application version to the sidebar
 st.sidebar.markdown(f"**App Version:** {version}")
@@ -3193,7 +3193,7 @@ def initialize_log(base_filename):
     log_buffer = StringIO()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    log_buffer.write("RAPAS Photometry Factory Log\n")
+    log_buffer.write("RAPAS Photometry Pipeline Log\n")
     log_buffer.write("===============================\n")
     log_buffer.write(f"Processing started: {timestamp}\n")
     log_buffer.write(f"Input file: {base_filename}\n\n")
@@ -3322,7 +3322,7 @@ def cleanup_temp_files():
 # Main Streamlit app
 initialize_session_state()
 
-st.title("🔭 _RAPAS Photometry Factory_")
+st.title("🔭 _RAPAS Photometry Pipeline_")
 
 with st.sidebar:
     st.sidebar.header("Upload FITS Files")
