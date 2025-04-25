@@ -1046,44 +1046,48 @@ def detction_and_photometry(
         st.warning("No sources found!")
         return None, None, daofind, bkg
 
-    st.write("Doing astrometry refinement using Stdpipe and Astropy...")
-    ra0, dec0, sr0 = astrometry.get_frame_center(
-        wcs=w, width=image_data.shape[1], height=image_data.shape[0]
-    )
-
-    if gaia_band == "phot_bp_mean_mag":
-        gb = "BPmag"
-    if gaia_band == "phot_rp_mean_mag":
-        gb = "RPmag"
-    cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3", filters={gb: "<20"})
-    cat_col_mag = gb
-    try:
-        wcs = pipeline.refine_astrometry(
-            obj,
-            cat,
-            1.75 * fwhm_estimate * pixel_scale / 3600,
-            wcs=w,
-            order=2,
-            cat_col_mag=cat_col_mag,
-            cat_col_mag_err=None,
-            n_iter=5,
-            min_matches=3,
-            use_photometry=True,
-            verbose=True,
+    # Check astrometry++ option before refinement
+    if hasattr(st, 'session_state') and st.session_state.get('astrometry_check', False):
+        st.write("Doing astrometry refinement using Stdpipe and Astropy...")
+        ra0, dec0, sr0 = astrometry.get_frame_center(
+            wcs=w, width=image_data.shape[1], height=image_data.shape[0]
         )
-        if wcs:
-            st.info("Refined WCS successfully.")
-            astrometry.clear_wcs(
-                _science_header,
-                remove_comments=True,
-                remove_underscored=True,
-                remove_history=True,
+
+        if gaia_band == "phot_bp_mean_mag":
+            gb = "BPmag"
+        if gaia_band == "phot_rp_mean_mag":
+            gb = "RPmag"
+        cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3", filters={gb: "<20"})
+        cat_col_mag = gb
+        try:
+            wcs = pipeline.refine_astrometry(
+                obj,
+                cat,
+                1.75 * fwhm_estimate * pixel_scale / 3600,
+                wcs=w,
+                order=2,
+                cat_col_mag=cat_col_mag,
+                cat_col_mag_err=None,
+                n_iter=5,
+                min_matches=3,
+                use_photometry=True,
+                verbose=True,
             )
-            _science_header.update(wcs.to_header(relax=True))
-        else:
-            st.warning("WCS refinement failed.")
-    except Exception as e:
-        st.warning(f"Skipping WCS refinement: {str(e)}")
+            if wcs:
+                st.info("Refined WCS successfully.")
+                astrometry.clear_wcs(
+                    _science_header,
+                    remove_comments=True,
+                    remove_underscored=True,
+                    remove_history=True,
+                )
+                _science_header.update(wcs.to_header(relax=True))
+            else:
+                st.warning("WCS refinement failed.")
+        except Exception as e:
+            st.warning(f"Skipping WCS refinement: {str(e)}")
+    else:
+        st.info("Astrometry++ option is disabled. Skipping astrometry refinement.")
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
     apertures = CircularAperture(positions, r=1.5 * fwhm_estimate)
