@@ -3787,4 +3787,3 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
 
 # at the end archive a zip version and remove all the results
 atexit.register(partial(zip_pfr_results_on_exit, science_file))
-`
