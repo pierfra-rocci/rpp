@@ -2751,7 +2751,7 @@ with st.sidebar:
 
     st.header("Pre-Process Options")
     astrometry_check = st.checkbox(
-        "Astrometry Refinement", value=False, help="Try to refine astrometry (stdpipe)"
+        "Astrometry ++", value=False, help="Try to refine astrometry (stdpipe)"
     )
     binning_check = st.checkbox(
         "2x2 Binning", value=False, help="Apply binning to the Image"
