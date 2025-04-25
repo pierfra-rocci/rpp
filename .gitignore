@@ -177,3 +177,8 @@ pfr_results
 test.py
 *.ipynb_checkpoints
 users.db
+rfp_results/SN2025dr_gaia_RP_180s_processed_header.txt
+rfp_results/admin_config.json
+rfp_results/SN2025dr_gaia_RP_180s_processed_image.png
+rfp_results/SN2025dr_gaia_RP_180s_processed_phot_metadata.txt
+rfp_results/SN2025dr_gaia_RP_180s_processed_zero_point_plot.png

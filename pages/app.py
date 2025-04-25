@@ -61,7 +61,7 @@ from tools import (
 )
 
 from tools import initialize_log, write_to_log
-from tools import zip_pfr_results_on_exit
+from tools import zip_rpf_results_on_exit
 
 from __version__ import version
 
@@ -1018,9 +1018,7 @@ def detection_and_photometry(
 
     mask = make_border_mask(image_data, border=detection_mask)
 
-    total_error = np.sqrt(bkg.background_rms**2 + bkg.background_median) / np.sqrt(
-        bkg.background_median
-    )
+    total_error = np.sqrt(2*bkg.background_rms**2 / bkg.background_median**2)
 
     st.write("Estimating FWHM...")
     fwhm_estimate = fwhm_fit(image_data - bkg.background, mean_fwhm_pixel, mask)
@@ -2683,7 +2681,7 @@ def provide_download_buttons(folder_path):
 
         # Create a timestamp for the zip filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_name = st.session_state.get("base_filename", "pfr_results")
+        base_name = st.session_state.get("base_filename", "rpf_results")
         zip_filename = f"{base_name}_{timestamp}.zip"
 
         # Create in-memory zip file
@@ -2997,7 +2995,7 @@ with st.sidebar:
         username = st.session_state.get("username", "user")
         config_filename = f"{username}_config.json"
         config_path = os.path.join(
-            st.session_state.get("output_dir", "pfr_results"), config_filename
+            st.session_state.get("output_dir", "rpf_results"), config_filename
         )
         try:
             with open(config_path, "w", encoding="utf-8") as f:
@@ -3032,7 +3030,7 @@ with st.sidebar:
         st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
 
 
-output_dir = ensure_output_directory("pfr_results")
+output_dir = ensure_output_directory("rpf_results")
 st.session_state["output_dir"] = output_dir
 
 if science_file is not None:
@@ -3539,7 +3537,7 @@ if science_file is not None:
                                                             + 0.1 * air
                                                         )
                                                         st.success(
-                                                            "Added PSF photometry results"
+                                                            "Added PSF photometry"
                                                         )
 
                                                     if (
@@ -3572,7 +3570,7 @@ if science_file is not None:
                                                                 }
                                                             )
                                                         st.success(
-                                                            "Added Aperture photometry results"
+                                                            "Added Aperture photometry"
                                                         )
 
                                                     final_table.drop(
@@ -3810,4 +3808,4 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
         write_to_log(log_buffer, f"Log saved to {log_filepath}")
 
 # at the end archive a zip version and remove all the results
-atexit.register(partial(zip_pfr_results_on_exit, science_file))
+atexit.register(partial(zip_rpf_results_on_exit, science_file))
