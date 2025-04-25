@@ -3229,7 +3229,7 @@ if science_file is not None:
         )
 
         mean_fwhm_pixel = seeing / pixel_size_arcsec
-        st.metric("Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f} (from seeing)")
+        st.metric("Mean FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
         write_to_log(
             log_buffer,
             f"Seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
