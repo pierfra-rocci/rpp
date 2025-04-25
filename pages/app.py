@@ -3330,10 +3330,6 @@ if science_file is not None:
         except Exception as e:
             st.error(f"Error displaying image: {str(e)}")
             st.exception(e)
-        else:
-            st.error(
-                "No image data available to display. Check if the file was loaded correctly."
-            )
 
         with st.expander("Image Header"):
             if science_header:
