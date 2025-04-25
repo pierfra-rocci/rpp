@@ -52,10 +52,13 @@ from astropy.nddata import NDData
 from stdpipe import photometry, astrometry, catalogs, pipeline
 
 from tools import FIGURE_SIZES, URL
-from tools import (extract_coordinates, extract_pixel_scale,
-                   get_base_filename)
-from tools import (safe_catalog_query, safe_wcs_create, 
-                   ensure_output_directory, cleanup_temp_files)
+from tools import extract_coordinates, extract_pixel_scale, get_base_filename
+from tools import (
+    safe_catalog_query,
+    safe_wcs_create,
+    ensure_output_directory,
+    cleanup_temp_files,
+)
 
 from tools import initialize_log, write_to_log
 from tools import zip_pfr_results_on_exit
@@ -63,6 +66,7 @@ from tools import zip_pfr_results_on_exit
 from __version__ import version
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="RAPAS Photometry Factory", page_icon="🔭", layout="wide")
@@ -1039,7 +1043,7 @@ def detection_and_photometry(
         return None, None, daofind, bkg
 
     # Check astrometry++ option before refinement
-    if hasattr(st, 'session_state') and st.session_state.get('astrometry_check', False):
+    if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
         st.write("Doing astrometry refinement using Stdpipe and Astropy...")
 
         obj = photometry.get_objects_sep(
@@ -1114,8 +1118,13 @@ def detection_and_photometry(
 
         # Compute SNR for each source
         # SNR = aperture_sum / total_error
-        if "aperture_sum" in phot_table.colnames and "aperture_sum_err" in phot_table.colnames:
-            phot_table["snr"] = phot_table["aperture_sum"] / phot_table["aperture_sum_err"]
+        if (
+            "aperture_sum" in phot_table.colnames
+            and "aperture_sum_err" in phot_table.colnames
+        ):
+            phot_table["snr"] = (
+                phot_table["aperture_sum"] / phot_table["aperture_sum_err"]
+            )
         elif "aperture_sum" in phot_table.colnames and total_error is not None:
             phot_table["snr"] = phot_table["aperture_sum"] / total_error
         else:
@@ -2765,11 +2774,15 @@ with st.sidebar:
 
     st.header("Pre-Process Options")
     astrometry_check = st.checkbox(
-        "Astrometry ++", value=st.session_state.get("astrometry_check", False), help="Try to refine astrometry (stdpipe)"
+        "Astrometry ++",
+        value=st.session_state.get("astrometry_check", False),
+        help="Try to refine astrometry (stdpipe)",
     )
     st.session_state["astrometry_check"] = astrometry_check
     binning_check = st.checkbox(
-        "2x2 Binning", value=st.session_state.get("binning_check", False), help="Apply binning to the Image"
+        "2x2 Binning",
+        value=st.session_state.get("binning_check", False),
+        help="Apply binning to the Image",
     )
     st.session_state["binning_check"] = binning_check
     calibrate_cosmic_rays = st.checkbox(
@@ -2870,7 +2883,7 @@ with st.sidebar:
         "UID key",
         value=st.session_state.get("colibri_api_key", None),
         help="Enter your Astro-Colibri UID key",
-        type="password"
+        type="password",
     )
     st.session_state["colibri_api_key"] = colibri_api_key
     st.caption("[Get your key](https://astro-colibri.science)")
@@ -2905,18 +2918,20 @@ with st.sidebar:
     st.session_state["threshold_sigma"] = threshold_sigma
     st.session_state["detection_mask"] = detection_mask
 
-    st.session_state["analysis_parameters"].update({
-        "seeing": seeing,
-        "threshold_sigma": threshold_sigma,
-        "detection_mask": detection_mask,
-    })
-    
+    st.session_state["analysis_parameters"].update(
+        {
+            "seeing": seeing,
+            "threshold_sigma": threshold_sigma,
+            "detection_mask": detection_mask,
+        }
+    )
+
     st.header("Gaia Parameters")
     gaia_band = st.selectbox(
         "Gaia Band",
         ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"],
         index=["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"].index(
-                st.session_state.get("gaia_band", "phot_g_mean_mag")
+            st.session_state.get("gaia_band", "phot_g_mean_mag")
         ),
         help="Gaia magnitude band to use for calibration",
     )
@@ -2966,9 +2981,13 @@ with st.sidebar:
         observatory_params = dict(st.session_state.get("observatory_data", {}))
         colibri_api_key = st.session_state.get("colibri_api_key")
         # Add pre-process options to analysis_parameters
-        analysis_params["astrometry_check"] = st.session_state.get("astrometry_check", False)
+        analysis_params["astrometry_check"] = st.session_state.get(
+            "astrometry_check", False
+        )
         analysis_params["binning_check"] = st.session_state.get("binning_check", False)
-        analysis_params["calibrate_cosmic_rays"] = st.session_state.get("calibrate_cosmic_rays", False)
+        analysis_params["calibrate_cosmic_rays"] = st.session_state.get(
+            "calibrate_cosmic_rays", False
+        )
         params = {
             "analysis_parameters": analysis_params,
             "gaia_parameters": gaia_params,
@@ -2977,18 +2996,23 @@ with st.sidebar:
         }
         username = st.session_state.get("username", "user")
         config_filename = f"{username}_config.json"
-        config_path = os.path.join(st.session_state.get("output_dir", "pfr_results"), config_filename)
+        config_path = os.path.join(
+            st.session_state.get("output_dir", "pfr_results"), config_filename
+        )
         try:
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(params, f, indent=2)
             st.sidebar.success("Parameters Saved")
         except Exception as e:
             st.sidebar.error(f"Failed to save config: {e}")
-        
+
         # Save to backend DB
         try:
             backend_url = "http://localhost:5000/save_config"
-            resp = requests.post(backend_url, json={"username": username, "config_json": json.dumps(params)})
+            resp = requests.post(
+                backend_url,
+                json={"username": username, "config_json": json.dumps(params)},
+            )
             if resp.status_code != 200:
                 st.sidebar.warning(f"Could not save config to DB: {resp.text}")
         except Exception as e:

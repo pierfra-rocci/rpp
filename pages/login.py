@@ -3,6 +3,7 @@ import requests
 import json
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="RAPAS Photometry Factory", page_icon="🔒", layout="wide")
@@ -27,7 +28,10 @@ if not st.session_state.logged_in:
 
     if login_clicked:
         if username and password:
-            response = requests.post(f"{backend_url}/login", data={"username": username, "password": password})
+            response = requests.post(
+                f"{backend_url}/login",
+                data={"username": username, "password": password},
+            )
             if response.status_code == 200:
                 st.session_state.logged_in = True
                 st.session_state.username = username
@@ -40,7 +44,10 @@ if not st.session_state.logged_in:
 
     if register_clicked:
         if username and password:
-            response = requests.post(f"{backend_url}/register", data={"username": username, "password": password})
+            response = requests.post(
+                f"{backend_url}/register",
+                data={"username": username, "password": password},
+            )
             if response.status_code == 201:
                 st.success(response.text)
             else:
@@ -53,7 +60,10 @@ if not st.session_state.logged_in:
     new_password = st.sidebar.text_input("New Password", type="password")
     if st.sidebar.button("Reset Password"):
         if username and new_password:
-            response = requests.post(f"{backend_url}/recover", data={"username": username, "new_password": new_password})
+            response = requests.post(
+                f"{backend_url}/recover",
+                data={"username": username, "new_password": new_password},
+            )
             if response.status_code == 200:
                 st.success(response.text)
             else:
@@ -66,7 +76,7 @@ else:
     try:
         backend_url = "http://localhost:5000/get_config"
         resp = requests.get(backend_url, params={"username": st.session_state.username})
-        if resp.status_code == 200 and resp.text and resp.text != '{}':
+        if resp.status_code == 200 and resp.text and resp.text != "{}":
             config = json.loads(resp.text)
             # Restore all parameter groups
             if "analysis_parameters" in config:

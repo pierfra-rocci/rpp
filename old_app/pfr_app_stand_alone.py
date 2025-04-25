@@ -1614,12 +1614,12 @@ def detction_and_photometry(
         phot_table["xcenter"] = sources["xcentroid"]
         phot_table["ycenter"] = sources["ycentroid"]
 
-        if np.mean(image_data - bkg.background) > 1.:
+        if np.mean(image_data - bkg.background) > 1.0:
             exposure_time = _science_header.get("EXPTIME", 1.0)
         else:
             exposure_time = 1.0
 
-        instrumental_mags = -2.5 * np.log10(phot_table["aperture_sum"]/exposure_time)
+        instrumental_mags = -2.5 * np.log10(phot_table["aperture_sum"] / exposure_time)
         phot_table["instrumental_mag"] = instrumental_mags
 
         try:
@@ -1627,7 +1627,9 @@ def detction_and_photometry(
                 image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask
             )
 
-            epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"]/exposure_time)
+            epsf_instrumental_mags = -2.5 * np.log10(
+                epsf_table["flux_fit"] / exposure_time
+            )
             epsf_table["instrumental_mag"] = epsf_instrumental_mags
         except Exception as e:
             st.error(f"Error performing EPSF photometry: {e}")
@@ -4188,8 +4190,14 @@ if science_file is not None:
                                                 st.subheader(
                                                     "Cross-matching with Astronomical Catalogs"
                                                 )
-                                                search_radius = (max(header_to_process["NAXIS1"],
-                                                                     header_to_process["NAXIS2"]) * pixel_size_arcsec / 2.0)
+                                                search_radius = (
+                                                    max(
+                                                        header_to_process["NAXIS1"],
+                                                        header_to_process["NAXIS2"],
+                                                    )
+                                                    * pixel_size_arcsec
+                                                    / 2.0
+                                                )
                                                 final_table = enhance_catalog_with_crossmatches(
                                                     colibri_api_key,
                                                     final_table,

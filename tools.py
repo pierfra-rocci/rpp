@@ -435,8 +435,8 @@ def cleanup_temp_files():
                         st.warning(f"Could not remove {file}: {str(e)}")
         except Exception as e:
             st.warning(f"Could not remove temporary files: {str(e)}")
-       
-            
+
+
 def initialize_log(base_filename):
     """
     Initialize a log buffer for the current processing session.
@@ -518,7 +518,8 @@ def zip_pfr_results_on_exit(science_file):
         return
     base_name = get_base_filename(science_file)
     files = [
-        f for f in os.listdir(output_dir)
+        f
+        for f in os.listdir(output_dir)
         if os.path.isfile(os.path.join(output_dir, f)) and f.startswith(base_name)
     ]
     if not files:
