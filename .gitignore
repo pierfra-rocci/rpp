@@ -173,4 +173,4 @@ pfr-win32*
 *.ruff_cache
 *.ipynb_checkpoints
 users.db
-rpf_results/**
+rpp_results/**
