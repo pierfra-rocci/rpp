@@ -23,45 +23,13 @@ A comprehensive astronomical image processing and photometry tool designed speci
 
 ## Features
 
-- **Complete Image Calibration Pipeline**
-  - Bias, dark and flat field correction with exposure time scaling
-  - Background estimation and subtraction with robust outlier detection
-  - Cosmic ray removal using L.A.Cosmic algorithm with configurable parameters
-    
-- **Advanced Astrometry**
-  - WCS coordinate determination from image headers
-  - Automatic plate solving via SIRIL script integration
-  - Manual coordinate entry for challenging fields
-    
-- **Comprehensive Photometry Tools**
-  - Aperture photometry with configurable parameters
-  - PSF photometry with automatic PSF modeling and visualization
-  - Zero-point calibration with Gaia DR3
-  - Automatic airmass calculation and correction
-  - Observatory information management and customization
-    
-- **Extensive Catalog Cross-matching**
-  - Gaia DR3 source matching and calibration
-  - SIMBAD object identification with object types
-  - SkyBoT solar system object detection
-  - AAVSO Variable Star cross-matching
-  - Quasar identification from VizieR VII/294 catalog
-  - Astro-Colibri source cross-matching for transient events
-    
-- **Interactive Visualization**
-  - Image display with multiple scaling options
-  - Embedded Aladin Lite for DSS2 color overlays and catalog visualization
-  - Interactive tables for data exploration
-  - Direct links to ESA Sky and other astronomy resources
-  - Real-time photometry updates with live plots during pipeline execution
-  - One-click access to online astronomical databases and services
-    
-- **Analysis and Export**
-  - Comprehensive photometry catalog output
-  - Detailed logging of all processing steps
-  - Export of PSF models as FITS files
-  - Metadata files with analysis parameters
-  - Unified download of all results as a ZIP archive
+- **Authentication**: Secure login, registration, and password reset with session state management.
+- **User Configuration**: Save and load user-specific analysis parameters, observatory settings, and API keys.
+- **Pre-processing Options**: Toggle "Astrometry++" (stdpipe refinement), "2x2 Binning", and "Remove Cosmic Rays" (L.A.Cosmic algorithm) before analysis.
+- **Interactive Analysis**: All parameters (seeing, detection threshold, border mask, Gaia band/mag range, etc.) are adjustable via sidebar widgets.
+- **Catalog Cross-matching**: Automatic cross-match with Gaia DR3, SIMBAD, SkyBoT, AAVSO VSX, and Milliquas catalogs. Astro-Colibri API integration for transient events.
+- **Results Download**: All output files for a session can be downloaded as a ZIP archive. Detailed logs are generated for each analysis.
+- **Session State**: All parameters and results are managed via Streamlit session state for persistence and reproducibility.
 
 ## Installation
 
@@ -129,8 +97,9 @@ A comprehensive astronomical image processing and photometry tool designed speci
 
 ## Authentication & Backend
 
-- The backend (`backend.py`) is a Flask server handling user registration, login, password recovery, and config storage.
-- User data is stored in `users.db` (SQLite).
+- User authentication: login, registration, and password recovery are handled via the Streamlit frontend, with user data stored in `users.db` (SQLite).
+- User-specific configuration: analysis parameters, observatory info, and catalog settings are saved and restored per user.
+- The frontend is built with [Streamlit](https://streamlit.io/), providing interactive widgets for all analysis parameters, observatory location, and catalog settings.
 - The frontend communicates with the backend via HTTP (default: `http://localhost:5000`).
 - Utility scripts: `hash_passwords.py` (password hashing), `tools.py` (misc helpers).
 
@@ -161,6 +130,8 @@ The application generates several output files in the pfr_results directory:
 - `[filename]_metadata.txt` - Analysis parameters and results
 - `[filename]_wcs_header.txt` - WCS solution from plate solving
 - `[filename]_zero_point_plot.png` - Visualization of zero-point calibration
+- `[filename]_config.json` - User/session configuration (analysis parameters, observatory info, API keys)
+- `[filename]_results.zip` - Downloadable archive of all output files for the session
 
 ## Contributing
 
