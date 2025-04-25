@@ -829,7 +829,7 @@ def fwhm_fit(
 
         # Plot histogram of FWHM values
         fig_fwhm, ax_fwhm = plt.subplots(figsize=FIGURE_SIZES["medium"])
-        n, bins, patches = ax_fwhm.hist(fwhm_values_arr[valid], bins=25,
+        n, bins, patches = ax_fwhm.hist(fwhm_values_arr[valid], bins=50,
                                         color='skyblue', edgecolor='black',
                                         alpha=0.7)
 
@@ -843,17 +843,12 @@ def fwhm_fit(
         ax_fwhm.axvline(mean_fwhm, color='green', linestyle='dashed', linewidth=1.5,
                         label=f'Mean: {mean_fwhm:.2f}px')
 
-        # Add statistics information text box
-        stats_text = f"Median: {median_fwhm:.2f} px\nMean: {mean_fwhm:.2f}"
-        ax_fwhm.text(0.95, 0.95, stats_text, transform=ax_fwhm.transAxes,
-                     verticalalignment='top', horizontalalignment='right',
-                     bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': 0.8})
-
         ax_fwhm.set_xlabel('FWHM (pixels)')
         ax_fwhm.set_ylabel('Number of Stars')
-        ax_fwhm.set_xlim(0, 40)
+        ax_fwhm.set_xlim(0, round(3*mean_fwhm))
         ax_fwhm.set_title('Distribution of FWHM Values')
         ax_fwhm.grid(True, alpha=0.3)
+        ax_fwhm.legend()
 
         st.pyplot(fig_fwhm)
         
