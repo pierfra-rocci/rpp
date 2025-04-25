@@ -3664,12 +3664,12 @@ if science_file is not None:
                                                 st.dataframe(final_table.head())
 
                                                 if (
-                                                    "psf_instrumental_mag"
+                                                    "instrumental_mag_y"
                                                     in final_table.columns
                                                 ):
                                                     final_table["psf_calib_mag"] = (
                                                         final_table[
-                                                            "psf_instrumental_mag"
+                                                            "instrumental_mag_y"
                                                         ]
                                                         + zero_point_value
                                                         + 0.1 * air
@@ -3679,7 +3679,7 @@ if science_file is not None:
                                                     )
 
                                                 if (
-                                                    "instrumental_mag"
+                                                    "instrumental_mag_x"
                                                     in final_table.columns
                                                 ):
                                                     if (
@@ -3689,13 +3689,13 @@ if science_file is not None:
                                                         final_table[
                                                             "aperture_instrumental_mag"
                                                         ] = final_table[
-                                                            "instrumental_mag"
+                                                            "instrumental_mag_x"
                                                         ]
                                                         final_table[
                                                             "aperture_calib_mag"
                                                         ] = (
                                                             final_table[
-                                                                "instrumental_mag"
+                                                                "instrumental_mag_x"
                                                             ]
                                                             + zero_point_value
                                                             + 0.1 * air
@@ -3747,6 +3747,8 @@ if science_file is not None:
                                             st.success(
                                                 f"Catalog includes {len(final_table)} sources."
                                             )
+                                            
+
 
                                             if (
                                                 final_table is not None
