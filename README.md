@@ -12,6 +12,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 - [Features](#features)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Workflow](#workflow)
 - [Authentication & Backend](#authentication--backend)
 - [Documentation](#documentation)
 - [Example Output](#example-output)
@@ -95,6 +96,15 @@ A comprehensive astronomical image processing and photometry tool designed speci
    - Download photometry catalog, metadata, and all results as a ZIP archive from the `pfr_results` directory.
    - Session parameters can be saved to both the backend and as a JSON file.
 
+## Workflow
+
+1. **Start the backend**: `python backend.py` (required for authentication and config saving).
+2. **Start the frontend**: `streamlit run run_frontend.py` (always redirects to login page).
+3. **Authenticate**: Register or log in. User/session parameters are loaded from the backend if available.
+4. **Upload and analyze**: Upload your science FITS file (and optional calibration frames), set parameters, and run the photometry pipeline.
+5. **Results**: All outputs (catalogs, plots, logs, config) are saved in `pfr_results` and can be downloaded as a ZIP archive. Cross-matching with Gaia, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, and Astro-Colibri is supported.
+6. **Save configuration**: Save your analysis parameters and observatory info to the backend and as a JSON file for reproducibility.
+
 ## Authentication & Backend
 
 - User authentication: login, registration, and password recovery are handled via the Streamlit frontend, with user data stored in `users.db` (SQLite).
@@ -125,13 +135,19 @@ The application generates several output files in the pfr_results directory:
 - `[filename]_phot.csv` - Photometry catalog with calibrated magnitudes
 - `[filename]_header.txt` - FITS header information
 - `[filename].log` - Processing log with parameter details and analysis steps
-- `[filename]_image.png` - Preview image
+- `[filename]_image.png` - Preview image of the science image
 - `[filename]_psf.fits` - PSF model file
 - `[filename]_metadata.txt` - Analysis parameters and results
 - `[filename]_wcs_header.txt` - WCS solution from plate solving
 - `[filename]_zero_point_plot.png` - Visualization of zero-point calibration
 - `[filename]_config.json` - User/session configuration (analysis parameters, observatory info, API keys)
 - `[filename]_results.zip` - Downloadable archive of all output files for the session
+- `[filename]_bkg.fits` - Background model FITS file
+- `[filename]_image_hist.png` - Histogram of image pixel values
+- `[filename]_phot_metadata.txt` - Metadata for the photometry catalog
+- `[filename]_fwhm.png` - FWHM distribution histogram
+
+Other files may be generated depending on the analysis options and session parameters.
 
 ## Contributing
 
