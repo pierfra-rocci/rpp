@@ -845,9 +845,7 @@ def perform_psf_photometry(
         st.write("Star positions table prepared.")
     except Exception as e:
         st.error(f"Error preparing star positions table: {e}")
-        if fwhm <= 0:
-            raise ValueError("FWHM must be a positive number.")
-        fit_shape = 2 * round(fwhm) + 1
+        raise
 
     try:
         fit_shape = 2 * round(fwhm) + 1
