@@ -2924,7 +2924,7 @@ with st.sidebar:
 
     # st.header("Output Options")
     default_catalog_name = f"{st.session_state['base_filename']}_phot.csv"
-    catalog_name = st.text_input("Output Catalog", default_catalog_name)
+    catalog_name = st.text_input("Catalog Name", default_catalog_name)
 
     # --- Save Session Parameters as JSON to results directory and backend DB
     st.sidebar.header("Save Configuration")
