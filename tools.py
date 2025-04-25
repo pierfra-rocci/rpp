@@ -58,14 +58,14 @@ def get_json(url: str):
         return json.dumps({"error": "invalid json", "message": str(e)})
 
 
-def ensure_output_directory(directory="pfr_results"):
+def ensure_output_directory(directory="rpf_results"):
     """
     Create an output directory if it doesn't exist.
 
     Parameters
     ----------
     directory : str, optional
-        Path to the directory to create. Default is "pfr_results".
+        Path to the directory to create. Default is "rpf_results".
 
     Returns
     -------
@@ -492,10 +492,10 @@ def write_to_log(log_buffer, message, level="INFO"):
     timestamp = datetime.now().strftime("%H:%M:%S")
 
 
-def zip_pfr_results_on_exit(science_file):
-    """Compresses files in the 'pfr_results' directory into a timestamped ZIP archive.
+def zip_rpf_results_on_exit(science_file):
+    """Compresses files in the 'rpf_results' directory into a timestamped ZIP archive.
 
-    Takes all files in the 'pfr_results' directory that share the same base filename as the input
+    Takes all files in the 'rpf_results' directory that share the same base filename as the input
     science file and compresses them into a single ZIP archive with a timestamp in the filename.
     The original files are deleted after successful compression.
 
@@ -507,13 +507,13 @@ def zip_pfr_results_on_exit(science_file):
         None
 
     Notes:
-        - The ZIP archive is created in the 'pfr_results' directory
+        - The ZIP archive is created in the 'rpf_results' directory
         - Files are compressed using DEFLATE algorithm
         - Original files are removed after successful compression
-        - If 'pfr_results' directory doesn't exist or no matching files found, function returns silently
+        - If 'rpf_results' directory doesn't exist or no matching files found, function returns silently
         - Archive filename format: {base_filename}_{YYYYMMDD_HHMMSS}.zip
     """
-    output_dir = os.path.join(os.getcwd(), "pfr_results")
+    output_dir = os.path.join(os.getcwd(), "rpf_results")
     if not os.path.exists(output_dir):
         return
     base_name = get_base_filename(science_file)
