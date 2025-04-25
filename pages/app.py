@@ -380,6 +380,59 @@ def estimate_background(image_data, box_size=128, filter_size=7):
             bkg_estimator=bkg_estimator,
         )
 
+        # Plot the background model with ZScale and save as FITS
+        try:
+            # Create a figure with two subplots side by side for background and RMS
+            fig_bkg, (ax1, ax2) = plt.subplots(1, 2, figsize=FIGURE_SIZES["wide"])
+            
+            # Use ZScaleInterval for better visualization
+            zscale = ZScaleInterval()
+            vmin, vmax = zscale.get_limits(bkg.background)
+            
+            # Plot the background model
+            im1 = ax1.imshow(bkg.background, origin='lower', cmap='viridis', 
+                           vmin=vmin, vmax=vmax)
+            ax1.set_title('Estimated Background')
+            fig_bkg.colorbar(im1, ax=ax1, label='Flux')
+            
+            # Plot the background RMS
+            vmin_rms, vmax_rms = zscale.get_limits(bkg.background_rms)
+            im2 = ax2.imshow(bkg.background_rms, origin='lower', cmap='viridis',
+                           vmin=vmin_rms, vmax=vmax_rms)
+            ax2.set_title('Background RMS')
+            fig_bkg.colorbar(im2, ax=ax2, label='Flux')
+            
+            fig_bkg.tight_layout()
+            st.pyplot(fig_bkg)
+            
+            # Save background as FITS file
+            base_filename = st.session_state.get("base_filename", "photometry")
+            output_dir = ensure_output_directory("rpf_results")
+            bkg_filename = f"{base_filename}_bkg.fits"
+            bkg_filepath = os.path.join(output_dir, bkg_filename)
+            
+            # Create FITS HDU and save background model
+            hdu_bkg = fits.PrimaryHDU(data=bkg.background)
+            hdu_bkg.header['COMMENT'] = 'Background model created with photutils.Background2D'
+            hdu_bkg.header['BOXSIZE'] = (adjusted_box_size, 'Box size for background estimation')
+            hdu_bkg.header['FILTSIZE'] = (adjusted_filter_size, 'Filter size for background smoothing')
+            
+            # Add RMS as extension
+            hdu_rms = fits.ImageHDU(data=bkg.background_rms)
+            hdu_rms.header['EXTNAME'] = 'BACKGROUND_RMS'
+            
+            hdul = fits.HDUList([hdu_bkg, hdu_rms])
+            hdul.writeto(bkg_filepath, overwrite=True)
+            st.success(f"Background model saved as {bkg_filename}")
+            
+            # Write to log if available
+            log_buffer = st.session_state.get("log_buffer")
+            if log_buffer is not None:
+                write_to_log(log_buffer, f"Background model saved to {bkg_filename}")
+            
+        except Exception as e:
+            st.warning(f"Error creating or saving background plot: {str(e)}")
+
         return bkg, None
     except Exception as e:
         return None, f"Background estimation error: {str(e)}"
