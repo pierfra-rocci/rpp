@@ -589,157 +589,157 @@ def load_fits_data(file):
     return None, None
 
 
-def calibrate_image(
-    science_data,
-    science_header,
-    bias_data,
-    dark_data,
-    flat_data,
-    exposure_time_science,
-    exposure_time_dark,
-    apply_bias,
-    apply_dark,
-    apply_flat,
-    apply_cr_removal=False,
-    cr_gain=1.0,
-    cr_readnoise=2.5,
-    cr_sigclip=4.0,
-):
-    """
-    Calibrate an astronomical Image using bias, dark, and flat-field frames.
+# def calibrate_image(
+#     science_data,
+#     science_header,
+#     bias_data,
+#     dark_data,
+#     flat_data,
+#     exposure_time_science,
+#     exposure_time_dark,
+#     apply_bias,
+#     apply_dark,
+#     apply_flat,
+#     apply_cr_removal=False,
+#     cr_gain=1.0,
+#     cr_readnoise=2.5,
+#     cr_sigclip=4.0,
+# ):
+#     """
+#     Calibrate an astronomical Image using bias, dark, and flat-field frames.
 
-    This function performs standard CCD calibration steps with status updates in Streamlit:
-    1. Bias subtraction (optional)
-    2. Dark frame subtraction with exposure time scaling (optional)
-    3. Flat field correction using normalized flat (optional)
-    4. Cosmic ray removal (optional)
+#     This function performs standard CCD calibration steps with status updates in Streamlit:
+#     1. Bias subtraction (optional)
+#     2. Dark frame subtraction with exposure time scaling (optional)
+#     3. Flat field correction using normalized flat (optional)
+#     4. Cosmic ray removal (optional)
 
-    Parameters
-    ----------
-    science_data : numpy.ndarray
-        The raw Image data to be calibrated
-    science_header : dict or astropy.io.fits.Header
-        Header information from the Image
-    bias_data : numpy.ndarray or None
-        Bias frame data for zero-level correction
-    dark_data : numpy.ndarray or None
-        Dark frame data for thermal noise correction
-    flat_data : numpy.ndarray or None
-        Flat field data for sensitivity/vignetting correction
-    exposure_time_science : float
-        Exposure time of the Image in seconds
-    exposure_time_dark : float
-        Exposure time of the dark frame in seconds
-    apply_bias : bool
-        Whether to apply bias subtraction
-    apply_dark : bool
-        Whether to apply dark frame subtraction
-    apply_flat : bool
-        Whether to apply flat field correction
-    apply_cr_removal : bool, optional
-        Whether to apply cosmic ray removal, default=False
-    cr_gain : float, optional
-        CCD gain for cosmic ray detection, default=1.0
-    cr_readnoise : float, optional
-        CCD read noise for cosmic ray detection, default=6.5
-    cr_sigclip : float, optional
-        Detection threshold in sigma for cosmic rays, default=4.5
+#     Parameters
+#     ----------
+#     science_data : numpy.ndarray
+#         The raw Image data to be calibrated
+#     science_header : dict or astropy.io.fits.Header
+#         Header information from the Image
+#     bias_data : numpy.ndarray or None
+#         Bias frame data for zero-level correction
+#     dark_data : numpy.ndarray or None
+#         Dark frame data for thermal noise correction
+#     flat_data : numpy.ndarray or None
+#         Flat field data for sensitivity/vignetting correction
+#     exposure_time_science : float
+#         Exposure time of the Image in seconds
+#     exposure_time_dark : float
+#         Exposure time of the dark frame in seconds
+#     apply_bias : bool
+#         Whether to apply bias subtraction
+#     apply_dark : bool
+#         Whether to apply dark frame subtraction
+#     apply_flat : bool
+#         Whether to apply flat field correction
+#     apply_cr_removal : bool, optional
+#         Whether to apply cosmic ray removal, default=False
+#     cr_gain : float, optional
+#         CCD gain for cosmic ray detection, default=1.0
+#     cr_readnoise : float, optional
+#         CCD read noise for cosmic ray detection, default=6.5
+#     cr_sigclip : float, optional
+#         Detection threshold in sigma for cosmic rays, default=4.5
 
-    Returns
-    -------
-    tuple
-        (calibrated_science, science_header) where:
-        - calibrated_science is the processed Image as numpy.ndarray
-        - science_header is the updated header information with calibration metadata
-    """
-    if not apply_bias and not apply_dark and not apply_flat:
-        st.write("Calibration steps are disabled. Returning raw science data.")
-        return science_data, science_header
+#     Returns
+#     -------
+#     tuple
+#         (calibrated_science, science_header) where:
+#         - calibrated_science is the processed Image as numpy.ndarray
+#         - science_header is the updated header information with calibration metadata
+#     """
+#     if not apply_bias and not apply_dark and not apply_flat:
+#         st.write("Calibration steps are disabled. Returning raw science data.")
+#         return science_data, science_header
 
-    calibrated_science = science_data.copy()
-    steps_applied = []
+#     calibrated_science = science_data.copy()
+#     steps_applied = []
 
-    dark_data_corrected = dark_data
-    flat_data_corrected = flat_data
+#     dark_data_corrected = dark_data
+#     flat_data_corrected = flat_data
 
-    if apply_bias and bias_data is not None:
-        st.write("Application de la soustraction du bias...")
-        calibrated_science -= bias_data
-        steps_applied.append("Soustraction du Bias")
-        if dark_data is not None:
-            dark_data_corrected = dark_data - bias_data
-        if flat_data is not None:
-            flat_data_corrected = flat_data - bias_data
+#     if apply_bias and bias_data is not None:
+#         st.write("Application de la soustraction du bias...")
+#         calibrated_science -= bias_data
+#         steps_applied.append("Soustraction du Bias")
+#         if dark_data is not None:
+#             dark_data_corrected = dark_data - bias_data
+#         if flat_data is not None:
+#             flat_data_corrected = flat_data - bias_data
 
-    if apply_dark and dark_data_corrected is not None:
-        st.write("Application de la soustraction du dark...")
-        if exposure_time_science != exposure_time_dark:
-            dark_scale_factor = exposure_time_science / exposure_time_dark
-            scaled_dark = dark_data_corrected * dark_scale_factor
-        else:
-            scaled_dark = dark_data_corrected
-        calibrated_science -= scaled_dark
-        steps_applied.append("Soustraction du Dark")
+#     if apply_dark and dark_data_corrected is not None:
+#         st.write("Application de la soustraction du dark...")
+#         if exposure_time_science != exposure_time_dark:
+#             dark_scale_factor = exposure_time_science / exposure_time_dark
+#             scaled_dark = dark_data_corrected * dark_scale_factor
+#         else:
+#             scaled_dark = dark_data_corrected
+#         calibrated_science -= scaled_dark
+#         steps_applied.append("Soustraction du Dark")
 
-    if apply_flat and flat_data_corrected is not None:
-        st.write("Application de la correction du flat field...")
-        normalized_flat = flat_data_corrected / np.median(flat_data_corrected)
-        calibrated_science /= normalized_flat
-        steps_applied.append("Correction du Flat Field")
+#     if apply_flat and flat_data_corrected is not None:
+#         st.write("Application de la correction du flat field...")
+#         normalized_flat = flat_data_corrected / np.median(flat_data_corrected)
+#         calibrated_science /= normalized_flat
+#         steps_applied.append("Correction du Flat Field")
 
-    if apply_cr_removal:
-        st.write("Detecting and removing cosmic rays...")
+#     if apply_cr_removal:
+#         st.write("Detecting and removing cosmic rays...")
 
-        # Try to get gain and readnoise from header if available
-        if science_header is not None:
-            gain_from_header = science_header.get(
-                "GAIN", science_header.get("EGAIN", cr_gain)
-            )
-            readnoise_from_header = science_header.get(
-                "READNOIS", science_header.get("RDNOISE", cr_readnoise)
-            )
-            try:
-                cr_gain = float(gain_from_header)
-                cr_readnoise = float(readnoise_from_header)
-            except (ValueError, TypeError):
-                st.warning(
-                    "Could not parse gain/readnoise from header. Using default values."
-                )
+#         # Try to get gain and readnoise from header if available
+#         if science_header is not None:
+#             gain_from_header = science_header.get(
+#                 "GAIN", science_header.get("EGAIN", cr_gain)
+#             )
+#             readnoise_from_header = science_header.get(
+#                 "READNOIS", science_header.get("RDNOISE", cr_readnoise)
+#             )
+#             try:
+#                 cr_gain = float(gain_from_header)
+#                 cr_readnoise = float(readnoise_from_header)
+#             except (ValueError, TypeError):
+#                 st.warning(
+#                     "Could not parse gain/readnoise from header. Using default values."
+#                 )
 
-        # Apply cosmic ray removal
-        cleaned_image, cr_mask, num_cr = detect_remove_cosmic_rays(
-            calibrated_science, gain=cr_gain, readnoise=cr_readnoise, sigclip=cr_sigclip
-        )
+#         # Apply cosmic ray removal
+#         cleaned_image, cr_mask, num_cr = detect_remove_cosmic_rays(
+#             calibrated_science, gain=cr_gain, readnoise=cr_readnoise, sigclip=cr_sigclip
+#         )
 
-        calibrated_science = cleaned_image
-        steps_applied.append(f"Cosmic Ray Removal ({int(num_cr)} detected)")
+#         calibrated_science = cleaned_image
+#         steps_applied.append(f"Cosmic Ray Removal ({int(num_cr)} detected)")
 
-        # Display cosmic ray mask if available
-        if cr_mask is not None and num_cr > 0:
-            st.write(f"Removed {int(num_cr)} cosmic rays")
+#         # Display cosmic ray mask if available
+#         if cr_mask is not None and num_cr > 0:
+#             st.write(f"Removed {int(num_cr)} cosmic rays")
 
-            # Create a figure showing the cosmic ray mask
-            fig_cr, ax_cr = plt.subplots(figsize=FIGURE_SIZES["medium"])
-            im_cr = ax_cr.imshow(cr_mask, cmap="hot", origin="lower")
-            fig_cr.colorbar(im_cr, ax=ax_cr, label="Cosmic Ray Mask")
-            ax_cr.set_title(f"Detected Cosmic Rays: {int(num_cr)}")
-            st.pyplot(fig_cr)
+#             # Create a figure showing the cosmic ray mask
+#             fig_cr, ax_cr = plt.subplots(figsize=FIGURE_SIZES["medium"])
+#             im_cr = ax_cr.imshow(cr_mask, cmap="hot", origin="lower")
+#             fig_cr.colorbar(im_cr, ax=ax_cr, label="Cosmic Ray Mask")
+#             ax_cr.set_title(f"Detected Cosmic Rays: {int(num_cr)}")
+#             st.pyplot(fig_cr)
 
-    if not steps_applied:
-        st.write(
-            "No calibration steps were applied because files are missing or options are disabled."
-        )
-        return science_data, science_header
+#     if not steps_applied:
+#         st.write(
+#             "No calibration steps were applied because files are missing or options are disabled."
+#         )
+#         return science_data, science_header
 
-    st.success(f"Calibration steps applied: {', '.join(steps_applied)}")
-    # Update header with calibration information
-    updated_header = science_header.copy()
-    updated_header["HISTORY"] = f"Calibration steps: {', '.join(steps_applied)}"
+#     st.success(f"Calibration steps applied: {', '.join(steps_applied)}")
+#     # Update header with calibration information
+#     updated_header = science_header.copy()
+#     updated_header["HISTORY"] = f"Calibration steps: {', '.join(steps_applied)}"
 
-    if apply_cr_removal and "num_cr" in locals():
-        updated_header["CRCOUNT"] = num_cr
+#     if apply_cr_removal and "num_cr" in locals():
+#         updated_header["CRCOUNT"] = num_cr
 
-    return calibrated_science, science_header
+#     return calibrated_science, science_header
 
 
 @st.cache_data
@@ -2748,8 +2748,6 @@ def initialize_session_state():
     This centralized initialization ensures consistent state management
     throughout the application lifecycle.
     """
-    if "calibrated_data" not in st.session_state:
-        st.session_state["calibrated_data"] = None
     if "calibrated_header" not in st.session_state:
         st.session_state["calibrated_header"] = None
     if "final_phot_table" not in st.session_state:
@@ -2875,25 +2873,7 @@ if "colibri_api_key" in st.session_state:
 st.title("🔭 _RAPAS Photometry Factory_")
 
 with st.sidebar:
-    st.sidebar.header("Upload FITS Files")
-
-    bias_file = st.file_uploader(
-        "Master Bias (optional)", type=["fits", "fit", "fts"], key="bias_uploader"
-    )
-    if bias_file is not None:
-        st.session_state.files_loaded["bias_file"] = bias_file
-
-    dark_file = st.file_uploader(
-        "Master Dark (optional)", type=["fits", "fit", "fts"], key="dark_uploader"
-    )
-    if dark_file is not None:
-        st.session_state.files_loaded["dark_file"] = dark_file
-
-    flat_file = st.file_uploader(
-        "Master Flat (optional)", type=["fits", "fit", "fts"], key="flat_uploader"
-    )
-    if flat_file is not None:
-        st.session_state.files_loaded["flat_file"] = flat_file
+    st.sidebar.header("Upload Image File")
 
     # File uploader for Image
     science_file = st.file_uploader(
@@ -2922,15 +2902,9 @@ with st.sidebar:
 
         st.session_state["log_buffer"] = initialize_log(science_file.name)
 
-    st.header("Calibration Options")
-    calibrate_bias = st.checkbox(
-        "Apply Bias", value=False, help="Subtract bias frame from Image"
-    )
-    calibrate_dark = st.checkbox(
-        "Apply Dark", value=False, help="Subtract dark frame from Image"
-    )
-    calibrate_flat = st.checkbox(
-        "Apply Flat Field", value=False, help="Divide Image by flat field"
+    st.header("Binning Options")
+    binning_check = st.checkbox(
+        "Apply 2x2 Binning", value=False, help="Apply binning to the Image"
     )
 
     st.header("Cosmic Ray Removal")
@@ -3114,9 +3088,6 @@ with st.sidebar:
             "gaia_band",
             "gaia_min_mag",
             "gaia_max_mag",
-            "calibrate_bias",
-            "calibrate_dark",
-            "calibrate_flat",
         ]:
             analysis_params.pop(k, None)
 
@@ -3174,9 +3145,6 @@ st.session_state["output_dir"] = output_dir
 
 if science_file is not None:
     science_data, science_header = load_fits_data(science_file)
-    bias_data, _ = load_fits_data(bias_file)
-    dark_data, dark_header = load_fits_data(dark_file)
-    flat_data, _ = load_fits_data(flat_file)
 
     # Update observatory values from header if available
     if science_header is not None:
@@ -3271,17 +3239,9 @@ if science_file is not None:
 
     log_buffer = st.session_state["log_buffer"]
     write_to_log(log_buffer, f"Loaded Image: {science_file.name}")
-    if bias_file:
-        write_to_log(log_buffer, f"Loaded bias frame: {bias_file.name}")
-    if dark_file:
-        write_to_log(log_buffer, f"Loaded dark frame: {dark_file.name}")
-    if flat_file:
-        write_to_log(log_buffer, f"Loaded flat field: {flat_file.name}")
 
     if science_header is None:
         science_header = {}
-    if dark_header is None:
-        dark_header = {}
 
     st.header("Image", anchor="science-image")
 
@@ -3483,65 +3443,9 @@ if science_file is not None:
             air = 0.0
             st.write(f"Using default airmass: {air:.2f}")
 
-        calibration_disabled = not (calibrate_bias or calibrate_dark or calibrate_flat)
         exposure_time_science = science_header.get(
             "EXPOSURE", science_header.get("EXPTIME", 1.0)
         )
-        exposure_time_dark = dark_header.get(
-            "EXPOSURE", dark_header.get("EXPTIME", exposure_time_science)
-        )
-
-        if st.button("Run Image Calibration", disabled=calibration_disabled):
-            with st.spinner("Calibrating image..."):
-                try:
-                    calibrated_data, calibrated_header = calibrate_image(
-                        science_data,
-                        science_header,
-                        bias_data,
-                        dark_data,
-                        flat_data,
-                        exposure_time_science,
-                        exposure_time_dark,
-                        calibrate_bias,
-                        calibrate_dark,
-                        calibrate_flat,
-                        apply_cr_removal=calibrate_cosmic_rays,
-                        cr_gain=cr_gain,
-                        cr_readnoise=cr_readnoise,
-                        cr_sigclip=cr_sigclip,
-                    )
-                    st.session_state["calibrated_data"] = calibrated_data
-                    st.session_state["calibrated_header"] = calibrated_header
-
-                    # Add to log
-                    if calibrate_cosmic_rays:
-                        write_to_log(
-                            log_buffer,
-                            f"Applied cosmic ray removal: detected {calibrated_header.get('CRCOUNT', 'unknown')} cosmic rays",
-                        )
-
-                    if calibrated_data is not None:
-                        st.header("Calibrated Image")
-                        norm_calibrated = ImageNormalize(
-                            calibrated_data, interval=ZScaleInterval()
-                        )
-                        fig_calibrated, ax_calibrated = plt.subplots(
-                            figsize=FIGURE_SIZES["medium"], dpi=100
-                        )
-                        im_calibrated = ax_calibrated.imshow(
-                            calibrated_data,
-                            norm=norm_calibrated,
-                            origin="lower",
-                            cmap="inferno",
-                        )
-                        fig_calibrated.colorbar(
-                            im_calibrated, ax=ax_calibrated, label="pixel value"
-                        )
-                        ax_calibrated.set_title("Calibrated Image (zscale)")
-                        ax_calibrated.axis("off")
-                        st.pyplot(fig_calibrated)
-                except Exception as e:
-                    st.error(f"Error during calibration: {e}")
 
         zero_point_button_disabled = science_file is None
         if st.button(
@@ -3989,9 +3893,6 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     write_to_log(log_buffer, f"Gaia Max Magnitude: {gaia_max_mag}")
 
     write_to_log(log_buffer, "Calibration Options", level="INFO")
-    write_to_log(log_buffer, f"Apply Bias: {calibrate_bias}")
-    write_to_log(log_buffer, f"Apply Dark: {calibrate_dark}")
-    write_to_log(log_buffer, f"Apply Flat: {calibrate_flat}")
 
     # Finalize and save the log
     write_to_log(log_buffer, "Processing completed", level="INFO")
