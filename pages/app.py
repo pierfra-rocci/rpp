@@ -67,6 +67,48 @@ warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="RAPAS Photometry Factory", page_icon="🔭", layout="wide")
 
+st.markdown("""
+<style>
+.top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    background: #22223b;
+    color: #fff;
+    z-index: 9999;
+    padding: 0.5rem 0;
+    border-bottom: 2px solid #4a4e69;
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+}
+.top-bar a {
+    color: #f2e9e4;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0.25rem 1rem;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+.top-bar a:hover {
+    background: #4a4e69;
+    color: #fff;
+}
+.block-container {
+    padding-top: 3.5rem !important; /* Push content below the top bar */
+}
+</style>
+<div class="top-bar">
+    <a href="https://gea.esac.esa.int/archive/" target="_blank">GAIA</a>
+    <a href="http://simbad.u-strasbg.fr/simbad/" target="_blank">Simbad</a>
+    <a href="https://ssp.imcce.fr/webservices/skybot/" target="_blank">SkyBoT</a>
+    <a href="http://cdsxmatch.u-strasbg.fr/" target="_blank">X-Match</a>
+    <a href="https://www.aavso.org/vsx/" target="_blank">AAVSO</a>
+    <a href="http://vizier.u-strasbg.fr/viz-bin/VizieR" target="_blank">VizieR</a>
+</div>
+""", unsafe_allow_html=True)
+
 # Redirect to login if not authenticated
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("You must log in to access this page.")
@@ -587,159 +629,6 @@ def load_fits_data(file):
         finally:
             hdul.close()
     return None, None
-
-
-# def calibrate_image(
-#     science_data,
-#     science_header,
-#     bias_data,
-#     dark_data,
-#     flat_data,
-#     exposure_time_science,
-#     exposure_time_dark,
-#     apply_bias,
-#     apply_dark,
-#     apply_flat,
-#     apply_cr_removal=False,
-#     cr_gain=1.0,
-#     cr_readnoise=2.5,
-#     cr_sigclip=4.0,
-# ):
-#     """
-#     Calibrate an astronomical Image using bias, dark, and flat-field frames.
-
-#     This function performs standard CCD calibration steps with status updates in Streamlit:
-#     1. Bias subtraction (optional)
-#     2. Dark frame subtraction with exposure time scaling (optional)
-#     3. Flat field correction using normalized flat (optional)
-#     4. Cosmic ray removal (optional)
-
-#     Parameters
-#     ----------
-#     science_data : numpy.ndarray
-#         The raw Image data to be calibrated
-#     science_header : dict or astropy.io.fits.Header
-#         Header information from the Image
-#     bias_data : numpy.ndarray or None
-#         Bias frame data for zero-level correction
-#     dark_data : numpy.ndarray or None
-#         Dark frame data for thermal noise correction
-#     flat_data : numpy.ndarray or None
-#         Flat field data for sensitivity/vignetting correction
-#     exposure_time_science : float
-#         Exposure time of the Image in seconds
-#     exposure_time_dark : float
-#         Exposure time of the dark frame in seconds
-#     apply_bias : bool
-#         Whether to apply bias subtraction
-#     apply_dark : bool
-#         Whether to apply dark frame subtraction
-#     apply_flat : bool
-#         Whether to apply flat field correction
-#     apply_cr_removal : bool, optional
-#         Whether to apply cosmic ray removal, default=False
-#     cr_gain : float, optional
-#         CCD gain for cosmic ray detection, default=1.0
-#     cr_readnoise : float, optional
-#         CCD read noise for cosmic ray detection, default=6.5
-#     cr_sigclip : float, optional
-#         Detection threshold in sigma for cosmic rays, default=4.5
-
-#     Returns
-#     -------
-#     tuple
-#         (calibrated_science, science_header) where:
-#         - calibrated_science is the processed Image as numpy.ndarray
-#         - science_header is the updated header information with calibration metadata
-#     """
-#     if not apply_bias and not apply_dark and not apply_flat:
-#         st.write("Calibration steps are disabled. Returning raw science data.")
-#         return science_data, science_header
-
-#     calibrated_science = science_data.copy()
-#     steps_applied = []
-
-#     dark_data_corrected = dark_data
-#     flat_data_corrected = flat_data
-
-#     if apply_bias and bias_data is not None:
-#         st.write("Application de la soustraction du bias...")
-#         calibrated_science -= bias_data
-#         steps_applied.append("Soustraction du Bias")
-#         if dark_data is not None:
-#             dark_data_corrected = dark_data - bias_data
-#         if flat_data is not None:
-#             flat_data_corrected = flat_data - bias_data
-
-#     if apply_dark and dark_data_corrected is not None:
-#         st.write("Application de la soustraction du dark...")
-#         if exposure_time_science != exposure_time_dark:
-#             dark_scale_factor = exposure_time_science / exposure_time_dark
-#             scaled_dark = dark_data_corrected * dark_scale_factor
-#         else:
-#             scaled_dark = dark_data_corrected
-#         calibrated_science -= scaled_dark
-#         steps_applied.append("Soustraction du Dark")
-
-#     if apply_flat and flat_data_corrected is not None:
-#         st.write("Application de la correction du flat field...")
-#         normalized_flat = flat_data_corrected / np.median(flat_data_corrected)
-#         calibrated_science /= normalized_flat
-#         steps_applied.append("Correction du Flat Field")
-
-#     if apply_cr_removal:
-#         st.write("Detecting and removing cosmic rays...")
-
-#         # Try to get gain and readnoise from header if available
-#         if science_header is not None:
-#             gain_from_header = science_header.get(
-#                 "GAIN", science_header.get("EGAIN", cr_gain)
-#             )
-#             readnoise_from_header = science_header.get(
-#                 "READNOIS", science_header.get("RDNOISE", cr_readnoise)
-#             )
-#             try:
-#                 cr_gain = float(gain_from_header)
-#                 cr_readnoise = float(readnoise_from_header)
-#             except (ValueError, TypeError):
-#                 st.warning(
-#                     "Could not parse gain/readnoise from header. Using default values."
-#                 )
-
-#         # Apply cosmic ray removal
-#         cleaned_image, cr_mask, num_cr = detect_remove_cosmic_rays(
-#             calibrated_science, gain=cr_gain, readnoise=cr_readnoise, sigclip=cr_sigclip
-#         )
-
-#         calibrated_science = cleaned_image
-#         steps_applied.append(f"Cosmic Ray Removal ({int(num_cr)} detected)")
-
-#         # Display cosmic ray mask if available
-#         if cr_mask is not None and num_cr > 0:
-#             st.write(f"Removed {int(num_cr)} cosmic rays")
-
-#             # Create a figure showing the cosmic ray mask
-#             fig_cr, ax_cr = plt.subplots(figsize=FIGURE_SIZES["medium"])
-#             im_cr = ax_cr.imshow(cr_mask, cmap="hot", origin="lower")
-#             fig_cr.colorbar(im_cr, ax=ax_cr, label="Cosmic Ray Mask")
-#             ax_cr.set_title(f"Detected Cosmic Rays: {int(num_cr)}")
-#             st.pyplot(fig_cr)
-
-#     if not steps_applied:
-#         st.write(
-#             "No calibration steps were applied because files are missing or options are disabled."
-#         )
-#         return science_data, science_header
-
-#     st.success(f"Calibration steps applied: {', '.join(steps_applied)}")
-#     # Update header with calibration information
-#     updated_header = science_header.copy()
-#     updated_header["HISTORY"] = f"Calibration steps: {', '.join(steps_applied)}"
-
-#     if apply_cr_removal and "num_cr" in locals():
-#         updated_header["CRCOUNT"] = num_cr
-
-#     return calibrated_science, science_header
 
 
 @st.cache_data
@@ -3001,13 +2890,13 @@ with st.sidebar:
 
     st.sidebar.header("Astro-Colibri")
     colibri_api_key = st.text_input(
-        "API Key",
+        "UID key",
         value=st.session_state.get("colibri_api_key", None),
-        help="Enter your Astro-Colibri API key",
+        help="Enter your Astro-Colibri UID key",
         type="password"
     )
     st.session_state["colibri_api_key"] = colibri_api_key
-    st.caption("[Get your Key](https://astro-colibri.science)")
+    st.caption("[Get your key](https://astro-colibri.science)")
 
     st.header("Analysis Parameters")
     seeing = st.slider(
@@ -3123,20 +3012,18 @@ with st.sidebar:
         except Exception as e:
             st.sidebar.warning(f"Could not connect to backend: {e}")
 
-    st.header("Quick Links")
-    col1, col2 = st.columns(2)
+    # st.header("Quick Links")
+    # col1, col2 = st.columns(2)
 
-    with col1:
-        st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
-        st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
-        st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
+    # with col1:
+    #     st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
+    #     st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
+    #     st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
 
-    with col2:
-        # st.link_button("Astro-Colibri", "https://astro-colibri.com/")
-        st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
-        st.link_button("AAVSO", "https://www.aavso.org/vsx/")
-        # st.link_button("NED", "https://ned.ipac.caltech.edu/")
-        st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+    # with col2:
+    #     st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
+    #     st.link_button("AAVSO", "https://www.aavso.org/vsx/")
+    #     st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
 
 
 output_dir = ensure_output_directory("pfr_results")
