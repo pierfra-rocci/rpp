@@ -17,50 +17,49 @@ backend_url = "http://localhost:5000"
 
 if not st.session_state.logged_in:
     st.title("🔒 _RAPAS Photometry Factory_")
-    menu = ["Login", "Register", "Recover Password"]
-    choice = st.sidebar.selectbox("Menu", menu)
-
     st.sidebar.markdown("## User Credentials")
-    username = st.sidebar.text_input("Username", 
-                                     value="admin")
-    password = st.sidebar.text_input("Password", 
-                                     value="admin", type="password")
+    username = st.sidebar.text_input("Username", value="admin")
+    password = st.sidebar.text_input("Password", value="admin", type="password")
 
-    if choice == "Login":
-        if st.sidebar.button("Login"):
-            if username and password:
-                response = requests.post(f"{backend_url}/login", data={"username": username, "password": password})
-                if response.status_code == 200:
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                    st.success("Login successful! Redirecting...")
-                    st.rerun()
-                else:
-                    st.error(response.text)
+    login_col, register_col = st.sidebar.columns([1, 1])
+    login_clicked = login_col.button("Login")
+    register_clicked = register_col.button("Register")
+
+    if login_clicked:
+        if username and password:
+            response = requests.post(f"{backend_url}/login", data={"username": username, "password": password})
+            if response.status_code == 200:
+                st.session_state.logged_in = True
+                st.session_state.username = username
+                st.success("Login successful! Redirecting...")
+                st.rerun()
             else:
-                st.warning("Please enter both username and password.")
-    elif choice == "Register":
-        if st.sidebar.button("Register"):
-            if username and password:
-                response = requests.post(f"{backend_url}/register", data={"username": username, "password": password})
-                if response.status_code == 201:
-                    st.success(response.text)
-                else:
-                    st.error(response.text)
+                st.error(response.text)
+        else:
+            st.warning("Please enter both username and password.")
+
+    if register_clicked:
+        if username and password:
+            response = requests.post(f"{backend_url}/register", data={"username": username, "password": password})
+            if response.status_code == 201:
+                st.success(response.text)
             else:
-                st.warning("Please enter both username and password.")
-    elif choice == "Recover Password":
-        st.sidebar.markdown("## Recover Password")
-        new_password = st.sidebar.text_input("New Password", type="password")
-        if st.sidebar.button("Reset Password"):
-            if username and new_password:
-                response = requests.post(f"{backend_url}/recover", data={"username": username, "new_password": new_password})
-                if response.status_code == 200:
-                    st.success(response.text)
-                else:
-                    st.error(response.text)
+                st.error(response.text)
+        else:
+            st.warning("Please enter both username and password.")
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("## Recover Password")
+    new_password = st.sidebar.text_input("New Password", type="password")
+    if st.sidebar.button("Reset Password"):
+        if username and new_password:
+            response = requests.post(f"{backend_url}/recover", data={"username": username, "new_password": new_password})
+            if response.status_code == 200:
+                st.success(response.text)
             else:
-                st.warning("Please enter your username and new password.")
+                st.error(response.text)
+        else:
+            st.warning("Please enter your username and new password.")
 else:
     st.success(f"Welcome, {st.session_state.username}! Redirecting to the main app...")
     # Load config from backend and update session state before switching page
