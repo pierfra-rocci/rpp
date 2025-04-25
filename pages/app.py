@@ -3336,10 +3336,10 @@ if science_file is not None:
             )
 
         with st.expander("Image Header"):
-        if science_header:
-            st.text(repr(science_header))
-        else:
-            st.warning("No header information available for Image.")
+            if science_header:
+                st.text(repr(science_header))
+            else:
+                st.warning("No header information available for Image.")
 
     st.subheader("Image Statistics")
     if science_data is not None:
