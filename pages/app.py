@@ -2902,12 +2902,11 @@ with st.sidebar:
 
         st.session_state["log_buffer"] = initialize_log(science_file.name)
 
-    st.header("Binning Options")
+    st.header("Pre-Process Options")
     binning_check = st.checkbox(
         "2x2 Binning", value=False, help="Apply binning to the Image"
     )
 
-    st.header("Cosmic Ray Removal")
     calibrate_cosmic_rays = st.checkbox(
         "Remove Cosmic Rays",
         value=False,
