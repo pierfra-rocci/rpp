@@ -2904,7 +2904,7 @@ with st.sidebar:
 
     st.header("Binning Options")
     binning_check = st.checkbox(
-        "Apply 2x2 Binning", value=False, help="Apply binning to the Image"
+        "2x2 Binning", value=False, help="Apply binning to the Image"
     )
 
     st.header("Cosmic Ray Removal")
