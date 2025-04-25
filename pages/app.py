@@ -166,7 +166,7 @@ def detect_remove_cosmic_rays(
     sigclip=4.5,
     sigfrac=0.3,
     objlim=5.0,
-    verbose=False,
+    verbose=True,
 ):
     """
     Detect and remove cosmic rays from an astronomical image using astroscrappy.
@@ -1530,7 +1530,7 @@ def run_zero_point_calibration(
     with st.spinner("Finding sources and performing photometry..."):
         phot_table_qtable, epsf_table, _, _ = detection_and_photometry(
             image_to_process,
-            header_to_process,
+            header,
             mean_fwhm_pixel,
             threshold_sigma,
             detection_mask,
@@ -3004,6 +3004,27 @@ st.session_state["output_dir"] = output_dir
 
 if science_file is not None:
     science_data, science_header = load_fits_data(science_file)
+
+    # Apply cosmic ray removal if enabled
+    if st.session_state.get("calibrate_cosmic_rays", False):
+        st.info("Applying cosmic ray removal (L.A.Cosmic)...")
+        try:
+            cr_gain = st.session_state.get("cr_gain", 1.0)
+            cr_readnoise = st.session_state.get("cr_readnoise", 2.5)
+            cr_sigclip = st.session_state.get("cr_sigclip", 5.0)
+            cleaned_data, _, _ = detect_remove_cosmic_rays(
+                science_data,
+                gain=cr_gain,
+                readnoise=cr_readnoise,
+                sigclip=cr_sigclip,
+            )
+            if cleaned_data is not None:
+                science_data = cleaned_data
+                st.success("Cosmic ray removal applied.")
+            else:
+                st.warning("Cosmic ray removal did not return valid data.")
+        except Exception as e:
+            st.error(f"Error during cosmic ray removal: {e}")
 
     # Update observatory values from header if available
     if science_header is not None:
