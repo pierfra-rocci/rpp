@@ -2751,17 +2751,19 @@ with st.sidebar:
 
     st.header("Pre-Process Options")
     astrometry_check = st.checkbox(
-        "Astrometry ++", value=False, help="Try to refine astrometry (stdpipe)"
+        "Astrometry ++", value=st.session_state.get("astrometry_check", False), help="Try to refine astrometry (stdpipe)"
     )
+    st.session_state["astrometry_check"] = astrometry_check
     binning_check = st.checkbox(
-        "2x2 Binning", value=False, help="Apply binning to the Image"
+        "2x2 Binning", value=st.session_state.get("binning_check", False), help="Apply binning to the Image"
     )
-
+    st.session_state["binning_check"] = binning_check
     calibrate_cosmic_rays = st.checkbox(
         "Remove Cosmic Rays",
-        value=False,
+        value=st.session_state.get("calibrate_cosmic_rays", False),
         help="Detect and remove cosmic rays using the L.A.Cosmic algorithm",
     )
+    st.session_state["calibrate_cosmic_rays"] = calibrate_cosmic_rays
 
     cr_params = st.expander("CRR Parameters", expanded=False)
     with cr_params:
@@ -2949,6 +2951,10 @@ with st.sidebar:
         }
         observatory_params = dict(st.session_state.get("observatory_data", {}))
         colibri_api_key = st.session_state.get("colibri_api_key")
+        # Add pre-process options to analysis_parameters
+        analysis_params["astrometry_check"] = st.session_state.get("astrometry_check", False)
+        analysis_params["binning_check"] = st.session_state.get("binning_check", False)
+        analysis_params["calibrate_cosmic_rays"] = st.session_state.get("calibrate_cosmic_rays", False)
         params = {
             "analysis_parameters": analysis_params,
             "gaia_parameters": gaia_params,
