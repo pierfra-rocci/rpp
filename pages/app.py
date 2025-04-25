@@ -3360,7 +3360,7 @@ if science_file is not None:
 
         zero_point_button_disabled = science_file is None
         if st.button(
-            "Run Photometric Calibration",
+            "Photometric Calibration",
             disabled=zero_point_button_disabled,
             key="run_zp",
         ):
