@@ -2927,7 +2927,8 @@ with st.sidebar:
     catalog_name = st.text_input("Output Catalog", default_catalog_name)
 
     # --- Save Session Parameters as JSON to results directory and backend DB
-    if st.sidebar.button("Save Parameters"):
+    st.sidebar.header("Save Configuration")
+    if st.sidebar.button("Save"):
         analysis_params = dict(st.session_state.get("analysis_parameters", {}))
         # Remove unwanted keys from analysis_params
         for k in [
