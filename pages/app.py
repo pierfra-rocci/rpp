@@ -2372,7 +2372,7 @@ def display_catalog_in_aladin(
     final_table: pd.DataFrame,
     ra_center: float,
     dec_center: float,
-    fov: float = 1.0,
+    fov: float = 1.5,
     ra_col: str = "ra",
     dec_col: str = "dec",
     mag_col: str = "calib_mag",
@@ -3693,7 +3693,7 @@ if science_file is not None:
                             final_table=final_table,
                             ra_center=ra_center,
                             dec_center=dec_center,
-                            fov=1.0,
+                            fov=1.5,
                             alt_mag_col="aperture_calib_mag",
                             id_cols=["simbad_main_id"],
                         )
