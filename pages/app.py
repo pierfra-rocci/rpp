@@ -955,7 +955,7 @@ def perform_psf_photometry(
         raise
 
     try:
-        epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
+        epsf_builder = EPSFBuilder(oversampling=4, maxiters=5, progress_bar=True)
         epsf, _ = epsf_builder(stars)
         st.session_state["epsf_model"] = epsf
     except Exception as e:
@@ -968,7 +968,7 @@ def perform_psf_photometry(
 
             hdu.header["COMMENT"] = "PSF model created with photutils.EPSFBuilder"
             hdu.header["FWHMPIX"] = (fwhm, "FWHM in pixels used for extraction")
-            hdu.header["OVERSAMP"] = (3, "Oversampling factor")
+            hdu.header["OVERSAMP"] = (4, "Oversampling factor")
 
             psf_filename = (
                 f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
@@ -1214,11 +1214,10 @@ def detection_and_photometry(
             "aperture_sum" in phot_table.colnames
             and "aperture_sum_err" in phot_table.colnames
         ):
-            phot_table["snr"] = (
-                phot_table["aperture_sum"] / phot_table["aperture_sum_err"]
-            )
-        elif "aperture_sum" in phot_table.colnames and total_error is not None:
-            phot_table["snr"] = 10 * phot_table["aperture_sum"] / total_error
+            phot_table["snr"] = np.round(phot_table["aperture_sum"] / np.sqrt(phot_table["aperture_sum_err"]))
+
+        # elif "aperture_sum" in phot_table.colnames and total_error is not None:
+        #     phot_table["snr"] = 10 * phot_table["aperture_sum"] / total_error
         else:
             phot_table["snr"] = np.nan
 
@@ -1249,9 +1248,7 @@ def detection_and_photometry(
         phot_table = phot_table[valid_sources]
 
         if epsf_table is not None:
-            epsf_valid_sources = (epsf_table["flux_fit"] > 0) & np.isfinite(
-                epsf_table["instrumental_mag"]
-            )
+            epsf_valid_sources = np.isfinite(epsf_table["instrumental_mag"])
 
             epsf_table = epsf_table[epsf_valid_sources]
 
@@ -1382,7 +1379,7 @@ def cross_match_with_gaia(
         gaia_search_radius_arcsec = (
             max(_science_header["NAXIS1"], _science_header["NAXIS2"])
             * pixel_size_arcsec
-            / 2.0
+            / 1.5
         )
         radius_query = gaia_search_radius_arcsec * u.arcsec
 
