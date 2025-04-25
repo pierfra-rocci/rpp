@@ -3476,7 +3476,7 @@ if science_file is not None:
             st.write(f"Airmass: {air:.2f}")
         except Exception as e:
             st.warning(f"Error calculating airmass: {e}")
-            air = 1.0
+            air = 0.0
             st.write(f"Using default airmass: {air:.2f}")
 
         calibration_disabled = not (calibrate_bias or calibrate_dark or calibrate_flat)
