@@ -3368,7 +3368,7 @@ if science_file is not None:
             if image_to_process is not None:
                 try:
                     with st.spinner(
-                        "Background Extraction, Detection and Photometry..."
+                        "Background Extraction, Sources Detection and Photometry..."
                     ):
                         phot_table_qtable, epsf_table, daofind, bkg = (
                             detection_and_photometry(
