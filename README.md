@@ -140,11 +140,9 @@ The application generates several output files in the pfr_results directory:
 - `[filename]_metadata.txt` - Analysis parameters and results
 - `[filename]_wcs_header.txt` - WCS solution from plate solving
 - `[filename]_zero_point_plot.png` - Visualization of zero-point calibration
-- `[filename]_config.json` - User/session configuration (analysis parameters, observatory info, API keys)
 - `[filename]_results.zip` - Downloadable archive of all output files for the session
 - `[filename]_bkg.fits` - Background model FITS file
 - `[filename]_image_hist.png` - Histogram of image pixel values
-- `[filename]_phot_metadata.txt` - Metadata for the photometry catalog
 - `[filename]_fwhm.png` - FWHM distribution histogram
 
 Other files may be generated depending on the analysis options and session parameters.
