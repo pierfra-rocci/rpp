@@ -829,7 +829,7 @@ def fwhm_fit(
 
         # Plot histogram of FWHM values
         fig_fwhm, ax_fwhm = plt.subplots(figsize=FIGURE_SIZES["medium"])
-        n, bins, patches = ax_fwhm.hist(fwhm_values_arr[valid], bins=50,
+        n, bins, patches = ax_fwhm.hist(fwhm_values_arr[valid], bins=25,
                                         color='skyblue', edgecolor='black',
                                         alpha=0.7)
 
@@ -851,6 +851,7 @@ def fwhm_fit(
 
         ax_fwhm.set_xlabel('FWHM (pixels)')
         ax_fwhm.set_ylabel('Number of Stars')
+        ax_fwhm.set_xlim(0, 40)
         ax_fwhm.set_title('Distribution of FWHM Values')
         ax_fwhm.grid(True, alpha=0.3)
 
