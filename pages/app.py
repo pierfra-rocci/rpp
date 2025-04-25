@@ -423,7 +423,6 @@ def estimate_background(image_data, box_size=128, filter_size=7):
             
             hdul = fits.HDUList([hdu_bkg, hdu_rms])
             hdul.writeto(bkg_filepath, overwrite=True)
-            st.success(f"Background model saved as {bkg_filename}")
             
             # Write to log if available
             log_buffer = st.session_state.get("log_buffer")
