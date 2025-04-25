@@ -3314,10 +3314,6 @@ if science_file is not None:
             image_to_process = science_data
             header_to_process = science_header
 
-            if st.session_state["calibrated_data"] is not None:
-                image_to_process = st.session_state["calibrated_data"]
-                header_to_process = st.session_state["calibrated_header"]
-
             if image_to_process is not None:
                 try:
                     with st.spinner(
