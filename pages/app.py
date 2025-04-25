@@ -485,6 +485,10 @@ def airmass(
             },
             "sun_altitude": round(sun_alt, 2),
             "observation_type": get_observation_type(sun_alt),
+            "altaz": {
+                "altitude": round(float(altaz.alt.deg), 2),
+                "azimuth": round(float(altaz.az.deg), 2),
+            },
         }
 
         st.write(f"Date & Local-Time: {obstime.iso}")

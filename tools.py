@@ -17,7 +17,7 @@ FIGURE_SIZES = {
     "stars_grid": (10, 8),  # For grid of stars
 }
 
-URL = "https://astro-colibri.science"
+URL = "https://astro-colibri.science/"
 
 
 def get_json(url: str):
