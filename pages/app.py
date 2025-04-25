@@ -943,7 +943,7 @@ def perform_psf_photometry(
     return phot_epsf_result, epsf
 
 
-def detction_and_photometry(
+def detection_and_photometry(
     image_data,
     _science_header,
     mean_fwhm_pixel,
@@ -1527,7 +1527,7 @@ def run_zero_point_calibration(
     aperture photometry results.
     """
     with st.spinner("Finding sources and performing photometry..."):
-        phot_table_qtable, epsf_table, _, _ = detction_and_photometry(
+        phot_table_qtable, epsf_table, _, _ = detection_and_photometry(
             image_to_process,
             header_to_process,
             mean_fwhm_pixel,
@@ -3320,7 +3320,7 @@ if science_file is not None:
                         "Background Extraction, Detection and Photometry..."
                     ):
                         phot_table_qtable, epsf_table, daofind, bkg = (
-                            detction_and_photometry(
+                            detection_and_photometry(
                                 image_to_process,
                                 header_to_process,
                                 mean_fwhm_pixel,
