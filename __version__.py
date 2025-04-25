@@ -1,11 +1,8 @@
-version = "0.3.0"
+version = "0.3.1"
 
 release = False
-version_info = (0, 3, 0)
-# The version is a tuple of the form (major, minor, micro, release level, serial)
-# where release level is one of 'alpha', 'beta', 'candidate', or 'final'
-# and serial is an integer that is incremented for each release of that level.
-# For example, (0, 2, 2, 'alpha', 0) would be the first alpha release of version 0.2.2.
+version_info = (0, 3, 1)
+# The version_info tuple is used to compare versions in a more granular way.
 __all__ = ["version", "release", "version_info"]
 __author__ = "Pier-Francesco Rocci"
 __email__ = "pierfrancesco.rocci@gmail.com"

@@ -1704,9 +1704,19 @@ def run_zero_point_calibration(
                     epsf_cols = {
                         "match_id": "match_id",
                         "flux_fit": "psf_flux_fit",
-                        "flux_unc": "psf_flux_unc",
+                        "flux_err": "psf_flux_err",
                         "instrumental_mag": "psf_instrumental_mag",
                     }
+
+                    # Debug output for PSF photometry merge
+                    # st.write("[DEBUG] epsf_df columns:", epsf_df.columns.tolist())
+                    # st.write("[DEBUG] final_table columns before merge:", final_table.columns.tolist())
+                    # st.write("[DEBUG] Number of rows in epsf_df:", len(epsf_df))
+                    # st.write("[DEBUG] Number of rows in final_table before merge:", len(final_table))
+                    # st.write("[DEBUG] Sample epsf_df head:")
+                    st.dataframe(epsf_df.head())
+                    st.write("[DEBUG] Sample final_table head before merge:")
+                    st.dataframe(final_table.head())
 
                     if (
                         len(epsf_cols) > 1
@@ -1716,12 +1726,22 @@ def run_zero_point_calibration(
                         epsf_subset = epsf_df[
                             [col for col in epsf_cols.keys() if col in epsf_df.columns]
                         ].rename(columns=epsf_cols)
+                        # st.write("[DEBUG] epsf_subset columns:", epsf_subset.columns.tolist())
+                        # st.write("[DEBUG] Sample epsf_subset head:")
+                        st.dataframe(epsf_subset.head())
 
-                    final_table = pd.merge(
-                        final_table, epsf_subset, on="match_id", how="left"
-                    )
+                    final_table = pd.merge(final_table,
+                                           epsf_subset,
+                                           on="match_id",
+                                           how="left"
+                                           )
 
-                    if "epsf_instrumental_mag" in final_table.columns:
+                    # st.write("[DEBUG] final_table columns after merge:", final_table.columns.tolist())
+                    # st.write("[DEBUG] Number of rows in final_table after merge:", len(final_table))
+                    # st.write("[DEBUG] Sample final_table head after merge:")
+                    st.dataframe(final_table.head())
+
+                    if "psf_instrumental_mag" in final_table.columns:
                         final_table["psf_calib_mag"] = (
                             final_table["psf_instrumental_mag"]
                             + zero_point_value
@@ -3565,13 +3585,13 @@ if science_file is not None:
                                                 )
 
                                                 epsf_x_col = (
-                                                    "x_fit"
-                                                    if "x_fit" in epsf_df.columns
+                                                    "x_init"
+                                                    if "x_init" in epsf_df.columns
                                                     else "xcenter"
                                                 )
                                                 epsf_y_col = (
-                                                    "y_fit"
-                                                    if "y_fit" in epsf_df.columns
+                                                    "y_init"
+                                                    if "y_init" in epsf_df.columns
                                                     else "ycenter"
                                                 )
 
@@ -3622,7 +3642,7 @@ if science_file is not None:
                                                 epsf_cols = {}
                                                 epsf_cols["match_id"] = "match_id"
                                                 epsf_cols["flux_fit"] = "psf_flux_fit"
-                                                epsf_cols["flux_unc"] = "psf_flux_unc"
+                                                epsf_cols["flux_err"] = "psf_flux_err"
                                                 epsf_cols["instrumental_mag"] = (
                                                     "psf_instrumental_mag"
                                                 )
@@ -3630,75 +3650,70 @@ if science_file is not None:
                                                 if (
                                                     len(epsf_cols) > 1
                                                     and "match_id" in epsf_df.columns
-                                                    and "match_id"
-                                                    in final_table.columns
+                                                    and "match_id" in final_table.columns
                                                 ):
                                                     epsf_subset = epsf_df[
-                                                        [
-                                                            col
-                                                            for col in epsf_cols.keys()
-                                                            if col in epsf_df.columns
-                                                        ]
+                                                        [col for col in epsf_cols.keys() if col in epsf_df.columns]
                                                     ].rename(columns=epsf_cols)
+                                                    st.dataframe(epsf_subset.head())
 
-                                                    final_table = pd.merge(
-                                                        final_table,
-                                                        epsf_subset,
-                                                        on="match_id",
-                                                        how="left",
+                                                final_table = pd.merge(
+                                                    final_table, epsf_df, on="match_id", how="left"
+                                                )
+
+                                                st.dataframe(final_table.head())
+
+                                                if (
+                                                    "psf_instrumental_mag"
+                                                    in final_table.columns
+                                                ):
+                                                    final_table["psf_calib_mag"] = (
+                                                        final_table[
+                                                            "psf_instrumental_mag"
+                                                        ]
+                                                        + zero_point_value
+                                                        + 0.1 * air
+                                                    )
+                                                    st.success(
+                                                        "Added PSF photometry"
                                                     )
 
+                                                if (
+                                                    "instrumental_mag"
+                                                    in final_table.columns
+                                                ):
                                                     if (
-                                                        "psf_instrumental_mag"
-                                                        in final_table.columns
+                                                        "calib_mag"
+                                                        not in final_table.columns
                                                     ):
-                                                        final_table["psf_calib_mag"] = (
+                                                        final_table[
+                                                            "aperture_instrumental_mag"
+                                                        ] = final_table[
+                                                            "instrumental_mag"
+                                                        ]
+                                                        final_table[
+                                                            "aperture_calib_mag"
+                                                        ] = (
                                                             final_table[
-                                                                "psf_instrumental_mag"
+                                                                "instrumental_mag"
                                                             ]
                                                             + zero_point_value
                                                             + 0.1 * air
                                                         )
-                                                        st.success(
-                                                            "Added PSF photometry"
+                                                    else:
+                                                        final_table = final_table.rename(
+                                                            columns={
+                                                                "instrumental_mag": "aperture_instrumental_mag",
+                                                                "calib_mag": "aperture_calib_mag",
+                                                            }
                                                         )
-
-                                                    if (
-                                                        "instrumental_mag"
-                                                        in final_table.columns
-                                                    ):
-                                                        if (
-                                                            "calib_mag"
-                                                            not in final_table.columns
-                                                        ):
-                                                            final_table[
-                                                                "aperture_instrumental_mag"
-                                                            ] = final_table[
-                                                                "instrumental_mag"
-                                                            ]
-                                                            final_table[
-                                                                "aperture_calib_mag"
-                                                            ] = (
-                                                                final_table[
-                                                                    "instrumental_mag"
-                                                                ]
-                                                                + zero_point_value
-                                                                + 0.1 * air
-                                                            )
-                                                        else:
-                                                            final_table = final_table.rename(
-                                                                columns={
-                                                                    "instrumental_mag": "aperture_instrumental_mag",
-                                                                    "calib_mag": "aperture_calib_mag",
-                                                                }
-                                                            )
-                                                        st.success(
-                                                            "Added Aperture photometry"
-                                                        )
-
-                                                    final_table.drop(
-                                                        "match_id", axis=1, inplace=True
+                                                    st.success(
+                                                        "Added Aperture photometry"
                                                     )
+
+                                                final_table.drop(
+                                                    "match_id", axis=1, inplace=True
+                                                )
 
                                             csv_buffer = StringIO()
 
