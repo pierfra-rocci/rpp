@@ -1112,6 +1112,15 @@ def detection_and_photometry(
         phot_table["xcenter"] = sources["xcentroid"]
         phot_table["ycenter"] = sources["ycentroid"]
 
+        # Compute SNR for each source
+        # SNR = aperture_sum / total_error
+        if "aperture_sum" in phot_table.colnames and "aperture_sum_err" in phot_table.colnames:
+            phot_table["snr"] = phot_table["aperture_sum"] / phot_table["aperture_sum_err"]
+        elif "aperture_sum" in phot_table.colnames and total_error is not None:
+            phot_table["snr"] = phot_table["aperture_sum"] / total_error
+        else:
+            phot_table["snr"] = np.nan
+
         if np.mean(image_data - bkg.background) > 1.0:
             exposure_time = _science_header.get("EXPTIME", 1.0)
         else:
@@ -3778,3 +3787,4 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
 
 # at the end archive a zip version and remove all the results
 atexit.register(partial(zip_pfr_results_on_exit, science_file))
+`
