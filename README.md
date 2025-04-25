@@ -101,7 +101,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 - User-specific configuration: analysis parameters, observatory info, and catalog settings are saved and restored per user.
 - The frontend is built with [Streamlit](https://streamlit.io/), providing interactive widgets for all analysis parameters, observatory location, and catalog settings.
 - The frontend communicates with the backend via HTTP (default: `http://localhost:5000`).
-- Utility scripts: `hash_passwords.py` (password hashing), `tools.py` (misc helpers).
+- Utility scripts: `tools.py` (misc helpers).
 
 ## Documentation
 
