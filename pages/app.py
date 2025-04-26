@@ -1184,7 +1184,7 @@ def detection_and_photometry(
         except Exception as e:
             st.warning(f"Skipping WCS refinement: {str(e)}")
     else:
-        st.info("Astrometry+ option is disabled. Skipping astrometry refinement.")
+        st.info("Astrometry+ is disabled. Skipping astrometry refinement.")
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
     apertures = CircularAperture(positions, r=1.5 * fwhm_estimate)
@@ -1492,7 +1492,7 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         # Remove sources with SNR == 0 before zero point calculation
         if "snr" in _matched_table.columns:
             _matched_table = _matched_table[_matched_table["snr"] != 0]
-            
+
         zero_points = _matched_table[gaia_band] - _matched_table["instrumental_mag"]
         _matched_table["zero_point"] = zero_points
         _matched_table["zero_point_error"] = np.std(zero_points)
