@@ -164,7 +164,7 @@ build = [
 pfr = "run_frontend:main"
 
 [tool.setuptools]
-packages = ["."]
+# packages = ["."]
 # Or use: packages = "find:"
 
 [tool.black]
