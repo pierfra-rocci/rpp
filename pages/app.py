@@ -3758,8 +3758,44 @@ if science_file is not None:
                                             st.success(
                                                 f"Catalog includes {len(final_table)} sources."
                                             )
-                                            
 
+                                            # Plot histogram of aperture_calib_mag and psf_calib_mag before catalog enhancement
+                                            st.subheader("Magnitude Distribution (Aperture vs PSF)")
+                                            fig_mag, ax_mag = plt.subplots(figsize=(8, 5), dpi=100)
+                                            bins = np.linspace(
+                                                min(
+                                                    final_table["aperture_calib_mag"].min() if "aperture_calib_mag" in final_table.columns else np.nan,
+                                                    final_table["psf_calib_mag"].min() if "psf_calib_mag" in final_table.columns else np.nan
+                                                ),
+                                                max(
+                                                    final_table["aperture_calib_mag"].max() if "aperture_calib_mag" in final_table.columns else np.nan,
+                                                    final_table["psf_calib_mag"].max() if "psf_calib_mag" in final_table.columns else np.nan
+                                                ),
+                                                40
+                                            )
+
+                                            if "aperture_calib_mag" in final_table.columns:
+                                                ax_mag.hist(
+                                                    final_table["aperture_calib_mag"].dropna(),
+                                                    bins=bins,
+                                                    alpha=0.6,
+                                                    label="Aperture Calib Mag",
+                                                    color="tab:blue",
+                                                )
+                                            if "psf_calib_mag" in final_table.columns:
+                                                ax_mag.hist(
+                                                    final_table["psf_calib_mag"].dropna(),
+                                                    bins=bins,
+                                                    alpha=0.6,
+                                                    label="PSF Calib Mag",
+                                                    color="tab:orange",
+                                                )
+                                            ax_mag.set_xlabel("Calibrated Magnitude")
+                                            ax_mag.set_ylabel("Number of Sources")
+                                            ax_mag.set_title("Distribution of Calibrated Magnitudes")
+                                            ax_mag.legend()
+                                            ax_mag.grid(True, alpha=0.3)
+                                            st.pyplot(fig_mag)
 
                                             if (
                                                 final_table is not None
