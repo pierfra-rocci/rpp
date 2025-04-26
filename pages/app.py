@@ -1131,7 +1131,7 @@ def detection_and_photometry(
         st.warning("No sources found!")
         return None, None, daofind, bkg
 
-    # Check astrometry++ option before refinement
+    # Check Astrometry+ option before refinement
     if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
         st.write("Doing astrometry refinement using Stdpipe and Astropy...")
 
@@ -1184,7 +1184,7 @@ def detection_and_photometry(
         except Exception as e:
             st.warning(f"Skipping WCS refinement: {str(e)}")
     else:
-        st.info("Astrometry++ option is disabled. Skipping astrometry refinement.")
+        st.info("Astrometry+ option is disabled. Skipping astrometry refinement.")
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
     apertures = CircularAperture(positions, r=1.5 * fwhm_estimate)
@@ -2888,12 +2888,6 @@ with st.sidebar:
         help="Try to refine astrometry (stdpipe)",
     )
     st.session_state["astrometry_check"] = astrometry_check
-    binning_check = st.checkbox(
-        "2x2 Binning",
-        value=st.session_state.get("binning_check", False),
-        help="Apply binning to the Image",
-    )
-    st.session_state["binning_check"] = binning_check
     calibrate_cosmic_rays = st.checkbox(
         "Remove Cosmic Rays",
         value=st.session_state.get("calibrate_cosmic_rays", False),
@@ -3093,7 +3087,6 @@ with st.sidebar:
         analysis_params["astrometry_check"] = st.session_state.get(
             "astrometry_check", False
         )
-        analysis_params["binning_check"] = st.session_state.get("binning_check", False)
         analysis_params["calibrate_cosmic_rays"] = st.session_state.get(
             "calibrate_cosmic_rays", False
         )
@@ -3703,8 +3696,12 @@ if science_file is not None:
                                                     else:
                                                         final_table = final_table.rename(
                                                             columns={
-                                                                "instrumental_mag": "aperture_instrumental_mag",
+                                                                "instrumental_mag_x": "aperture_instrumental_mag",
                                                                 "calib_mag": "aperture_calib_mag",
+                                                                "instrumental_mag_y": "psf_instrumental_mag",
+                                                                "ra_x": "ra",
+                                                                "dec_x": "dec",
+                                                                "id_x": "id",
                                                             }
                                                         )
                                                     st.success(
@@ -3719,8 +3716,18 @@ if science_file is not None:
 
                                             cols_to_drop = []
                                             for col_name in [
+                                                "ra_y",
+                                                "dec_y",
+                                                "id_y",
+                                                "group_id",
+                                                "group_size",
+                                                "x_init",
+                                                "y_init",
+                                                "flux_init",
                                                 "sky_center.ra",
                                                 "sky_center.dec",
+                                                "inter_detected",
+                                                "local_bkg"
                                             ]:
                                                 if col_name in final_table.columns:
                                                     cols_to_drop.append(col_name)
