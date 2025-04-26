@@ -21,6 +21,7 @@ if not st.session_state.logged_in:
     st.sidebar.markdown("## User Credentials")
     username = st.sidebar.text_input("Username", value="admin")
     password = st.sidebar.text_input("Password", value="admin", type="password")
+    email = st.sidebar.text_input("Email", value="", help="Required for registration and password recovery.")
 
     login_col, register_col = st.sidebar.columns([1, 1])
     login_clicked = login_col.button("Login")
@@ -43,33 +44,52 @@ if not st.session_state.logged_in:
             st.warning("Please enter both username and password.")
 
     if register_clicked:
-        if username and password:
+        if username and password and email:
             response = requests.post(
                 f"{backend_url}/register",
-                data={"username": username, "password": password},
+                data={"username": username, "password": password, "email": email},
             )
             if response.status_code == 201:
                 st.success(response.text)
             else:
                 st.error(response.text)
         else:
-            st.warning("Please enter both username and password.")
+            st.warning("Please enter username, password, and email.")
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("## Recover Password")
-    new_password = st.sidebar.text_input("New Password", type="password")
-    if st.sidebar.button("Reset Password"):
-        if username and new_password:
-            response = requests.post(
-                f"{backend_url}/recover",
-                data={"username": username, "new_password": new_password},
-            )
-            if response.status_code == 200:
-                st.success(response.text)
+    recovery_email = st.sidebar.text_input("Recovery Email", value="", key="recovery_email")
+    if "recovery_step" not in st.session_state:
+        st.session_state.recovery_step = 0
+    if st.session_state.recovery_step == 0:
+        if st.sidebar.button("Send Recovery Code"):
+            if recovery_email:
+                resp = requests.post(f"{backend_url}/recover_request", data={"email": recovery_email})
+                if resp.status_code == 200:
+                    st.session_state.recovery_step = 1
+                    st.success("Recovery code sent to your email.")
+                else:
+                    st.error(resp.text)
             else:
-                st.error(response.text)
-        else:
-            st.warning("Please enter your username and new password.")
+                st.warning("Please enter your email.")
+    elif st.session_state.recovery_step == 1:
+        code = st.sidebar.text_input("Enter Recovery Code", key="recovery_code")
+        new_password = st.sidebar.text_input("New Password", type="password", key="recovery_new_pw")
+        if st.sidebar.button("Reset Password"):
+            if recovery_email and code and new_password:
+                resp = requests.post(
+                    f"{backend_url}/recover_confirm",
+                    data={"email": recovery_email, "code": code, "new_password": new_password},
+                )
+                if resp.status_code == 200:
+                    st.success("Password updated successfully. You can now log in.")
+                    st.session_state.recovery_step = 0
+                else:
+                    st.error(resp.text)
+            else:
+                st.warning("Please enter all fields.")
+        if st.sidebar.button("Cancel Recovery"):
+            st.session_state.recovery_step = 0
 else:
     st.success(f"Welcome, {st.session_state.username}! Redirecting to the main app...")
     # Load config from backend and update session state before switching page

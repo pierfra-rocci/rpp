@@ -1,9 +1,17 @@
 from flask import Flask, request
 import sqlite3
 from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
+import smtplib
+import random
+import string
+import os
 
 app = Flask(__name__)
 CORS(app)
+
+# Simple in-memory store for recovery codes (for demo; use persistent store in production)
+recovery_codes = {}
 
 
 def get_db_connection():
@@ -18,13 +26,10 @@ def init_db():
     conn.execute("""CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        config_json TEXT
     )""")
-    # Add config_json column if not exists
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN config_json TEXT")
-    except Exception:
-        pass  # Already exists
     conn.commit()
     conn.close()
 
@@ -32,21 +37,44 @@ def init_db():
 init_db()
 
 
+# Helper to send email (configure SMTP as needed)
+def send_email(to_email, subject, body):
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_pass = os.environ.get("SMTP_PASS")
+    if not smtp_user or not smtp_pass:
+        print("SMTP credentials not set.")
+        return False
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            message = f"Subject: {subject}\n\n{body}"
+            server.sendmail(smtp_user, to_email, message)
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+        return False
+
+
 @app.route("/register", methods=["POST"])
 def register():
     data = request.form
     username = data.get("username")
     password = data.get("password")
-    if not username or not password:
-        return "Username and password required.", 400
+    email = data.get("email")
+    if not username or not password or not email:
+        return "Username, password, and email required.", 400
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+    cur.execute("SELECT * FROM users WHERE username = ? OR email = ?", (username, email))
     if cur.fetchone():
         conn.close()
-        return "Username is already taken.", 409
+        return "Username or email is already taken.", 409
+    hashed_pw = generate_password_hash(password)
     cur.execute(
-        "INSERT INTO users (username, password) VALUES (?, ?)", (username, password)
+        "INSERT INTO users (username, password, email) VALUES (?, ?, ?)", (username, hashed_pw, email)
     )
     conn.commit()
     conn.close()
@@ -62,34 +90,50 @@ def login():
         return "Username and password required.", 400
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM users WHERE username = ? AND password = ?", (username, password)
-    )
-    if cur.fetchone():
-        conn.close()
-        return "Logged in successfully.", 200
+    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+    user = cur.fetchone()
     conn.close()
+    if user and check_password_hash(user["password"], password):
+        return "Logged in successfully.", 200
     return "Invalid username or password.", 401
 
 
-@app.route("/recover", methods=["POST"])
-def recover():
+@app.route("/recover_request", methods=["POST"])
+def recover_request():
     data = request.form
-    username = data.get("username")
-    new_password = data.get("new_password")
-    if not username or not new_password:
-        return "Username and new password required.", 400
+    email = data.get("email")
+    if not email:
+        return "Email required.", 400
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
-    if not cur.fetchone():
-        conn.close()
-        return "Username does not exist.", 404
-    cur.execute(
-        "UPDATE users SET password = ? WHERE username = ?", (new_password, username)
-    )
+    cur.execute("SELECT username FROM users WHERE email = ?", (email,))
+    user = cur.fetchone()
+    conn.close()
+    if not user:
+        return "Email not found.", 404
+    code = ''.join(random.choices(string.digits, k=6))
+    recovery_codes[email] = code
+    send_email(email, "Password Recovery Code", f"Your recovery code is: {code}")
+    return "Recovery code sent to your email.", 200
+
+
+@app.route("/recover_confirm", methods=["POST"])
+def recover_confirm():
+    data = request.form
+    email = data.get("email")
+    code = data.get("code")
+    new_password = data.get("new_password")
+    if not email or not code or not new_password:
+        return "Email, code, and new password required.", 400
+    if recovery_codes.get(email) != code:
+        return "Invalid or expired code.", 400
+    hashed_pw = generate_password_hash(new_password)
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, email))
     conn.commit()
     conn.close()
+    del recovery_codes[email]
     return "Password updated successfully.", 200
 
 
