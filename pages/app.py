@@ -2883,7 +2883,7 @@ with st.sidebar:
 
     st.header("Pre-Process Options")
     astrometry_check = st.checkbox(
-        "Astrometry ++",
+        "Astrometry +",
         value=st.session_state.get("astrometry_check", False),
         help="Try to refine astrometry (stdpipe)",
     )
