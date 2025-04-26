@@ -2033,6 +2033,7 @@ def enhance_catalog(
                 if response.status_code == 200:
                     events = response.json()["voevents"]
                 else:
+                    st.warning(f"url: {url}")
                     st.warning(
                         f"Request failed with status code: {response.status_code}"
                     )
