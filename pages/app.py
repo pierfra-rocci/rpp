@@ -2885,7 +2885,7 @@ with st.sidebar:
 
         st.session_state["log_buffer"] = initialize_log(science_file.name)
 
-    st.header("Pre-Process Options")
+    st.header("Process Options")
     astrometry_check = st.checkbox(
         "Astrometry +",
         value=st.session_state.get("astrometry_check", False),
