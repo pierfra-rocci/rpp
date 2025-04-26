@@ -2088,19 +2088,15 @@ def enhance_catalog(
                 raise ValueError("Search radius must be a number")
 
             idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
-            matches = d2d < (30 * u.arcsec)
+            matches = d2d < (20 * u.arcsec)
 
             for i, (match, match_idx) in enumerate(zip(matches, idx)):
                 if match:
                     final_table.loc[i, "astro_colibri_name"] = astrostars[
                         "discoverer_internal_name"
                     ][match_idx]
-
-            matches = []
-            if len(matches) == 0:
-                st.write("No matched Astro-colibri objects in field.")
-            else:
-                st.success(f"{len(matches)} Astro-Colibri matched objects in field.")
+            
+            st.success(f"{len(matches)} Astro-Colibri matched objects in field.")
         else:
             st.write("No Astro-Colibri sources found in the field.")
 
