@@ -3652,13 +3652,10 @@ if science_file is not None:
                                                     epsf_subset = epsf_df[
                                                         [col for col in epsf_cols.keys() if col in epsf_df.columns]
                                                     ].rename(columns=epsf_cols)
-                                                    st.dataframe(epsf_subset.head())
 
                                                 final_table = pd.merge(
                                                     final_table, epsf_df, on="match_id", how="left"
                                                 )
-
-                                                st.dataframe(final_table.head())
 
                                                 if (
                                                     "instrumental_mag_y"
