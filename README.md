@@ -26,7 +26,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 
 - **Authentication**: Secure login, registration, and password reset with session state management.
 - **User Configuration**: Save and load user-specific analysis parameters, observatory settings, and API keys.
-- **Pre-processing Options**: Toggle "Astrometry++" (stdpipe refinement), "2x2 Binning", and "Remove Cosmic Rays" (L.A.Cosmic algorithm) before analysis.
+- **Pre-processing Options**: Toggle "Astrometry++" (stdpipe refinement) and "Remove Cosmic Rays" (L.A.Cosmic algorithm) before analysis.
 - **Interactive Analysis**: All parameters (seeing, detection threshold, border mask, Gaia band/mag range, etc.) are adjustable via sidebar widgets.
 - **Catalog Cross-matching**: Automatic cross-match with Gaia DR3, SIMBAD, SkyBoT, AAVSO VSX, and Milliquas catalogs. Astro-Colibri API integration for transient events.
 - **Results Download**: All output files for a session can be downloaded as a ZIP archive. Detailed logs are generated for each analysis.
