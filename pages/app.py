@@ -2021,7 +2021,7 @@ def enhance_catalog(
                 "properties": {
                     "type": "cone",
                     "position": {"ra": field_center_ra, "dec": field_center_dec},
-                    "radius": field_width_arcmin,
+                    "radius": field_width_arcmin/2.,
                 },
             }
 
