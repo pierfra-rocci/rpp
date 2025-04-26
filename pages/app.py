@@ -3797,6 +3797,17 @@ if science_file is not None:
                                             ax_mag.grid(True, alpha=0.3)
                                             st.pyplot(fig_mag)
 
+                                            # Save the histogram as an image file
+                                            try:
+                                                base_filename = st.session_state.get("base_filename", "photometry")
+                                                output_dir = ensure_output_directory("rpp_results")
+                                                hist_filename = f"{base_filename}_histogram_mag.png"
+                                                hist_filepath = os.path.join(output_dir, hist_filename)
+                                                fig_mag.savefig(hist_filepath, dpi=120, bbox_inches="tight")
+                                                write_to_log(log_buffer, f"Saved magnitude histogram plot: {hist_filename}")
+                                            except Exception as e:
+                                                st.warning(f"Could not save magnitude histogram plot: {e}")
+
                                             if (
                                                 final_table is not None
                                                 and "ra" in final_table.columns
