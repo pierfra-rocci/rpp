@@ -31,6 +31,8 @@ A comprehensive astronomical image processing and photometry tool designed speci
 - **Catalog Cross-matching**: Automatic cross-match with Gaia DR3, SIMBAD, SkyBoT, AAVSO VSX, and Milliquas catalogs. Astro-Colibri API integration for transient events.
 - **Results Download**: All output files for a session can be downloaded as a ZIP archive. Detailed logs are generated for each analysis.
 - **Session State**: All parameters and results are managed via Streamlit session state for persistence and reproducibility.
+- **FWHM Distribution Plot**: Automatically generates and saves a histogram of star FWHM values (`[filename]_fwhm.png`) for quality assessment of image seeing and focus.
+
 
 ## Installation
 
@@ -77,6 +79,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 
 ## Usage
 
+
 1. **Login/Register**
    - On first use, register a new account. Credentials are stored in `users.db` (SQLite).
    - Login to access the main photometry app.
@@ -90,10 +93,12 @@ A comprehensive astronomical image processing and photometry tool designed speci
 4. **Run the analysis pipeline**
    - Apply cosmic ray removal, plate solving, source detection, photometry, zero-point calibration, and catalog cross-matching.
    - View results and interactive visualizations (including Aladin Lite and ESA Sky links).
+   - **New:** Inspect the FWHM distribution plot to evaluate image quality and star sharpness.
 
 5. **Export and analyze results**
-   - Download photometry catalog, metadata, and all results as a ZIP archive from the `pfr_results` directory.
+   - Download photometry catalog, metadata, and all results as a ZIP archive from the `rpp_results` directory.
    - Session parameters can be saved to both the backend and as a JSON file.
+
 
 ## Workflow
 
@@ -142,9 +147,8 @@ The application generates several output files in the pfr_results directory:
 - `[filename]_results.zip` - Downloadable archive of all output files for the session
 - `[filename]_bkg.fits` - Background model FITS file
 - `[filename]_image_hist.png` - Histogram of image pixel values
-- `[filename]_fwhm.png` - FWHM distribution histogram
+- `[filename]_fwhm.png` - **FWHM distribution histogram (new): shows the distribution of star FWHM values for image quality assessment**
 
-Other files may be generated depending on the analysis options and session parameters.
 
 ## Contributing
 
