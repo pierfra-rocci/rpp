@@ -157,8 +157,8 @@ build = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/pierfra-rocci/pfr"
-"Bug Tracker" = "https://github.com/pierfra-rocci/pfr/issues"
+"Homepage" = "https://github.com/pierfra-rocci/rpp"
+"Bug Tracker" = "https://github.com/pierfra-rocci/rpp/issues"
 
 [project.scripts]
 pfr = "run_frontend:main"
