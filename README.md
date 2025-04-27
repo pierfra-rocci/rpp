@@ -115,7 +115,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 - User authentication: login, registration, and password recovery are handled via the Streamlit frontend, with user data stored in `users.db` (SQLite).
 - User-specific configuration: analysis parameters, observatory info, and catalog settings are saved and restored per user.
 - The frontend is built with [Streamlit](https://streamlit.io/), providing interactive widgets for all analysis parameters, observatory location, and catalog settings.
-- The frontend communicates with the backend via HTTP (default: `http://localhost:5000`).
+- The frontend communicates with the backend via HTTPS (default: `https://localhost:5000`).
 - Utility scripts: `tools.py` (misc helpers).
 
 ## Documentation
