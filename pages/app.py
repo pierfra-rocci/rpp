@@ -31,6 +31,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 import numpy as np
+from numpy.ma import MaskedConstant
 from astropy.io import fits
 from astropy.stats import sigma_clip, SigmaClip
 
@@ -1491,7 +1492,7 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
     try:
         # Remove sources with SNR == 0 before zero point calculation
         if "snr" in _matched_table.columns:
-            _matched_table = _matched_table[_matched_table["snr"] != 0]
+            _matched_table = _matched_table[_matched_table["snr"] >= 0]
 
         zero_points = _matched_table[gaia_band] - _matched_table["instrumental_mag"]
         _matched_table["zero_point"] = zero_points
@@ -1500,6 +1501,12 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         clipped_zero_points = sigma_clip(zero_points, sigma=3)
         zero_point_value = np.median(clipped_zero_points)
         zero_point_std = np.std(clipped_zero_points)
+
+        # Fix: handle MaskedConstant
+        if isinstance(zero_point_value, MaskedConstant) or np.isnan(zero_point_value):
+            zero_point_value = float('nan')
+        if isinstance(zero_point_std, MaskedConstant) or np.isnan(zero_point_std):
+            zero_point_std = float('nan')
 
         _matched_table["calib_mag"] = (
             _matched_table["instrumental_mag"] + zero_point_value + 0.1 * air
