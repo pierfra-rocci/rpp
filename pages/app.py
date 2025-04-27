@@ -2749,7 +2749,6 @@ def initialize_session_state():
             "threshold_sigma": 2.5,
             "detection_mask": 25,
             "gaia_band": "phot_g_mean_mag",
-            "gaia_min_mag": 7.0,
             "gaia_max_mag": 20.0,
             "calibrate_bias": False,
             "calibrate_dark": False,
@@ -2845,7 +2844,6 @@ if "analysis_parameters" in st.session_state:
 if "gaia_parameters" in st.session_state:
     gaia = st.session_state["gaia_parameters"]
     st.session_state["gaia_band"] = gaia.get("gaia_band", "phot_g_mean_mag")
-    st.session_state["gaia_min_mag"] = gaia.get("gaia_min_mag", 7.0)
     st.session_state["gaia_max_mag"] = gaia.get("gaia_max_mag", 20.0)
 
 if "colibri_api_key" in st.session_state:
@@ -2858,7 +2856,7 @@ with st.sidebar:
 
     # File uploader for Image
     science_file = st.file_uploader(
-        "Image (required)", type=["fits", "fit", "fts"], key="science_uploader"
+        "Image (required)", type=["fits", "fit", "fts", "fits.gz"], key="science_uploader"
     )
 
     # Get absolute path if we need it (for tools like Siril that need direct file access)
