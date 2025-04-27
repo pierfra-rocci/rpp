@@ -181,8 +181,10 @@ def internal_server_error(e):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0",    # visibile anche da altri dispositivi nella rete locale
+    app.run(host="0.0.0.0",
             port=5000,
-            debug=True,        # mantiene il debug attivo
-            use_reloader=True,  # ricarica automatica sui cambiamenti
-            threaded=True)      # supporta più richieste contemporanee
+            debug=True,
+            use_reloader=True,
+            threaded=True,
+            url_scheme='https')
+ 
