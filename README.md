@@ -50,7 +50,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
   - streamlit
   - stdpipe
   - Flask (for backend)
-  - SIRIL 1.2.6+ (for plate solving)
+  - SIRIL 1.4.0+ (for plate solving)
 
 ### Quick Start
 
