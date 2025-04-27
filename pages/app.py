@@ -1490,10 +1490,12 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
 
     try:
         # Remove sources with SNR == 0 before zero point calculation
-        # if "snr" in _matched_table.columns:
-        #     _matched_table = _matched_table[_matched_table["snr"] >= 0]
+        if "snr" in _matched_table.columns:
+            _matched_table = _matched_table[_matched_table["snr"] != 0]
 
-        zero_points = _matched_table[gaia_band] - _matched_table["instrumental_mag"]
+        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[gaia_band])
+
+        zero_points = _matched_table[gaia_band][valid] - _matched_table["instrumental_mag"][valid]
         _matched_table["zero_point"] = zero_points
         _matched_table["zero_point_error"] = np.std(zero_points)
 
