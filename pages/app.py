@@ -3206,7 +3206,12 @@ if science_file is not None:
 
         if use_astrometry:
             with st.spinner("Running plate solve (this may take a while)..."):
-                wcs_obj, science_header = solve_with_siril(science_file_path)
+                result = solve_with_siril(science_file_path)
+                if result is None:
+                    st.error("Plate solving failed. No WCS solution was returned.")
+                    wcs_obj, science_header = None, None
+                else:
+                    wcs_obj, science_header = result
 
                 log_buffer = st.session_state["log_buffer"]
 
