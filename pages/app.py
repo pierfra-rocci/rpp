@@ -2088,7 +2088,7 @@ def enhance_catalog(
                 raise ValueError("Search radius must be a number")
 
             idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
-            matches = d2d < (20 * u.arcsec)
+            matches = d2d < (15 * u.arcsec)
 
             for i, (match, match_idx) in enumerate(zip(matches, idx)):
                 if match:
