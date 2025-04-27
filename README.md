@@ -147,7 +147,7 @@ The application generates several output files in the pfr_results directory:
 - `[filename]_results.zip` - Downloadable archive of all output files for the session
 - `[filename]_bkg.fits` - Background model FITS file
 - `[filename]_image_hist.png` - Histogram of image pixel values
-- `[filename]_fwhm.png` - **FWHM distribution histogram (new): shows the distribution of star FWHM values for image quality assessment**
+- `[filename]_fwhm.png` - FWHM distribution histogram (new): shows the distribution of star FWHM values for image quality assessment
 
 
 ## Contributing
