@@ -8,7 +8,7 @@ import string
 import os
 
 app = Flask(__name__)
-# app.config['PREFERRED_URL_SCHEME'] = 'https'
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 CORS(app)
 
 # Simple in-memory store for recovery codes (for demo; use persistent store in production)
