@@ -2102,8 +2102,11 @@ def enhance_catalog(
                     final_table.loc[i, "astro_colibri_name"] = astrostars[
                         "discoverer_internal_name"
                     ][match_idx]
+                    final_table.loc[i, "astro_colibri_type"] = astrostars["type"][match_idx]
+                    final_table.loc[i, "astro_colibri_classification"] = astrostars[
+                        "classification"][match_idx]
             
-            st.success(f"{len(matches)} Astro-Colibri matched objects in field.")
+            st.success("Astro-Colibri matched objects in field.")
         else:
             st.write("No Astro-Colibri sources found in the field.")
 
