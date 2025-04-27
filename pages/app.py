@@ -1503,6 +1503,14 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         zero_point_value = np.median(clipped_zero_points)
         zero_point_std = np.std(clipped_zero_points)
 
+        st.write("Zero points (before clipping):", zero_points)
+        st.write("Zero points (after sigma_clip):", clipped_zero_points)
+        st.write("Any finite zero points?", np.any(np.isfinite(zero_points)))
+
+        st.write("Any NaN in instrumental_mag?", _matched_table["instrumental_mag"].isna().sum())
+        st.write("Any NaN in gaia_band?", _matched_table[gaia_band].isna().sum())
+        st.write("Matched table length:", len(_matched_table))
+
         if np.ma.is_masked(zero_point_value) or np.isnan(zero_point_value):
             zero_point_value = float('nan')
         if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
