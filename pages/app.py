@@ -1311,7 +1311,6 @@ def cross_match_with_gaia(
     pixel_size_arcsec,
     mean_fwhm_pixel,
     gaia_band,
-    gaia_min_mag,
     gaia_max_mag,
 ):
     """
@@ -1332,8 +1331,6 @@ def cross_match_with_gaia(
         FWHM in pixels, used to determine matching radius
     gaia_band : str
         GAIA magnitude band to use for filtering (e.g., 'phot_g_mean_mag')
-    gaia_min_mag : float
-        Minimum magnitude for GAIA source filtering
     gaia_max_mag : float
         Maximum magnitude for GAIA source filtering
 
@@ -1397,9 +1394,7 @@ def cross_match_with_gaia(
         return None
 
     try:
-        mag_filter = (gaia_table[gaia_band] < gaia_max_mag) & (
-            gaia_table[gaia_band] > gaia_min_mag
-        )
+        mag_filter = (gaia_table[gaia_band] < gaia_max_mag)
 
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
         color_index_filter = gaia_table["bp_rp"] < 3.0
@@ -1409,7 +1404,7 @@ def cross_match_with_gaia(
 
         if len(gaia_table_filtered) == 0:
             st.warning(
-                f"No Gaia sources found within magnitude range {gaia_min_mag} < {gaia_band} < {gaia_max_mag}."
+                f"No Gaia sources found within magnitude range {gaia_band} < {gaia_max_mag}."
             )
             return None
 
@@ -1599,7 +1594,6 @@ def run_zero_point_calibration(
     threshold_sigma,
     detection_mask,
     gaia_band,
-    gaia_min_mag,
     gaia_max_mag,
     air,
 ):
@@ -1626,7 +1620,7 @@ def run_zero_point_calibration(
         Border mask size in pixels
     gaia_band : str
         GAIA magnitude band to use
-    gaia_min_mag, gaia_max_mag : float
+    gaia_max_mag : float
         Magnitude limits for GAIA sources
     air : float
         Airmass value for extinction correction
@@ -1655,7 +1649,6 @@ def run_zero_point_calibration(
             threshold_sigma,
             detection_mask,
             gaia_band,
-            gaia_min_mag,
         )
 
         if phot_table_qtable is None:
@@ -1669,7 +1662,6 @@ def run_zero_point_calibration(
             pixel_size_arcsec,
             mean_fwhm_pixel,
             gaia_band,
-            gaia_min_mag,
             gaia_max_mag,
         )
 
@@ -1811,9 +1803,6 @@ def run_zero_point_calibration(
                     f.write("Detection Parameters:\n")
                     f.write(f"  Threshold: {threshold_sigma} sigma\n")
                     f.write(f"  Border Mask: {detection_mask} pixels\n")
-                    f.write(
-                        f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n"
-                    )
 
                 write_to_log(log_buffer, "Saved catalog metadata")
 
@@ -3038,14 +3027,6 @@ with st.sidebar:
         ),
         help="Gaia magnitude band to use for calibration",
     )
-    gaia_min_mag = st.slider(
-        "Gaia Min Magnitude",
-        7.0,
-        12.0,
-        float(st.session_state.get("gaia_min_mag", 7.0)),
-        0.5,
-        help="Minimum magnitude for Gaia sources",
-    )
     gaia_max_mag = st.slider(
         "Gaia Max Magnitude",
         15.0,
@@ -3056,7 +3037,6 @@ with st.sidebar:
     )
     # Ensure Gaia parameters are updated in session state for saving
     st.session_state["gaia_band"] = gaia_band
-    st.session_state["gaia_min_mag"] = gaia_min_mag
     st.session_state["gaia_max_mag"] = gaia_max_mag
 
     # st.header("Output Options")
@@ -3070,7 +3050,6 @@ with st.sidebar:
         # Remove unwanted keys from analysis_params
         for k in [
             "gaia_band",
-            "gaia_min_mag",
             "gaia_max_mag",
         ]:
             analysis_params.pop(k, None)
@@ -3078,7 +3057,6 @@ with st.sidebar:
         # Only keep relevant keys
         gaia_params = {
             "gaia_band": st.session_state.get("gaia_band"),
-            "gaia_min_mag": st.session_state.get("gaia_min_mag"),
             "gaia_max_mag": st.session_state.get("gaia_max_mag"),
         }
         observatory_params = dict(st.session_state.get("observatory_data", {}))
@@ -3540,7 +3518,6 @@ if science_file is not None:
                                 pixel_size_arcsec,
                                 mean_fwhm_pixel,
                                 gaia_band,
-                                gaia_min_mag,
                                 gaia_max_mag,
                             )
 
@@ -3902,9 +3879,6 @@ if science_file is not None:
                                                 f.write(
                                                     f"  Border Mask: {detection_mask} pixels\n"
                                                 )
-                                                f.write(
-                                                    f"  Gaia Magnitude Range: {gaia_min_mag:.1f} - {gaia_max_mag:.1f}\n"
-                                                )
 
                                             write_to_log(
                                                 log_buffer, "Saved catalog metadata"
@@ -3995,7 +3969,6 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
 
     write_to_log(log_buffer, "Gaia Parameters", level="INFO")
     write_to_log(log_buffer, f"Gaia Band: {gaia_band}")
-    write_to_log(log_buffer, f"Gaia Min Magnitude: {gaia_min_mag}")
     write_to_log(log_buffer, f"Gaia Max Magnitude: {gaia_max_mag}")
 
     write_to_log(log_buffer, "Calibration Options", level="INFO")
