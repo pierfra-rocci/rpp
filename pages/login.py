@@ -109,7 +109,6 @@ else:
             if "gaia_parameters" in config:
                 gaia = config["gaia_parameters"]
                 st.session_state["gaia_band"] = gaia.get("gaia_band")
-                st.session_state["gaia_min_mag"] = gaia.get("gaia_min_mag")
                 st.session_state["gaia_max_mag"] = gaia.get("gaia_max_mag")
             if "observatory_parameters" in config:
                 st.session_state["observatory_data"] = config["observatory_parameters"]
