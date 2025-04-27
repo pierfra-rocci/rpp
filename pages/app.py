@@ -497,9 +497,11 @@ def airmass(
     obs_data = observatory
 
     try:
-        ra = _header.get("RA", _header.get("OBJRA", _header.get("RA---")))
-        dec = _header.get("DEC", _header.get("OBJDEC", _header.get("DEC---")))
-        obstime_str = _header.get("DATE-OBS", _header.get("DATE"))
+        ra = _header.get("RA") or _header.get("OBJRA") or _header.get("CRVAL1")
+        dec = _header.get("DEC") or _header.get("OBJDEC") or _header.get("CRVAL2")
+        obstime_str = _header.get("DATE-OBS") or _header.get("DATE")
+        if any(v is None for v in [ra, dec, obstime_str]):
+            raise ValueError("Missing required header keywords: RA, DEC, DATE-OBS")
 
         if any(v is None for v in [ra, dec, obstime_str]):
             missing = []
