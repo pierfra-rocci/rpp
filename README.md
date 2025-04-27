@@ -16,6 +16,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 - [Authentication & Backend](#authentication--backend)
 - [Documentation](#documentation)
 - [Example Output](#example-output)
+- [Key Updates](#key-updates)
 - [Contributing](#contributing)
 - [Reporting Issues](#reporting-issues)
 - [License](#license)
@@ -149,6 +150,12 @@ The application generates several output files in the pfr_results directory:
 - `[filename]_image_hist.png` - Histogram of image pixel values
 - `[filename]_fwhm.png` - FWHM distribution histogram (new): shows the distribution of star FWHM values for image quality assessment
 
+## Key Updates
+
+- The Gaia minimum magnitude parameter has been removed. Now only a maximum magnitude ("Gaia Max Magnitude") is used for Gaia source filtering in the photometric calibration workflow.
+- The output includes a FWHM distribution histogram for image quality assessment.
+- All results for a session can be downloaded as a single ZIP archive from the interface.
+- The workflow and sidebar options have been streamlined for clarity and ease of use.
 
 ## Contributing
 
