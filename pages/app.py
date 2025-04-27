@@ -1721,12 +1721,6 @@ def run_zero_point_calibration(
                         "instrumental_mag": "psf_instrumental_mag",
                     }
 
-                    # Debug output for PSF photometry merge
-                    # st.write("[DEBUG] epsf_df columns:", epsf_df.columns.tolist())
-                    # st.write("[DEBUG] final_table columns before merge:", final_table.columns.tolist())
-                    # st.write("[DEBUG] Number of rows in epsf_df:", len(epsf_df))
-                    # st.write("[DEBUG] Number of rows in final_table before merge:", len(final_table))
-                    # st.write("[DEBUG] Sample epsf_df head:")
                     st.dataframe(epsf_df.head())
                     st.write("[DEBUG] Sample final_table head before merge:")
                     st.dataframe(final_table.head())
@@ -1739,8 +1733,6 @@ def run_zero_point_calibration(
                         epsf_subset = epsf_df[
                             [col for col in epsf_cols.keys() if col in epsf_df.columns]
                         ].rename(columns=epsf_cols)
-                        # st.write("[DEBUG] epsf_subset columns:", epsf_subset.columns.tolist())
-                        # st.write("[DEBUG] Sample epsf_subset head:")
                         st.dataframe(epsf_subset.head())
 
                     final_table = pd.merge(final_table,
@@ -1749,9 +1741,6 @@ def run_zero_point_calibration(
                                            how="left"
                                            )
 
-                    # st.write("[DEBUG] final_table columns after merge:", final_table.columns.tolist())
-                    # st.write("[DEBUG] Number of rows in final_table after merge:", len(final_table))
-                    # st.write("[DEBUG] Sample final_table head after merge:")
                     st.dataframe(final_table.head())
 
                     if "psf_instrumental_mag" in final_table.columns:
