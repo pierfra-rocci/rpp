@@ -1503,10 +1503,9 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         zero_point_value = np.median(clipped_zero_points)
         zero_point_std = np.std(clipped_zero_points)
 
-        # Fix: handle MaskedConstant
-        if isinstance(zero_point_value, np.ma.masked) or np.isnan(zero_point_value):
+        if np.ma.is_masked(zero_point_value) or np.isnan(zero_point_value):
             zero_point_value = float('nan')
-        if isinstance(zero_point_std, np.ma.masked) or np.isnan(zero_point_std):
+        if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
             zero_point_std = float('nan')
 
         _matched_table["calib_mag"] = (
