@@ -14,7 +14,7 @@ requires 1.2.6
 
 cd "$directory"
 load "$filename"
-platesolve -order=2
+platesolve
 save "$solvedname"
 close
 "@
