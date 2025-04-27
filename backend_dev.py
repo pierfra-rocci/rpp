@@ -170,5 +170,19 @@ def get_config():
         return "{}", 200
 
 
+@app.errorhandler(404)
+def page_not_found(e):
+    return {"error": "Page not found"}, 404
+
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return {"error": "Internal server error"}, 500
+
+
 if __name__ == "__main__":
-    app.run(port=5000, debug=True)
+    app.run(host="0.0.0.0",    # visibile anche da altri dispositivi nella rete locale
+            port=5000,
+            debug=True,        # mantiene il debug attivo
+            use_reloader=True,  # ricarica automatica sui cambiamenti
+            threaded=True)      # supporta più richieste contemporanee
