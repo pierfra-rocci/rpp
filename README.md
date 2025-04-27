@@ -66,9 +66,9 @@ A comprehensive astronomical image processing and photometry tool designed speci
    pip install -r requirements.txt
    ```
 
-3. Start the backend server (for authentication and config storage):
+3. Start the backend server (use backend_prod.py for production):
    ```bash
-   python backend.py
+   python backend_dev.py
    ```
 
 4. In a new terminal, start the frontend Streamlit app:
@@ -103,7 +103,7 @@ A comprehensive astronomical image processing and photometry tool designed speci
 
 ## Workflow
 
-1. **Start the backend**: `python backend.py` (required for authentication and config saving).
+1. **Start the backend**: `python backend_dev.py` (required for authentication and config saving).
 2. **Start the frontend**: `streamlit run run_frontend.py` (always redirects to login page).
 3. **Authenticate**: Register or log in. User/session parameters are loaded from the backend if available.
 4. **Upload and analyze**: Upload your science FITS file (and optional calibration frames), set parameters, and run the photometry pipeline.
