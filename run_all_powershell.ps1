@@ -1,5 +1,5 @@
 # Activate virtual environment
-. .\venv\Scripts\Activate.ps1
+. .\.venv\Scripts\Activate.ps1
 
 # Start backend_dev.py as a background job
 Start-Job -ScriptBlock { python backend_dev.py }

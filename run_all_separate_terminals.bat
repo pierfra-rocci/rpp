@@ -1,6 +1,6 @@
 @echo off
 REM Activate virtual environment
-call venv\Scripts\activate
+call .venv\Scripts\activate
 
 REM Start backend_dev.py in a new terminal
 start cmd /k "python backend_dev.py"
