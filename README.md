@@ -6,7 +6,7 @@
 
 A comprehensive astronomical image processing and photometry tool designed specifically for [RAPAS](https://rapas.imcce.fr/) project data.
 
-![RPP Screenshot](doc/_static/logo.png)
+![RPP Screenshot](doc/_static/rpp_logo.png)
 
 ## Table of Contents
 - [Features](#features)
