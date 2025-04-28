@@ -19,11 +19,6 @@ showWidgetBorder = true
 baseFontSize = 16
 showSidebarBorder = false                # No hard sidebar border
 
-# Fonts loading
-[[theme.fontFaces]]
-font = "Source Code Pro"
-url = "https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap"
-
 
 # Specific colors for sidebar
 [theme.sidebar]
