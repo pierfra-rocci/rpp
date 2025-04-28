@@ -8,7 +8,7 @@ Start-Job -ScriptBlock { python backend_dev.py *>&1 | Tee-Object -FilePath backe
 Start-Job -ScriptBlock { python run_frontend.py *>&1 | Tee-Object -FilePath frontend.log }
 
 Write-Host "Both backend and frontend are running as background jobs."
-Write-Host "Backend URL: https://127.0.0.1:8000"
+Write-Host "Backend URL: https://127.0.0.1:5000"
 Write-Host "Frontend URL: https://127.0.0.1:8501"
 Write-Host "Logs: backend.log, frontend.log"
 

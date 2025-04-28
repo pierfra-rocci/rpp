@@ -17,7 +17,7 @@ FRONTEND_PID=$!
 
 echo "Backend PID: $BACKEND_PID"
 echo "Frontend PID: $FRONTEND_PID"
-echo "Backend URL: https://127.0.0.1:8000"
+echo "Backend URL: https://127.0.0.1:5000"
 echo "Frontend URL: https://127.0.0.1:8501"
 echo "Logs: $backend_log, $frontend_log"
 echo "Both backend and frontend are running. Press Ctrl+C to stop."
