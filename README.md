@@ -120,7 +120,7 @@ An astronomical image processing and photometry tool designed specifically for [
 
 ## Documentation
 
-Comprehensive documentation is available in the `doc/` directory:
+Documentation is available in the `doc/` directory:
 
 - [Installation Guide](doc/installation.rst)
 - [User Guide](doc/user_guide.rst)
