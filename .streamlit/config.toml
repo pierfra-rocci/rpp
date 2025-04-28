@@ -1,6 +1,35 @@
-# [theme]
-# primaryColor = "#F63366"
-# backgroundColor = "black"
+[theme]
+base = "dark"
+primaryColor = "#268bd2"               # Solarized blue
+backgroundColor = "#002b36"             # App main background
+secondaryBackgroundColor = "#073642"    # Widget background
+textColor = "#839496"                   # Main text
+linkColor = "#2aa198"                   # Links
+codeBackgroundColor = "#073642"          # Code blocks
+
+# Font settings
+font = "sans-serif"                     # For normal text
+codeFont = "Source Code Pro, monospace"  # For code
+headingFont = "sans-serif"               # For headings
+
+# Visual Tweaks
+baseRadius = "0.5rem"                    # Rounded elements
+borderColor = "#586e75"                  # Subtle border
+showWidgetBorder = true
+baseFontSize = 16
+showSidebarBorder = false                # No hard sidebar border
+
+# Fonts loading
+[[theme.fontFaces]]
+font = "Source Code Pro"
+url = "https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap"
+
+# Specific colors for sidebar
+[theme.sidebar]
+backgroundColor = "#002b36"             # Same as page background
+textColor = "#839496"                   # Same text color
+borderColor = "#586e75"                 # Subtle border if needed
+
 
 [global]
 developmentMode = false
