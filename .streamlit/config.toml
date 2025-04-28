@@ -26,7 +26,7 @@ url = "https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap"
 
 # Specific colors for sidebar
 [theme.sidebar]
-backgroundColor = "#002b36"             # Same as page background
+backgroundColor = "#001a22"             # Slightly darker than page background
 textColor = "#839496"                   # Same text color
 borderColor = "#586e75"                 # Subtle border if needed
 
