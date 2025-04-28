@@ -1869,11 +1869,10 @@ def enhance_catalog(
         st.warning("No sources to cross-match with catalogs.")
         return final_table
 
-    # Initialize field center variables at the beginning of the function
+    # Compute field of view (arcmin) ONCE and use everywhere
     field_center_ra = None
     field_center_dec = None
-
-    # Extract field center coordinates from header
+    field_width_arcmin = 30.0  # fallback default
     if header is not None:
         if "CRVAL1" in header and "CRVAL2" in header:
             field_center_ra = float(header["CRVAL1"])
@@ -1884,6 +1883,13 @@ def enhance_catalog(
         elif "OBJRA" in header and "OBJDEC" in header:
             field_center_ra = float(header["OBJRA"])
             field_center_dec = float(header["OBJDEC"])
+        # Compute field width if possible
+        if "NAXIS1" in header and "NAXIS2" in header and pixel_scale_arcsec:
+            field_width_arcmin = (
+                max(header.get("NAXIS1", 1000), header.get("NAXIS2", 1000))
+                * pixel_scale_arcsec
+                / 60.0
+            )
 
     status_text = st.empty()
     status_text.write("Starting cross-match process...")
@@ -1936,14 +1942,7 @@ def enhance_catalog(
                 f"Invalid coordinates: RA={field_center_ra}, DEC={field_center_dec}"
             )
         else:
-            if "NAXIS1" in header and "NAXIS2" in header:
-                field_width_arcmin = (
-                    max(header.get("NAXIS1", 1000), header.get("NAXIS2", 1000))
-                    * pixel_scale_arcsec
-                    / 60.0
-                )
-            else:
-                field_width_arcmin = 30.0
+            pass
     else:
         st.warning("Could not extract field center coordinates from header")
 
@@ -1956,19 +1955,6 @@ def enhance_catalog(
             pass
 
     try:
-        field_center_ra = None
-        field_center_dec = None
-
-        if "CRVAL1" in header and "CRVAL2" in header:
-            field_center_ra = float(header["CRVAL1"])
-            field_center_dec = float(header["CRVAL2"])
-        elif "RA" in header and "DEC" in header:
-            field_center_ra = float(header["RA"])
-            field_center_dec = float(header["DEC"])
-        elif "OBJRA" in header and "OBJDEC" in header:
-            field_center_ra = float(header["OBJRA"])
-            field_center_dec = float(header["OBJDEC"])
-
         try:
             # Base URL of the API
             url = URL + "cone_search"
@@ -2008,7 +1994,7 @@ def enhance_catalog(
                 "properties": {
                     "type": "cone",
                     "position": {"ra": field_center_ra, "dec": field_center_dec},
-                    "radius": field_width_arcmin/2.,
+                    "radius": field_width_arcmin / 2.0,
                 },
             }
 
