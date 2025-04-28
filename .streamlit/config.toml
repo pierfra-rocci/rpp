@@ -42,8 +42,12 @@ messageFormat = "%(asctime)s %(message)s"
 port = 8501
 enableStaticServing = true
 
-[client]
+[browser]
+# Whether to send usage statistics to Streamlit.
+# Default: true
+gatherUsageStats = true
 
+[client]
 # Controls whether uncaught app exceptions and deprecation warnings
 # are displayed in the browser. This can be one of the following:
 # - "full"       : In the browser, Streamlit displays app deprecation
