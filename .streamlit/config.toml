@@ -42,6 +42,29 @@ messageFormat = "%(asctime)s %(message)s"
 port = 8501
 enableStaticServing = true
 
+# Enables support for Cross-Origin Resource Sharing (CORS) protection,
+# for added security.
+# If XSRF protection is enabled and CORS protection is disabled at the
+# same time, Streamlit will enable them both instead.
+# Default: true
+enableCORS = true
+
+# Enables support for Cross-Site Request Forgery (XSRF) protection, for
+# added security.
+# If XSRF protection is enabled and CORS protection is disabled at the
+# same time, Streamlit will enable them both instead.
+# Default: true
+enableXsrfProtection = true
+
+# Max size, in megabytes, for files uploaded with the file_uploader.
+# Default: 200
+maxUploadSize = 100
+
+# Max size, in megabytes, of messages that can be sent via the WebSocket
+# connection.
+# Default: 200
+maxMessageSize = 100
+
 [browser]
 # Whether to send usage statistics to Streamlit.
 # Default: true
