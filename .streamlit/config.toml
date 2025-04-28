@@ -24,9 +24,6 @@ showSidebarBorder = false                # No hard sidebar border
 font = "Source Code Pro"
 url = "https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap"
 
-[[theme.fontFaces]]
-family = "Source Code Pro"
-url = "https://fonts.googleapis.com/css2?family=Source+Code+Pro&display=swap"
 
 # Specific colors for sidebar
 [theme.sidebar]
