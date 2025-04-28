@@ -2,6 +2,12 @@
 # Activate virtual environment
 source venv/bin/activate
 
+# Check if virtual environment is activated
+if [ -z "$VIRTUAL_ENV" ]; then
+    echo "Error: Virtual environment not activated. Please run 'source venv/bin/activate' first."
+    exit 1
+fi
+
 # Start backend_dev.py in the background, redirecting output to backend.log
 backend_log="backend.log"
 frontend_log="frontend.log"
@@ -12,7 +18,7 @@ BACKEND_PID=$!
 # Start run_frontend.py in the background, redirecting output to frontend.log
 
 echo "Starting run_frontend.py..."
-python run_frontend.py > "$frontend_log" 2>&1 &
+streamlit run run_frontend.py > "$frontend_log" 2>&1 &
 FRONTEND_PID=$!
 
 echo "Backend PID: $BACKEND_PID"
