@@ -8,3 +8,5 @@ Start-Job -ScriptBlock { python backend_dev.py }
 Start-Job -ScriptBlock { python run_frontend.py }
 
 Write-Host "Both backend and frontend are running as background jobs."
+
+# Get-Job | Remove-Job
