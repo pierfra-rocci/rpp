@@ -1409,7 +1409,7 @@ def cross_match_with_gaia(
         mag_filter = (gaia_table[filter_band] < filter_max_mag)
 
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
-        color_index_filter = gaia_table["bp_rp"] < 2.0
+        color_index_filter = gaia_table["bp_rp"] < 1.5
         combined_filter = mag_filter & var_filter & color_index_filter
 
         gaia_table_filtered = gaia_table[combined_filter]
