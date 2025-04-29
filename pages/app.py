@@ -52,7 +52,7 @@ from astropy.nddata import NDData
 
 from stdpipe import photometry, astrometry, catalogs, pipeline
 
-from tools import FIGURE_SIZES, URL, 
+from tools import FIGURE_SIZES, URL, GAIA_BAND
 from tools import extract_coordinates, extract_pixel_scale, get_base_filename
 from tools import (
     safe_catalog_query,
@@ -3018,12 +3018,14 @@ with st.sidebar:
     )
 
     st.header("Photometry Parameters")
+    selected_band = st.session_state.get("filter_band", "phot_g_mean_mag")
+    if selected_band not in GAIA_BAND:
+        selected_band = GAIA_BAND[0]
+    index = GAIA_BAND.index(selected_band)
     filter_band = st.selectbox(
         "Filter Band",
-        ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"],
-        index=["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"].index(
-            st.session_state.get("filter_band", "phot_g_mean_mag")
-        ),
+        GAIA_BAND,
+        index=index,
         help="Filter magnitude band to use for calibration",
     )
     filter_max_mag = st.slider(

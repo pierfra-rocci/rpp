@@ -19,20 +19,19 @@ FIGURE_SIZES = {
 
 URL = "https://astro-colibri.science/"
 
-GAIA_BAND = {
-    "G": "phot_g_mean_mag",
-    "BP": "phot_bp_mean_mag",
-    "RP": "phot_rp_mean_mag",
-    "U": "u_jkc_mag",
-    "V": "v_jkc_mag",
-    "B": "b_jkc_mag",
-    "R": "r_jkc_mag",
-    "u": "u_sdss_flag",
-    "g": "g_sdss_flag",
-    "r": "r_sdss_flag",
-    "i": "i_sdss_flag",
-    "z": "z_sdss_flag",
-}
+GAIA_BAND = [
+    "phot_g_mean_mag",
+    "phot_bp_mean_mag",
+    "phot_rp_mean_mag",
+    "u_jkc_mag",
+    "v_jkc_mag",
+    "b_jkc_mag",
+    "r_jkc_mag",
+    "u_sdss_mag",
+    "g_sdss_mag",
+    "r_sdss_mag",
+    "i_sdss_mag",
+    "z_sdss_mag"]
 
 
 def get_json(url: str):
