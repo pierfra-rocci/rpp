@@ -2239,13 +2239,13 @@ def enhance_catalog(
                                     f"Found {sum(matches)} solar system objects in field."
                                 )
                             else:
-                                st.write("No solar system objects found in the field.")
+                                st.warning("No solar system objects found in the field.")
                         except ValueError as e:
-                            st.write(
+                            st.warning(
                                 f"No solar system objects found (no valid JSON data returned). {str(e)}"
                             )
                     else:
-                        st.write("No solar system objects found in the field.")
+                        st.warning("No solar system objects found in the field.")
                 else:
                     st.warning(
                         f"SkyBoT query failed with status code {response.status_code}"
