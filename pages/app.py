@@ -1389,7 +1389,7 @@ def cross_match_with_gaia(
             f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
         )
 
-        if not filter_band:  # #TODO: check if filter_band is None or empty string
+        if filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]:
             st.warning("No GAIA band specified. Cannot filter GAIA sources.")
             Gaia.MAIN_GAIA_TABLE = 'gaiadr3.synthetic_photometry_gspc'
         else:
@@ -1408,9 +1408,15 @@ def cross_match_with_gaia(
     try:
         mag_filter = (gaia_table[filter_band] < filter_max_mag)
 
-        var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
-        color_index_filter = abs(gaia_table["bp_rp"]) < 1.5
-        combined_filter = mag_filter & var_filter & color_index_filter
+        if Gaia.MAIN_GAIA_TABLE == 'gaiadr3.gaia_source':
+            var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
+            color_index_filter = abs(gaia_table["bp_rp"]) < 1.5
+            astrometric_filter = gaia_table["ruwe"] <= 1.5
+            combined_filter = (mag_filter & var_filter &
+                               color_index_filter & astrometric_filter)
+        else:
+            color_index_filter = gaia_table["c_star"] < 1.5
+            combined_filter = mag_filter & color_index_filter
 
         gaia_table_filtered = gaia_table[combined_filter]
 
