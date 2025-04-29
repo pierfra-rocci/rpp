@@ -1388,6 +1388,13 @@ def cross_match_with_gaia(
         st.write(
             f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
         )
+
+        if not gaia_band:  # #TODO: check if gaia_band is None or empty string
+            st.warning("No GAIA band specified. Cannot filter GAIA sources.")
+            Gaia.MAIN_GAIA_TABLE = 'gaiadr3.synthetic_photometry_gspc'
+        else:
+            Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
+
         job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
         gaia_table = job.get_results()
     except Exception as e:
@@ -1406,6 +1413,8 @@ def cross_match_with_gaia(
         combined_filter = mag_filter & var_filter & color_index_filter
 
         gaia_table_filtered = gaia_table[combined_filter]
+
+        st.write(gaia_table_filtered)
 
         if len(gaia_table_filtered) == 0:
             st.warning(
