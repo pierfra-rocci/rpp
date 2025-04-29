@@ -3104,7 +3104,7 @@ output_dir = ensure_output_directory("rpp_results")
 st.session_state["output_dir"] = output_dir
 
 if science_file is not None:
-    science_data, science_header = load_fits_data(science_file)
+    science_data, data_not_scaled, science_header = load_fits_data(science_file)
 
     # Apply cosmic ray removal if enabled
     if st.session_state.get("calibrate_cosmic_rays", False):
