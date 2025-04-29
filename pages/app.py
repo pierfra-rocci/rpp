@@ -42,7 +42,8 @@ from photutils.background import Background2D, SExtractorBackground
 import matplotlib.pyplot as plt
 import pandas as pd
 from astropy.table import Table
-from astropy.visualization import ZScaleInterval, ImageNormalize, simple_norm
+from astropy.visualization import (ZScaleInterval, ImageNormalize, 
+                                   PercentileInterval, simple_norm)
 from io import StringIO, BytesIO
 from astropy.wcs import WCS
 
@@ -636,18 +637,26 @@ def load_fits_data(file):
                     sliced_data = sliced_data[0]
                 data = sliced_data
 
-            return data, header
+            if abs(int(header.get("BITPIX"))) != 32:
+                data = data.astype(np.float32)
+            
+            norm = ImageNormalize(data, interval=PercentileInterval(99.9))
+            normalized_data = norm(data)
+
+            return normalized_data, header
+        
         except Exception as e:
             st.error(f"Error loading FITS file: {str(e)}")
             return None, None
         finally:
             hdul.close()
+
     return None, None
 
 
 @st.cache_data
 def fwhm_fit(
-    img: np.ndarray,
+    _img: np.ndarray,
     fwhm: float,
     mask: Optional[np.ndarray] = None,
     std_lo: float = 1.0,
@@ -758,11 +767,11 @@ def fwhm_fit(
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit
 
     try:
-        peak = 0.90 * np.nanmax(img)
+        peak = 0.90 * np.nanmax(_img)
         daofind = DAOStarFinder(
-            fwhm=1.5 * fwhm, threshold=5 * np.std(img), peakmax=peak
+            fwhm=1.5 * fwhm, threshold=5 * np.std(_img), peakmax=peak
         )
-        sources = daofind(img, mask=mask)
+        sources = daofind(_img, mask=mask)
         if sources is None:
             st.warning("No sources found !")
             return None
@@ -796,7 +805,7 @@ def fwhm_fit(
                 x_cen = int(source["xcentroid"])
                 y_cen = int(source["ycentroid"])
 
-                fwhm_results = compute_fwhm_marginal_sums(img, y_cen, x_cen, box_size)
+                fwhm_results = compute_fwhm_marginal_sums(_img, y_cen, x_cen, box_size)
                 if fwhm_results is None:
                     skipped_sources += 1
                     continue
