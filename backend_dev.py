@@ -69,11 +69,17 @@ def register():
         return "Username, password, and email required.", 400
     conn = get_db_connection()
     cur = conn.cursor()
+    # Check if username or email already exists
     cur.execute("SELECT * FROM users WHERE username = ? OR email = ?", (username, email))
     if cur.fetchone():
         conn.close()
         return "Username or email is already taken.", 409
     hashed_pw = generate_password_hash(password)
+    # Check if password hash already exists
+    cur.execute("SELECT * FROM users WHERE password = ?", (hashed_pw,))
+    if cur.fetchone():
+        conn.close()
+        return "Password is already used by another user. Please choose a different password.", 409
     cur.execute(
         "INSERT INTO users (username, password, email) VALUES (?, ?, ?)", (username, hashed_pw, email)
     )
