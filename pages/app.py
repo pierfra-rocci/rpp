@@ -1146,20 +1146,6 @@ def detection_and_photometry(
         else:
             mask_for_sep = mask
 
-        # DEBUG: Print shape and dtype of image_data before calling get_objects_sep
-        st.write(f"[DEBUG] image_data shape: {image_data.shape}, dtype: {image_data.dtype}")
-        if mask_for_sep is not None:
-            st.write(f"[DEBUG] mask_for_sep shape: {mask_for_sep.shape}, dtype: {mask_for_sep.dtype}")
-        else:
-            st.write("[DEBUG] mask_for_sep is None")
-
-        # DEBUG: Print NAXIS1 and NAXIS2 from header before calling get_objects_sep
-        naxis1 = _science_header.get('NAXIS1', None)
-        naxis2 = _science_header.get('NAXIS2', None)
-        st.write(f"[DEBUG] Header NAXIS1: {naxis1}, NAXIS2: {naxis2}")
-        if naxis1 != image_data.shape[1] or naxis2 != image_data.shape[0]:
-            st.warning(f"Header NAXIS1/NAXIS2 ({naxis1}, {naxis2}) do not match image_data shape {image_data.shape}. This may cause errors in downstream processing.")
-
         obj = photometry.get_objects_sep(
             image_data - bkg.background,
             header=_science_header,
@@ -1738,7 +1724,6 @@ def run_zero_point_calibration(
                     }
 
                     st.dataframe(epsf_df.head())
-                    st.write("[DEBUG] Sample final_table head before merge:")
                     st.dataframe(final_table.head())
 
                     if (
