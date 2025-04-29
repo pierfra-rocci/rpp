@@ -52,7 +52,7 @@ from astropy.nddata import NDData
 
 from stdpipe import photometry, astrometry, catalogs, pipeline
 
-from tools import FIGURE_SIZES, URL, GAIA_BAND
+from tools import FIGURE_SIZES, URL, 
 from tools import extract_coordinates, extract_pixel_scale, get_base_filename
 from tools import (
     safe_catalog_query,
@@ -1051,7 +1051,7 @@ def detection_and_photometry(
     mean_fwhm_pixel,
     threshold_sigma,
     detection_mask,
-    gaia_band,
+    filter_band,
     gb="Gmag",
 ):
     """
@@ -1155,9 +1155,9 @@ def detection_and_photometry(
                                                      height=image_data.shape[0]
                                                      )
 
-        if gaia_band == "phot_bp_mean_mag":
+        if filter_band == "phot_bp_mean_mag":
             gb = "BPmag"
-        if gaia_band == "phot_rp_mean_mag":
+        if filter_band == "phot_rp_mean_mag":
             gb = "RPmag"
         cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3",
                                       filters={gb: "<20"})
@@ -1315,8 +1315,8 @@ def cross_match_with_gaia(
     _science_header,
     pixel_size_arcsec,
     mean_fwhm_pixel,
-    gaia_band,
-    gaia_max_mag,
+    filter_band,
+    filter_max_mag,
 ):
     """
     Cross-match detected sources with the GAIA DR3 star catalog.
@@ -1334,9 +1334,9 @@ def cross_match_with_gaia(
         Pixel scale in arcseconds per pixel
     mean_fwhm_pixel : float
         FWHM in pixels, used to determine matching radius
-    gaia_band : str
+    filter_band : str
         GAIA magnitude band to use for filtering (e.g., 'phot_g_mean_mag')
-    gaia_max_mag : float
+    filter_max_mag : float
         Maximum magnitude for GAIA source filtering
 
     Returns
@@ -1389,7 +1389,7 @@ def cross_match_with_gaia(
             f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
         )
 
-        if not gaia_band:  # #TODO: check if gaia_band is None or empty string
+        if not filter_band:  # #TODO: check if filter_band is None or empty string
             st.warning("No GAIA band specified. Cannot filter GAIA sources.")
             Gaia.MAIN_GAIA_TABLE = 'gaiadr3.synthetic_photometry_gspc'
         else:
@@ -1406,7 +1406,7 @@ def cross_match_with_gaia(
         return None
 
     try:
-        mag_filter = (gaia_table[gaia_band] < gaia_max_mag)
+        mag_filter = (gaia_table[filter_band] < filter_max_mag)
 
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
         color_index_filter = gaia_table["bp_rp"] < 2.0
@@ -1418,7 +1418,7 @@ def cross_match_with_gaia(
 
         if len(gaia_table_filtered) == 0:
             st.warning(
-                f"No Gaia sources found within magnitude range {gaia_band} < {gaia_max_mag}."
+                f"No Gaia sources found within magnitude range {filter_band} < {filter_max_mag}."
             )
             return None
 
@@ -1448,9 +1448,9 @@ def cross_match_with_gaia(
         matched_table = matched_table_qtable.to_pandas()
         matched_table["gaia_index"] = matched_indices_gaia
         matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
-        matched_table[gaia_band] = gaia_table_filtered[gaia_band][matched_indices_gaia]
+        matched_table[filter_band] = gaia_table_filtered[filter_band][matched_indices_gaia]
 
-        valid_gaia_mags = np.isfinite(matched_table[gaia_band])
+        valid_gaia_mags = np.isfinite(matched_table[filter_band])
         matched_table = matched_table[valid_gaia_mags]
 
          # Remove sources with SNR == 0 before zero point calculation
@@ -1464,7 +1464,7 @@ def cross_match_with_gaia(
         return None
 
 
-def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
+def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
     """
     Calculate photometric zero point from matched sources with GAIA.
 
@@ -1477,7 +1477,7 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         Photometry results table (underscore prevents caching issues)
     _matched_table : pandas.DataFrame
         Table of GAIA cross-matched sources (underscore prevents caching issues)
-    gaia_band : str
+    filter_band : str
         GAIA magnitude band used (e.g., 'phot_g_mean_mag')
     air : float
         Airmass value for atmospheric extinction correction
@@ -1502,9 +1502,9 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         return None, None, None
 
     try:
-        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[gaia_band])
+        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[filter_band])
 
-        zero_points = _matched_table[gaia_band][valid] - _matched_table["instrumental_mag"][valid]
+        zero_points = _matched_table[filter_band][valid] - _matched_table["instrumental_mag"][valid]
         _matched_table["zero_point"] = zero_points
         _matched_table["zero_point_error"] = np.std(zero_points)
 
@@ -1536,24 +1536,24 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
 
         # Calculate residuals
         _matched_table["residual"] = (
-            _matched_table[gaia_band] - _matched_table["calib_mag"]
+            _matched_table[filter_band] - _matched_table["calib_mag"]
         )
 
         # Create bins for magnitude ranges
         bin_width = 0.5  # 0.5 magnitude width bins
-        min_mag = _matched_table[gaia_band].min()
-        max_mag = _matched_table[gaia_band].max()
+        min_mag = _matched_table[filter_band].min()
+        max_mag = _matched_table[filter_band].max()
         bins = np.arange(np.floor(min_mag), np.ceil(max_mag) + bin_width, bin_width)
 
         # Group data by magnitude bins
-        grouped = _matched_table.groupby(pd.cut(_matched_table[gaia_band], bins))
+        grouped = _matched_table.groupby(pd.cut(_matched_table[filter_band], bins))
         bin_centers = [(bin.left + bin.right) / 2 for bin in grouped.groups.keys()]
         bin_means = grouped["calib_mag"].mean().values
         bin_stds = grouped["calib_mag"].std().values
 
         # Plot individual points
         ax.scatter(
-            _matched_table[gaia_band],
+            _matched_table[filter_band],
             _matched_table["calib_mag"],
             alpha=0.5,
             label="Matched sources",
@@ -1575,7 +1575,7 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         ideal_mag = np.linspace(min_mag, max_mag, 10)
         ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
 
-        ax.set_xlabel(f"Gaia {gaia_band}")
+        ax.set_xlabel(f"Gaia {filter_band}")
         ax.set_ylabel("Calib mag")
         ax.set_title("Gaia magnitude vs Calibrated magnitude")
         ax.legend()
@@ -1607,8 +1607,8 @@ def run_zero_point_calibration(
     mean_fwhm_pixel,
     threshold_sigma,
     detection_mask,
-    gaia_band,
-    gaia_max_mag,
+    filter_band,
+    filter_max_mag,
     air,
 ):
     """
@@ -1632,9 +1632,9 @@ def run_zero_point_calibration(
         Detection threshold in sigma units
     detection_mask : int
         Border mask size in pixels
-    gaia_band : str
+    filter_band : str
         GAIA magnitude band to use
-    gaia_max_mag : float
+    filter_max_mag : float
         Magnitude limits for GAIA sources
     air : float
         Airmass value for extinction correction
@@ -1662,7 +1662,7 @@ def run_zero_point_calibration(
             mean_fwhm_pixel,
             threshold_sigma,
             detection_mask,
-            gaia_band,
+            filter_band,
         )
 
         if phot_table_qtable is None:
@@ -1675,8 +1675,8 @@ def run_zero_point_calibration(
             header,
             pixel_size_arcsec,
             mean_fwhm_pixel,
-            gaia_band,
-            gaia_max_mag,
+            filter_band,
+            filter_max_mag,
         )
 
         if matched_table is None:
@@ -1688,7 +1688,7 @@ def run_zero_point_calibration(
 
     with st.spinner("Calculating zero point..."):
         zero_point_value, zero_point_std, zp_plot = calculate_zero_point(
-            phot_table_qtable, matched_table, gaia_band, air
+            phot_table_qtable, matched_table, filter_band, air
         )
 
         if zero_point_value is not None:
@@ -2736,8 +2736,8 @@ def initialize_session_state():
             "seeing": 3.0,
             "threshold_sigma": 2.5,
             "detection_mask": 25,
-            "gaia_band": "phot_g_mean_mag",
-            "gaia_max_mag": 20.0,
+            "filter_band": "phot_g_mean_mag",
+            "filter_max_mag": 20.0,
             "calibrate_bias": False,
             "calibrate_dark": False,
             "calibrate_flat": False,
@@ -2831,8 +2831,8 @@ if "analysis_parameters" in st.session_state:
 
 if "gaia_parameters" in st.session_state:
     gaia = st.session_state["gaia_parameters"]
-    st.session_state["gaia_band"] = gaia.get("gaia_band", "phot_g_mean_mag")
-    st.session_state["gaia_max_mag"] = gaia.get("gaia_max_mag", 20.0)
+    st.session_state["filter_band"] = gaia.get("filter_band", "phot_g_mean_mag")
+    st.session_state["filter_max_mag"] = gaia.get("filter_max_mag", 20.0)
 
 if "colibri_api_key" in st.session_state:
     st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
@@ -3018,25 +3018,25 @@ with st.sidebar:
     )
 
     st.header("Gaia Parameters")
-    gaia_band = st.selectbox(
+    filter_band = st.selectbox(
         "Gaia Band",
         ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"],
         index=["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"].index(
-            st.session_state.get("gaia_band", "phot_g_mean_mag")
+            st.session_state.get("filter_band", "phot_g_mean_mag")
         ),
         help="Gaia magnitude band to use for calibration",
     )
-    gaia_max_mag = st.slider(
+    filter_max_mag = st.slider(
         "Gaia Max Magnitude",
         15.0,
         20.0,
-        float(st.session_state.get("gaia_max_mag", 20.0)),
+        float(st.session_state.get("filter_max_mag", 20.0)),
         0.5,
         help="Maximum magnitude for Gaia sources",
     )
     # Ensure Gaia parameters are updated in session state for saving
-    st.session_state["gaia_band"] = gaia_band
-    st.session_state["gaia_max_mag"] = gaia_max_mag
+    st.session_state["filter_band"] = filter_band
+    st.session_state["filter_max_mag"] = filter_max_mag
 
     # st.header("Output Options")
     catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
@@ -3047,15 +3047,15 @@ with st.sidebar:
         analysis_params = dict(st.session_state.get("analysis_parameters", {}))
         # Remove unwanted keys from analysis_params
         for k in [
-            "gaia_band",
-            "gaia_max_mag",
+            "filter_band",
+            "filter_max_mag",
         ]:
             analysis_params.pop(k, None)
 
         # Only keep relevant keys
         gaia_params = {
-            "gaia_band": st.session_state.get("gaia_band"),
-            "gaia_max_mag": st.session_state.get("gaia_max_mag"),
+            "filter_band": st.session_state.get("filter_band"),
+            "filter_max_mag": st.session_state.get("filter_max_mag"),
         }
         observatory_params = dict(st.session_state.get("observatory_data", {}))
         colibri_api_key = st.session_state.get("colibri_api_key")
@@ -3494,7 +3494,7 @@ if science_file is not None:
                                 mean_fwhm_pixel,
                                 threshold_sigma,
                                 detection_mask,
-                                gaia_band,
+                                filter_band,
                             )
                         )
 
@@ -3513,8 +3513,8 @@ if science_file is not None:
                                 header_to_process,
                                 pixel_size_arcsec,
                                 mean_fwhm_pixel,
-                                gaia_band,
-                                gaia_max_mag,
+                                filter_band,
+                                filter_max_mag,
                             )
 
                         if matched_table is not None:
@@ -3524,7 +3524,7 @@ if science_file is not None:
                             with st.spinner("Calculating zero point..."):
                                 zero_point_value, zero_point_std, zp_plot = (
                                     calculate_zero_point(
-                                        phot_table_qtable, matched_table, gaia_band, air
+                                        phot_table_qtable, matched_table, filter_band, air
                                     )
                                 )
 
@@ -3964,8 +3964,8 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     )
 
     write_to_log(log_buffer, "Gaia Parameters", level="INFO")
-    write_to_log(log_buffer, f"Gaia Band: {gaia_band}")
-    write_to_log(log_buffer, f"Gaia Max Magnitude: {gaia_max_mag}")
+    write_to_log(log_buffer, f"Gaia Band: {filter_band}")
+    write_to_log(log_buffer, f"Gaia Max Magnitude: {filter_max_mag}")
 
     write_to_log(log_buffer, "Calibration Options", level="INFO")
 
