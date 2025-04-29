@@ -2831,7 +2831,7 @@ if "analysis_parameters" in st.session_state:
 
 if "gaia_parameters" in st.session_state:
     gaia = st.session_state["gaia_parameters"]
-    st.session_state["filter_band"] = gaia.get("filter_band", "phot_g_mean_mag")
+    st.session_state["filter_band"] = gaia.get("filter_band", "G")
     st.session_state["filter_max_mag"] = gaia.get("filter_max_mag", 20.0)
 
 if "colibri_api_key" in st.session_state:
@@ -3017,22 +3017,22 @@ with st.sidebar:
         }
     )
 
-    st.header("Gaia Parameters")
+    st.header("Photometry Parameters")
     filter_band = st.selectbox(
-        "Gaia Band",
+        "Filter Band",
         ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"],
         index=["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"].index(
             st.session_state.get("filter_band", "phot_g_mean_mag")
         ),
-        help="Gaia magnitude band to use for calibration",
+        help="Filter magnitude band to use for calibration",
     )
     filter_max_mag = st.slider(
-        "Gaia Max Magnitude",
+        "Filter Max Magnitude",
         15.0,
         20.0,
         float(st.session_state.get("filter_max_mag", 20.0)),
         0.5,
-        help="Maximum magnitude for Gaia sources",
+        help="Maximum magnitude for filter sources",
     )
     # Ensure Gaia parameters are updated in session state for saving
     st.session_state["filter_band"] = filter_band
