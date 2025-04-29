@@ -3202,10 +3202,6 @@ if science_file is not None:
                         "Failed to solve plat",
                         level="ERROR",
                     )
-        else:
-            st.info(
-                "Please enter your astrometry.net API key to proceed with plate solving."
-            )
     else:
         st.success("Valid WCS found in the FITS header.")
         log_buffer = st.session_state["log_buffer"]
