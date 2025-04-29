@@ -2369,7 +2369,7 @@ def enhance_catalog(
                 has_qso = final_table["qso_name"].notna()
                 final_table.loc[has_qso, "catalog_matches"] += "QSO; "
 
-                st.info(
+                st.success(
                     f"Found {sum(has_qso)} quasars in field from Milliquas catalog."
                 )
                 write_to_log(
