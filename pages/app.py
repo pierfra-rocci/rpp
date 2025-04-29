@@ -2866,7 +2866,7 @@ with st.sidebar:
     calibrate_cosmic_rays = st.checkbox(
         "Remove Cosmic Rays",
         value=st.session_state.get("calibrate_cosmic_rays", False),
-        help="Detect and remove cosmic rays using the L.A.Cosmic algorithm",
+        help="Detect and remove cosmic rays (astroscrappy)",
     )
     st.session_state["calibrate_cosmic_rays"] = calibrate_cosmic_rays
 
