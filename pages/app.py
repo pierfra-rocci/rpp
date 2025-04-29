@@ -1047,6 +1047,7 @@ def perform_psf_photometry(
 def detection_and_photometry(
     image_data,
     _science_header,
+    data_not_normalized,
     mean_fwhm_pixel,
     threshold_sigma,
     detection_mask,
@@ -1142,7 +1143,7 @@ def detection_and_photometry(
         st.write("Doing astrometry refinement using Stdpipe and Astropy...")
 
         obj = photometry.get_objects_sep(
-            image_data - bkg.background,
+            data_not_normalized - bkg.background,
             header=_science_header,
             sn=4,
             aper=1.5 * fwhm_estimate,
@@ -3469,6 +3470,7 @@ if science_file is not None:
         ):
             image_to_process = science_data
             header_to_process = science_header
+            original_data = data_not_scaled
 
             if image_to_process is not None:
                 try:
@@ -3479,6 +3481,7 @@ if science_file is not None:
                             detection_and_photometry(
                                 image_to_process,
                                 header_to_process,
+                                data_not_scaled,
                                 mean_fwhm_pixel,
                                 threshold_sigma,
                                 detection_mask,
