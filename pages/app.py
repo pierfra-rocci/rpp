@@ -3032,7 +3032,7 @@ with st.sidebar:
         "Filter Max Magnitude",
         15.0,
         20.0,
-        float(st.session_state.get("filter_max_mag", 20.0)),
+        float(st.session_state.get("filter_max_mag") or 20.),
         0.5,
         help="Maximum magnitude for filter sources",
     )
