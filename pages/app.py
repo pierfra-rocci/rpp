@@ -1439,6 +1439,10 @@ def cross_match_with_gaia(
         valid_gaia_mags = np.isfinite(matched_table[gaia_band])
         matched_table = matched_table[valid_gaia_mags]
 
+         # Remove sources with SNR == 0 before zero point calculation
+        if "snr" in _matched_table.columns:
+            matched_table = matched_table[matched_table["snr"] > 0]
+
         st.success(f"Found {len(matched_table)} Gaia matches after filtering.")
         return matched_table
     except Exception as e:
@@ -1484,10 +1488,6 @@ def calculate_zero_point(_phot_table, _matched_table, gaia_band, air):
         return None, None, None
 
     try:
-        # Remove sources with SNR == 0 before zero point calculation
-        if "snr" in _matched_table.columns:
-            _matched_table = _matched_table[_matched_table["snr"] > 0]
-
         valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[gaia_band])
 
         zero_points = _matched_table[gaia_band][valid] - _matched_table["instrumental_mag"][valid]
