@@ -636,9 +636,6 @@ def load_fits_data(file):
                 while len(sliced_data.shape) > 2:
                     sliced_data = sliced_data[0]
                 data = sliced_data
-
-            if abs(int(header.get("BITPIX"))) != 32:
-                data = data.astype(np.float32)
             
             norm = ImageNormalize(data, interval=PercentileInterval(99.9))
             normalized_data = norm(data)
@@ -1144,9 +1141,29 @@ def detection_and_photometry(
     if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
         st.write("Doing astrometry refinement using Stdpipe and Astropy...")
 
+        if mask is not None and mask.shape != image_data.shape:
+            mask_for_sep = None
+        else:
+            mask_for_sep = mask
+
+        # DEBUG: Print shape and dtype of image_data before calling get_objects_sep
+        st.write(f"[DEBUG] image_data shape: {image_data.shape}, dtype: {image_data.dtype}")
+        if mask_for_sep is not None:
+            st.write(f"[DEBUG] mask_for_sep shape: {mask_for_sep.shape}, dtype: {mask_for_sep.dtype}")
+        else:
+            st.write("[DEBUG] mask_for_sep is None")
+
+        # DEBUG: Print NAXIS1 and NAXIS2 from header before calling get_objects_sep
+        naxis1 = _science_header.get('NAXIS1', None)
+        naxis2 = _science_header.get('NAXIS2', None)
+        st.write(f"[DEBUG] Header NAXIS1: {naxis1}, NAXIS2: {naxis2}")
+        if naxis1 != image_data.shape[1] or naxis2 != image_data.shape[0]:
+            st.warning(f"Header NAXIS1/NAXIS2 ({naxis1}, {naxis2}) do not match image_data shape {image_data.shape}. This may cause errors in downstream processing.")
+
         obj = photometry.get_objects_sep(
             image_data - bkg.background,
             header=_science_header,
+            mask=mask_for_sep,
             sn=4,
             aper=1.5 * fwhm_estimate,
         )
