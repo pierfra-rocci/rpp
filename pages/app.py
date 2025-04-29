@@ -1216,13 +1216,12 @@ def detection_and_photometry(
         ):
             phot_table["snr"] = np.round(phot_table["aperture_sum"] / np.sqrt(phot_table["aperture_sum_err"]))
 
-        # elif "aperture_sum" in phot_table.colnames and total_error is not None:
-        #     phot_table["snr"] = 10 * phot_table["aperture_sum"] / total_error
         else:
             phot_table["snr"] = np.nan
 
         if np.mean(image_data - bkg.background) > 1.0:
             exposure_time = _science_header.get("EXPTIME", 1.0)
+            # st.write(f"Exposure time: {exposure_time} seconds")
         else:
             exposure_time = 1.0
 
