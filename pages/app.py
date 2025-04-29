@@ -78,7 +78,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.switch_page("pages/login.py")
 
 # Add application version to the sidebar
-st.sidebar.markdown(f"**Version:** _{version}_")
+st.sidebar.markdown(f"**App Version:** _{version}_")
 
 # Add logout button at the top right if user is logged in
 if "logged_in" in st.session_state and st.session_state.logged_in:
