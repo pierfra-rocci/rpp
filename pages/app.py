@@ -1141,15 +1141,9 @@ def detection_and_photometry(
     if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
         st.write("Doing astrometry refinement using Stdpipe and Astropy...")
 
-        if mask is not None and mask.shape != image_data.shape:
-            mask_for_sep = None
-        else:
-            mask_for_sep = mask
-
         obj = photometry.get_objects_sep(
             image_data - bkg.background,
             header=_science_header,
-            mask=mask_for_sep,
             sn=4,
             aper=1.5 * fwhm_estimate,
         )
