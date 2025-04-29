@@ -2998,10 +2998,10 @@ with st.sidebar:
     )
     detection_mask = st.slider(
         "Border Mask (pixels)",
-        25,
+        0,
         200,
-        int(st.session_state.get("detection_mask", 25)),
-        25,
+        int(st.session_state.get("detection_mask", 0)),
+        0,
         help="Size of border to exclude from source detection",
     )
 
