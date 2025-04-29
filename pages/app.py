@@ -640,15 +640,15 @@ def load_fits_data(file):
             norm = ImageNormalize(data, interval=PercentileInterval(99.9))
             normalized_data = norm(data)
 
-            return normalized_data, header
+            return normalized_data, data, header
         
         except Exception as e:
             st.error(f"Error loading FITS file: {str(e)}")
-            return None, None
+            return None, None, None
         finally:
             hdul.close()
 
-    return None, None
+    return None, None, None
 
 
 @st.cache_data
