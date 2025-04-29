@@ -3001,7 +3001,7 @@ with st.sidebar:
         0,
         200,
         int(st.session_state.get("detection_mask", 0)),
-        0,
+        25,
         help="Size of border to exclude from source detection",
     )
 
