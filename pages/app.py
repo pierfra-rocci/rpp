@@ -3026,7 +3026,7 @@ with st.sidebar:
     st.session_state["gaia_max_mag"] = gaia_max_mag
 
     # st.header("Output Options")
-    catalog_name = f"{st.session_state['base_filename']}_phot.csv"
+    catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 
     # --- Save Session Parameters as JSON to results directory and backend DB
     st.sidebar.header("Save Configuration")
