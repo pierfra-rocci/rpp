@@ -1440,7 +1440,7 @@ def cross_match_with_gaia(
         matched_table = matched_table[valid_gaia_mags]
 
          # Remove sources with SNR == 0 before zero point calculation
-        if "snr" in _matched_table.columns:
+        if "snr" in matched_table.columns:
             matched_table = matched_table[matched_table["snr"] > 0]
 
         st.success(f"Found {len(matched_table)} Gaia matches after filtering.")
