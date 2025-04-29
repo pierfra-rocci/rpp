@@ -52,7 +52,7 @@ from astropy.nddata import NDData
 
 from stdpipe import photometry, astrometry, catalogs, pipeline
 
-from tools import FIGURE_SIZES, URL
+from tools import FIGURE_SIZES, URL, GAIA_BAND
 from tools import extract_coordinates, extract_pixel_scale, get_base_filename
 from tools import (
     safe_catalog_query,
