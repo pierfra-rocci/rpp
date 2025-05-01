@@ -1389,7 +1389,9 @@ def cross_match_with_gaia(
             f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
         )
 
-        if filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]:
+        if filter_band not in ["phot_g_mean_mag",
+                               "phot_bp_mean_mag",
+                               "phot_rp_mean_mag"]:
             st.warning("No GAIA band specified. Cannot filter GAIA sources.")
             Gaia.MAIN_GAIA_TABLE = 'gaiadr3.synthetic_photometry_gspc'
         else:
