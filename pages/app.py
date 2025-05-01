@@ -2912,7 +2912,7 @@ with st.sidebar:
             "Detection Threshold (σ)",
             min_value=3.0,
             max_value=10.0,
-            value=5.0,
+            value=6.0,
             step=0.5,
             help="Threshold for cosmic ray detection",
         )
@@ -3131,7 +3131,7 @@ if science_file is not None:
         try:
             cr_gain = st.session_state.get("cr_gain", 1.0)
             cr_readnoise = st.session_state.get("cr_readnoise", 6.5)
-            cr_sigclip = st.session_state.get("cr_sigclip", 5.0)
+            cr_sigclip = st.session_state.get("cr_sigclip", 6.0)
             clean_data, _ = detect_remove_cosmic_rays(
                 science_data,
                 gain=cr_gain,
