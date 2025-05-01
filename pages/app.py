@@ -3130,7 +3130,7 @@ if science_file is not None:
         st.info("Applying cosmic ray removal (L.A.Cosmic)...")
         try:
             cr_gain = st.session_state.get("cr_gain", 1.0)
-            cr_readnoise = st.session_state.get("cr_readnoise", 2.5)
+            cr_readnoise = st.session_state.get("cr_readnoise", 6.5)
             cr_sigclip = st.session_state.get("cr_sigclip", 5.0)
             clean_data, _ = detect_remove_cosmic_rays(
                 science_data,
