@@ -207,7 +207,7 @@ def detect_remove_cosmic_rays(
     The algorithm detects cosmic rays using Laplacian edge detection.
     """
     try:
-        # Ensure the image is in the correct format (float32 required by astroscrappy)
+        # Ensure the image is in the correct format
         # image_data = image_data.astype(np.float32)
 
         # Detect and remove cosmic rays using astroscrappy's implementation of L.A.Cosmic
@@ -3132,7 +3132,7 @@ if science_file is not None:
             cr_gain = st.session_state.get("cr_gain", 1.0)
             cr_readnoise = st.session_state.get("cr_readnoise", 2.5)
             cr_sigclip = st.session_state.get("cr_sigclip", 5.0)
-            clean_data, _, _ = detect_remove_cosmic_rays(
+            clean_data, _ = detect_remove_cosmic_rays(
                 science_data,
                 gain=cr_gain,
                 readnoise=cr_readnoise,
