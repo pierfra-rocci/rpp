@@ -208,7 +208,7 @@ def detect_remove_cosmic_rays(
     """
     try:
         # Ensure the image is in the correct format
-        # image_data = image_data.astype(np.float32)
+        image_data = image_data.astype(np.float32)
 
         # Detect and remove cosmic rays using astroscrappy's implementation of L.A.Cosmic
         mask, cleaned_image = astroscrappy.detect_cosmics(
