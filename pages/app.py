@@ -221,6 +221,10 @@ def detect_remove_cosmic_rays(
             verbose=verbose,
         )
 
+        # Ensure cleaned_image is float32, mask is boolean
+        cleaned_image = cleaned_image.astype(np.float32)
+        mask = mask.astype(bool)
+
         # Count the number of detected cosmic rays
         num_cosmic_rays = np.sum(mask)
 
@@ -2905,7 +2909,7 @@ with st.sidebar:
             "Read Noise (e-)",
             min_value=0.0,
             max_value=10.0,
-            value=2.5,
+            value=6.5,
             step=0.5,
             help="CCD read noise in electrons",
         )
@@ -3133,14 +3137,14 @@ if science_file is not None:
             cr_gain = st.session_state.get("cr_gain", 1.0)
             cr_readnoise = st.session_state.get("cr_readnoise", 2.5)
             cr_sigclip = st.session_state.get("cr_sigclip", 5.0)
-            cleaned_data, _, _ = detect_remove_cosmic_rays(
+            clean_data, _, _ = detect_remove_cosmic_rays(
                 science_data,
                 gain=cr_gain,
                 readnoise=cr_readnoise,
                 sigclip=cr_sigclip,
             )
-            if cleaned_data is not None:
-                science_data = cleaned_data
+            if clean_data is not None:
+                science_data = clean_data
                 st.success("Cosmic ray removal applied.")
             else:
                 st.warning("Cosmic ray removal did not return valid data.")
