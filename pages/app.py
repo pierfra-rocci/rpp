@@ -3127,7 +3127,7 @@ if science_file is not None:
 
     # Apply cosmic ray removal if enabled
     if st.session_state.get("calibrate_cosmic_rays", False):
-        st.info("Applying cosmic ray removal (L.A.Cosmic)...")
+        st.info("Applying cosmic ray removal...")
         try:
             cr_gain = st.session_state.get("cr_gain", 1.0)
             cr_readnoise = st.session_state.get("cr_readnoise", 6.5)
