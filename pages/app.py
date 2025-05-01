@@ -208,10 +208,10 @@ def detect_remove_cosmic_rays(
     """
     try:
         # Ensure the image is in the correct format (float32 required by astroscrappy)
-        image_data = image_data.astype(np.float32)
+        # image_data = image_data.astype(np.float32)
 
         # Detect and remove cosmic rays using astroscrappy's implementation of L.A.Cosmic
-        cleaned_image, mask = astroscrappy.detect_cosmics(
+        mask, cleaned_image = astroscrappy.detect_cosmics(
             image_data,
             gain=gain,
             readnoise=readnoise,
@@ -221,14 +221,9 @@ def detect_remove_cosmic_rays(
             verbose=verbose,
         )
 
-        # Ensure cleaned_image is float32, mask is boolean
-        cleaned_image = cleaned_image.astype(np.float32)
         mask = mask.astype(bool)
 
-        # Count the number of detected cosmic rays
-        num_cosmic_rays = np.sum(mask)
-
-        return cleaned_image, mask, num_cosmic_rays
+        return cleaned_image, mask
 
     except ImportError:
         st.error("astroscrappy package is not installed. Cannot remove cosmic rays.")
