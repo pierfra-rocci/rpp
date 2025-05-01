@@ -1375,7 +1375,7 @@ def cross_match_with_gaia(
         return None
 
     try:
-        image_center_skycoord = w.pixel_to_world(
+        image_center_ra_dec = w.pixel_to_world(
             _science_header["NAXIS1"] // 2, _science_header["NAXIS2"] // 2
         )
         gaia_search_radius_arcsec = (
@@ -1389,35 +1389,14 @@ def cross_match_with_gaia(
             f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
         )
 
-        # if filter_band != ('phot_g_mean_mag' or
-        #                    "phot_bp_mean_mag" or
-        #                    "phot_rp_mean_mag"):
-        #     ra_center = image_center_skycoord.ra.deg
-        #     dec_center = image_center_skycoord.dec.deg
-        #     adql_query = f"""
-        #                 SELECT
-        #                     src.source_id,
-        #                     src.ra,
-        #                     src.dec,
-        #                     syn.{filter_band},
-        #                     syn.c_star
-        #                 FROM
-        #                     gaiadr3.synthetic_photometry_gspc AS syn
-        #                 INNER JOIN
-        #                     gaiadr3.gaia.source AS src ON syn.source_id = src.source_id
-        #                 WHERE
-        #                     CONTAINS(
-        #                         POINT('ICRS', src.ra, src.dec),
-        #                         CIRCLE('ICRS', {ra_center},
-        #                         {dec_center}, {radius_query.value})
-        #                     ) = 1
-        #                 """
-        #     job = Gaia.launch_job_async(adql_query, dump_to_file=False)
-        #     gaia_table = job.get_results()
-        # else:
-        job = Gaia.cone_search(image_center_skycoord, radius=radius_query)
-        gaia_table = job.get_results()
+        if filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]:
+            st.warning("No GAIA band specified. Cannot filter GAIA sources.")
+            Gaia.MAIN_GAIA_TABLE = 'gaiadr3.synthetic_photometry_gspc'
+        else:
+            Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
 
+        job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
+        gaia_table = job.get_results()
     except Exception as e:
         st.error(f"Error querying Gaia: {e}")
         return None
