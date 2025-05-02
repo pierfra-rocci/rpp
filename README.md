@@ -57,8 +57,8 @@ An astronomical image processing and photometry tool designed specifically for [
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/pierfra-rocci/pfr.git
-   cd pfr
+   git clone https://github.com/pierfra-rocci/rpp.git
+   cd rpp
    ```
 
 2. Install dependencies:
