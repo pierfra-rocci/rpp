@@ -6,13 +6,16 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+
 st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔒", layout="wide")
 
-# Use session state to track login status
+# Use session state to track login status - Keep these basic initializations
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "username" not in st.session_state:
     st.session_state.username = None
+if "recovery_step" not in st.session_state:  # Keep for password recovery logic
+    st.session_state.recovery_step = 0
 
 backend_url = "http://localhost:5000"
 
@@ -59,8 +62,6 @@ if not st.session_state.logged_in:
     st.sidebar.markdown("---")
     st.sidebar.markdown("## Recover Password")
     recovery_email = st.sidebar.text_input("Recovery Email", value="", key="recovery_email")
-    if "recovery_step" not in st.session_state:
-        st.session_state.recovery_step = 0
     if st.session_state.recovery_step == 0:
         if st.sidebar.button("Send Recovery Code"):
             if recovery_email:
@@ -92,34 +93,35 @@ if not st.session_state.logged_in:
             st.session_state.recovery_step = 0
 else:
     st.success(f"Welcome, {st.session_state.username}! Redirecting to the main app...")
-    # Load config from backend and update session state before switching page
+    # Load config from backend and store the raw dictionaries in session state
     try:
-        backend_url = "http://localhost:5000/get_config"
-        resp = requests.get(backend_url, params={"username": st.session_state.username})
+        config_url = f"{backend_url}/get_config"  # Corrected URL path
+        resp = requests.get(config_url, params={"username": st.session_state.username})
         if resp.status_code == 200 and resp.text and resp.text != "{}":
             config = json.loads(resp.text)
-            # Restore all parameter groups
+            # Store the loaded config dictionaries directly.
+            # app.py's initialize_session_state will set defaults first.
             if "analysis_parameters" in config:
                 st.session_state["analysis_parameters"] = config["analysis_parameters"]
-                # Also update individual keys for direct use in the app
-                ap = config["analysis_parameters"]
-                for key in ["seeing", "threshold_sigma", "detection_mask"]:
-                    if key in ap:
-                        st.session_state[key] = ap[key]
-            if "gaia_parameters" in config:
-                gaia = config["gaia_parameters"]
-                st.session_state["filter_band"] = gaia.get("filter_band")
-                st.session_state["filter_max_mag"] = gaia.get("filter_max_mag")
             if "observatory_parameters" in config:
                 st.session_state["observatory_data"] = config["observatory_parameters"]
-                # Also update individual keys for direct use
-                obs = config["observatory_parameters"]
-                st.session_state["observatory_name"] = obs.get("name", "")
-                st.session_state["observatory_latitude"] = obs.get("latitude", 0.0)
-                st.session_state["observatory_longitude"] = obs.get("longitude", 0.0)
-                st.session_state["observatory_elevation"] = obs.get("elevation", 0.0)
             if "astro_colibri_api_key" in config:
                 st.session_state["colibri_api_key"] = config["astro_colibri_api_key"]
+            st.info("User configuration loaded.")
+        else:
+            st.info("No user configuration found or error loading. Using defaults.")
+            # Ensure default dictionaries exist if config load fails or is empty
+            if "analysis_parameters" not in st.session_state:
+                st.session_state["analysis_parameters"] = {}  # Will be populated by app.py's init
+            if "observatory_data" not in st.session_state:
+                st.session_state["observatory_data"] = {}  # Will be populated by app.py's init
+
     except Exception as e:
         st.warning(f"Could not load user config: {e}")
+        # Ensure default dictionaries exist on error
+        if "analysis_parameters" not in st.session_state:
+            st.session_state["analysis_parameters"] = {}
+        if "observatory_data" not in st.session_state:
+            st.session_state["observatory_data"] = {}
+
     st.switch_page("pages/app.py")

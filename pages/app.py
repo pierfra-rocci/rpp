@@ -7,6 +7,7 @@ import json
 import tempfile
 import warnings
 import atexit
+import subprocess
 from datetime import datetime, timedelta
 from urllib.parse import quote
 from functools import partial
@@ -31,9 +32,9 @@ from astropy.modeling import models, fitting
 from astropy.nddata import NDData
 from astropy.visualization import (ZScaleInterval, ImageNormalize,
                                    PercentileInterval, simple_norm)
+import astropy.units as u  # Add this import
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
-from astroquery.gaia import Gaia
 from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
@@ -58,8 +59,106 @@ warnings.filterwarnings("ignore")
 st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭",
                    layout="wide")
 
+
+def initialize_session_state():
+    """
+    Initialize all session state variables for the application.
+    Ensures all required keys have default values.
+    """
+    # Login/User State
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+    if "username" not in st.session_state:
+        st.session_state.username = None
+
+    # Core Data/Results State
+    if "calibrated_header" not in st.session_state:
+        st.session_state.calibrated_header = None
+    if "final_phot_table" not in st.session_state:
+        st.session_state.final_phot_table = None
+    if "epsf_model" not in st.session_state:
+        st.session_state.epsf_model = None
+    if "epsf_photometry_result" not in st.session_state:
+        st.session_state.epsf_photometry_result = None
+
+    # Logging and File Handling State
+    if "log_buffer" not in st.session_state:
+        st.session_state.log_buffer = None
+    if "base_filename" not in st.session_state:
+        st.session_state.base_filename = "photometry"
+    if "science_file_path" not in st.session_state:
+        st.session_state.science_file_path = None
+    if "output_dir" not in st.session_state:
+        # Ensure the default output directory exists when initialized
+        st.session_state.output_dir = ensure_output_directory("rpp_results")
+
+    # Analysis Parameters State (consolidated)
+    default_analysis_params = {
+        "seeing": 3.0,
+        "threshold_sigma": 3.0,
+        "detection_mask": 25,
+        "filter_band": "phot_g_mean_mag",  # Default Gaia band
+        "filter_max_mag": 20.0,           # Default Gaia mag limit
+        "astrometry_check": False,        # Astrometry refinement toggle
+        "calibrate_cosmic_rays": False,   # CRR toggle
+        "cr_gain": 1.0,                   # CRR default gain
+        "cr_readnoise": 6.5,              # CRR default readnoise
+        "cr_sigclip": 4.5,                # CRR default sigclip
+        "cr_sigfrac": 0.3,                # CRR default sigfrac
+        "cr_objlim": 5.0,                 # CRR default objlim
+    }
+    if "analysis_parameters" not in st.session_state:
+        st.session_state.analysis_parameters = default_analysis_params.copy()
+    else:
+        # Ensure all keys exist, adding defaults if missing from loaded config
+        for key, value in default_analysis_params.items():
+            if key not in st.session_state.analysis_parameters:
+                st.session_state.analysis_parameters[key] = value
+
+    # Observatory Parameters State
+    default_observatory_data = {
+        "name": "",
+        "latitude": 0.,
+        "longitude": 0.,
+        "elevation": 0.,
+    }
+    if "observatory_data" not in st.session_state:
+        st.session_state.observatory_data = default_observatory_data.copy()
+    else:
+        # Ensure all keys exist, adding defaults if missing
+        for key, value in default_observatory_data.items():
+            if key not in st.session_state.observatory_data:
+                st.session_state.observatory_data[key] = value
+
+    # Individual observatory keys for direct widget binding (synced later)
+    if "observatory_name" not in st.session_state:
+        st.session_state.observatory_name = st.session_state.observatory_data["name"]
+    if "observatory_latitude" not in st.session_state:
+        st.session_state.observatory_latitude = st.session_state.observatory_data["latitude"]
+    if "observatory_longitude" not in st.session_state:
+        st.session_state.observatory_longitude = st.session_state.observatory_data["longitude"]
+    if "observatory_elevation" not in st.session_state:
+        st.session_state.observatory_elevation = st.session_state.observatory_data["elevation"]
+
+    # API Keys State
+    if "colibri_api_key" not in st.session_state:
+        st.session_state.colibri_api_key = None  # Or load from env var if preferred
+
+    # File Loading State (Track which calibration files are loaded)
+    if "files_loaded" not in st.session_state:
+        st.session_state.files_loaded = {
+            "science_file": None,
+            "bias_file": None,
+            "dark_file": None,
+            "flat_file": None,
+        }
+
+
+# --- Initialize Session State Early ---
+initialize_session_state()
+
 # Redirect to login if not authenticated
-if "logged_in" not in st.session_state or not st.session_state.logged_in:
+if not st.session_state.logged_in:
     st.warning("You must log in to access this page.")
     st.switch_page("pages/login.py")
 
@@ -67,7 +166,7 @@ if "logged_in" not in st.session_state or not st.session_state.logged_in:
 st.sidebar.markdown(f"**App Version:** _{version}_")
 
 # Add logout button at the top right if user is logged in
-if "logged_in" in st.session_state and st.session_state.logged_in:
+if st.session_state.logged_in:
     st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
     if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
@@ -1580,6 +1679,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         try:
             base_name = st.session_state.get("base_filename", "photometry")
+            output_dir = st.session_state.get("output_dir", ".")
             zero_point_plot_path = os.path.join(
                 output_dir, f"{base_name}_zero_point_plot.png"
             )
@@ -2693,58 +2793,6 @@ def display_catalog_in_aladin(
             st.exception(e)
 
 
-def initialize_session_state():
-    """
-    Initialize all session state variables for the application.
-
-    This function ensures all required session state variables are properly
-    initialized with default values when the application starts or reloads.
-
-    The session state includes:
-    - Image data storage (calibrated data, headers, photometry tables)
-    - Log handling (buffer and filenames)
-    - Coordinate storage (manual input and validated coordinates)
-    - Analysis parameters (seeing, thresholds, calibration options)
-    - File tracking (loaded files)
-
-    This centralized initialization ensures consistent state management
-    throughout the application lifecycle.
-    """
-    if "calibrated_header" not in st.session_state:
-        st.session_state["calibrated_header"] = None
-    if "final_phot_table" not in st.session_state:
-        st.session_state["final_phot_table"] = None
-    if "epsf_model" not in st.session_state:
-        st.session_state["epsf_model"] = None
-    if "epsf_photometry_result" not in st.session_state:
-        st.session_state["epsf_photometry_result"] = None
-
-    if "log_buffer" not in st.session_state:
-        st.session_state["log_buffer"] = None
-    if "base_filename" not in st.session_state:
-        st.session_state["base_filename"] = "photometry"
-
-    if "analysis_parameters" not in st.session_state:
-        st.session_state["analysis_parameters"] = {
-            "seeing": 3.0,
-            "threshold_sigma": 2.5,
-            "detection_mask": 25,
-            "filter_band": "phot_g_mean_mag",
-            "filter_max_mag": 20.0,
-            "calibrate_bias": False,
-            "calibrate_dark": False,
-            "calibrate_flat": False,
-        }
-
-    if "files_loaded" not in st.session_state:
-        st.session_state["files_loaded"] = {
-            "science_file": None,
-            "bias_file": None,
-            "dark_file": None,
-            "flat_file": None,
-        }
-
-
 def provide_download_buttons(folder_path):
     """
     Creates a single download button for a zip file containing all files in the specified folder.
@@ -2806,7 +2854,7 @@ def provide_download_buttons(folder_path):
 
 
 # Main Streamlit app
-initialize_session_state()
+# initialize_session_state() already called above
 
 # --- Sync session state with loaded config before creating widgets ---
 if "observatory_data" in st.session_state:
