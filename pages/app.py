@@ -1,72 +1,56 @@
+# Standard Library Imports
 import sys
-import subprocess
-from functools import partial
-
-if getattr(sys, "frozen", False):
-    import importlib.metadata
-
-    importlib.metadata.distributions = lambda **kwargs: []
-
 import os
 import zipfile
-from datetime import datetime, timedelta
 import base64
 import json
-import requests
 import tempfile
-from urllib.parse import quote
+import warnings
 import atexit
-
-import astroscrappy
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
-from astropy.time import Time
-from astropy.coordinates import get_sun
+from datetime import datetime, timedelta
+from urllib.parse import quote
+from functools import partial
+from io import StringIO, BytesIO
 from typing import Union, Any, Optional, Dict, Tuple
 
-from astroquery.simbad import Simbad
-from astroquery.vizier import Vizier
-
-from astropy.modeling import models, fitting
+# Third-Party Imports
 import streamlit as st
 import streamlit.components.v1 as components
-
+import requests
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import astroscrappy
 from astropy.io import fits
+from astropy.table import Table
+from astropy.wcs import WCS
 from astropy.stats import sigma_clip, SigmaClip
-
-import astropy.units as u
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
+from astropy.time import Time
+from astropy.modeling import models, fitting
+from astropy.nddata import NDData
+from astropy.visualization import (ZScaleInterval, ImageNormalize,
+                                   PercentileInterval, simple_norm)
+from astroquery.simbad import Simbad
+from astroquery.vizier import Vizier
 from astroquery.gaia import Gaia
 from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
-import matplotlib.pyplot as plt
-import pandas as pd
-from astropy.table import Table
-from astropy.visualization import (ZScaleInterval, ImageNormalize, 
-                                   PercentileInterval, simple_norm)
-from io import StringIO, BytesIO
-from astropy.wcs import WCS
-
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
-from astropy.nddata import NDData
+from stdpipe import photometry, astrometry, catalogs, pipeline # Assuming stdpipe is third-party or separate local lib
 
-from stdpipe import photometry, astrometry, catalogs, pipeline
-
-from tools import FIGURE_SIZES, URL, GAIA_BAND
-from tools import extract_coordinates, extract_pixel_scale, get_base_filename
-from tools import (
-    safe_catalog_query,
-    safe_wcs_create,
-    ensure_output_directory,
-    cleanup_temp_files,
-)
-
-from tools import initialize_log, write_to_log
-from tools import zip_rpp_results_on_exit
-
+# Local Application Imports
+from tools import (FIGURE_SIZES, URL, GAIA_BAND, extract_coordinates,
+                   extract_pixel_scale, get_base_filename, safe_catalog_query,
+                   safe_wcs_create, ensure_output_directory, cleanup_temp_files,
+                   initialize_log, write_to_log, zip_rpp_results_on_exit)
 from __version__ import version
 
-import warnings
+# Conditional Import (already present, just noting its location)
+if getattr(sys, "frozen", False):
+    import importlib.metadata
+    importlib.metadata.distributions = lambda **kwargs: []
 
 warnings.filterwarnings("ignore")
 
