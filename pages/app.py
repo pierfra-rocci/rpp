@@ -520,7 +520,6 @@ def estimate_background(image_data, box_size=128, filter_size=7):
         return None, f"Background estimation error: {str(e)}"
 
 
-@st.cache_data
 def airmass(
     _header: Dict, observatory: Optional[Dict] = None, return_details: bool = False
 ) -> Union[float, Tuple[float, Dict]]:
@@ -733,7 +732,6 @@ def load_fits_data(file):
     return None, None, None
 
 
-@st.cache_data
 def fwhm_fit(
     _img: np.ndarray,
     fwhm: float,
@@ -1688,7 +1686,6 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         return None, None, None
 
 
-@st.cache_data
 def run_zero_point_calibration(
     header,
     pixel_size_arcsec,
