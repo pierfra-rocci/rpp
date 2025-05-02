@@ -431,7 +431,6 @@ def cleanup_temp_files():
     1. The temporary files created when uploading the Image
     2. The solved files created during plate solving
     """
-    # Clean up temp science file
     if (
         "science_file_path" in st.session_state
         and st.session_state["science_file_path"]
@@ -440,17 +439,21 @@ def cleanup_temp_files():
             temp_file = st.session_state["science_file_path"]
             if os.path.exists(temp_file):
                 base_dir = os.path.dirname(temp_file)
-                temp_dir_files = [
-                    f
-                    for f in os.listdir(base_dir)
-                    if os.path.isfile(os.path.join(base_dir, f))
-                    and f.lower().endswith((".fits", ".fit", ".fts"))
-                ]
-                for file in temp_dir_files:
-                    try:
-                        os.remove(os.path.join(base_dir, file))
-                    except Exception as e:
-                        st.warning(f"Could not remove {file}: {str(e)}")
+                # Check if base_dir is actually a directory before listing
+                if os.path.isdir(base_dir):
+                    temp_dir_files = [
+                        f
+                        for f in os.listdir(base_dir)
+                        if os.path.isfile(os.path.join(base_dir, f))
+                        and f.lower().endswith((".fits", ".fit", ".fts"))
+                    ]
+                    for file in temp_dir_files:
+                        try:
+                            os.remove(os.path.join(base_dir, file))
+                        except Exception as e:
+                            st.warning(f"Could not remove {file}: {str(e)}")
+                else:
+                    st.warning(f"Temporary path {base_dir} is not a directory.")
         except Exception as e:
             st.warning(f"Could not remove temporary files: {str(e)}")
 
@@ -553,5 +556,6 @@ def zip_rpp_results_on_exit(science_file):
     for file in files:
         try:
             os.remove(os.path.join(output_dir, file))
-        except Exception:
-            pass
+        except Exception as e:
+            # Log the error instead of passing silently
+            print(f"Warning: Could not remove file {file} after zipping: {e}")  # Or use a proper logger
