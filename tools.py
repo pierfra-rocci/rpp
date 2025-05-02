@@ -45,30 +45,32 @@ def get_json(url: str):
     Parameters
     ----------
     url : str
-        The URL to fetch JSON data from
+        The URL to fetch JSON data from. Must start with 'http' or 'https'.
 
     Returns
     -------
-    json
-        Parsed JSON data if successful, or error message in JSON format if failed
+    dict or str
+        - Parsed JSON data as a Python dictionary if the request is successful
+          and the response contains valid JSON.
+        - A JSON-formatted string describing the error if the URL is invalid,
+          the request fails (network error, timeout, non-2xx status),
+          the response is empty, or the response is not valid JSON.
+          Example error format: '{"error": "type", "message": "details"}'
 
     Notes
     -----
-    - Handles network errors and JSON parsing errors.
-    - Returns an error message in JSON format if the request fails or the response is empty.
+    - Handles network errors (requests.exceptions.RequestException) and JSON
+      parsing errors (json.decoder.JSONDecodeError).
+    - Validates the URL format.
+    - Raises HTTPError for bad responses (4xx or 5xx).
     """
     if not url.startswith("http"):
         return json.dumps({"error": "invalid URL"})
     try:
-        # Send a GET request to the provided URL using the requests library
         req = requests.get(url)
-        # Raise an error if the request was not successful
         req.raise_for_status()
-        # Check if the response has any content
         if not req.content:
-            # If the response is empty, return an error message as JSON
             return json.dumps({"error": "empty response"})
-        # If the response has content, parse it as JSON and return it
         return req.json()
     except requests.exceptions.RequestException as e:
         return json.dumps({"error": "request exception", "message": str(e)})
@@ -78,23 +80,25 @@ def get_json(url: str):
 
 def ensure_output_directory(directory="rpp_results"):
     """
-    Create an output directory if it doesn't exist.
+    Ensure the specified output directory exists, creating it if necessary.
 
     Parameters
     ----------
     directory : str, optional
-        Path to the directory to create. Default is "rpp_results".
+        The path to the directory to ensure exists. Defaults to "rpp_results".
 
     Returns
     -------
     str
-        Path to the created/existing output directory, or "." (curr directory)
-        if creation failed
+        The absolute path to the created or existing directory. If directory
+        creation fails due to an exception (e.g., permission error), it
+        returns the path to the current working directory (".") and may
+        display a warning using Streamlit if available in the context.
 
     Notes
     -----
-    Will attempt to create the directory and display a warning in Streamlit
-    if creation fails. In case of failure, returns the current directory.
+    - Uses os.makedirs to create parent directories as needed.
+    - Catches potential exceptions during directory creation.
     """
     if not os.path.exists(directory):
         try:
@@ -107,28 +111,34 @@ def ensure_output_directory(directory="rpp_results"):
 
 def safe_wcs_create(header):
     """
-    Create a WCS (World Coordinate System) object from a FITS header with error handling.
+    Safely create an Astropy WCS object from a FITS header.
 
-    This function validates the header contains required WCS keywords before
-    create a WCS object, and properly handles various edge cases and errors.
+    Validates the presence of required WCS keywords, handles potential errors
+    during WCS object creation, and attempts to simplify higher-dimensional WCS
+    objects to celestial coordinates. Also attempts to remove potentially
+    problematic non-standard keywords before WCS creation.
 
     Parameters
     ----------
-    header : dict or astropy.io.fits.Header
-        FITS header containing WCS information
+    header : astropy.io.fits.Header or dict-like
+        The FITS header containing WCS information.
 
     Returns
     -------
-    tuple
-        (wcs_object, None) if successful, (None, error_message) if failed :
-        - wcs_object: astropy.wcs.WCS object
-        - error_message: String describing the error if WCS creation failed
+    tuple (astropy.wcs.WCS | None, str | None)
+        - (wcs_object, None): If successful, returns the created WCS object
+          and None for the error message.
+        - (None, error_message): If failed, returns None for the WCS object
+          and a string describing the error (e.g., missing keywords,
+          creation error, invalid object).
 
     Notes
     -----
-    The function checks for required WCS keywords and validates the resulting
-    WCS object. For higher dimensional data, it will reduce the WCS to celestial
-    coordinates only.
+    - Required WCS keywords checked: CTYPE1, CTYPE2, CRVAL1, CRVAL2, CRPIX1, CRPIX2.
+    - Attempts to remove 'XPIXELSZ', 'YPIXELSZ', 'CDELTM1', 'CDELTM2' if present.
+    - If the initial WCS object has more than 2 pixel dimensions, it attempts
+      to extract the celestial WCS using `wcs_obj.celestial`.
+    - Validates that the final WCS object has transformation attributes (`.wcs`).
     """
     if not header:
         return None, "No header provided"
@@ -168,28 +178,37 @@ def get_header_value(header, keys, default=None):
     """
     Extract a value from a FITS header by trying multiple possible keywords.
 
-    This is useful for handling FITS files with different keyword conventions.
-    The function tries each key in the provided list in order of preference.
+    Iterates through a list of potential keywords and returns the value of the
+    first one found in the header. Useful for handling variations in FITS
+    keyword conventions.
 
     Parameters
     ----------
-    header : dict or astropy.io.fits.Header
-        The FITS header dictionary
-    keys : list of str
-        List of possible header keywords to try in order of preference
+    header : astropy.io.fits.Header or dict-like or None
+        The FITS header object or dictionary to search within. If None, the
+        default value is returned immediately.
+    keys : list[str]
+        A list of header keyword strings to try, in order of preference.
     default : any, optional
-        Default value to return if none of the keys are found
+        The value to return if none of the specified keys are found in the
+        header. Defaults to None.
 
     Returns
     -------
     any
-        The header value corresponding to the first found key,
-        or the default value if no keys are found
+        The value associated with the first key found in the header, or the
+        `default` value if none of the keys are present or the header is None.
 
     Examples
     --------
-    >>> # Try different exposure time keywords
-    >>> exposure = get_header_value(header, ['EXPTIME', 'EXPOSURE', 'EXP'], 0.0)
+    >>> from astropy.io import fits
+    >>> hdr = fits.Header([('EXPTIME', 120.0), ('INSTRUME', 'CCD')])
+    >>> exposure = get_header_value(hdr, ['EXPTIME', 'EXPOSURE', 'EXP'], 0.0)
+    >>> print(exposure)
+    120.0
+    >>> filter_name = get_header_value(hdr, ['FILTER'], 'Unknown')
+    >>> print(filter_name)
+    Unknown
     """
     if header is None:
         return default
@@ -202,38 +221,45 @@ def get_header_value(header, keys, default=None):
 
 def safe_catalog_query(query_func, error_msg, *args, **kwargs):
     """
-    Execute an astronomical catalog query with comprehensive error handling.
+    Execute an astronomical catalog query function with robust error handling.
 
-    This function wraps catalog query functions (like those from astroquery)
-    with standardized error handling to catch network issues, timeouts,
-    and other common problems when querying online services.
+    Wraps a callable (e.g., a function from astroquery) to catch common
+    exceptions like network errors, timeouts, and value errors that can occur
+    during queries to online astronomical databases.
 
     Parameters
     ----------
     query_func : callable
-        The catalog query function to call
+        The function to call for performing the catalog query.
     error_msg : str
-        Base error message to prepend to any caught exception message
-    *args, **kwargs
-        Arguments to pass through to query_func
+        A base error message string to prepend to any specific exception
+        message caught during the query execution.
+    *args
+        Positional arguments to pass directly to `query_func`.
+    **kwargs
+        Keyword arguments to pass directly to `query_func`.
 
     Returns
     -------
-    tuple
-        (result, error_message) where:
-        - result: Query result object if successful, None if failed
-        - error_message: None if successful, string describing the error if failed
+    tuple (any | None, str | None)
+        - (result, None): If `query_func` executes successfully, returns its
+          result and None for the error message. The type of `result` depends
+          on `query_func`.
+        - (None, error_message): If an exception occurs during execution,
+          returns None for the result and a formatted string describing the
+          error (e.g., "Failed to query SIMBAD: Network error - details").
 
     Examples
     --------
     >>> from astroquery.simbad import Simbad
+    >>> # Assuming Simbad.query_object raises a Timeout error
     >>> result, error = safe_catalog_query(
     ...     Simbad.query_object,
     ...     "Failed to query SIMBAD",
     ...     "M31"
     ... )
     >>> if error:
-    ...     print(f"Query failed: {error}")
+    ...     print(f"Query failed: {error}") # Output: Query failed: Failed to query SIMBAD: Query timed out
     >>> else:
     ...     print(result)
     """
@@ -252,25 +278,30 @@ def safe_catalog_query(query_func, error_msg, *args, **kwargs):
 
 def create_figure(size="medium", dpi=120):
     """
-    Create a matplotlib figure with standardized size for consistent visualizations.
+    Create a matplotlib Figure object with a predefined or default size and DPI.
+
+    Uses a dictionary `FIGURE_SIZES` to map descriptive size names ('small',
+    'medium', 'large', 'wide', 'stars_grid') to (width, height) tuples in inches.
 
     Parameters
     ----------
     size : str, optional
-        Predefined size key: 'small', 'medium', 'large', 'wide', or 'stars_grid'.
-        The sizes are defined in the FIGURE_SIZES global dictionary.
+        A key corresponding to a predefined figure size in the `FIGURE_SIZES`
+        global dictionary. Allowed values are 'small', 'medium', 'large',
+        'wide', 'stars_grid'. If an invalid key is provided, it defaults to
+        'medium'. Defaults to "medium".
     dpi : int, optional
-        Dots per inch (resolution) for the figure
+        The resolution of the figure in dots per inch. Defaults to 120.
 
     Returns
     -------
     matplotlib.figure.Figure
-        Figure object with the specified dimensions
+        A matplotlib Figure object initialized with the specified or default
+        figsize and dpi.
 
     Notes
     -----
-    Uses the FIGURE_SIZES global dictionary to map size names to actual dimensions.
-    If an invalid size is provided, falls back to 'medium'.
+    - Relies on the global `FIGURE_SIZES` dictionary for size definitions.
     """
     if size in FIGURE_SIZES:
         figsize = FIGURE_SIZES[size]
@@ -281,29 +312,35 @@ def create_figure(size="medium", dpi=120):
 
 def extract_coordinates(header):
     """
-    Extract celestial coordinates (RA/Dec) from a FITS header.
+    Extract celestial coordinates (RA, Dec) from a FITS header.
 
-    Tries multiple possible coordinate keywords and validates the values
-    are within reasonable ranges.
+    Attempts to find Right Ascension (RA) and Declination (Dec) values by
+    checking a predefined list of common FITS keywords. Validates that the
+    extracted values are numeric and fall within reasonable astronomical ranges.
 
     Parameters
     ----------
-    header : dict or astropy.io.fits.Header
-        FITS header containing coordinate information
+    header : astropy.io.fits.Header or dict-like or None
+        The FITS header object or dictionary to search for coordinate keywords.
+        If None, returns (None, None, "No header available").
 
     Returns
     -------
-    tuple
-        (ra, dec, source_description) where:
-        - ra: Right Ascension value in degrees or None if not found/invalid
-        - dec: Declination value in degrees or None if not found/invalid
-        - source_description: String describing the source keywords or error message
+    tuple (float | None, float | None, str)
+        - (ra, dec, source_description): If coordinates are found and valid,
+          returns RA (degrees), Dec (degrees), and a string indicating the
+          keywords used (e.g., "RA/DEC", "OBJRA/OBJDEC").
+        - (None, None, error_message): If coordinates are not found, are
+          non-numeric, or fall outside valid ranges (RA: -360 to 360,
+          Dec: -90 to 90), returns None for RA and Dec, and a string
+          describing the issue (e.g., "Coordinates not found in header",
+          "Invalid RA value: ...", "Non-numeric coordinates: ...").
 
     Notes
     -----
-    Coordinates are validated to ensure RA is between -360 and 360 degrees
-    and DEC is between -90 and 90 degrees. Values outside these ranges will
-    be rejected with an appropriate error message.
+    - RA keywords checked (in order): 'RA', 'OBJRA', 'RA---', 'CRVAL1'.
+    - Dec keywords checked (in order): 'DEC', 'OBJDEC', 'DEC---', 'CRVAL2'.
+    - Validation ranges: RA [-360, 360], Dec [-90, 90].
     """
     if header is None:
         return None, None, "No header available"
@@ -337,29 +374,37 @@ def extract_coordinates(header):
 
 def extract_pixel_scale(header):
     """
-    Extract the pixel scale (arcsec/pixel) from a FITS header.
+    Extract or calculate the pixel scale (in arcseconds per pixel) from a FITS header.
 
-    Tries multiple approaches to determine the pixel scale:
-    1. Direct pixel scale keywords (PIXSIZE, PIXSCALE, etc.)
-    2. WCS CDELT keywords
-    3. Calculation from physical pixel size and focal length
+    Tries multiple methods in order of preference:
+    1. Looks for direct pixel scale keywords ('PIXSIZE', 'PIXSCALE', 'PIXELSCAL').
+    2. Uses WCS keywords 'CDELT2' or 'CDELT1' (absolute value, converted from deg to arcsec).
+    3. Calculates from pixel size ('XPIXSZ') and focal length ('FOCALLEN'),
+       attempting to interpret the unit of 'XPIXSZ' ('XPIXSZU' keyword: 'arcsec', 'as', 'mm', or assumes μm).
+    4. If 'XPIXSZ' exists but 'FOCALLEN' does not, returns 'XPIXSZ' assuming it's in arcsec.
+    5. If none of the above succeed, returns a default value.
 
     Parameters
     ----------
-    header : dict or astropy.io.fits.Header
-        FITS header with metadata
+    header : astropy.io.fits.Header or dict-like or None
+        The FITS header object or dictionary containing metadata. If None,
+        returns (1.0, "default (no header)").
 
     Returns
     -------
-    tuple
-        (pixel_scale_value, source_description) where:
-        - pixel_scale_value: Float value of pixel scale in arcseconds per pixel
-        - source_description: String describing how the value was determined
+    tuple (float, str)
+        - (pixel_scale_value, source_description): Returns the determined pixel
+          scale in arcseconds per pixel and a string describing how it was
+          obtained (e.g., "from CDELT2", "calculated from XPIXSZ (μm) and FOCALLEN",
+          "default fallback value").
+        - The default pixel scale value returned if no information is found is 1.0 arcsec/pixel.
 
     Notes
     -----
-    Returns a default value of 1.0 arcsec/pixel if no pixel scale information
-    can be determined from the header.
+    - Assumes CDELT values are in degrees.
+    - Assumes XPIXSZ is in micrometers (μm) if FOCALLEN is present and XPIXSZU is missing or unrecognized, unless XPIXSZU is 'arcsec', 'as', or 'mm'.
+    - Assumes XPIXSZ is in arcseconds if FOCALLEN is missing.
+    - Conversion factor used: 206.265 arcseconds per radian.
     """
     if header is None:
         return 1.0, "default (no header)"
@@ -396,22 +441,34 @@ def extract_pixel_scale(header):
 
 def get_base_filename(file_obj):
     """
-    Extract the base filename from an uploaded file object without extension.
+    Extract the base filename (without extension) from a file object.
+
+    Handles common cases like single extensions (.fits) and double extensions
+    (.fits.fz, .tar.gz).
 
     Parameters
     ----------
-    file_obj : UploadedFile
-        The uploaded file object from Streamlit's file_uploader
+    file_obj : file-like object or None
+        An object representing the uploaded file, typically expected to have a
+        `.name` attribute (like Streamlit's `UploadedFile`). If None, returns
+        a default filename "photometry".
 
     Returns
     -------
     str
-        Base filename without extension(s)
+        The base filename derived from `file_obj.name` by removing the
+        extension(s). Returns "photometry" if `file_obj` is None.
 
-    Notes
-    -----
-    - Returns "photometry" as default if file_obj is None
-    - Handles multiple extensions (e.g., .fits.fz) by applying splitext twice
+    Examples
+    --------
+    >>> class MockFile: name = "image.fits.fz"
+    >>> get_base_filename(MockFile())
+    'image'
+    >>> class MockFile: name = "catalog.csv"
+    >>> get_base_filename(MockFile())
+    'catalog'
+    >>> get_base_filename(None)
+    'photometry'
     """
     if file_obj is None:
         return "photometry"
@@ -425,11 +482,20 @@ def get_base_filename(file_obj):
 
 def cleanup_temp_files():
     """
-    Remove temporary files created during processing.
+    Remove temporary FITS files potentially created during processing.
 
-    Cleans up:
-    1. The temporary files created when uploading the Image
-    2. The solved files created during plate solving
+    Specifically targets files stored in the directory indicated by
+    `st.session_state['science_file_path']`. It attempts to remove all files
+    ending with '.fits', '.fit', or '.fts' (case-insensitive) within that directory.
+
+    Notes
+    -----
+    - Relies on `st.session_state['science_file_path']` being set and pointing
+      to a valid temporary file path whose directory contains the files to be cleaned.
+    - Uses `st.warning` to report errors if removal fails for individual files
+      or if the base directory cannot be accessed.
+    - This function has side effects (deleting files) and depends on Streamlit's
+      session state. It does not return any value.
     """
     if (
         "science_file_path" in st.session_state
@@ -439,7 +505,6 @@ def cleanup_temp_files():
             temp_file = st.session_state["science_file_path"]
             if os.path.exists(temp_file):
                 base_dir = os.path.dirname(temp_file)
-                # Check if base_dir is actually a directory before listing
                 if os.path.isdir(base_dir):
                     temp_dir_files = [
                         f
@@ -460,22 +525,25 @@ def cleanup_temp_files():
 
 def initialize_log(base_filename):
     """
-    Initialize a log buffer for the current processing session.
+    Initialize and return an in-memory text buffer (StringIO) for logging.
+
+    Creates a StringIO object and writes a standard header including a timestamp
+    and the provided base filename, suitable for logging processing steps.
 
     Parameters
     ----------
     base_filename : str
-        Base name for the log file (usually from the science file)
+        The base name of the input file being processed, used in the log header.
 
     Returns
     -------
-    StringIO
-        Log buffer object with header information
+    io.StringIO
+        An initialized StringIO buffer containing the log header.
 
     Notes
     -----
-    Creates a formatted log header with timestamp and input filename,
-    which will be written to a file at the end of processing.
+    - The log header format includes the title "RAPAS Photometry Pipeline Log",
+      a separator line, the start timestamp, and the input filename.
     """
     log_buffer = StringIO()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -490,54 +558,76 @@ def initialize_log(base_filename):
 
 def write_to_log(log_buffer, message, level="INFO"):
     """
-    Write a message to the log buffer with timestamp and severity level.
+    Write a formatted message to the provided log buffer.
+
+    Prepends the message with a timestamp ([HH:MM:SS]) and the specified
+    log level (e.g., INFO, WARNING, ERROR).
 
     Parameters
     ----------
-    log_buffer : StringIO
-        The log buffer to write to
+    log_buffer : io.StringIO or None
+        The StringIO buffer object to write the log message to. If None,
+        the function does nothing.
     message : str
-        The message to log
+        The log message content.
     level : str, optional
-        Log severity level (INFO, WARNING, ERROR), default="INFO"
+        The severity level of the log message (e.g., "INFO", "WARNING",
+        "ERROR"). Defaults to "INFO".
+
+    Returns
+    -------
+    None
+        This function modifies the `log_buffer` in place and returns None.
 
     Notes
     -----
-    - Does nothing if log_buffer is None
-    - Prepends each log entry with a timestamp and level indicator
-    - Format: [HH:MM:SS] LEVEL: Message
+    - Format: "[HH:MM:SS] LEVEL: Message\n"
     """
     if log_buffer is None:
         return
 
     timestamp = datetime.now().strftime("%H:%M:%S")
+    log_buffer.write(f"[{timestamp}] {level.upper()}: {message}\n")
 
 
-def zip_rpp_results_on_exit(science_file):
-    """Compresses files in the 'rpp_results' directory into a timestamped ZIP archive.
+def zip_rpp_results_on_exit(science_file_obj):
+    """Compresses analysis result files into a timestamped ZIP archive.
 
-    Takes all files in the 'rpp_results' directory that share the same base filename as the input
-    science file and compresses them into a single ZIP archive with a timestamp in the filename.
-    The original files are deleted after successful compression.
+    Finds all files in the 'rpp_results' directory that start with the same
+    base filename as the input `science_file_obj`, compresses them into a
+    ZIP archive, and then deletes the original files.
 
-    Args:
-        science_file (str): Path to the science file whose base filename will be used to identify
-                           related files for compression.
+    Parameters
+    ----------
+    science_file_obj : file-like object or None
+        An object representing the input science file, expected to have a
+        `.name` attribute (like Streamlit's `UploadedFile`). Used by
+        `get_base_filename` to identify related result files. If None, the
+        function attempts to use "photometry" as the base name.
 
-    Returns:
-        None
+    Returns
+    -------
+    None
+        This function performs file operations (zipping, deleting) and
+        returns None.
 
-    Notes:
-        - The ZIP archive is created in the 'rpp_results' directory
-        - Files are compressed using DEFLATE algorithm
-        - Original files are removed after successful compression
-        - If 'rpp_results' directory doesn't exist or no matching files found, function returns silently
-        - Archive filename format: {base_filename}_{YYYYMMDD_HHMMSS}.zip
+    Notes
+    -----
+    - The target directory is hardcoded as 'rpp_results' relative to the
+      current working directory.
+    - The ZIP archive is created within the 'rpp_results' directory.
+    - Archive filename format: {base_filename}_{YYYYMMDD_HHMMSS}.zip
+    - Uses DEFLATE compression.
+    - Original files matching the base filename in 'rpp_results' are removed
+      after successful zipping.
+    - If the 'rpp_results' directory doesn't exist or no matching files are
+      found, the function returns silently without creating a ZIP file.
+    - Errors during file removal are printed to standard output (consider using logging or st.warning).
     """
     output_dir = os.path.join(os.getcwd(), "rpp_results")
     if not os.path.exists(output_dir):
         return
-    base_name = get_base_filename(science_file)
+    base_name = get_base_filename(science_file_obj)
     files = [
         f
         for f in os.listdir(output_dir)
@@ -552,10 +642,8 @@ def zip_rpp_results_on_exit(science_file):
         for file in files:
             file_path = os.path.join(output_dir, file)
             zipf.write(file_path, arcname=file)
-    # Remove the original files after zipping
     for file in files:
         try:
             os.remove(os.path.join(output_dir, file))
         except Exception as e:
-            # Log the error instead of passing silently
-            print(f"Warning: Could not remove file {file} after zipping: {e}")  # Or use a proper logger
+            print(f"Warning: Could not remove file {file} after zipping: {e}")
