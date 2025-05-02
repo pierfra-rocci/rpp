@@ -299,7 +299,7 @@ st.sidebar.link_button("VizieR Catalogues", "http://vizier.u-strasbg.fr/viz-bin/
 st.sidebar.link_button("Gaia Archive", "https://gea.esac.esa.int/archive/")
 st.sidebar.link_button("Astro-Colibri", "https://astro-colibri.science/")
 st.sidebar.link_button("RAPAS Project", "https://rapas.imcce.fr/")
-st.sidebar.link_button("The Astronomer's Telegram", "https://www.astronomerstelegram.org/")
+st.sidebar.link_button("Astronomer's Telegram", "https://www.astronomerstelegram.org/")
 st.sidebar.link_button("AAVSO VSX", "https://www.aavso.org/vsx/")
 st.sidebar.markdown("---")
 
