@@ -1,14 +1,17 @@
+# Standard Library Imports
 import os
-from io import StringIO
 import json
 import zipfile
-import requests
+from io import StringIO
 from datetime import datetime
+
+# Third-Party Imports
+import requests
 import matplotlib.pyplot as plt
 from astropy.wcs import WCS
-import streamlit as st
+import streamlit as st  # Keep if directly used, otherwise remove if only used in app.py
 
-
+# Constants
 FIGURE_SIZES = {
     "small": (6, 5),  # For small plots
     "medium": (8, 6),  # For medium plots
@@ -31,7 +34,8 @@ GAIA_BAND = [
     "g_sdss_mag",
     "r_sdss_mag",
     "i_sdss_mag",
-    "z_sdss_mag"]
+    "z_sdss_mag",
+]
 
 
 def get_json(url: str):
