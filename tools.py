@@ -9,7 +9,7 @@ from datetime import datetime
 import requests
 import matplotlib.pyplot as plt
 from astropy.wcs import WCS
-import streamlit as st  # Keep if directly used, otherwise remove if only used in app.py
+import streamlit as st  # Keep if directly used, otherwise remove
 
 # Constants
 FIGURE_SIZES = {
@@ -134,16 +134,20 @@ def safe_wcs_create(header):
 
     Notes
     -----
-    - Required WCS keywords checked: CTYPE1, CTYPE2, CRVAL1, CRVAL2, CRPIX1, CRPIX2.
-    - Attempts to remove 'XPIXELSZ', 'YPIXELSZ', 'CDELTM1', 'CDELTM2' if present.
+    - Required WCS keywords checked: CTYPE1, CTYPE2, CRVAL1, CRVAL2,
+      CRPIX1, CRPIX2.
+    - Attempts to remove 'XPIXELSZ', 'YPIXELSZ', 'CDELTM1', 'CDELTM2' if
+      present.
     - If the initial WCS object has more than 2 pixel dimensions, it attempts
       to extract the celestial WCS using `wcs_obj.celestial`.
-    - Validates that the final WCS object has transformation attributes (`.wcs`).
+    - Validates that the final WCS object has transformation attributes
+      (`.wcs`).
     """
     if not header:
         return None, "No header provided"
 
-    required_keys = ["CTYPE1", "CTYPE2", "CRVAL1", "CRVAL2", "CRPIX1", "CRPIX2"]
+    required_keys = ["CTYPE1", "CTYPE2", "CRVAL1", "CRVAL2",
+                     "CRPIX1", "CRPIX2"]
     missing_keys = [key for key in required_keys if key not in header]
 
     try:
@@ -259,7 +263,8 @@ def safe_catalog_query(query_func, error_msg, *args, **kwargs):
     ...     "M31"
     ... )
     >>> if error:
-    ...     print(f"Query failed: {error}") # Output: Query failed: Failed to query SIMBAD: Query timed out
+    ...     # Output: Query failed: Failed to query SIMBAD: Query timed out
+    ...     print(f"Query failed: {error}")
     >>> else:
     ...     print(result)
     """
@@ -281,7 +286,8 @@ def create_figure(size="medium", dpi=120):
     Create a matplotlib Figure object with a predefined or default size and DPI.
 
     Uses a dictionary `FIGURE_SIZES` to map descriptive size names ('small',
-    'medium', 'large', 'wide', 'stars_grid') to (width, height) tuples in inches.
+    'medium', 'large', 'wide', 'stars_grid') to (width, height) tuples in
+    inches.
 
     Parameters
     ----------
@@ -316,7 +322,8 @@ def extract_coordinates(header):
 
     Attempts to find Right Ascension (RA) and Declination (Dec) values by
     checking a predefined list of common FITS keywords. Validates that the
-    extracted values are numeric and fall within reasonable astronomical ranges.
+    extracted values are numeric and fall within reasonable astronomical
+    ranges.
 
     Parameters
     ----------
@@ -374,14 +381,19 @@ def extract_coordinates(header):
 
 def extract_pixel_scale(header):
     """
-    Extract or calculate the pixel scale (in arcseconds per pixel) from a FITS header.
+    Extract or calculate the pixel scale (in arcseconds per pixel) from a
+    FITS header.
 
     Tries multiple methods in order of preference:
-    1. Looks for direct pixel scale keywords ('PIXSIZE', 'PIXSCALE', 'PIXELSCAL').
-    2. Uses WCS keywords 'CDELT2' or 'CDELT1' (absolute value, converted from deg to arcsec).
+    1. Looks for direct pixel scale keywords ('PIXSIZE', 'PIXSCALE',
+       'PIXELSCAL').
+    2. Uses WCS keywords 'CDELT2' or 'CDELT1' (absolute value, converted
+       from deg to arcsec).
     3. Calculates from pixel size ('XPIXSZ') and focal length ('FOCALLEN'),
-       attempting to interpret the unit of 'XPIXSZ' ('XPIXSZU' keyword: 'arcsec', 'as', 'mm', or assumes μm).
-    4. If 'XPIXSZ' exists but 'FOCALLEN' does not, returns 'XPIXSZ' assuming it's in arcsec.
+       attempting to interpret the unit of 'XPIXSZ' ('XPIXSZU' keyword:
+       'arcsec', 'as', 'mm', or assumes μm).
+    4. If 'XPIXSZ' exists but 'FOCALLEN' does not, returns 'XPIXSZ'
+       assuming it's in arcsec.
     5. If none of the above succeed, returns a default value.
 
     Parameters
@@ -395,14 +407,18 @@ def extract_pixel_scale(header):
     tuple (float, str)
         - (pixel_scale_value, source_description): Returns the determined pixel
           scale in arcseconds per pixel and a string describing how it was
-          obtained (e.g., "from CDELT2", "calculated from XPIXSZ (μm) and FOCALLEN",
+          obtained (e.g., "from CDELT2",
+          "calculated from XPIXSZ (μm) and FOCALLEN",
           "default fallback value").
-        - The default pixel scale value returned if no information is found is 1.0 arcsec/pixel.
+        - The default pixel scale value returned if no information is found is
+          1.0 arcsec/pixel.
 
     Notes
     -----
     - Assumes CDELT values are in degrees.
-    - Assumes XPIXSZ is in micrometers (μm) if FOCALLEN is present and XPIXSZU is missing or unrecognized, unless XPIXSZU is 'arcsec', 'as', or 'mm'.
+    - Assumes XPIXSZ is in micrometers (μm) if FOCALLEN is present and
+      XPIXSZU is missing or unrecognized, unless XPIXSZU is 'arcsec', 'as',
+      or 'mm'.
     - Assumes XPIXSZ is in arcseconds if FOCALLEN is missing.
     - Conversion factor used: 206.265 arcseconds per radian.
     """
@@ -486,16 +502,18 @@ def cleanup_temp_files():
 
     Specifically targets files stored in the directory indicated by
     `st.session_state['science_file_path']`. It attempts to remove all files
-    ending with '.fits', '.fit', or '.fts' (case-insensitive) within that directory.
+    ending with '.fits', '.fit', or '.fts' (case-insensitive) within that
+    directory.
 
     Notes
     -----
     - Relies on `st.session_state['science_file_path']` being set and pointing
-      to a valid temporary file path whose directory contains the files to be cleaned.
+      to a valid temporary file path whose directory contains the files to be
+      cleaned.
     - Uses `st.warning` to report errors if removal fails for individual files
       or if the base directory cannot be accessed.
-    - This function has side effects (deleting files) and depends on Streamlit's
-      session state. It does not return any value.
+    - This function has side effects (deleting files) and depends on
+      Streamlit's session state. It does not return any value.
     """
     if (
         "science_file_path" in st.session_state
@@ -518,7 +536,9 @@ def cleanup_temp_files():
                         except Exception as e:
                             st.warning(f"Could not remove {file}: {str(e)}")
                 else:
-                    st.warning(f"Temporary path {base_dir} is not a directory.")
+                    st.warning(
+                        f"Temporary path {base_dir} is not a directory."
+                    )
         except Exception as e:
             st.warning(f"Could not remove temporary files: {str(e)}")
 
@@ -527,13 +547,15 @@ def initialize_log(base_filename):
     """
     Initialize and return an in-memory text buffer (StringIO) for logging.
 
-    Creates a StringIO object and writes a standard header including a timestamp
-    and the provided base filename, suitable for logging processing steps.
+    Creates a StringIO object and writes a standard header including a
+    timestamp and the provided base filename, suitable for logging processing
+    steps.
 
     Parameters
     ----------
     base_filename : str
-        The base name of the input file being processed, used in the log header.
+        The base name of the input file being processed, used in the log
+        header.
 
     Returns
     -------
@@ -622,7 +644,8 @@ def zip_rpp_results_on_exit(science_file_obj):
       after successful zipping.
     - If the 'rpp_results' directory doesn't exist or no matching files are
       found, the function returns silently without creating a ZIP file.
-    - Errors during file removal are printed to standard output (consider using logging or st.warning).
+    - Errors during file removal are printed to standard output (consider
+      using logging or st.warning).
     """
     output_dir = os.path.join(os.getcwd(), "rpp_results")
     if not os.path.exists(output_dir):
@@ -631,7 +654,8 @@ def zip_rpp_results_on_exit(science_file_obj):
     files = [
         f
         for f in os.listdir(output_dir)
-        if os.path.isfile(os.path.join(output_dir, f)) and f.startswith(base_name)
+        if os.path.isfile(os.path.join(output_dir, f))
+        and f.startswith(base_name)
     ]
     if not files:
         return

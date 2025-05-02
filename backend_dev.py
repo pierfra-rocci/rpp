@@ -16,13 +16,23 @@ recovery_codes = {}
 
 
 def get_db_connection():
+    """Establish and return a connection to the SQLite database.
+
+    Returns:
+        sqlite3.Connection: A database connection object with row_factory set
+                            to sqlite3.Row for dictionary-like row access.
+    """
     conn = sqlite3.connect("users.db")
     conn.row_factory = sqlite3.Row
     return conn
 
 
-# Create users table if it doesn't exist
 def init_db():
+    """Initialize the database by creating the 'users' table if it doesn't exist.
+
+    The table stores user information including username, hashed password,
+    email, and a JSON string for user-specific configuration.
+    """
     conn = get_db_connection()
     conn.execute("""CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,8 +48,22 @@ def init_db():
 init_db()
 
 
-# Helper to send email (configure SMTP as needed)
 def send_email(to_email, subject, body):
+    """Send an email using SMTP configuration from environment variables.
+
+    Reads SMTP server, port, user, and password from environment variables
+    (SMTP_SERVER, SMTP_PORT, SMTP_USER, SMTP_PASS). Uses TLS for security.
+
+    Args:
+        to_email (str): The recipient's email address.
+        subject (str): The subject line of the email.
+        body (str): The plain text body of the email.
+
+    Returns:
+        bool: True if the email was sent successfully, False otherwise.
+              Prints error messages to the console on failure or if SMTP
+              credentials are not set.
+    """
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
     smtp_port = int(os.environ.get("SMTP_PORT", 587))
     smtp_user = os.environ.get("SMTP_USER")
@@ -61,6 +85,19 @@ def send_email(to_email, subject, body):
 
 @app.route("/register", methods=["POST"])
 def register():
+    """Handle user registration requests.
+
+    Expects 'username', 'password', and 'email' in the form data.
+    Hashes the password before storing it. Checks for existing username/email
+    and prevents duplicate password hashes.
+
+    Returns:
+        tuple: (message, status_code)
+               - ("Registered successfully.", 201) on success.
+               - ("Username, password, and email required.", 400) if data missing.
+               - ("Username or email is already taken.", 409) if conflict.
+               - ("Password is already used...", 409) if hash conflict.
+    """
     data = request.form
     username = data.get("username")
     password = data.get("password")
@@ -90,6 +127,17 @@ def register():
 
 @app.route("/login", methods=["POST"])
 def login():
+    """Handle user login requests.
+
+    Expects 'username' and 'password' in the form data.
+    Compares the provided password against the stored hash.
+
+    Returns:
+        tuple: (message, status_code)
+               - ("Logged in successfully.", 200) on success.
+               - ("Username and password required.", 400) if data missing.
+               - ("Invalid username or password.", 401) on failure.
+    """
     data = request.form
     username = data.get("username")
     password = data.get("password")
@@ -107,6 +155,18 @@ def login():
 
 @app.route("/recover_request", methods=["POST"])
 def recover_request():
+    """Handle the first step of password recovery: requesting a code.
+
+    Expects 'email' in the form data.
+    Generates a 6-digit recovery code, stores it temporarily (in-memory),
+    and sends it to the user's email.
+
+    Returns:
+        tuple: (message, status_code)
+               - ("Recovery code sent to your email.", 200) on success.
+               - ("Email required.", 400) if email missing.
+               - ("Email not found.", 404) if email not in database.
+    """
     data = request.form
     email = data.get("email")
     if not email:
@@ -126,6 +186,18 @@ def recover_request():
 
 @app.route("/recover_confirm", methods=["POST"])
 def recover_confirm():
+    """Handle the second step of password recovery: confirming the code and setting a new password.
+
+    Expects 'email', 'code', and 'new_password' in the form data.
+    Verifies the recovery code and updates the user's password hash in the database.
+    Removes the used recovery code.
+
+    Returns:
+        tuple: (message, status_code)
+               - ("Password updated successfully.", 200) on success.
+               - ("Email, code, and new password required.", 400) if data missing.
+               - ("Invalid or expired code.", 400) if code is incorrect.
+    """
     data = request.form
     email = data.get("email")
     code = data.get("code")
@@ -146,6 +218,15 @@ def recover_confirm():
 
 @app.route("/save_config", methods=["POST"])
 def save_config():
+    """Save user-specific configuration (as JSON string) to the database.
+
+    Expects JSON payload with 'username' and 'config_json'.
+
+    Returns:
+        tuple: (message, status_code)
+               - ("Config saved.", 200) on success.
+               - ("Username and config_json required.", 400) if data missing.
+    """
     data = request.json
     username = data.get("username")
     config_json = data.get("config_json")
@@ -163,6 +244,16 @@ def save_config():
 
 @app.route("/get_config", methods=["GET"])
 def get_config():
+    """Retrieve user-specific configuration (as JSON string) from the database.
+
+    Expects 'username' as a query parameter.
+
+    Returns:
+        tuple: (json_string or empty_json, status_code)
+               - (config_json, 200) if config found.
+               - ("{}", 200) if no config found for the user.
+               - ("Username required.", 400) if username missing.
+    """
     username = request.args.get("username")
     if not username:
         return "Username required.", 400
@@ -179,11 +270,29 @@ def get_config():
 
 @app.errorhandler(404)
 def page_not_found(e):
+    """Custom error handler for 404 Not Found errors.
+
+    Args:
+        e: The error object.
+
+    Returns:
+        tuple: (json_response, status_code)
+               - ({"error": "Page not found"}, 404)
+    """
     return {"error": "Page not found"}, 404
 
 
 @app.errorhandler(500)
 def internal_server_error(e):
+    """Custom error handler for 500 Internal Server errors.
+
+    Args:
+        e: The error object.
+
+    Returns:
+        tuple: (json_response, status_code)
+               - ({"error": "Internal server error"}, 500)
+    """
     return {"error": "Internal server error"}, 500
 
 
