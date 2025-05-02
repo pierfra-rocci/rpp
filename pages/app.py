@@ -2858,7 +2858,13 @@ if "observatory_data" in st.session_state:
 
 if "analysis_parameters" in st.session_state:
     ap = st.session_state["analysis_parameters"]
-    for key in ["seeing", "threshold_sigma", "detection_mask"]:
+    # Ensure all relevant keys from the loaded dictionary are copied to individual state keys
+    for key in [
+        "seeing", "threshold_sigma", "detection_mask",
+        "astrometry_check", "calibrate_cosmic_rays",
+        "cr_gain", "cr_readnoise", "cr_sigclip", "cr_sigfrac", "cr_objlim",
+        "filter_band", "filter_max_mag" # Also sync Gaia filter params if needed by widgets
+    ]:
         if key in ap:
             st.session_state[key] = ap[key]
 
