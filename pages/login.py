@@ -99,16 +99,19 @@ else:
         resp = requests.get(config_url, params={"username": st.session_state.username})
         if resp.status_code == 200 and resp.text and resp.text != "{}":
             config = json.loads(resp.text)
-            # Store the loaded config dictionaries directly using consistent keys.
-            # app.py's initialize_session_state will handle defaults.
+            # Store the loaded config dictionaries directly using keys from JSON.
+            # app.py's initialize_session_state will handle defaults and mapping.
             if "analysis_parameters" in config:
                 st.session_state["analysis_parameters"] = config["analysis_parameters"]
-            if "observatory_data" in config: # Use 'observatory_data' key
-                st.session_state["observatory_data"] = config["observatory_data"]
-            if "gaia_parameters" in config: # Add loading for gaia_parameters
+            # Load observatory data using the key from JSON
+            if "observatory_parameters" in config:
+                st.session_state["observatory_data"] = config["observatory_parameters"]
+            # Load gaia parameters if present
+            if "gaia_parameters" in config:
                 st.session_state["gaia_parameters"] = config["gaia_parameters"]
-            if "colibri_api_key" in config: # Use 'colibri_api_key' key
-                st.session_state["colibri_api_key"] = config["colibri_api_key"]
+            # Load API key using the key from JSON
+            if "astro_colibri_api_key" in config:
+                st.session_state["colibri_api_key"] = config["astro_colibri_api_key"]
             st.info("User configuration loaded.")
         else:
             st.info("No user configuration found or error loading. Using defaults.")
@@ -117,8 +120,11 @@ else:
                 st.session_state["analysis_parameters"] = {}  # Will be populated by app.py's init
             if "observatory_data" not in st.session_state:
                 st.session_state["observatory_data"] = {}  # Will be populated by app.py's init
-            if "gaia_parameters" not in st.session_state: # Ensure gaia_parameters exists
+            if "gaia_parameters" not in st.session_state:
                 st.session_state["gaia_parameters"] = {}
+            # Ensure api key exists, even if null
+            if "colibri_api_key" not in st.session_state:
+                st.session_state["colibri_api_key"] = None
 
     except Exception as e:
         st.warning(f"Could not load user config: {e}")
@@ -127,7 +133,9 @@ else:
             st.session_state["analysis_parameters"] = {}
         if "observatory_data" not in st.session_state:
             st.session_state["observatory_data"] = {}
-        if "gaia_parameters" not in st.session_state: # Ensure gaia_parameters exists
+        if "gaia_parameters" not in st.session_state:
             st.session_state["gaia_parameters"] = {}
+        if "colibri_api_key" not in st.session_state:
+            st.session_state["colibri_api_key"] = None
 
     st.switch_page("pages/app.py")

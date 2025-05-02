@@ -1,54 +1,34 @@
 # Standard Library Imports
-import sys
 import os
-import zipfile
-import base64
-import json
-import tempfile
-import warnings
-import atexit
 import subprocess
-from datetime import datetime, timedelta
-from urllib.parse import quote
-from functools import partial
-from io import StringIO, BytesIO
+import warnings
+import traceback
+from io import BytesIO
 from typing import Union, Any, Optional, Dict, Tuple, List
 
 # Third-Party Imports
-import streamlit as st # Keep streamlit for st.write/error/warning/spinner etc. used within functions
-import requests
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import astroscrappy
+import streamlit as st
+import astropy.units as u
 from astropy.io import fits
 from astropy.table import Table
 from astropy.wcs import WCS
-from astropy.stats import sigma_clip, SigmaClip, sigma_clipped_stats
+from astropy.stats import SigmaClip, sigma_clipped_stats
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from astropy.time import Time
-from astropy.modeling import models, fitting
-from astropy.nddata import NDData
-from astropy.visualization import (ZScaleInterval, ImageNormalize,
-                                   PercentileInterval, simple_norm)
-import astropy.units as u
-from astroquery.gaia import Gaia
-from astroquery.simbad import Simbad
-from astroquery.vizier import Vizier
+from astropy.visualization import ZScaleInterval, simple_norm
 from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
-from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
-# Assuming stdpipe is installed or available in the environment
-# from stdpipe import photometry, astrometry, catalogs, pipeline
+import astroscrappy
 
 # Local Application Imports
-# Assuming tools.py and __version__.py are in the same root directory
-from tools import (FIGURE_SIZES, URL, GAIA_BAND, extract_coordinates,
-                   extract_pixel_scale, get_base_filename, safe_catalog_query,
-                   safe_wcs_create, ensure_output_directory, cleanup_temp_files,
-                   initialize_log, write_to_log, zip_rpp_results_on_exit)
-# from __version__ import version # Version not typically needed in function files
+from tools import (
+    FIGURE_SIZES, extract_pixel_scale, safe_catalog_query,
+    safe_wcs_create, ensure_output_directory
+)
 
 warnings.filterwarnings("ignore")
 
@@ -90,7 +70,7 @@ def solve_with_siril(file_path):
 
     except Exception as e:
         st.error(f"Error solving with Siril: {str(e)}")
-        return None
+        return None, None
     try:
         file_path_list = file_path.split(".")
         file_path = file_path_list[0] + "_solved.fits"
@@ -102,6 +82,7 @@ def solve_with_siril(file_path):
 
     except Exception as e:
         st.error(f"Error reading solved file: {str(e)}")
+        return None, None
 
 
 def detect_remove_cosmic_rays(
@@ -136,10 +117,9 @@ def detect_remove_cosmic_rays(
     Returns
     -------
     tuple
-        (cleaned_image, mask, num_cosmic_rays) where:
+        (cleaned_image, mask) where:
         - cleaned_image: numpy.ndarray with cosmic rays removed
         - mask: boolean numpy.ndarray showing cosmic ray locations (True where cosmic rays were detected)
-        - num_cosmic_rays: int, number of cosmic rays detected
 
     Notes
     -----
@@ -167,10 +147,10 @@ def detect_remove_cosmic_rays(
 
     except ImportError:
         st.error("astroscrappy package is not installed. Cannot remove cosmic rays.")
-        return image_data, None, 0
+        return image_data, None
     except Exception as e:
         st.error(f"Error during cosmic ray removal: {str(e)}")
-        return image_data, None, 0
+        return image_data, None
 
 
 def make_border_mask(
@@ -364,11 +344,6 @@ def estimate_background(image_data, box_size=128, filter_size=7):
             hdul = fits.HDUList([hdu_bkg, hdu_rms])
             hdul.writeto(bkg_filepath, overwrite=True)
 
-            # Write to log if available
-            log_buffer = st.session_state.get("log_buffer")
-            if log_buffer is not None:
-                write_to_log(log_buffer, f"Background model saved to {bkg_filename}")
-
         except Exception as e:
             st.warning(f"Error creating or saving background plot: {str(e)}")
 
@@ -443,11 +418,11 @@ def airmass(
         if any(v is None for v in [ra, dec, obstime_str]):
             missing = []
             if ra is None:
-                missing.append("RA")
+                missing.append("RA/OBJRA/CRVAL1")
             if dec is None:
-                missing.append("DEC")
+                missing.append("DEC/OBJDEC/CRVAL2")
             if obstime_str is None:
-                missing.append("DATE-OBS")
+                missing.append("DATE-OBS/DATE")
             raise KeyError(f"Missing required header keywords: {', '.join(missing)}")
 
         coord = SkyCoord(ra=ra, dec=dec, unit=u.deg, frame="icrs")
@@ -476,7 +451,7 @@ def airmass(
             "datetime": obstime.iso,
             "target_coords": {
                 "ra": coord.ra.to_string(unit=u.hour),
-                "observation_type": get_observation_type(sun_alt),
+                "dec": coord.dec.to_string(unit=u.deg),
             },
             "sun_altitude": round(sun_alt, 2),
             "observation_type": get_observation_type(sun_alt),
@@ -534,57 +509,49 @@ def load_fits_data(file):
         file_content = file.read()
         hdul = fits.open(BytesIO(file_content), mode="readonly")
         try:
-            data = hdul[0].data
-            hdul.verify("fix")
-            header = hdul[0].header
-
-            if data is None:
-                for i, hdu in enumerate(hdul[1:], 1):
-                    if hasattr(hdu, "data") and hdu.data is not None:
-                        data = hdu.data
-                        header = hdu.header
-                        st.info(f"Primary HDU has no data. Using data from HDU #{i}.")
+            # Find the first HDU with image data
+            hdu_index = -1
+            for i, hdu in enumerate(hdul):
+                if hdu.data is not None and isinstance(hdu.data, np.ndarray):
+                    if hdu.is_image:
+                        hdu_index = i
                         break
+            if hdu_index == -1:
+                st.error("No valid image data found in FITS file.")
+                return None, None, None
 
-            if data is None:
-                st.warning("No image data found in the FITS file.")
-                return None, None
+            header = hdul[hdu_index].header
+            image_data = hdul[hdu_index].data.astype(np.float32)
 
-            if len(data.shape) == 3:
-                if data.shape[0] == 3 or data.shape[0] == 4:
-                    st.info(
-                        f"Detected RGB data with shape {data.shape}. Using first color channel."
-                    )
-                    data = data[0]
-                elif data.shape[2] == 3 or data.shape[2] == 4:
-                    st.info(
-                        f"Detected RGB data with shape {data.shape}. Using first color channel."
-                    )
-                    data = data[:, :, 0]
-                else:
-                    st.info(
-                        f"Detected 3D data with shape {data.shape}. Using first plane."
-                    )
-                    data = data[0]
-            elif len(data.shape) > 3:
+            # Handle multi-dimensional data (e.g., cubes, RGB)
+            if image_data.ndim > 2:
                 st.warning(
-                    f"Data has {len(data.shape)} dimensions. Using first slice only."
+                    f"Input FITS data has {image_data.ndim} dimensions. "
+                    f"Using the first 2D slice: shape={image_data[0].shape}"
                 )
-                sliced_data = data
-                while len(sliced_data.shape) > 2:
-                    sliced_data = sliced_data[0]
-                data = sliced_data
+                # Take the first slice along all extra dimensions
+                slice_index = tuple([0] * (image_data.ndim - 2))
+                image_data = image_data[slice_index]
 
-            norm = ImageNormalize(data, interval=PercentileInterval(99.9))
-            normalized_data = norm(data)
+            if image_data.ndim != 2:
+                st.error(
+                    f"Could not extract a 2D image plane. "
+                    f"Final shape: {image_data.shape}"
+                )
+                return None, None, None
 
-            return normalized_data, data, header
+            # Normalize data for preview (using simple_norm)
+            norm = simple_norm(image_data, 'sqrt', percent=99)
+            normalized_data = norm(image_data)
+
+            return normalized_data, image_data, header
 
         except Exception as e:
-            st.error(f"Error loading FITS file: {str(e)}")
+            st.error(f"Error loading FITS file: {e}")
             return None, None, None
         finally:
-            hdul.close()
+            if hdul:
+                hdul.close()
 
     return None, None, None
 
@@ -618,18 +585,13 @@ def fwhm_fit(
     Optional[float]
         Estimated FWHM value in pixels, or None if the fit fails.
     """
-    # Implementation missing in provided snippet
-    # Placeholder: return initial guess or a simple estimate if possible
     st.warning("fwhm_fit function implementation is missing. Returning initial guess.")
-    # Example simple estimate (replace with actual implementation):
     try:
-        # A very basic estimate - replace with proper fitting
         mean, median, std = sigma_clipped_stats(_img[~mask] if mask is not None else _img)
-        # This is NOT a real FWHM calculation, just a placeholder
         estimated_fwhm = 2.355 * std
         return estimated_fwhm
     except Exception:
-        return fwhm # Fallback to initial guess
+        return fwhm
 
 
 def perform_psf_photometry(
@@ -662,7 +624,6 @@ def perform_psf_photometry(
         A tuple containing the photometry results table and potentially
         other PSF-related outputs (e.g., PSF model).
     """
-    # Implementation missing in provided snippet
     st.warning("perform_psf_photometry function implementation is missing. Returning None.")
     return None, None
 
@@ -670,12 +631,11 @@ def perform_psf_photometry(
 def detection_and_photometry(
     image_data: np.ndarray,
     _science_header: Optional[dict | fits.Header],
-    data_not_normalized: Optional[np.ndarray], # Keep for potential future use
+    data_not_normalized: Optional[np.ndarray],
     mean_fwhm_pixel: float,
     threshold_sigma: float,
     detection_mask: int,
-    filter_band: str, # Keep for potential future use
-    gb: str = "Gmag", # Keep for potential future use
+    filter_band: str,
 ) -> Tuple[Optional[Table], Optional[Table], Optional[Background2D], Optional[float]]:
     """Perform source detection and aperture photometry on an image.
 
@@ -698,8 +658,6 @@ def detection_and_photometry(
         Size of the border mask in pixels to exclude from detection.
     filter_band : str
         Filter band name (unused in current snippet).
-    gb : str, optional
-        Gaia band identifier (unused in current snippet), by default "Gmag".
 
     Returns
     -------
@@ -730,10 +688,9 @@ def detection_and_photometry(
 
     if fwhm_estimate is None:
         st.warning("FWHM estimation failed, using initial guess.")
-        fwhm_estimate = mean_fwhm_pixel # Fallback
+        fwhm_estimate = mean_fwhm_pixel
     else:
         st.success(f"Estimated FWHM: {fwhm_estimate:.2f} pixels")
-
 
     st.write("Detecting sources...")
     try:
@@ -749,41 +706,32 @@ def detection_and_photometry(
         return None, None, bkg, fwhm_estimate
     st.success(f"Detected {len(sources)} sources.")
 
-    # Optional Astrometry Check (using session state)
     if st.session_state.get("analysis_parameters", {}).get("astrometry_check", False):
         st.write("Performing astrometry check/refinement...")
-        # Placeholder for astrometry check logic using _science_header and sources
-        # This might involve calling solve_with_siril or another astrometry tool
-        # and potentially updating the WCS or source positions.
         st.info("Astrometry check/refinement step is currently a placeholder.")
-
 
     st.write("Performing aperture photometry...")
     try:
         positions = np.transpose((sources['xcentroid'], sources['ycentroid']))
-        apertures = CircularAperture(positions, r=2.0 * fwhm_estimate) # Aperture radius based on FWHM
+        apertures = CircularAperture(positions, r=2.0 * fwhm_estimate)
         phot_table = aperture_photometry(image_data - bkg.background, apertures, error=bkg.background_rms)
 
-        # Calculate instrumental magnitude
-        # Avoid log(0) or log(<0) errors
         valid_flux = phot_table['aperture_sum'] > 0
-        phot_table['instrumental_mag'] = np.nan # Initialize column
+        phot_table['instrumental_mag'] = np.nan
         phot_table['instrumental_mag'][valid_flux] = -2.5 * np.log10(phot_table['aperture_sum'][valid_flux])
 
         st.success("Aperture photometry complete.")
 
-        # Placeholder for PSF photometry call
         st.write("Performing PSF photometry (placeholder)...")
         epsf_table, epsf_model = perform_psf_photometry(
             image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask
         )
         if epsf_table is not None:
              st.success("PSF photometry complete.")
-             st.session_state['epsf_model'] = epsf_model # Store PSF model if created
-             st.session_state['epsf_photometry_result'] = epsf_table # Store PSF results
+             st.session_state['epsf_model'] = epsf_model
+             st.session_state['epsf_photometry_result'] = epsf_table
         else:
              st.warning("PSF photometry skipped or failed.")
-
 
         return phot_table, epsf_table, bkg, fwhm_estimate
     except Exception as e:
@@ -811,16 +759,13 @@ def cross_match_with_gaia(
     _phot_table : astropy.table.Table
         Table containing detected source positions ('xcentroid', 'ycentroid')
         and instrumental magnitudes ('instrumental_mag').
-        (Underscore suggests potential caching).
     _science_header : Optional[dict | fits.Header]
         FITS header containing WCS information needed to convert pixel coordinates
-        to celestial coordinates (RA, Dec). (Underscore suggests potential caching).
+        to celestial coordinates (RA, Dec).
     pixel_size_arcsec : float
-        Pixel scale in arcseconds per pixel (unused in current snippet, but potentially
-        useful for calculating search radius if WCS is missing).
+        Pixel scale in arcseconds per pixel.
     mean_fwhm_pixel : float
-        Mean FWHM of sources in pixels. Used to determine the matching radius
-        (currently set to 2 * FWHM in arcseconds).
+        Mean FWHM of sources in pixels. Used to determine the matching radius.
     filter_band : str
         Gaia magnitude band to use for filtering (e.g., 'phot_g_mean_mag').
     filter_max_mag : float
@@ -855,26 +800,25 @@ def cross_match_with_gaia(
         st.error("Cannot cross-match: Photometry table missing 'xcentroid' or 'ycentroid'.")
         return None
 
-    # Get WCS
     wcs_obj, wcs_error = safe_wcs_create(_science_header)
     if wcs_obj is None:
         st.error(f"Cannot cross-match: Failed to create WCS object - {wcs_error}")
         return None
 
-    # Get field center and radius for Gaia query
     try:
         center_coord = wcs_obj.pixel_to_world(
             _science_header['NAXIS1'] / 2, _science_header['NAXIS2'] / 2
         )
-        # Estimate radius (diagonal semi-major axis)
         corner_coord = wcs_obj.pixel_to_world(0, 0)
         radius = center_coord.separation(corner_coord)
     except Exception as e:
         st.error(f"Cannot determine field center/radius from WCS: {e}")
         return None
 
-    # Query Gaia
-    st.write(f"Querying Gaia around RA={center_coord.ra.deg:.4f}, Dec={center_coord.dec.deg:.4f} with radius={radius.arcmin:.2f} arcmin...")
+    st.write(
+        f"Querying Gaia around RA={center_coord.ra.deg:.4f}, "
+        f"Dec={center_coord.dec.deg:.4f} with radius={radius.arcmin:.2f} arcmin..."
+    )
     try:
         gaia_table = safe_catalog_query(
             center_coord,
@@ -892,14 +836,11 @@ def cross_match_with_gaia(
         return None
     st.success(f"Found {len(gaia_table)} Gaia sources.")
 
-    # Perform cross-matching
     st.write("Matching detected sources to Gaia catalog...")
     try:
-        # Convert pixel coordinates to SkyCoord
         source_coords = wcs_obj.pixel_to_world(_phot_table['xcentroid'], _phot_table['ycentroid'])
         gaia_coords = SkyCoord(ra=gaia_table['ra'], dec=gaia_table['dec'], unit=(u.deg, u.deg))
 
-        # Perform cross-matching
         max_separation = 2 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
         st.write(f"Using matching radius: {max_separation:.2f}")
         idx, d2d, _ = source_coords.match_to_catalog_sky(gaia_coords)
@@ -912,21 +853,21 @@ def cross_match_with_gaia(
             st.warning("No matches found between detected sources and Gaia catalog within the specified radius.")
             return None
 
-        # Combine matched tables
         matched_phot_df = matched_phot.to_pandas()
         matched_gaia_df = matched_gaia.to_pandas()
 
-        # Ensure unique columns before merging, prefix Gaia columns
-        gaia_cols_renamed = {col: f"gaia_{col}" for col in matched_gaia_df.columns if col in matched_phot_df.columns and col != 'index'} # Avoid renaming index if it exists
+        gaia_cols_renamed = {
+            col: f"gaia_{col}"
+            for col in matched_gaia_df.columns
+            if col in matched_phot_df.columns and col != 'index'
+        }
         matched_gaia_df.rename(columns=gaia_cols_renamed, inplace=True)
 
-        # Reset index for safe concatenation
         matched_phot_df.reset_index(drop=True, inplace=True)
         matched_gaia_df.reset_index(drop=True, inplace=True)
 
         combined_table = pd.concat([matched_phot_df, matched_gaia_df], axis=1)
 
-        # Add separation distance
         combined_table['match_separation_arcsec'] = d2d[sep_constraint].to(u.arcsec).value
 
         st.success(f"Found {len(combined_table)} matches with Gaia.")
@@ -953,15 +894,12 @@ def calculate_zero_point(
     ----------
     _phot_table : astropy.table.Table or pd.DataFrame
         Photometry results table containing instrumental magnitudes
-        (e.g., 'instrumental_mag'). (Underscore suggests potential caching).
+        (e.g., 'instrumental_mag').
     _matched_table : Optional[pd.DataFrame]
         DataFrame of sources cross-matched with Gaia, containing both
         instrumental magnitudes and Gaia standard magnitudes (e.g., 'phot_g_mean_mag').
-        Must contain the `filter_band` column and the instrumental magnitude column.
-        (Underscore suggests potential caching).
     filter_band : str
         The Gaia magnitude band used for calibration (e.g., 'phot_g_mean_mag').
-        This column must exist in `_matched_table`.
     air : float
         Airmass of the observation, used for a simple extinction correction (0.1 * air).
 
@@ -990,63 +928,62 @@ def calculate_zero_point(
         st.error("Cannot calculate zero point: No matched Gaia sources provided.")
         return None, None, None
 
-    # Find the Gaia magnitude column (prefixed during crossmatch)
     gaia_mag_col = f"gaia_{filter_band}"
     if gaia_mag_col not in _matched_table.columns:
-         # Check if original name exists (maybe crossmatch failed to rename?)
          if filter_band in _matched_table.columns:
              gaia_mag_col = filter_band
              st.warning(f"Using non-prefixed Gaia column '{filter_band}'. Cross-match might have had issues.")
          else:
-             st.error(f"Cannot calculate zero point: Gaia filter band column '{gaia_mag_col}' or '{filter_band}' missing from matched table.")
+             st.error(
+                 "Cannot calculate zero point: Gaia filter band column "
+                 f"'{gaia_mag_col}' or '{filter_band}' missing from matched table."
+             )
              return None, None, None
 
-    # Find instrumental magnitude column
     if 'instrumental_mag' not in _matched_table.columns:
-        # Try to find another mag column if 'instrumental_mag' is missing
         mag_cols = [col for col in _matched_table.columns if 'mag' in col.lower() and 'gaia' not in col.lower() and 'calib' not in col.lower()]
         if not mag_cols:
-            st.error(f"Cannot calculate zero point: Instrumental magnitude column ('instrumental_mag' or similar) missing from matched table.")
+            st.error(
+                "Cannot calculate zero point: Instrumental magnitude column "
+                "('instrumental_mag' or similar) missing from matched table."
+            )
             return None, None, None
         inst_mag_col = mag_cols[0]
         st.warning(f"Using '{inst_mag_col}' as instrumental magnitude column.")
     else:
         inst_mag_col = 'instrumental_mag'
 
-
     try:
-        # Calculate the difference: Gaia_mag - instrumental_mag
-        # This difference represents the zero point (ignoring extinction for now)
         zp_diff = _matched_table[gaia_mag_col] - _matched_table[inst_mag_col]
 
-        # Filter out NaNs or Infs before sigma clipping
         valid_zp_diff = zp_diff[np.isfinite(zp_diff)]
-        if len(valid_zp_diff) < 3: # Need at least 3 points for robust stats
-             st.error("Not enough valid magnitude difference values to calculate zero point.")
+        if len(valid_zp_diff) < 3:
+             st.error(
+                 "Not enough valid magnitude difference values "
+                 "to calculate zero point."
+             )
              return None, None, None
 
-        # Use sigma clipping to get a robust estimate of the zero point
         mean_zp, median_zp, std_zp = sigma_clipped_stats(valid_zp_diff, sigma=3.0)
 
-        zero_point_value = median_zp # Use median as the robust zero point
+        zero_point_value = median_zp
         zero_point_std = std_zp
 
-        # Apply zero point and extinction correction to the full photometry table
-        # Ensure _phot_table is a DataFrame for easier column addition
         if isinstance(_phot_table, Table):
             _phot_table_df = _phot_table.to_pandas()
         elif isinstance(_phot_table, pd.DataFrame):
-            _phot_table_df = _phot_table.copy() # Avoid modifying original if it's passed around
+            _phot_table_df = _phot_table.copy()
         else:
             st.error("Input _phot_table must be an Astropy Table or Pandas DataFrame.")
             return None, None, None
 
-        # Find instrumental magnitude in the full table
         if inst_mag_col not in _phot_table_df.columns:
-             # Try to find it again if it wasn't 'instrumental_mag'
              mag_cols_full = [col for col in _phot_table_df.columns if 'mag' in col.lower() and 'calib' not in col.lower()]
              if not mag_cols_full:
-                 st.error(f"Cannot apply calibration: Instrumental magnitude column '{inst_mag_col}' or similar missing from full photometry table.")
+                 st.error(
+                     "Cannot apply calibration: Instrumental magnitude column "
+                     "missing from full table."
+                 )
                  return None, None, None
              inst_mag_col_full = mag_cols_full[0]
              st.warning(f"Using '{inst_mag_col_full}' as instrumental magnitude in full table.")
@@ -1056,26 +993,22 @@ def calculate_zero_point(
         _phot_table_df["calib_mag"] = (
             _phot_table_df[inst_mag_col_full] + zero_point_value + 0.1 * air
         )
-        _phot_table_df["calib_mag_err"] = np.nan # Placeholder for error propagation
+        _phot_table_df["calib_mag_err"] = np.nan
 
-        # Update the matched table as well for plotting
         _matched_table_plot = _matched_table.copy()
         _matched_table_plot["calib_mag"] = (
              _matched_table_plot[inst_mag_col] + zero_point_value + 0.1 * air
         )
 
-        st.session_state["final_phot_table"] = _phot_table_df # Store the calibrated table
+        st.session_state["final_phot_table"] = _phot_table_df
 
-        # --- Plotting --- #
-        fig = plt.figure(figsize=FIGURE_SIZES.get("medium", (10, 6)), dpi=100) # Use plt.figure
+        fig = plt.figure(figsize=FIGURE_SIZES.get("medium", (10, 6)), dpi=100)
         ax = fig.add_subplot(111)
 
-        # Calculate residuals for plotting
         _matched_table_plot["residual"] = (
             _matched_table_plot[gaia_mag_col] - _matched_table_plot["calib_mag"]
         )
 
-        # Create bins for magnitude ranges
         bin_width = 0.5
         min_mag = _matched_table_plot[gaia_mag_col].min()
         max_mag = _matched_table_plot[gaia_mag_col].max()
@@ -1083,46 +1016,44 @@ def calculate_zero_point(
              st.warning("Could not determine valid magnitude range for plotting bins.")
              bins = np.array([])
         else:
-             # Ensure bins cover the range, handle edge cases
              start_bin = np.floor(min_mag / bin_width) * bin_width
              end_bin = np.ceil(max_mag / bin_width) * bin_width
-             bins = np.arange(start_bin, end_bin + bin_width, bin_width)
+             bins = np.arange(start_bin, end_bin + bin_width + 1e-9, bin_width)
 
-
-        # Group data by magnitude bins if bins exist
         if len(bins) > 1:
             try:
-                # Use the Gaia magnitude for binning
-                grouped = _matched_table_plot.groupby(pd.cut(_matched_table_plot[gaia_mag_col], bins, right=False)) # Use gaia mag for binning
-                bin_centers = [(bin.left + bin.right) / 2 for bin in grouped.groups.keys()]
-                # Calculate stats on the *calibrated* magnitude within each bin
-                bin_means = grouped["calib_mag"].mean().values
-                bin_stds = grouped["calib_mag"].std().values
-                valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds) & (grouped.size() > 0) # Ensure bins are not empty
+                _matched_table_plot['mag_bin'] = pd.cut(
+                    _matched_table_plot[gaia_mag_col],
+                    bins=bins,
+                    right=False
+                )
+                grouped = _matched_table_plot.groupby('mag_bin', observed=False)
+                bin_stats = grouped['calib_mag'].agg(['mean', 'std', 'count'])
+
+                bin_centers = [
+                    interval.mid for interval in bin_stats.index.categories
+                ]
+                bin_means = bin_stats['mean'].values
+                bin_stds = bin_stats['std'].values
+                bin_counts = bin_stats['count'].values
+                valid_bins = bin_counts > 1
+
             except Exception as plot_err:
-                 st.warning(f"Could not group data for binned plot: {plot_err}")
+                 st.warning(f"Error calculating binned statistics for plot: {plot_err}")
                  valid_bins = np.array([], dtype=bool)
                  bin_centers = []
                  bin_means = []
                  bin_stds = []
 
-        else:
-            valid_bins = np.array([], dtype=bool)
-            bin_centers = []
-            bin_means = []
-            bin_stds = []
-
-        # Plot individual points
         ax.scatter(
             _matched_table_plot[gaia_mag_col],
             _matched_table_plot["calib_mag"],
             alpha=0.5,
             label="Matched sources",
             color="blue",
-            s=10 # Smaller points
+            s=10
         )
 
-        # Plot binned means with error bars
         if np.any(valid_bins):
             ax.errorbar(
                 np.array(bin_centers)[valid_bins],
@@ -1133,44 +1064,41 @@ def calculate_zero_point(
                 capsize=5,
             )
 
-        # Add a diagonal line for reference (y=x)
         if not pd.isna(min_mag) and not pd.isna(max_mag):
-            plot_min = min(min_mag, _matched_table_plot["calib_mag"].min())
-            plot_max = max(max_mag, _matched_table_plot["calib_mag"].max())
-            if pd.isfinite(plot_min) and pd.isfinite(plot_max):
-                ideal_mag = np.linspace(plot_min, plot_max, 10)
-                ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="Gaia Mag = Calib Mag")
+            lim_min = min(min_mag, _matched_table_plot["calib_mag"].min())
+            lim_max = max(max_mag, _matched_table_plot["calib_mag"].max())
+            if pd.notna(lim_min) and pd.notna(lim_max):
+                ax.plot([lim_min, lim_max], [lim_min, lim_max], 'k--', alpha=0.7, label='y=x')
 
         ax.set_xlabel(f"Gaia {filter_band}")
         ax.set_ylabel("Calibrated Instrumental Mag")
         ax.set_title(f"Zero Point Calibration (ZP = {zero_point_value:.2f} ± {zero_point_std:.2f})")
         ax.legend()
         ax.grid(True, alpha=0.3)
-        # Invert y-axis for magnitudes
         ax.invert_yaxis()
-        ax.invert_xaxis() # Also invert x-axis for consistency
+        ax.invert_xaxis()
 
         st.success(
             f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f} using {len(valid_zp_diff)} stars."
         )
 
-        # Save the plot
         try:
-            output_dir = st.session_state.get("output_dir", ".")
+            output_dir = ensure_output_directory("rpp_results")
             base_filename = st.session_state.get("base_filename", "photometry")
-            plot_filename = os.path.join(output_dir, f"{base_filename}_zero_point_plot.png")
-            fig.savefig(plot_filename, bbox_inches="tight")
-            st.image(plot_filename, caption="Zero Point Calibration Plot")
-            write_to_log(st.session_state.get("log_buffer"), f"Saved zero point plot to {plot_filename}")
+            plot_filename = os.path.join(
+                output_dir, f"{base_filename}_zero_point_plot.png"
+            )
+            fig.savefig(plot_filename, bbox_inches='tight')
+            plt.close(fig)
         except Exception as e:
-            st.warning(f"Could not save zero point plot: {e}")
+            st.warning(f"Error saving zero point plot: {e}")
+            plt.close(fig)
 
         return zero_point_value, zero_point_std, fig
 
     except Exception as e:
         st.error(f"Error calculating zero point: {e}")
-        import traceback
-        st.error(traceback.format_exc()) # Print traceback for debugging
+        st.error(traceback.format_exc())
         return None, None, None
 
 
@@ -1232,51 +1160,47 @@ def run_zero_point_calibration(
     """
     zero_point_value = None
     zero_point_std = None
-    final_phot_table = None # Initialize
+    final_phot_table = None
 
     with st.spinner("Finding sources and performing photometry..."):
-        # Assuming data_not_normalized and gb are not strictly needed based on usage
-        # Pass None for data_not_normalized as it wasn't used previously
         phot_table_qtable, epsf_table, _, fwhm_estimate = detection_and_photometry(
             image_to_process,
             header,
-            None, # data_not_normalized placeholder
+            None,
             mean_fwhm_pixel,
             threshold_sigma,
             detection_mask,
-            filter_band, # Pass filter_band, though not used in current detection func
+            filter_band,
         )
 
         if phot_table_qtable is None:
-            st.error("Photometry failed. Cannot proceed with calibration.")
+            st.error("Detection and photometry failed. Cannot proceed.")
             return None, None, None
         else:
-            st.success("Photometry complete.")
-            # Update FWHM if it was estimated
-            if fwhm_estimate is not None and fwhm_estimate != mean_fwhm_pixel:
-                 st.info(f"Using estimated FWHM ({fwhm_estimate:.2f} px) for cross-matching.")
-                 mean_fwhm_pixel = fwhm_estimate # Use the estimated FWHM going forward
+            st.success("Detection and photometry complete.")
 
     with st.spinner("Cross-matching with Gaia..."):
         matched_table = cross_match_with_gaia(
             phot_table_qtable,
             header,
             pixel_size_arcsec,
-            mean_fwhm_pixel, # Use potentially updated FWHM
+            mean_fwhm_pixel,
             filter_band,
             filter_max_mag,
         )
 
     if matched_table is None:
         st.error("Cross-matching failed. Cannot proceed with calibration.")
-        return None, None, st.session_state.get("final_phot_table") # Return potentially uncalibrated table
+        final_phot_table = phot_table_qtable.to_pandas() if phot_table_qtable else None
+        st.session_state["final_phot_table"] = final_phot_table
+        return None, None, final_phot_table
 
     st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
     st.dataframe(matched_table.head(10))
 
     with st.spinner("Calculating zero point..."):
         zero_point_value, zero_point_std, _ = calculate_zero_point(
-            phot_table_qtable, # Pass the original table for calibration
+            phot_table_qtable,
             matched_table,
             filter_band,
             air,
@@ -1284,11 +1208,9 @@ def run_zero_point_calibration(
 
     if zero_point_value is None:
         st.error("Zero point calculation failed.")
-        # Return the uncalibrated table stored during ZP calculation attempt
         final_phot_table = st.session_state.get("final_phot_table")
     else:
         st.success("Zero point calibration complete.")
-        # Retrieve the calibrated table stored by calculate_zero_point
         final_phot_table = st.session_state.get("final_phot_table")
 
     return zero_point_value, zero_point_std, final_phot_table
@@ -1328,23 +1250,22 @@ def enhance_catalog(
         The enhanced DataFrame, or the original if enhancement fails or is skipped.
     """
     st.info("Catalog enhancement step is currently a placeholder.")
-    # Potential enhancements:
-    # - Query Simbad/Vizier for known objects near detected sources
-    # - Add flags for variability, galaxy contamination etc. based on Gaia data
-    # - Query specific catalogs (e.g., GRB catalogs using Colibri API if api_key provided)
-    # - Calculate additional parameters (e.g., ellipticity)
 
     if final_table is None:
         st.warning("Cannot enhance catalog: final_table is None.")
         return None
 
-    # Example: Add Simbad object type if matched
-    if matched_table is not None and 'gaia_source_id' in matched_table.columns and 'main_id' in matched_table.columns:
-         # Merge Simbad info based on Gaia ID or coordinates if available in matched_table
-         # This requires matched_table to have Simbad query results included earlier
-         # or performing a new Simbad query here based on coordinates.
-         st.write("Adding Simbad info (placeholder)...")
-         # final_table = pd.merge(final_table, matched_table[['gaia_source_id', 'simbad_otype']], on='gaia_source_id', how='left')
+    if matched_table is not None and 'gaia_source_id' in matched_table.columns:
+         if 'gaia_source_id' not in final_table.columns and 'id' in final_table.columns:
+             try:
+                 id_to_gaia_map = matched_table.set_index('id')['gaia_source_id']
+                 final_table['gaia_source_id'] = final_table['id'].map(id_to_gaia_map)
+                 st.write("Added Gaia Source ID to final table.")
+             except KeyError:
+                 st.warning("Could not map Gaia Source ID. 'id' column missing or mismatch.")
+         elif 'gaia_source_id' in final_table.columns:
+             pass
+         else:
+             st.warning("Could not map Gaia Source ID. No suitable key column found in final_table.")
 
-
-    return final_table # Return table, possibly unmodified
+    return final_table
