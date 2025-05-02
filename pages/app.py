@@ -32,14 +32,15 @@ from astropy.modeling import models, fitting
 from astropy.nddata import NDData
 from astropy.visualization import (ZScaleInterval, ImageNormalize,
                                    PercentileInterval, simple_norm)
-import astropy.units as u  # Add this import
+import astropy.units as u
+from astroquery.gaia import Gaia
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
-from stdpipe import photometry, astrometry, catalogs, pipeline  # Assuming stdpipe is third-party or separate local lib
+from stdpipe import photometry, astrometry, catalogs, pipeline
 
 # Local Application Imports
 from tools import (FIGURE_SIZES, URL, GAIA_BAND, extract_coordinates,
