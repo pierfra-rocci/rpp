@@ -294,11 +294,11 @@ if st.sidebar.button("💾 Save Configuration"):
 # Add quick links (Moved here)
 st.sidebar.markdown("---")
 st.sidebar.markdown("### Quick Links")
-st.sidebar.link_button("SIMBAD Astronomical Database", "http://simbad.u-strasbg.fr/simbad/")
-st.sidebar.link_button("VizieR Catalogue Service", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+st.sidebar.link_button("SIMBAD Database", "http://simbad.u-strasbg.fr/simbad/")
+st.sidebar.link_button("VizieR Catalogues", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
 st.sidebar.link_button("Gaia Archive", "https://gea.esac.esa.int/archive/")
-st.sidebar.link_button("Astro-Colibri Transients", "https://astrocolibri.com/")
-st.sidebar.link_button("RAPAS Project Site", "#") # Placeholder URL
+st.sidebar.link_button("Astro-Colibri", "https://astro-colibri.science/")
+st.sidebar.link_button("RAPAS Project", "https://rapas.imcce.fr/")
 st.sidebar.markdown("---")
 
 
