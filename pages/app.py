@@ -1309,7 +1309,6 @@ def detection_and_photometry(
 
         if np.mean(image_data - bkg.background) > 1.0:
             exposure_time = _science_header.get("EXPTIME", 1.0)
-            # st.write(f"Exposure time: {exposure_time} seconds")
         else:
             exposure_time = 1.0
 
@@ -1503,8 +1502,6 @@ def cross_match_with_gaia(
             combined_filter = mag_filter & color_index_filter
 
         gaia_table_filtered = gaia_table[combined_filter]
-
-        st.write(gaia_table_filtered)
 
         if len(gaia_table_filtered) == 0:
             st.warning(
