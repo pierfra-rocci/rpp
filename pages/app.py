@@ -148,9 +148,6 @@ def initialize_session_state():
     if "files_loaded" not in st.session_state:
         st.session_state.files_loaded = {
             "science_file": None,
-            "bias_file": None,
-            "dark_file": None,
-            "flat_file": None,
         }
 
 
