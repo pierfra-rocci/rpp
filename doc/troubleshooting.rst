@@ -1,194 +1,138 @@
 Troubleshooting
 =============
 
-This section addresses common issues and provides solutions to help you get the most out of Photometry Factory for RAPAS.
+This section addresses common issues and provides solutions for Photometry Factory for RAPAS.
 
-Installation Issues
------------------
+Installation & Setup Issues
+-------------------------
 
-**Error: ImportError: No module named 'astropy'**
+**Error: ImportError: No module named '...'** (e.g., `astropy`, `photutils`, `flask`, `astroscrappy`)
 
-* **Problem**: Required Python packages are not installed.
-* **Solution**: Run `pip install -r requirements.txt` from the application directory.
+*   **Problem**: Required Python packages are not installed or not found in the current environment.
+*   **Solution**:
+    1.  Ensure your virtual environment is activated (`source pfr-env/bin/activate` or `pfr-env\Scripts\activate`).
+    2.  Run `pip install -r requirements.txt` from the application's root directory.
 
-**Error: DLL load failed while importing...**
+**Error: Could not connect to backend at http://localhost:5000** (on Login page)
 
-* **Problem**: Binary dependencies are missing (Windows).
-* **Solution**: Install Visual C++ Redistributable packages, which are required by some astronomical libraries.
+*   **Problem**: The Flask backend server (`backend_dev.py`) is not running or is inaccessible.
+*   **Solution**:
+    1.  Open a separate terminal in the application's root directory.
+    2.  Activate the virtual environment.
+    3.  Run `python backend_dev.py`.
+    4.  Check the terminal output for errors. Ensure no other process is using port 5000.
 
-**Error: File "streamlit/...", line X, in \<module\>**
+**Error: DLL load failed while importing...** (Windows)
 
-* **Problem**: Incompatible streamlit version.
-* **Solution**: Install the specific version with `pip install streamlit==1.15.0`.
+*   **Problem**: Missing C++ runtime libraries required by some Python packages (e.g., `numpy`, `scipy`).
+*   **Solution**: Install the latest Microsoft Visual C++ Redistributable packages for Visual Studio from the official Microsoft website.
 
-Image Loading Issues
-------------------
+**Streamlit Version Issues**
 
-**Error: Could not read FITS file**
+*   **Problem**: Errors related to Streamlit functions or behavior might indicate an incompatible version.
+*   **Solution**: Check the `requirements.txt` file for the recommended Streamlit version and install it specifically: `pip install streamlit==<version>`.
 
-* **Problem**: The file format is not recognized or the file is corrupted.
-* **Solution**: 
-  - Verify the file is a valid FITS file using another tool like DS9
-  - Try re-saving the file from your astronomy software
-  - Ensure proper file extension (.fits, .fit, or .fts)
+Login & Registration Issues
+-------------------------
 
-**Error: FITS header corruption detected**
+**Error: "Username or email is already taken."** (Registration)
 
-* **Problem**: The FITS header contains invalid values or formatting.
-* **Solution**: 
-  - Use a FITS utility like `fitsverify` to check for header problems
-  - Repair the header with a tool like `fitsheader` or by resaving from your astronomy software
+*   **Problem**: The chosen username or email address already exists in the database.
+*   **Solution**: Choose a different username and/or email address.
 
-**Warning: Multiple HDUs detected...**
+**Error: "Invalid username or password."** (Login)
 
-* **Problem**: Multi-extension FITS file has complex structure.
-* **Solution**: 
-  - The application will try to use the primary HDU or first valid image HDU
-  - If this fails, convert your FITS file to a single-extension format using a tool like FITSSPLIT
+*   **Problem**: Incorrect username or password entered.
+*   **Solution**: Verify your credentials. Use the password recovery option if you forgot your password.
 
-WCS and Astrometry Issues
------------------------
+**Password Recovery Fails / No Email Received**
 
-**Error: Missing required WCS keywords**
+*   **Problem**: Email sending is not configured correctly on the backend.
+*   **Solution**:
+    1.  Ensure the backend server (`backend_dev.py`) is running.
+    2.  Verify that the SMTP environment variables (`SMTP_SERVER`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) are correctly set in the environment where the backend is running.
+    3.  Check the backend terminal output for email sending errors.
+    4.  Check your email spam folder.
+    5.  Ensure your email provider allows sending via SMTP (e.g., Gmail might require an "App Password").
 
-* **Problem**: The image lacks proper WCS information.
-* **Solution**:
-  - Enter coordinates manually in the fields provided
-  - Use astrometry.net for plate solving by entering your API key
+Image Loading & Processing Issues
+-------------------------------
 
-**Error: Error solving with astrometry.net**
+**Error: Could not read FITS file / No image data found**
 
-* **Problem**: The online plate solving service couldn't identify the field.
-* **Solution**:
-  - Verify your API key is correct
-  - Check your internet connection
-  - If your field is sparse, try the advanced options at nova.astrometry.net directly
-  - Provide constraints like approximate coordinates or field size if known
+*   **Problem**: The file is corrupted, not a valid FITS file, or uses an unsupported format/compression.
+*   **Solution**:
+    *   Verify the file opens correctly in other FITS viewers (e.g., SAOImage DS9, Astap).
+    *   Ensure the file has a standard extension (.fits, .fit, .fts, .fits.gz).
+    *   If it's a multi-extension FITS, ensure image data exists in at least one HDU.
 
-**Warning: Large WCS errors detected**
+**Error: Missing required WCS keywords / WCS creation error**
 
-* **Problem**: The WCS solution has high residuals.
-* **Solution**:
-  - This may be due to optical distortions in your system
-  - The application will attempt to refine the solution with Gaia DR3
+*   **Problem**: The FITS header lacks the necessary keywords (like CTYPE, CRVAL, CRPIX) for `astropy.wcs` to build a coordinate system.
+*   **Solution**:
+    *   Enable plate solving using Siril (requires Siril installation and the `plate_solve.ps1`/`.sh` script). Ensure Siril is correctly installed and accessible. Check the `plate_solve` script for correct paths if needed.
+    *   Alternatively, use external software to add WCS information to the FITS header before uploading.
 
-Source Detection Issues
----------------------
+**Astrometry+ / WCS Refinement Fails**
 
-**Warning: No sources found!**
+*   **Problem**: The `stdpipe` refinement process could not find enough matches between detected sources and the GAIA catalog, or the initial WCS was too inaccurate.
+*   **Solution**:
+    *   Ensure the initial WCS (from header or Siril) is roughly correct (within a few arcminutes).
+    *   Check internet connectivity (required for GAIA query).
+    *   Try adjusting the "Seeing" parameter, as it affects detection.
+    *   If the field is very sparse or very crowded, refinement might struggle. Consider disabling Astrometry+.
 
-* **Problem**: No astronomical sources were detected in the image.
-* **Solution**:
-  - Decrease the detection threshold (try 2.0-2.5 sigma)
-  - Verify the image has sufficient exposure (not too short or faint)
-  - Check if the image is properly calibrated (not too noisy)
-  - Adjust the seeing estimate to better match the actual seeing in your image
+**Cosmic Ray Removal Issues**
 
-**Warning: Too many spurious detections**
+*   **Problem**: Too many or too few cosmic rays detected; artifacts introduced.
+*   **Solution**:
+    *   Adjust the CRR parameters in the sidebar expander ("Gain", "Read Noise", "Detection Threshold"). Lowering the threshold detects more CRs, raising it detects fewer.
+    *   Ensure Gain and Read Noise values roughly match your detector's characteristics.
+    *   Visually inspect the cleaned image; disable CRR if it causes issues.
 
-* **Problem**: Many false positives detected.
-* **Solution**:
-  - Increase the detection threshold (try 4.0-5.0 sigma)
-  - Increase the border mask size if edge artifacts are present
-  - Apply proper calibration to reduce noise
-  - Check for hot pixels or cosmic rays and apply appropriate filtering
+**Error Estimating Background / Background estimation error**
 
-Photometry Issues
----------------
+*   **Problem**: `photutils.Background2D` failed, possibly due to image size, extreme saturation, or unusual image structure.
+*   **Solution**:
+    *   Ensure the image is not completely saturated or empty.
+    *   The tool automatically adjusts box size for small images, but very small images (< ~40 pixels wide) might still fail.
 
-**Error: Background estimation failed**
+**No Sources Found / Few Sources Found**
 
-* **Problem**: Cannot estimate sky background properly.
-* **Solution**:
-  - Try processing again with a different Border Mask setting
-  - If your image has large extended objects, try increasing the box size parameter
-  - Ensure your image has sufficient sky area without sources
+*   **Problem**: Detection parameters might be unsuitable for the image.
+*   **Solution**:
+    *   Lower the "Detection Threshold (σ)" in the sidebar to detect fainter sources.
+    *   Ensure the "Seeing (arcsec)" estimate is reasonable; an incorrect FWHM estimate for detection can hinder results.
+    *   Check if the "Border Mask" is too large.
+    *   Verify the image isn't blank or excessively noisy.
 
-**Error: FWHM estimation failed**
+**Zero Point Calculation Fails / No Gaia Matches**
 
-* **Problem**: Unable to determine star sizes accurately.
-* **Solution**:
-  - Manually enter a reasonable FWHM estimate based on your seeing
-  - Typical values range from 2-5 pixels for most amateur telescopes
-  - Ensure stars in your image are not saturated or severely distorted
+*   **Problem**: Could not match detected sources to the GAIA catalog or calculate a reliable zero point.
+*   **Solution**:
+    *   Verify WCS accuracy. If WCS is significantly off, matching will fail. Try enabling Astrometry+ or using Siril solving.
+    *   Check internet connection for GAIA query.
+    *   Adjust GAIA "Filter Max Magnitude" – if set too bright (low number), might exclude usable calibration stars.
+    *   Ensure the selected "Filter Band" is appropriate for the image filter (if known).
+    *   The field might genuinely lack suitable GAIA stars in the specified magnitude range.
 
-**Error: PSF fitting failed**
+Catalog Query Issues (SIMBAD, SkyBoT, etc.)
+-----------------------------------------
 
-* **Problem**: Cannot generate a proper PSF model.
-* **Solution**:
-  - PSF modeling requires multiple well-exposed, non-saturated stars
-  - Try using only aperture photometry results instead
-  - Check that your image has good enough focus/seeing for PSF fitting
+**Warning: "Query failed: Network error / Timeout"**
 
-Zero-Point Calibration Issues
----------------------------
+*   **Problem**: Temporary network issue or the external catalog service is down or slow.
+*   **Solution**: Wait and try processing the image again later. Check your internet connection.
 
-**Error: No Gaia sources found within search radius**
+**Warning: "No sources found..." for a specific catalog**
 
-* **Problem**: Cannot find Gaia stars in the field.
-* **Solution**:
-  - Verify your WCS solution is correct
-  - Adjust the Gaia magnitude range to better match your image depth
-  - Check if your coordinates are pointing to a very sparse field
+*   **Problem**: The catalog genuinely contains no known objects matching the criteria within your image field.
+*   **Solution**: This is expected for many fields. The message is informational.
 
-**Error: Zero point calculation failed**
+**Astro-Colibri: No matches or Error**
 
-* **Problem**: Cannot determine the photometric zero point.
-* **Solution**:
-  - Ensure you have enough Gaia matched stars (at least 5-10)
-  - Adjust the Gaia magnitude range to include more calibration stars
-  - Check that your aperture size is appropriate for the seeing
-  - Verify that your image is properly calibrated
-
-Performance Issues
-----------------
-
-**Warning: Application running slowly**
-
-* **Problem**: Processing takes too long.
-* **Solution**:
-  - For large images, try cropping or binning them before processing
-  - Adjust Border Mask to process only the central portion of very large images
-  - Close other resource-intensive applications
-  - Process smaller areas or fewer sources for initial testing
-
-**Error: Memory error during processing**
-
-* **Problem**: Application runs out of memory.
-* **Solution**:
-  - Use a system with more RAM
-  - Process smaller images or reduce the image size through binning
-  - Close other applications to free up memory
-  - If using a virtual environment, make sure it has access to sufficient system resources
-
-Output Issues
------------
-
-**Error: Permission denied when saving files**
-
-* **Problem**: Cannot write to output directory.
-* **Solution**:
-  - Run the application with appropriate permissions
-  - Change the output directory to one where you have write access
-  - Close any open files that might be locked
-
-**Warning: Catalog file contains NaN values**
-
-* **Problem**: Some measurements failed or couldn't be calculated.
-* **Solution**:
-  - This is normal for some sources, especially at image edges
-  - Filter out rows with NaN values in your subsequent analysis
-  - Try adjusting detection parameters to improve measurement quality
-
-Getting Help
------------
-
-If you encounter issues not covered here:
-
-1. Check the log file generated during processing for detailed error messages
-2. Search for similar issues in the project repository
-3. Contact the development team with:
-   - A clear description of the problem
-   - Steps to reproduce the issue
-   - Relevant error messages
-   - Sample data if possible (or a description if data cannot be shared)
+*   **Problem**: Invalid or missing API key, network issue, or no recent events in the field.
+*   **Solution**:
+    *   Ensure you have entered the correct Astro-Colibri UID key in the sidebar.
+    *   Check internet connection.
+    *   Check the Astro-Colibri website for service status.

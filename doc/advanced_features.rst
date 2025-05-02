@@ -6,242 +6,274 @@ This section covers advanced features and specialized use cases for Photometry F
 PSF Photometry
 ------------
 
-While aperture photometry works well for isolated stars, PSF (Point Spread Function) photometry offers advantages for:
+While aperture photometry works well for isolated stars, PSF (Point Spread Function) photometry, performed automatically by PFR using `photutils`, offers advantages for:
 
-* Crowded fields where stars overlap
-* Faint sources where aperture photometry is noise-limited
-* Variable seeing conditions across the image
+*   Crowded fields where stars overlap.
+*   Faint sources where aperture photometry is noise-limited.
+*   Achieving potentially higher precision by modeling the star's profile.
 
-The application automatically performs both aperture and PSF photometry, and you can compare the results:
+The application performs these steps:
 
-1. **PSF Model Construction**: The application builds an empirical PSF model from bright, isolated stars
-2. **PSF Fitting**: This model is then fitted to all detected sources
+1.  **PSF Model Construction**: Builds an empirical PSF model (`EPSF`) from bright, isolated stars detected in the image using `photutils.psf.EPSFBuilder`. The model is saved as `*_psf.fits`.
+2.  **PSF Fitting**: This model is then fitted to all detected sources using `photutils.psf.IterativePSFPhotometry` to measure their flux.
+
+Results from both aperture and PSF photometry are included in the final catalog (`aperture_calib_mag`, `psf_calib_mag` if calculated) for comparison.
 
 To optimize PSF photometry:
 
-* Ensure your seeing estimate is accurate
-* Verify the automatically selected PSF stars are good representatives
-* Review the PSF model visualization for quality
+*   Ensure your **Seeing** estimate in the sidebar is reasonably accurate, as it influences the initial detection and PSF extraction box size.
+*   Review the PSF model visualization in the results panel for quality (e.g., check for asymmetry or contamination).
 
 .. code-block:: python
 
-    # The PSF model is saved as a FITS file in your output directory
+    # Example: Inspect the saved PSF model
     from astropy.io import fits
     import matplotlib.pyplot as plt
-    
-    # Load the PSF model
-    psf_data = fits.getdata('psf_model_epsf.fits')
-    
-    # Plot it with higher resolution
-    plt.figure(figsize=(10, 8))
-    plt.imshow(psf_data, origin='lower', cmap='viridis')
-    plt.colorbar(label='Normalized Intensity')
-    plt.title('PSF Model')
-    plt.savefig('psf_model_highres.png', dpi=150)
+    from astropy.visualization import simple_norm
+
+    # Load the PSF model (adjust filename as needed)
+    psf_filename = 'rpp_results/your_image_base_name_psf.fits'
+    try:
+        psf_data = fits.getdata(psf_filename)
+
+        # Plot it
+        norm = simple_norm(psf_data, 'log', percent=99.)
+        plt.figure(figsize=(8, 8))
+        plt.imshow(psf_data, origin='lower', cmap='viridis', norm=norm)
+        plt.colorbar(label='Normalized Intensity (log scale)')
+        plt.title('Empirical PSF Model')
+        plt.show()
+    except FileNotFoundError:
+        print(f"PSF file not found: {psf_filename}")
+    except Exception as e:
+        print(f"Error loading or plotting PSF: {e}")
+
 
 Working with Time-Series Data
 ---------------------------
 
-For variable stars, asteroids, or other time-variable objects, you can process multiple images and combine the results:
+For variable stars, asteroids, or other time-variable objects, you can process multiple images taken over time and combine the results:
 
-1. Process each image individually through the application
-2. Collect the output catalogs
-3. Match sources across catalogs and create light curves
-
-This example script demonstrates combining multiple output catalogs:
-
-.. code-block:: python
-
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from astropy.time import Time
-    
-    # List of processed catalog files
-    catalog_files = [
-        'image1_phot.csv',
-        'image2_phot.csv',
-        'image3_phot.csv'
-    ]
-    
-    # Observation times from FITS headers
-    obs_times = [
-        '2023-01-15T22:30:45',
-        '2023-01-15T23:15:20',
-        '2023-01-16T00:05:10'
-    ]
-    
-    # Target coordinates (RA, Dec)
-    target_coords = (183.2641, 22.0145)
-    tolerance = 3.0/3600.0  # 3 arcseconds tolerance
-    
-    # Load catalogs and extract magnitude measurements
-    times = []
-    mags = []
-    errs = []
-    
-    for i, (cat_file, obs_time) in enumerate(zip(catalog_files, obs_times)):
-        catalog = pd.read_csv(cat_file)
-        
-        # Find the target in each catalog based on coordinates
-        dist = np.sqrt((catalog['ra'] - target_coords[0])**2 + 
-                       (catalog['dec'] - target_coords[1])**2)
-        matches = dist < tolerance
-        
-        if np.any(matches):
-            target_row = catalog[matches].iloc[0]
-            times.append(Time(obs_time).jd)
-            mags.append(target_row['aperture_calib_mag'])
-            errs.append(target_row['aperture_sum_err'] * 1.0857)  # Convert to mag error
-    
-    # Plot light curve
-    plt.figure(figsize=(12, 6))
-    plt.errorbar(times, mags, yerr=errs, fmt='o-', capsize=4)
-    plt.gca().invert_yaxis()  # Astronomical convention
-    plt.xlabel('JD')
-    plt.ylabel('Calibrated Magnitude')
-    plt.title('Light Curve')
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig('light_curve.png')
+1.  Process each image individually through the PFR application, ensuring consistent analysis parameters.
+2.  Download the results ZIP archive for each processed image.
+3.  Extract the `*_catalog.csv` and `*_header.txt` files for each observation.
+4.  Use a script (like the one in `examples.rst`) to:
+    *   Read each catalog.
+    *   Extract the observation time (e.g., `DATE-OBS` from the header file).
+    *   Identify your target star(s) in each catalog (e.g., by matching coordinates).
+    *   Extract the magnitude (`aperture_calib_mag` or `psf_calib_mag`) and its error.
+    *   Combine the time-magnitude pairs to create and plot a light curve.
 
 Differential Photometry
 ----------------------
 
-For high-precision relative photometry:
+For high-precision relative photometry, especially useful for detecting small variations:
 
-1. Process your image with PFR to get a calibrated catalog
-2. Select suitable comparison stars
-3. Perform differential photometry relative to these stars
+1.  Process your image with PFR to get a calibrated catalog (`*_catalog.csv`).
+2.  Identify your target star in the catalog.
+3.  Select several (e.g., 3-10) suitable comparison stars:
+    *   They should be close in brightness to your target.
+    *   They should be nearby on the detector to minimize spatial variations.
+    *   They should be confirmed as non-variable (check `catalog_matches` or `aavso_Name` columns; avoid stars flagged by AAVSO or SIMBAD as variable).
+    *   They should have good SNR and low magnitude errors.
+4.  Calculate the differential magnitude using a script.
 
-Example workflow:
+Example workflow snippet:
 
 .. code-block:: python
 
     import pandas as pd
     import numpy as np
-    
+
     # Load the calibrated catalog
-    catalog = pd.read_csv('output_phot.csv')
-    
-    # Target star index
-    target_idx = 42  # Replace with your target star index
-    
-    # Select comparison stars with similar brightness
-    target_mag = catalog.loc[target_idx, 'aperture_calib_mag']
-    
-    # Find stars within 1 magnitude of the target and not variable
-    comp_stars = catalog[
-        (abs(catalog['aperture_calib_mag'] - target_mag) < 1.0) &
-        (catalog['aavso_Name'].isna()) &  # Not known variables
-        (catalog.index != target_idx)
-    ]
-    
-    # Use top 5 stars with lowest magnitude error as comparison
-    comp_stars = comp_stars.nsmallest(5, 'aperture_sum_err')
-    
-    # Calculate mean magnitude of comparison stars
-    comp_flux = np.sum(10**(-0.4 * comp_stars['aperture_calib_mag']))
-    comp_mag = -2.5 * np.log10(comp_flux / len(comp_stars))
-    
-    # Differential magnitude
-    diff_mag = catalog.loc[target_idx, 'aperture_calib_mag'] - comp_mag
-    
-    print(f"Target magnitude: {catalog.loc[target_idx, 'aperture_calib_mag']:.3f}")
-    print(f"Comparison ensemble magnitude: {comp_mag:.3f}")
-    print(f"Differential magnitude: {diff_mag:.3f}")
+    catalog_file = 'rpp_results/your_image_base_name_catalog.csv'
+    catalog = pd.read_csv(catalog_file)
+
+    # --- Identify Target and Potential Comparison Stars ---
+    # Example: Target identified by its index in the DataFrame
+    target_idx = 42 # Replace with your target star index or find via coordinates
+
+    if target_idx not in catalog.index:
+        print(f"Target index {target_idx} not found in catalog.")
+        exit()
+
+    target_mag = catalog.loc[target_idx, 'aperture_calib_mag'] # Or psf_calib_mag
+
+    # Find potential comparison stars:
+    # - Within 1 magnitude of the target
+    # - Not the target itself
+    # - Not known variables (checking AAVSO name as example)
+    # - Having valid magnitude values
+    potential_comps = catalog[
+        (np.abs(catalog['aperture_calib_mag'] - target_mag) < 1.0) &
+        (catalog.index != target_idx) &
+        (catalog['aavso_Name'].isna()) & # Example: Exclude known AAVSO variables
+        (catalog['aperture_calib_mag'].notna())
+    ].copy()
+
+    # Optional: Add proximity filter (calculate distance from target)
+    # potential_comps['distance_pix'] = np.sqrt(
+    #    (potential_comps['xcenter'] - catalog.loc[target_idx, 'xcenter'])**2 +
+    #    (potential_comps['ycenter'] - catalog.loc[target_idx, 'ycenter'])**2
+    # )
+    # potential_comps = potential_comps[potential_comps['distance_pix'] < 500] # Example: within 500 pixels
+
+    # Select top N comparison stars with lowest magnitude error
+    # Estimate magnitude error from flux error (if available)
+    if 'aperture_sum' in catalog.columns and 'aperture_sum_err' in catalog.columns:
+         flux = potential_comps['aperture_sum']
+         flux_err = potential_comps['aperture_sum_err']
+         # Avoid division by zero or invalid values
+         valid_err = (flux > 0) & (flux_err.notna())
+         potential_comps.loc[valid_err, 'mag_err_est'] = 1.0857 * (flux_err[valid_err] / flux[valid_err])
+         potential_comps.loc[~valid_err, 'mag_err_est'] = np.inf
+    else:
+        potential_comps['mag_err_est'] = np.inf # Cannot sort by error
+
+    # Sort by estimated error and select the best N (e.g., 5)
+    comp_stars = potential_comps.nsmallest(5, 'mag_err_est')
+
+    if len(comp_stars) < 1:
+        print("Not enough suitable comparison stars found.")
+        exit()
+
+    print(f"Using {len(comp_stars)} comparison stars.")
+
+    # --- Calculate Differential Magnitude ---
+    # Calculate the average instrumental magnitude of the comparison stars
+    # It's often better to average fluxes, then convert back to magnitude
+    comp_instrumental_mags = comp_stars['instrumental_mag'] # Use instrumental mag before ZP/airmass
+    comp_flux_sum = np.sum(10**(-0.4 * comp_instrumental_mags))
+    mean_comp_instrumental_mag = -2.5 * np.log10(comp_flux_sum / len(comp_stars))
+
+    # Differential magnitude (Target Instrumental Mag - Mean Comparison Instrumental Mag)
+    target_instrumental_mag = catalog.loc[target_idx, 'instrumental_mag']
+    diff_mag = target_instrumental_mag - mean_comp_instrumental_mag
+
+    print(f"Target Instrumental Mag: {target_instrumental_mag:.4f}")
+    print(f"Mean Comparison Instrumental Mag: {mean_comp_instrumental_mag:.4f}")
+    print(f"Differential Magnitude: {diff_mag:.4f}")
+
+    # This differential magnitude is less sensitive to transparency variations
+    # and airmass changes than the direct calibrated magnitude.
+
 
 Custom Pipeline Integration
 -------------------------
 
-PFR can be integrated into larger pipelines by:
+While PFR provides an integrated web UI, its outputs can be used as inputs for larger, custom analysis pipelines:
 
-1. Using the application to generate calibrated catalogs
-2. Importing these catalogs into your custom scripts
-3. Performing additional specialized analysis
+1.  **Process Images**: Use the PFR web application to process your FITS images individually or in batches.
+2.  **Collect Outputs**: Download the results ZIP archives containing the calibrated catalogs (`*_catalog.csv`), logs, and other metadata.
+3.  **Ingest Catalogs**: Write custom Python scripts (using `pandas`, `astropy`, etc.) to read these CSV catalogs.
+4.  **Perform Further Analysis**: Implement specialized analysis not covered by PFR, such as:
+    *   Detailed light curve modeling (e.g., using `gatspy`, `lightkurve`).
+    *   Asteroid astrometry refinement and orbit determination.
+    *   Stacking results from multiple observations.
+    *   Generating publication-quality plots.
+    *   Cross-matching with specialized or private catalogs.
 
-Example integration script:
+Example integration concept:
 
 .. code-block:: python
 
-    import os
-    import subprocess
     import pandas as pd
     import glob
-    
-    # Directory containing FITS files
-    data_dir = '/path/to/data'
-    fits_files = glob.glob(os.path.join(data_dir, '*.fits'))
-    
-    # Process each file with PFR
-    for fits_file in fits_files:
-        # Run PFR in headless mode
-        cmd = [
-            'streamlit', 'run', 'pfr_app.py', '--', 
-            '--input', fits_file,
-            '--no-calibration',
-            '--output-dir', 'results',
-            '--headless'
-        ]
-        subprocess.run(cmd, check=True)
-    
-    # Collect and combine results
-    catalog_files = glob.glob('results/*_phot.csv')
-    combined_data = []
-    
+    import os
+
+    # Directory where PFR results ZIPs were extracted
+    pfr_output_dir = 'path/to/extracted/pfr_results'
+
+    all_catalogs = []
+    catalog_files = glob.glob(os.path.join(pfr_output_dir, '*_catalog.csv'))
+
     for cat_file in catalog_files:
-        df = pd.read_csv(cat_file)
-        # Add filename as reference
-        df['source_file'] = os.path.basename(cat_file)
-        combined_data.append(df)
-    
-    # Combine all catalogs
-    master_catalog = pd.concat(combined_data, ignore_index=True)
-    master_catalog.to_csv('master_catalog.csv', index=False)
+        try:
+            df = pd.read_csv(cat_file)
+            # Add identifier based on filename
+            df['source_image_base'] = os.path.basename(cat_file).replace('_catalog.csv', '')
+            # Extract observation time from corresponding header file (add logic here)
+            # df['obs_jd'] = ...
+            all_catalogs.append(df)
+        except Exception as e:
+            print(f"Error reading {cat_file}: {e}")
+
+    if all_catalogs:
+        # Combine all catalogs into a single master DataFrame
+        master_catalog = pd.concat(all_catalogs, ignore_index=True)
+        print(f"Combined {len(master_catalog)} rows from {len(all_catalogs)} catalogs.")
+
+        # --- Perform custom analysis on master_catalog ---
+        # Example: Find all detections of a specific object across images
+        # target_coords = (123.456, 45.678)
+        # matched_target = master_catalog[
+        #    (np.abs(master_catalog['ra'] - target_coords[0]) < tolerance) &
+        #    (np.abs(master_catalog['dec'] - target_coords[1]) < tolerance)
+        # ]
+        # print(matched_target[['source_image_base', 'aperture_calib_mag']])
+        #
+        # Example: Save the combined catalog
+        # master_catalog.to_csv('combined_pfr_catalog.csv', index=False)
+    else:
+        print("No catalogs found or loaded.")
+
 
 Advanced Visualization
 --------------------
 
-PFR output can be visualized with advanced Python libraries:
+PFR output catalogs (`*_catalog.csv`) can be visualized using advanced Python libraries like `matplotlib`, `seaborn`, or `plotly` for deeper insights.
+
+Example using `matplotlib` for a density scatter plot:
 
 .. code-block:: python
 
     import pandas as pd
     import matplotlib.pyplot as plt
     import numpy as np
-    from matplotlib.colors import LogNorm
     from scipy.stats import gaussian_kde
-    
+
     # Load catalog
-    catalog = pd.read_csv('output_phot.csv')
-    
-    # Create density scatter plot of magnitude vs position
+    catalog_file = 'rpp_results/your_image_base_name_catalog.csv'
+    catalog = pd.read_csv(catalog_file)
+
+    # Filter out invalid magnitudes if necessary
+    catalog = catalog[catalog['aperture_calib_mag'].notna()]
+
+    if catalog.empty:
+        print("No valid data for plotting.")
+        exit()
+
+    # Create density scatter plot of magnitude vs. position (X)
     x = catalog['xcenter']
-    y = catalog['ycenter']
-    z = catalog['aperture_calib_mag']
-    
+    y = catalog['aperture_calib_mag'] # Use calibrated magnitude
+
+    # Calculate point density
+    try:
+        xy = np.vstack([x,y])
+        z = gaussian_kde(xy)(xy)
+        # Sort points by density, so dense points don't overplot sparse ones
+        idx = z.argsort()
+        x, y, z = x[idx], y[idx], z[idx]
+    except np.linalg.LinAlgError:
+        print("Could not calculate density (singular matrix). Plotting without density.")
+        z = None # Fallback: plot without density coloring
+
     # Set up plot
-    fig, axs = plt.subplots(1, 2, figsize=(16, 7))
-    
-    # Magnitude vs X position
-    xy = np.vstack([x, z])
-    density = gaussian_kde(xy)(xy)
-    
-    axs[0].scatter(x, z, c=density, s=5, edgecolor='')
-    axs[0].set_xlabel('X Position (pixels)')
-    axs[0].set_ylabel('Magnitude')
-    axs[0].grid(True, alpha=0.3)
-    axs[0].invert_yaxis()
-    
-    # Magnitude vs Y position
-    xy = np.vstack([y, z])
-    density = gaussian_kde(xy)(xy)
-    
-    axs[1].scatter(y, z, c=density, s=5, edgecolor='')
-    axs[1].set_xlabel('Y Position (pixels)')
-    axs[1].set_ylabel('Magnitude')
-    axs[1].grid(True, alpha=0.3)
-    axs[1].invert_yaxis()
-    
+    fig, ax = plt.subplots(figsize=(10, 7))
+
+    # Scatter plot
+    scatter = ax.scatter(x, y, c=z, s=10, edgecolor='', cmap='viridis', alpha=0.7)
+
+    ax.set_xlabel('X Position (pixels)')
+    ax.set_ylabel('Calibrated Magnitude')
+    ax.set_title('Magnitude vs. X Position (Density Colored)')
+    ax.grid(True, alpha=0.3)
+    ax.invert_yaxis() # Magnitudes: fainter is larger number
+
+    if z is not None:
+        cbar = fig.colorbar(scatter)
+        cbar.set_label('Point Density')
+
     plt.tight_layout()
-    plt.savefig('position_magnitude.png', dpi=150)
+    plt.savefig('magnitude_vs_x_density.png', dpi=150)
+    print("Density plot saved to magnitude_vs_x_density.png")

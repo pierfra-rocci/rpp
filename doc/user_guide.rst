@@ -4,7 +4,12 @@ User Guide
 Getting Started
 --------------
 
-Photometry Factory for RAPAS provides a streamlined workflow for astronomical image analysis through a user-friendly web interface. This guide walks you through the complete process from image upload to final photometric catalog generation.
+Photometry Factory for RAPAS provides a streamlined workflow for astronomical image analysis through a user-friendly web interface. This guide walks you through the complete process from login and image upload to final photometric catalog generation.
+
+**Prerequisites:** Ensure the backend server (`backend_dev.py`) is running before launching the frontend.
+
+1. Launch the frontend: `streamlit run run_frontend.py`
+2. Access the URL (e.g., http://localhost:8501) and log in or register.
 
 Application Layout
 -----------------
@@ -15,110 +20,75 @@ Application Layout
 
 The interface is divided into two main sections:
 
-* **Left Sidebar**: Contains file uploaders, configuration options, and analysis parameters
-* **Main Panel**: Displays results, visualizations, and interactive elements
+* **Left Sidebar**: Contains login/logout controls, file uploader, processing options (Astrometry+, Cosmic Ray Removal), observatory settings, analysis parameters (Seeing, Threshold, Mask), photometry parameters (Gaia band/limit), Astro-Colibri API key input, configuration saving, and quick links.
+* **Main Panel**: Displays the uploaded image, processing status, results (plots, tables), interactive visualizations (Aladin), and logs.
 
-Step 1: Uploading Files
+Step 1: Login & Upload
 ----------------------
+1. Authenticate using the login page.
+2. Once logged in, use the sidebar file uploader:
+   * **Image** (required): Your main astronomical image in FITS format (.fits, .fit, .fts, .fits.gz).
 
-Begin by uploading your astronomical images using the file uploaders in the sidebar:
+Step 2: Configure Processing
+--------------------------
+Set up your analysis using the sidebar options:
 
-1. **Science Image** (required): Your main astronomical image in FITS format
-2. **Master Bias** (optional): Bias calibration frame
-3. **Master Dark** (optional): Dark current calibration frame
-4. **Master Flat** (optional): Flat field calibration frame
+1.  **Observatory Location**: Verify or input the observatory's name, latitude, longitude, and elevation. This is used for airmass calculation.
+2.  **Process Options**:
+    *   **Astrometry +**: Check to enable WCS refinement using `stdpipe` and GAIA DR3.
+    *   **Remove Cosmic Rays**: Check to enable cosmic ray removal using `astroscrappy`. Configure Gain, Read Noise, and Threshold in the expander if needed.
+3.  **Analysis Parameters**:
+    *   **Seeing (arcsec)**: Estimate of atmospheric seeing.
+    *   **Detection Threshold (σ)**: Sigma level above background for source detection.
+    *   **Border Mask (pixels)**: Pixels to ignore around the image edge.
+4.  **Photometry Parameters**:
+    *   **Filter Band**: Select the GAIA band for zero-point calibration.
+    *   **Filter Max Magnitude**: Set the faint limit for GAIA calibration stars.
+5.  **Astro-Colibri**: Enter your UID key (optional) for transient cross-matching.
+6.  **Save Configuration**: Click "Save" to store these settings for your user account.
 
-.. note::
-   The application accepts standard FITS formats (.fits, .fit, .fts) including compressed variants.
-
-Step 2: Image Calibration
-------------------------
-
-If you've uploaded calibration frames, you can apply them to your science image:
-
-1. Select the calibration steps you wish to apply (bias, dark, flat field)
-2. Click the "Run Image Calibration" button
-3. View the calibrated image displayed in the main panel
-
-The application automatically handles exposure time scaling for dark frames and normalization of flat fields.
-
-Step 3: WCS Determination
------------------------
-
-Accurate World Coordinate System (WCS) information is essential for photometry and catalog matching:
-
-1. The application first attempts to read WCS from the FITS header
-2. If WCS is missing or invalid, you can:
-   * Enter RA/Dec coordinates manually
-   * Use the astrometry.net service for plate solving (requires an API key)
-
-.. tip::
-   For plate solving with astrometry.net, enter your API key in the sidebar field.
-   If you don't have one, you can register for free at nova.astrometry.net.
-
-Step 4: Photometry and Analysis
------------------------------
-
-Once your image is calibrated and WCS is determined:
-
-1. Click "Run Zero Point Calibration" to start the analysis pipeline
-2. The application will:
-   * Detect sources in your image
-   * Measure their positions and fluxes
-   * Cross-match with the Gaia DR3 catalog
-   * Calculate photometric zero point
-   * Generate calibrated magnitudes for all sources
-
-Advanced configuration options in the sidebar allow you to adjust:
-
-* Source detection threshold
-* Border mask size
-* Seeing estimate
-* Gaia magnitude range for calibration
-
-Step 5: Reviewing Results
------------------------
-
-After processing, the application provides comprehensive results:
-
-* **Calibrated Science Image**: View the processed image
-* **Source Catalog**: Interactive table of detected sources
-* **Calibration Plot**: Zero point determination visualization
-* **Cross-matched Catalog**: Sources identified in other catalogs
-* **Aladin Viewer**: Interactive sky map with your catalog overlaid
-
-Step 6: Exporting Data
+Step 3: Run Analysis
 --------------------
+Click the "Run Zero Point Calibration" button in the main panel (appears after image upload). The application will perform the following steps automatically:
 
-Your analysis results are automatically saved to the `pfr_results` directory and can be downloaded directly:
+1.  **Load Image**: Reads FITS data and header.
+2.  **Cosmic Ray Removal** (if enabled).
+3.  **WCS Check/Solve**: Reads WCS from header. If invalid or missing, attempts solving with Siril (if configured/available) or prompts for Astrometry.net.
+4.  **Astrometry Refinement** (if Astrometry+ enabled): Refines WCS using `stdpipe`.
+5.  **Background Estimation**: Calculates and subtracts 2D background.
+6.  **FWHM Estimation**: Estimates the average stellar FWHM.
+7.  **Source Detection**: Finds sources using DAOStarFinder.
+8.  **Photometry**: Performs both aperture and PSF photometry.
+9.  **GAIA Cross-match**: Matches detected sources with GAIA DR3.
+10. **Zero Point Calculation**: Determines the photometric zero point.
+11. **Catalog Enhancement**: Cross-matches with SIMBAD, SkyBoT, AAVSO VSX, Astro-Colibri, and Milliquas.
 
-* **CSV Catalog**: Complete photometry results with calibrated magnitudes
-* **Metadata File**: Analysis parameters and observation details
-* **PSF Model**: The fitted PSF model as a FITS file
-* **Log File**: Complete processing log
+Step 4: Review Results
+-----------------------
+After processing, the main panel displays comprehensive results:
 
-Using the Interactive Aladin Viewer
-----------------------------------
+*   **Processed Image**: View the background-subtracted image.
+*   **Background/RMS Plots**: Visualize the estimated background model.
+*   **FWHM Histogram**: Distribution of measured FWHM values.
+*   **PSF Model**: The empirically derived PSF.
+*   **Zero Point Plot**: Calibration plot showing GAIA vs. instrumental magnitudes.
+*   **Source Catalogs**:
+    *   Interactive table of GAIA calibration stars.
+    *   Interactive table summarizing external catalog matches.
+    *   Full photometry catalog table.
+*   **Aladin Viewer**: Interactive sky map with your catalog overlaid. Click sources for details.
+*   **Log Output**: Detailed processing log.
 
-The embedded Aladin Lite viewer allows you to explore your field with detected sources marked:
+Step 5: Export Data
+--------------------
+Your analysis results are saved to the `rpp_results` directory.
 
-* Pan and zoom the image using mouse controls
-* Click on marked sources to view detailed information
-* Toggle between different sky surveys using the layer control
-* Search for specific objects using the search box
+*   Use the **Download All Results (ZIP)** button in the sidebar to get a compressed archive containing:
+    *   CSV Catalog: Complete photometry results.
+    *   Header File (.txt): Original FITS header.
+    *   Log File (.log): Processing log.
+    *   Plots (.png): FWHM histogram, Zero Point plot, etc.
+    *   Background Model (.fits).
+    *   PSF Model (.fits).
 
-Best Practices and Tips
-----------------------
-
-* **Image Quality**: Higher quality science images yield better photometric results
-* **Calibration Frames**: Using proper calibration frames significantly improves accuracy
-* **Detection Parameters**: Adjust threshold and FWHM according to your image characteristics
-* **Gaia Magnitude Range**: Set appropriate magnitude limits to get good calibration stars
-* **Border Mask**: Increase the border mask if your image has edge artifacts
-
-Additional Resources
-------------------
-
-* See the Examples section for walkthrough tutorials
-* Check Advanced Features for specialized use cases
-* Refer to Troubleshooting for common issues and solutions
+Refer to Troubleshooting for common issues and solutions.
