@@ -66,9 +66,12 @@ An astronomical image processing and photometry tool designed specifically for [
    pip install -r requirements.txt
    ```
 
-3. Start the backend server (use backend_prod.py for production):
+3. Start the backend server (use `backend_prod.py` for production):
    ```bash
+   # For development with auto-reload
    python backend_dev.py
+   # For production
+   # python backend_prod.py 
    ```
 
 4. In a new terminal, start the frontend Streamlit app:
@@ -107,7 +110,7 @@ An astronomical image processing and photometry tool designed specifically for [
 2. **Start the frontend**: `streamlit run run_frontend.py` (always redirects to login page).
 3. **Authenticate**: Register or log in. User/session parameters are loaded from the backend if available.
 4. **Upload and analyze**: Upload your science FITS file (and optional calibration frames), set parameters, and run the photometry pipeline.
-5. **Results**: All outputs (catalogs, plots, logs, config) are saved in `pfr_results` and can be downloaded as a ZIP archive. Cross-matching with Gaia, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, and Astro-Colibri is supported.
+5. **Results**: All outputs (catalogs, plots, logs, config) are saved in `rpp_results` and can be downloaded as a ZIP archive. Cross-matching with Gaia, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, and Astro-Colibri is supported.
 6. **Save configuration**: Save your analysis parameters and observatory info to the backend and as a JSON file for reproducibility.
 
 ## Authentication & Backend
@@ -135,7 +138,7 @@ Then open `doc/_build/html/index.html` in your browser.
 
 ## Example Output
 
-The application generates several output files in the pfr_results directory:
+The application generates several output files in the `rpp_results` directory:
 
 - `[filename]_phot.csv` - Photometry catalog with calibrated magnitudes
 - `[filename]_header.txt` - FITS header information
