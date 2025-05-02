@@ -38,7 +38,7 @@ from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
-from stdpipe import photometry, astrometry, catalogs, pipeline # Assuming stdpipe is third-party or separate local lib
+from stdpipe import photometry, astrometry, catalogs, pipeline  # Assuming stdpipe is third-party or separate local lib
 
 # Local Application Imports
 from tools import (FIGURE_SIZES, URL, GAIA_BAND, extract_coordinates,
@@ -54,7 +54,9 @@ if getattr(sys, "frozen", False):
 
 warnings.filterwarnings("ignore")
 
-st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide")
+
+st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭",
+                   layout="wide")
 
 # Redirect to login if not authenticated
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
