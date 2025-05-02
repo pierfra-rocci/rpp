@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 from functools import partial
 from io import StringIO, BytesIO
-from typing import Union, Any, Optional, Dict, Tuple, List
+from typing import Union, Any, Optional, Dict, Tuple
 
 # Third-Party Imports
 import streamlit as st
@@ -25,7 +25,7 @@ import astroscrappy
 from astropy.io import fits
 from astropy.table import Table
 from astropy.wcs import WCS
-from astropy.stats import sigma_clip, SigmaClip, sigma_clipped_stats
+from astropy.stats import sigma_clip, SigmaClip
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from astropy.time import Time
 from astropy.modeling import models, fitting
@@ -739,30 +739,230 @@ def fwhm_fit(
     std_lo: float = 1.0,
     std_hi: float = 1.0,
 ) -> Optional[float]:
-    """Estimate the FWHM from an image using a fitting method.
+    """
+    Estimate the Full Width at Half Maximum (FWHM) of stars in an astronomical image.
 
-    (Implementation details are missing in the provided code snippet.)
+    This function detects sources in the image using DAOStarFinder, filters them based on
+    flux values, and fits 1D Gaussian models to the marginal distributions of each source
+    to calculate FWHM values.
 
     Parameters
     ----------
-    _img : np.ndarray
-        Input image data.
+    img : numpy.ndarray
+        The 2D image array containing astronomical sources
     fwhm : float
-        Initial guess for the FWHM.
-    mask : Optional[np.ndarray], optional
-        Mask to exclude regions from the fit, by default None.
-    std_lo : float, optional
-        Lower standard deviation threshold, by default 1.0.
-    std_hi : float, optional
-        Upper standard deviation threshold, by default 1.0.
+        Initial FWHM estimate in pixels, used for source detection
+    pixel_scale : float
+        The pixel scale of the image in arcseconds per pixel
+    mask : numpy.ndarray, optional
+        Boolean mask array where True indicates pixels to ignore during source detection
+    std_lo : float, default=0.5
+        Lower bound for flux filtering, in standard deviations below median flux
+    std_hi : float, default=0.5
+        Upper bound for flux filtering, in standard deviations above median flux
 
     Returns
     -------
-    Optional[float]
-        Estimated FWHM value in pixels, or None if the fit fails.
+    float or None
+        The median FWHM value in pixels (rounded to nearest integer) if successful,
+        or None if no valid sources could be measured
+
+    Notes
+    -----
+    The function uses marginal sums along the x and y dimensions and fits 1D Gaussian
+    profiles to estimate FWHM. For each source, a box of size ~6×FWHM is extracted,
+    and profiles are fit independently in both dimensions, with the results averaged.
+
+    Progress updates and error messages are displayed using Streamlit.
     """
-    # Implementation missing in provided snippet
-    pass
+
+    def compute_fwhm_marginal_sums(image_data, center_row, center_col, box_size):
+        half_box = box_size // 2
+
+        if box_size < 5:
+            return None
+
+        row_start = center_row - half_box
+        row_end = center_row + half_box + 1
+        col_start = center_col - half_box
+        col_end = center_col + half_box + 1
+
+        if (
+            row_start < 0
+            or row_end > image_data.shape[0]
+            or col_start < 0
+            or col_end > image_data.shape[1]
+        ):
+            return None
+
+        box_data = image_data[row_start:row_end, col_start:col_end]
+
+        if box_data.shape[0] < 5 or box_data.shape[1] < 5:
+            return None
+
+        sum_rows = np.sum(box_data, axis=1)
+        sum_cols = np.sum(box_data, axis=0)
+
+        if np.max(sum_rows) < 5 * np.median(sum_rows) or np.max(
+            sum_cols
+        ) < 5 * np.median(sum_cols):
+            return None
+
+        row_indices = np.arange(box_data.shape[0])
+        col_indices = np.arange(box_data.shape[1])
+
+        fitter = fitting.LevMarLSQFitter()
+
+        try:
+            row_max_idx = np.argmax(sum_rows)
+            row_max_val = sum_rows[row_max_idx]
+
+            model_row = models.Gaussian1D(
+                amplitude=row_max_val, mean=row_max_idx, stddev=box_size / 6
+            )
+
+            fitted_row = fitter(model_row, row_indices, sum_rows)
+            center_row_fit = fitted_row.mean.value + row_start
+            fwhm_row = 2 * np.sqrt(2 * np.log(2)) * fitted_row.stddev.value
+        except Exception:
+            return None
+
+        try:
+            col_max_idx = np.argmax(sum_cols)
+            col_max_val = sum_cols[col_max_idx]
+
+            model_col = models.Gaussian1D(
+                amplitude=col_max_val, mean=col_max_idx, stddev=box_size / 6
+            )
+
+            fitted_col = fitter(model_col, col_indices, sum_cols)
+            center_col_fit = fitted_col.mean.value + col_start
+            fwhm_col = 2 * np.sqrt(2 * np.log(2)) * fitted_col.stddev.value
+        except Exception:
+            return None
+
+        return fwhm_row, fwhm_col, center_row_fit, center_col_fit
+
+    try:
+        peak = 0.90 * np.nanmax(_img)
+        daofind = DAOStarFinder(
+            fwhm=1.5 * fwhm, threshold=5 * np.std(_img), peakmax=peak
+        )
+        sources = daofind(_img, mask=mask)
+        if sources is None:
+            st.warning("No sources found !")
+            return None
+
+        flux = sources["flux"]
+        median_flux = np.median(flux)
+        std_flux = np.std(flux)
+        mask_flux = (flux > median_flux - std_lo * std_flux) & (
+            flux < median_flux + std_hi * std_flux
+        )
+        filtered_sources = sources[mask_flux]
+
+        filtered_sources = filtered_sources[~np.isnan(filtered_sources["flux"])]
+
+        st.write(f"Sources after flux filtering: {len(filtered_sources)}")
+
+        if len(filtered_sources) == 0:
+            msg = "No valid sources for fitting found after filtering."
+            st.error(msg)
+            raise ValueError(msg)
+
+        box_size = int(6 * round(fwhm))
+        if box_size % 2 == 0:
+            box_size += 1
+
+        fwhm_values = []
+        skipped_sources = 0
+
+        for source in filtered_sources:
+            try:
+                x_cen = int(source["xcentroid"])
+                y_cen = int(source["ycentroid"])
+
+                fwhm_results = compute_fwhm_marginal_sums(_img, y_cen, x_cen, box_size)
+                if fwhm_results is None:
+                    skipped_sources += 1
+                    continue
+
+                fwhm_row, fwhm_col, _, _ = fwhm_results
+
+                fwhm_source = np.mean([fwhm_row, fwhm_col])
+                fwhm_values.append(fwhm_source)
+
+            except Exception:
+                skipped_sources += 1
+                continue
+
+        if skipped_sources > 0:
+            st.write(
+                f"FWHM failed for {skipped_sources} sources out of {len(filtered_sources)}."
+            )
+
+        if len(fwhm_values) == 0:
+            msg = "No valid sources for FWHM fitting after marginal sums adjustment."
+            st.error(msg)
+            raise ValueError(msg)
+
+        fwhm_values_arr = np.array(fwhm_values)
+        valid = ~np.isnan(fwhm_values_arr) & ~np.isinf(fwhm_values_arr)
+        if not np.any(valid):
+            msg = "All FWHM values are NaN or infinite after marginal sums calculation."
+            st.error(msg)
+            raise ValueError(msg)
+
+        # Plot histogram of FWHM values
+        fig_fwhm, ax_fwhm = plt.subplots(figsize=FIGURE_SIZES["medium"])
+        n, bins, patches = ax_fwhm.hist(fwhm_values_arr[valid], bins=50,
+                                        color='skyblue', edgecolor='black',
+                                        alpha=0.7)
+
+        # Add statistics lines
+        median_fwhm = np.median(fwhm_values_arr[valid])
+        mean_fwhm = np.mean(fwhm_values_arr[valid])
+
+        # Add vertical lines for mean and median
+        ax_fwhm.axvline(median_fwhm, color='red', linestyle='dashed', linewidth=1.5,
+                        label=f'Median: {median_fwhm:.2f}px')
+        ax_fwhm.axvline(mean_fwhm, color='green', linestyle='dashed', linewidth=1.5,
+                        label=f'Mean: {mean_fwhm:.2f}px')
+
+        ax_fwhm.set_xlabel('FWHM (pixels)')
+        ax_fwhm.set_ylabel('Number of Stars')
+        ax_fwhm.set_xlim(0, round(3*mean_fwhm))
+        ax_fwhm.set_title('Distribution of FWHM Values')
+        ax_fwhm.grid(True, alpha=0.3)
+        ax_fwhm.legend()
+
+        st.pyplot(fig_fwhm)
+        
+        # Save the FWHM histogram figure
+        try:
+            base_filename = st.session_state.get("base_filename", "photometry")
+            output_dir = ensure_output_directory("rpp_results")
+            fwhm_filename = f"{base_filename}_fwhm.png"
+            fwhm_filepath = os.path.join(output_dir, fwhm_filename)
+            
+            fig_fwhm.savefig(fwhm_filepath, dpi=150, bbox_inches="tight")
+            
+            # Write to log if available
+            log_buffer = st.session_state.get("log_buffer")
+            if log_buffer is not None:
+                write_to_log(log_buffer, f"FWHM histogram saved to {fwhm_filename}")
+        except Exception as e:
+            st.warning(f"Error saving FWHM histogram: {str(e)}")
+
+        mean_fwhm = np.median(fwhm_values_arr[valid])
+        st.success(f"FWHM based on Gaussian model: {round(mean_fwhm, 2)} pixels")
+
+        return round(mean_fwhm, 2)
+    except ValueError as e:
+        raise e
+    except Exception as e:
+        st.error(f"Unexpected error in fwhm_fit: {e}")
+        raise ValueError(f"Unexpected error in fwhm_fit: {e}")
 
 
 def perform_psf_photometry(
@@ -772,326 +972,652 @@ def perform_psf_photometry(
     daostarfind: Any,
     mask: Optional[np.ndarray] = None,
 ) -> Tuple[Table, Any]:
-    """Perform PSF photometry on detected sources.
-
-    (Implementation details are missing in the provided code snippet.)
-
-    Parameters
-    ----------
-    img : np.ndarray
-        Image data.
-    phot_table : astropy.table.Table
-        Table containing initial source detections (positions).
-    fwhm : float
-        Estimated FWHM of sources in pixels.
-    daostarfind : Any
-        DAOStarFinder instance or similar object used for detection.
-    mask : Optional[np.ndarray], optional
-        Mask to exclude regions, by default None.
-
-    Returns
-    -------
-    Tuple[astropy.table.Table, Any]
-        A tuple containing the photometry results table and potentially
-        other PSF-related outputs (e.g., PSF model).
     """
-    # Implementation missing in provided snippet
-    pass
+    Perform PSF (Point Spread Function) photometry using an empirically-constructed PSF model.
 
-
-def detection_and_photometry(
-    image_data: np.ndarray,
-    _science_header: Optional[dict | fits.Header],
-    data_not_normalized: Optional[np.ndarray],
-    mean_fwhm_pixel: float,
-    threshold_sigma: float,
-    detection_mask: int,
-    filter_band: str,
-    gb: str = "Gmag",
-) -> Tuple[Optional[Table], Optional[Table], Optional[Background2D], Optional[float]]:
-    """Perform source detection and aperture photometry on an image.
-
-    Steps include background estimation, FWHM estimation, source detection
-    using DAOStarFinder, optional astrometric refinement, and aperture photometry.
+    This function builds an empirical PSF (EPSF) from bright stars in the image
+    and then uses this model to perform PSF photometry on all detected sources.
 
     Parameters
     ----------
-    image_data : np.ndarray
-        The background-subtracted or processed image data for photometry.
-    _science_header : Optional[dict | fits.Header]
-        FITS header (unused in current snippet, underscore suggests potential caching).
-    data_not_normalized : Optional[np.ndarray]
-        Original image data before normalization (unused in current snippet).
-    mean_fwhm_pixel : float
-        Initial estimate or guess for the FWHM in pixels.
-    threshold_sigma : float
-        Detection threshold in units of background standard deviation.
-    detection_mask : int
-        Size of the border mask in pixels to exclude from detection.
-    filter_band : str
-        Filter band name (unused in current snippet).
-    gb : str, optional
-        Gaia band identifier (unused in current snippet), by default "Gmag".
+    img : numpy.ndarray
+        Image with sky background subtracted
+    phot_table : astropy.table.Table
+        Table containing source positions
+    fwhm : float
+        Full Width at Half Maximum in pixels, used to define extraction and fitting sizes
+    daostarfind : callable
+        Star detection function used as "finder" in PSF photometry
+    mask : numpy.ndarray, optional
+        Mask to exclude certain image areas from analysis
 
     Returns
     -------
-    Tuple[Optional[Table], Optional[Table], Optional[Background2D], Optional[float]]
-        - Aperture photometry results as an Astropy Table, or None on failure.
-        - PSF photometry results (implementation missing), currently None.
-        - Background2D object from photutils, or None on failure.
-        - Estimated FWHM in pixels, or None on failure.
+    Tuple[astropy.table.Table, photutils.psf.EPSFModel]
+        - phot_epsf_result : Table containing PSF photometry results, including fitted fluxes and positions
+        - epsf : The fitted EPSF model used for photometry
 
     Notes
     -----
-    - Uses photutils for background estimation and aperture photometry.
-    - Uses DAOStarFinder for source detection.
-    - Includes basic error handling and logging via Streamlit.
-    - PSF photometry part seems incomplete.
-    - Relies on `st.session_state` for astrometry check option.
+    The function displays the extracted stars used for PSF model building and the
+    resulting PSF model in the Streamlit interface. It also saves the PSF model
+    as a FITS file in the output directory.
+
+    If successful, the photometry results are also stored in the Streamlit session state
+    under 'epsf_photometry_result'.
     """
-    # ...existing code...
+    try:
+        if img is None or not isinstance(img, np.ndarray) or img.size == 0:
+            raise ValueError(
+                "Invalid image data provided. Ensure the image is a non-empty numpy array."
+            )
+
+        nddata = NDData(data=img)
+    except Exception as e:
+        st.error(f"Error creating NDData: {e}")
+        raise
+
+    try:
+        stars_table = Table()
+        stars_table["x"] = phot_table["xcenter"]
+        stars_table["y"] = phot_table["ycenter"]
+        st.write("Star positions table prepared.")
+    except Exception as e:
+        st.error(f"Error preparing star positions table: {e}")
+        raise
+
+    try:
+        fit_shape = 2 * round(fwhm) + 1
+        st.write(f"Fitting shape: {fit_shape} pixels.")
+    except Exception as e:
+        st.error(f"Error calculating fitting shape: {e}")
+        raise
+
+    try:
+        stars = extract_stars(nddata, stars_table, size=fit_shape)
+        st.write(f"{len(stars)} stars extracted.")
+    except Exception as e:
+        st.error(f"Error extracting stars: {e}")
+        raise
+
+    try:
+        epsf_builder = EPSFBuilder(oversampling=4, maxiters=5, progress_bar=True)
+        epsf, _ = epsf_builder(stars)
+        st.session_state["epsf_model"] = epsf
+    except Exception as e:
+        st.error(f"Error fitting PSF model: {e}")
+        raise
+
+    if epsf.data is not None and epsf.data.size > 0:
+        try:
+            hdu = fits.PrimaryHDU(data=epsf.data)
+
+            hdu.header["COMMENT"] = "PSF model created with photutils.EPSFBuilder"
+            hdu.header["FWHMPIX"] = (fwhm, "FWHM in pixels used for extraction")
+            hdu.header["OVERSAMP"] = (4, "Oversampling factor")
+
+            psf_filename = (
+                f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
+            )
+            psf_filepath = os.path.join(
+                st.session_state.get("output_dir", "."), psf_filename
+            )
+
+            hdu.writeto(psf_filepath, overwrite=True)
+            st.write("PSF model saved as FITS file")
+
+            norm_epsf = simple_norm(epsf.data, "log", percent=99.0)
+            fig_epsf_model, ax_epsf_model = plt.subplots(
+                figsize=FIGURE_SIZES["medium"], dpi=120
+            )
+            ax_epsf_model.imshow(
+                epsf.data,
+                norm=norm_epsf,
+                origin="lower",
+                cmap="viridis",
+                interpolation="nearest",
+            )
+            ax_epsf_model.set_title("Fitted PSF Model")
+            st.pyplot(fig_epsf_model)
+        except Exception as e:
+            st.warning(f"Error working with PSF model: {e}")
+    else:
+        st.warning("EPSF data is empty or invalid. Cannot display the PSF model.")
+        if not callable(daostarfind):
+            raise ValueError(
+                "The 'finder' parameter must be a callable star finder, such as DAOStarFinder."
+            )
+
+    psfphot = IterativePSFPhotometry(
+        psf_model=epsf,
+        fit_shape=fit_shape,
+        finder=daostarfind,
+        aperture_radius=fit_shape / 2,
+        maxiters=3,
+        mode="new",
+        progress_bar=True,
+    )
+
+    if img is None or not isinstance(img, np.ndarray) or img.size == 0:
+        raise ValueError(
+            "Invalid image data provided. Ensure the image is a non-empty numpy array."
+        )
+    if mask is not None and (
+        not isinstance(mask, np.ndarray) or mask.shape != img.shape
+    ):
+        raise ValueError(
+            "Invalid mask provided. Ensure the mask is a numpy array with the same shape as the image."
+        )
+
+    psfphot.x = phot_table["xcenter"]
+    psfphot.y = phot_table["ycenter"]
+
+    try:
+        st.write("Performing PSF photometry...")
+        phot_epsf_result = psfphot(img, mask=mask)
+        st.session_state["epsf_photometry_result"] = phot_epsf_result
+        st.write("PSF photometry completed successfully.")
+    except Exception as e:
+        st.error(f"Error executing PSF photometry: {e}")
+        raise
+
+    return phot_epsf_result, epsf
+
+
+def detection_and_photometry(
+    image_data,
+    _science_header,
+    data_not_normalized,
+    mean_fwhm_pixel,
+    threshold_sigma,
+    detection_mask,
+    filter_band,
+    gb="Gmag",
+):
+    """
+    Find astronomical sources and perform both aperture and PSF photometry.
+
+    This comprehensive function handles the full photometry workflow:
+    1. Background estimation
+    2. Source detection
+    3. WCS refinement with GAIA DR3
+    4. Aperture photometry
+    5. PSF photometry
+
+    Parameters
+    ----------
+    image_data : numpy.ndarray
+        Image data (2D array)
+    _science_header : dict or astropy.io.fits.Header
+        Header information from FITS file (underscore prevents caching issues)
+    mean_fwhm_pixel : float
+        Estimated FWHM in pixels for aperture sizing
+    threshold_sigma : float
+        Detection threshold in sigma units above background
+    detection_mask : int
+        Border size in pixels to mask during detection
+
+    Returns
+    -------
+    tuple
+        (phot_table, epsf_table, daofind, bkg) where:
+        - phot_table: Table with aperture photometry results
+        - epsf_table: Table with PSF photometry results
+        - daofind: The DAOStarFinder object used for detection
+        - bkg: Background2D object with background model
+
+    Notes
+    -----
+    - Uses stdpipe for astrometry refinement with GAIA DR3
+    - Automatically adds celestial coordinates (RA/Dec) to the photometry tables if WCS is available
+    - Both aperture and PSF photometry include instrumental magnitude calculations
+    - Shows progress and status updates in the Streamlit interface
+    """
+    daofind = None
+
+    try:
+        w, wcs_error = safe_wcs_create(_science_header)
+        if w is None:
+            st.error(f"Error creating WCS: {wcs_error}")
+            return None, None, daofind, None
+    except Exception as e:
+        st.error(f"Error creating WCS: {e}")
+        return None, None, daofind, None
+
+    pixel_scale = _science_header.get(
+        "PIXSCALE",
+        _science_header.get("PIXSIZE", _science_header.get("PIXELSCAL", 1.0)),
+    )
+
     bkg, bkg_error = estimate_background(image_data, box_size=128, filter_size=7)
     if bkg is None:
-        st.error("Background estimation failed.")
-        return None, None, None, None
+        st.error(f"Error estimating background: {bkg_error}")
+        return None, None, daofind, None
 
-    # ...existing code...
+    mask = make_border_mask(image_data, border=detection_mask)
+
+    total_error = np.sqrt(2*bkg.background_rms**2 / bkg.background_median**2)
+
+    st.write("Estimating FWHM...")
     fwhm_estimate = fwhm_fit(image_data - bkg.background, mean_fwhm_pixel, mask)
 
     if fwhm_estimate is None:
-        st.warning("FWHM estimation failed, using initial guess.")
-        fwhm_estimate = mean_fwhm_pixel # Fallback
+        st.warning("Failed to estimate FWHM. Using the initial estimate.")
+        fwhm_estimate = mean_fwhm_pixel
 
-    # ...existing code...
+    peak_max = 0.95 * np.max(image_data - bkg.background)
+    daofind = DAOStarFinder(
+        fwhm=1.5 * fwhm_estimate,
+        threshold=threshold_sigma * np.std(image_data - bkg.background),
+        peakmax=peak_max,
+    )
+
+    sources = daofind(image_data - bkg.background, mask=mask)
+
     if sources is None or len(sources) == 0:
-        st.warning("No sources detected.")
-        return None, None, bkg, fwhm_estimate
+        st.warning("No sources found!")
+        return None, None, daofind, bkg
 
-    # ...existing code...
+    # Check Astrometry+ option before refinement
+    if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
+        st.write("Doing astrometry refinement using Stdpipe and Astropy...")
+
+        obj = photometry.get_objects_sep(
+            data_not_normalized - bkg.background,
+            header=_science_header,
+            sn=4,
+            aper=1.5 * fwhm_estimate,
+        )
+
+        ra0, dec0, sr0 = astrometry.get_frame_center(header=_science_header,
+                                                     wcs=w,
+                                                     width=image_data.shape[1],
+                                                     height=image_data.shape[0]
+                                                     )
+
+        if filter_band == "phot_bp_mean_mag":
+            gb = "BPmag"
+        if filter_band == "phot_rp_mean_mag":
+            gb = "RPmag"
+        cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3",
+                                      filters={gb: "<20"})
+        cat_col_mag = gb
+        try:
+            wcs = pipeline.refine_astrometry(
+                obj,
+                cat,
+                1.75 * fwhm_estimate * pixel_scale / 3600,
+                wcs=w,
+                order=2,
+                cat_col_mag=cat_col_mag,
+                cat_col_mag_err=None,
+                n_iter=5,
+                min_matches=3,
+                use_photometry=True,
+                verbose=True,
+            )
+            if wcs:
+                st.info("Refined WCS successfully.")
+                astrometry.clear_wcs(
+                    _science_header,
+                    remove_comments=True,
+                    remove_underscored=True,
+                    remove_history=True,
+                )
+                _science_header.update(wcs.to_header(relax=True))
+            else:
+                st.warning("WCS refinement failed.")
+        except Exception as e:
+            st.warning(f"Skipping WCS refinement: {str(e)}")
+    else:
+        st.info("Astrometry+ is disabled. Skipping astrometry refinement.")
+
+    positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
+    apertures = CircularAperture(positions, r=1.5 * fwhm_estimate)
+
     try:
-        phot_table = aperture_photometry(image_data - bkg.background, apertures)
-        # Placeholder for PSF photometry results
-        epsf_table = None # perform_psf_photometry would go here
-        return phot_table, epsf_table, bkg, fwhm_estimate
+        wcs_obj = None
+        if "CTYPE1" in _science_header:
+            try:
+                wcs_obj = WCS(_science_header)
+                if wcs_obj.pixel_n_dim > 2:
+                    wcs_obj = wcs_obj.celestial
+                    st.info("Reduced WCS to 2D celestial coordinates for photometry")
+            except Exception as e:
+                st.warning(f"Error creating WCS object: {e}")
+                wcs_obj = None
+
+        phot_table = aperture_photometry(
+            image_data - bkg.background, apertures, error=total_error, wcs=wcs_obj
+        )
+
+        phot_table["xcenter"] = sources["xcentroid"]
+        phot_table["ycenter"] = sources["ycentroid"]
+
+        # Compute SNR for each source
+        # SNR = aperture_sum / total_error
+        if (
+            "aperture_sum" in phot_table.colnames
+            and "aperture_sum_err" in phot_table.colnames
+        ):
+            phot_table["snr"] = np.round(phot_table["aperture_sum"] / np.sqrt(phot_table["aperture_sum_err"]))
+
+        else:
+            phot_table["snr"] = np.nan
+
+        if np.mean(image_data - bkg.background) > 1.0:
+            exposure_time = _science_header.get("EXPTIME", 1.0)
+        else:
+            exposure_time = 1.0
+
+        instrumental_mags = -2.5 * np.log10(phot_table["aperture_sum"] / exposure_time)
+        phot_table["instrumental_mag"] = instrumental_mags
+
+        try:
+            epsf_table, _ = perform_psf_photometry(
+                image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask
+            )
+
+            epsf_instrumental_mags = -2.5 * np.log10(
+                epsf_table["flux_fit"] / exposure_time
+            )
+            epsf_table["instrumental_mag"] = epsf_instrumental_mags
+        except Exception as e:
+            st.error(f"Error performing EPSF photometry: {e}")
+            epsf_table = None
+
+        valid_sources = (phot_table["aperture_sum"] > 0) & np.isfinite(
+            phot_table["instrumental_mag"]
+        )
+        phot_table = phot_table[valid_sources]
+
+        if epsf_table is not None:
+            epsf_valid_sources = np.isfinite(epsf_table["instrumental_mag"])
+
+            epsf_table = epsf_table[epsf_valid_sources]
+
+        try:
+            if wcs_obj is not None:
+                ra, dec = wcs_obj.pixel_to_world_values(
+                    phot_table["xcenter"], phot_table["ycenter"]
+                )
+                phot_table["ra"] = ra * u.deg
+                phot_table["dec"] = dec * u.deg
+
+                if epsf_table is not None:
+                    try:
+                        epsf_ra, epsf_dec = wcs_obj.pixel_to_world_values(
+                            epsf_table["x_fit"], epsf_table["y_fit"]
+                        )
+                        epsf_table["ra"] = epsf_ra * u.deg
+                        epsf_table["dec"] = epsf_dec * u.deg
+                    except Exception as e:
+                        st.warning(f"Could not add coordinates to EPSF table: {e}")
+            else:
+                if all(
+                    key in _science_header for key in ["RA", "DEC", "NAXIS1", "NAXIS2"]
+                ):
+                    st.info("Using simple linear approximation for RA/DEC coordinates")
+                    center_ra = _science_header["RA"]
+                    center_dec = _science_header["DEC"]
+                    width = _science_header["NAXIS1"]
+                    height = _science_header["NAXIS2"]
+
+                    pix_scale = pixel_scale or 1.0
+
+                    center_x = width / 2
+                    center_y = height / 2
+
+                    for i, row in enumerate(phot_table):
+                        x = row["xcenter"]
+                        y = row["ycenter"]
+                        dx = (x - center_x) * pix_scale / 3600.0
+                        dy = (y - center_y) * pix_scale / 3600.0
+                        phot_table[i]["ra"] = center_ra + dx / np.cos(
+                            np.radians(center_dec)
+                        )
+                        phot_table[i]["dec"] = center_dec + dy
+        except Exception as e:
+            st.warning(
+                f"WCS transformation failed: {e}. RA and Dec not added to tables."
+            )
+
+        st.write(f"Found {len(phot_table)} sources and performed photometry.")
+        return phot_table, epsf_table, daofind, bkg
     except Exception as e:
-        st.error(f"Aperture photometry failed: {e}")
-        return None, None, bkg, fwhm_estimate
+        st.error(f"Error performing aperture photometry: {e}")
+        return None, None, daofind, bkg
 
 
 def cross_match_with_gaia(
-    _phot_table: Table,
-    _science_header: Optional[dict | fits.Header],
-    pixel_size_arcsec: float,
-    mean_fwhm_pixel: float,
-    filter_band: str,
-    filter_max_mag: float,
-) -> Optional[pd.DataFrame]:
+    _phot_table,
+    _science_header,
+    pixel_size_arcsec,
+    mean_fwhm_pixel,
+    filter_band,
+    filter_max_mag,
+):
     """
-    Cross-match detected sources with the Gaia DR3 star catalog.
+    Cross-match detected sources with the GAIA DR3 star catalog.
 
-    Queries Gaia for the field of view defined by the WCS in the header,
-    filters the Gaia catalog based on the specified magnitude band and limit,
-    and matches detected sources to Gaia sources based on celestial coordinates.
+    This function queries the GAIA catalog for a region matching the image field of view,
+    applies filtering based on magnitude range, and matches GAIA sources to the detected sources.
 
     Parameters
     ----------
     _phot_table : astropy.table.Table
-        Table containing detected source positions ('xcentroid', 'ycentroid')
-        and instrumental magnitudes ('instrumental_mag').
-        (Underscore suggests potential caching).
-    _science_header : Optional[dict | fits.Header]
-        FITS header containing WCS information needed to convert pixel coordinates
-        to celestial coordinates (RA, Dec). (Underscore suggests potential caching).
+        Table containing detected source positions (underscore prevents caching issues)
+    _science_header : dict or astropy.io.fits.Header
+        FITS header with WCS information (underscore prevents caching issues)
     pixel_size_arcsec : float
-        Pixel scale in arcseconds per pixel (unused in current snippet, but potentially
-        useful for calculating search radius if WCS is missing).
+        Pixel scale in arcseconds per pixel
     mean_fwhm_pixel : float
-        Mean FWHM of sources in pixels. Used to determine the matching radius
-        (currently set to 2 * FWHM in arcseconds).
+        FWHM in pixels, used to determine matching radius
     filter_band : str
-        Gaia magnitude band to use for filtering (e.g., 'phot_g_mean_mag').
+        GAIA magnitude band to use for filtering (e.g., 'phot_g_mean_mag')
     filter_max_mag : float
-        Maximum (faintest) magnitude to include from the Gaia catalog.
+        Maximum magnitude for GAIA source filtering
 
     Returns
     -------
-    Optional[pd.DataFrame]
-        A pandas DataFrame containing the matched sources. Includes columns from
-        both the input `_phot_table` and the Gaia catalog for the matched stars.
-        Returns None if WCS creation fails, the Gaia query fails, or no matches
-        are found.
+    pandas.DataFrame or None
+        DataFrame containing matched sources with both measured and GAIA catalog data,
+        or None if the cross-match failed or found no matches
 
     Notes
     -----
-    - Requires a valid WCS in `_science_header` to work correctly.
-    - Uses `astroquery.gaia` to query the Gaia archive.
-    - Matching is performed using `astropy.coordinates.match_to_catalog_sky`.
-    - The maximum separation for a match is `2 * mean_fwhm_pixel * pixel_size_arcsec` arcseconds.
-    - Includes basic filtering for Gaia sources (magnitude limit, non-variable).
-    - Displays progress and errors using Streamlit (`st.write`, `st.error`).
+    - The maximum separation for matching is set to twice the FWHM in arcseconds
+    - Includes filtering to exclude variable stars if the information is available
+    - Progress and status updates are displayed in the Streamlit interface
     """
     st.write("Cross-matching with Gaia DR3...")
 
     if _science_header is None:
-        st.error("Cannot cross-match: FITS header is missing.")
+        st.warning("No header information available. Cannot cross-match with Gaia.")
         return None
 
-    # ...existing code...
-    if gaia_table is None or len(gaia_table) == 0:
-        st.warning("No Gaia sources found in the field of view.")
-        return None
-
-    # ...existing code...
     try:
-        # Convert pixel coordinates to SkyCoord
-        wcs_obj, wcs_error = safe_wcs_create(_science_header)
-        if wcs_obj is None:
-            st.error(f"Cannot cross-match: Failed to create WCS object - {wcs_error}")
+        w = WCS(_science_header)
+    except Exception as e:
+        st.error(f"Error creating WCS: {e}")
+        return None
+
+    try:
+        source_positions_pixel = np.transpose(
+            (_phot_table["xcenter"], _phot_table["ycenter"])
+        )
+        source_positions_sky = w.pixel_to_world(
+            source_positions_pixel[:, 0], source_positions_pixel[:, 1]
+        )
+    except Exception as e:
+        st.error(f"Error converting pixel positions to sky coordinates: {e}")
+        return None
+
+    try:
+        image_center_ra_dec = w.pixel_to_world(
+            _science_header["NAXIS1"] // 2, _science_header["NAXIS2"] // 2
+        )
+        gaia_search_radius_arcsec = (
+            max(_science_header["NAXIS1"], _science_header["NAXIS2"])
+            * pixel_size_arcsec
+            / 1.5
+        )
+        radius_query = gaia_search_radius_arcsec * u.arcsec
+
+        st.write(
+            f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
+        )
+
+        if filter_band not in ["phot_g_mean_mag",
+                               "phot_bp_mean_mag",
+                               "phot_rp_mean_mag"]:
+            st.warning("No GAIA band specified. Cannot filter GAIA sources.")
+            Gaia.MAIN_GAIA_TABLE = 'gaiadr3.synthetic_photometry_gspc'
+        else:
+            Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
+
+        job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
+        gaia_table = job.get_results()
+    except Exception as e:
+        st.error(f"Error querying Gaia: {e}")
+        return None
+
+    if gaia_table is None or len(gaia_table) == 0:
+        st.warning("No Gaia sources found within search radius.")
+        return None
+
+    try:
+        mag_filter = (gaia_table[filter_band] < filter_max_mag)
+
+        if Gaia.MAIN_GAIA_TABLE == 'gaiadr3.gaia_source':
+            var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
+            color_index_filter = abs(gaia_table["bp_rp"]) < 1.5
+            astrometric_filter = gaia_table["ruwe"] <= 1.5
+            combined_filter = (mag_filter & var_filter &
+                               color_index_filter & astrometric_filter)
+        else:
+            color_index_filter = gaia_table["c_star"] < 1.5
+            combined_filter = mag_filter & color_index_filter
+
+        gaia_table_filtered = gaia_table[combined_filter]
+
+        if len(gaia_table_filtered) == 0:
+            st.warning(
+                f"No Gaia sources found within magnitude range {filter_band} < {filter_max_mag}."
+            )
             return None
 
-        source_coords = wcs_obj.pixel_to_world(_phot_table['xcentroid'], _phot_table['ycentroid'])
-        gaia_coords = SkyCoord(ra=gaia_table['ra'], dec=gaia_table['dec'], unit=(u.deg, u.deg))
+        st.write(f"Filtered Gaia catalog to {len(gaia_table_filtered)} sources.")
+    except Exception as e:
+        st.error(f"Error filtering Gaia catalog: {e}")
+        return None
 
-        # Perform cross-matching
-        max_separation = 2 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
-        idx, d2d, _ = source_coords.match_to_catalog_sky(gaia_coords)
-        sep_constraint = d2d < max_separation
+    try:
+        gaia_skycoords = SkyCoord(
+            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"], unit="deg"
+        )
+        idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
-        matched_phot = _phot_table[sep_constraint]
-        matched_gaia = gaia_table[idx[sep_constraint]]
+        max_sep_constraint = 2 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
+        gaia_matches = d2d < max_sep_constraint
 
-        if len(matched_phot) == 0:
-            st.warning("No matches found between detected sources and Gaia catalog.")
+        matched_indices_gaia = idx[gaia_matches]
+        matched_indices_phot = np.where(gaia_matches)[0]
+
+        if len(matched_indices_gaia) == 0:
+            st.warning("No Gaia matches found within the separation constraint.")
             return None
 
-        # Combine matched tables
-        matched_phot_df = matched_phot.to_pandas()
-        matched_gaia_df = matched_gaia.to_pandas()
+        matched_table_qtable = _phot_table[matched_indices_phot]
 
-        # Ensure unique columns before merging, prefix Gaia columns
-        gaia_cols_renamed = {col: f"gaia_{col}" for col in matched_gaia_df.columns if col in matched_phot_df.columns}
-        matched_gaia_df.rename(columns=gaia_cols_renamed, inplace=True)
+        matched_table = matched_table_qtable.to_pandas()
+        matched_table["gaia_index"] = matched_indices_gaia
+        matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
+        matched_table[filter_band] = gaia_table_filtered[filter_band][matched_indices_gaia]
 
-        # Reset index for safe concatenation
-        matched_phot_df.reset_index(drop=True, inplace=True)
-        matched_gaia_df.reset_index(drop=True, inplace=True)
+        valid_gaia_mags = np.isfinite(matched_table[filter_band])
+        matched_table = matched_table[valid_gaia_mags]
 
-        combined_table = pd.concat([matched_phot_df, matched_gaia_df], axis=1)
+         # Remove sources with SNR == 0 before zero point calculation
+        if "snr" in matched_table.columns:
+            matched_table = matched_table[matched_table["snr"] > 0]
 
-        st.success(f"Found {len(combined_table)} matches with Gaia.")
-        return combined_table
-
+        st.success(f"Found {len(matched_table)} Gaia matches after filtering.")
+        return matched_table
     except Exception as e:
         st.error(f"Error during cross-matching: {e}")
         return None
 
 
-def calculate_zero_point(
-    _phot_table: Union[Table, pd.DataFrame],
-    _matched_table: Optional[pd.DataFrame],
-    filter_band: str,
-    air: float
-) -> Tuple[Optional[float], Optional[float], Optional[plt.Figure]]:
+def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
     """
-    Calculate the photometric zero point using cross-matched Gaia sources.
+    Calculate photometric zero point from matched sources with GAIA.
 
-    Determines the offset between instrumental magnitudes and standard Gaia
-    magnitudes for a given filter band, accounting for airmass.
+    The zero point transforms instrumental magnitudes to the standard GAIA magnitude system,
+    accounting for atmospheric extinction using the provided airmass.
 
     Parameters
     ----------
-    _phot_table : astropy.table.Table or pd.DataFrame
-        Photometry results table containing instrumental magnitudes
-        (e.g., 'instrumental_mag'). (Underscore suggests potential caching).
-    _matched_table : Optional[pd.DataFrame]
-        DataFrame of sources cross-matched with Gaia, containing both
-        instrumental magnitudes and Gaia standard magnitudes (e.g., 'phot_g_mean_mag').
-        Must contain the `filter_band` column and the instrumental magnitude column.
-        (Underscore suggests potential caching).
+    _phot_table : astropy.table.Table or pandas.DataFrame
+        Photometry results table (underscore prevents caching issues)
+    _matched_table : pandas.DataFrame
+        Table of GAIA cross-matched sources (underscore prevents caching issues)
     filter_band : str
-        The Gaia magnitude band used for calibration (e.g., 'phot_g_mean_mag').
-        This column must exist in `_matched_table`.
+        GAIA magnitude band used (e.g., 'phot_g_mean_mag')
     air : float
-        Airmass of the observation, used for a simple extinction correction (0.1 * air).
+        Airmass value for atmospheric extinction correction
 
     Returns
     -------
-    Tuple[Optional[float], Optional[float], Optional[plt.Figure]]
-        - zero_point_value: The calculated median zero point, or None if calculation fails.
-        - zero_point_std: The standard deviation of the zero point calculation, or None.
-        - matplotlib_figure: A plot comparing Gaia magnitudes to calibrated
-          instrumental magnitudes, or None if plotting fails.
+    tuple
+        (zero_point_value, zero_point_std, matplotlib_figure) where:
+        - zero_point_value: Float value of the calculated zero point
+        - zero_point_std: Standard deviation of the zero point
+        - matplotlib_figure: Figure object showing GAIA vs. calibrated magnitudes
 
     Notes
     -----
-    - Requires `_matched_table` to be not None and non-empty.
-    - Assumes the instrumental magnitude column in `_phot_table` and `_matched_table`
-      is named 'instrumental_mag'.
-    - Uses sigma clipping (`astropy.stats.sigma_clipped_stats`) to robustly calculate
-      the median zero point and its standard deviation.
-    - Applies a simple atmospheric extinction correction: `calib_mag = inst_mag + zp + 0.1 * air`.
-    - Updates `_phot_table` with a 'calib_mag' column.
-    - Stores the updated `_phot_table` in `st.session_state['final_phot_table']`.
-    - Generates a plot showing Gaia magnitude vs. calibrated magnitude, including binned statistics.
-    - Displays results and errors using Streamlit.
+    - Uses sigma clipping to remove outliers from zero point calculation
+    - Applies a simple atmospheric extinction correction of 0.1*airmass
+    - Stores the calibrated photometry table in session state as 'final_phot_table'
+    - Creates and saves a plot showing the relation between GAIA and calibrated magnitudes
     """
     if _matched_table is None or len(_matched_table) == 0:
-        st.error("Cannot calculate zero point: No matched Gaia sources provided.")
-        return None, None, None
-
-    if 'instrumental_mag' not in _matched_table.columns:
-        st.error(f"Cannot calculate zero point: 'instrumental_mag' column missing from matched table.")
-        return None, None, None
-
-    if filter_band not in _matched_table.columns:
-        st.error(f"Cannot calculate zero point: Gaia filter band '{filter_band}' column missing from matched table.")
+        st.warning("No matched sources to calculate zero point.")
         return None, None, None
 
     try:
-        # Calculate the difference: Gaia_mag - instrumental_mag
-        # This difference represents the zero point (ignoring extinction for now)
-        zp_diff = _matched_table[filter_band] - _matched_table['instrumental_mag']
+        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[filter_band])
 
-        # Use sigma clipping to get a robust estimate of the zero point
-        mean_zp, median_zp, std_zp = sigma_clipped_stats(zp_diff, sigma=3.0)
+        zero_points = _matched_table[filter_band][valid] - _matched_table["instrumental_mag"][valid]
+        _matched_table["zero_point"] = zero_points
+        _matched_table["zero_point_error"] = np.std(zero_points)
 
-        zero_point_value = median_zp # Use median as the robust zero point
-        zero_point_std = std_zp
+        clipped_zero_points = sigma_clip(zero_points, sigma=3,
+                                         cenfunc="mean", masked=False)
 
-        # Apply zero point and extinction correction to the full photometry table
-        # Ensure _phot_table is a DataFrame for easier column addition
-        if isinstance(_phot_table, Table):
-            _phot_table = _phot_table.to_pandas()
-        elif not isinstance(_phot_table, pd.DataFrame):
-            st.error("Input _phot_table must be an Astropy Table or Pandas DataFrame.")
-            return None, None, None
+        zero_point_value = np.median(clipped_zero_points)
+        zero_point_std = np.std(clipped_zero_points)
 
-        if 'instrumental_mag' not in _phot_table.columns:
-             st.error("'_phot_table' is missing 'instrumental_mag' column for calibration.")
-             # Attempt to find a magnitude column if possible, otherwise fail
-             mag_cols = [col for col in _phot_table.columns if 'mag' in col.lower()]
-             if not mag_cols:
-                 return None, None, None
-             # Heuristic: use the first found magnitude column
-             inst_mag_col_name = mag_cols[0]
-             st.warning(f"Using '{inst_mag_col_name}' as instrumental magnitude.")
-        else:
-            inst_mag_col_name = 'instrumental_mag'
+        if np.ma.is_masked(zero_point_value) or np.isnan(zero_point_value):
+            zero_point_value = float('nan')
+        if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
+            zero_point_std = float('nan')
 
-        _phot_table["calib_mag"] = (
-            _phot_table[inst_mag_col_name] + zero_point_value + 0.1 * air
+        _matched_table["calib_mag"] = (
+            _matched_table["instrumental_mag"] + zero_point_value + 0.1 * air
         )
 
-        # Update the matched table as well for plotting
-        _matched_table["calib_mag"] = (
-             _matched_table['instrumental_mag'] + zero_point_value + 0.1 * air
+        if not isinstance(_phot_table, pd.DataFrame):
+            _phot_table = _phot_table.to_pandas()
+
+        _phot_table["calib_mag"] = (
+            _phot_table["instrumental_mag"] + zero_point_value + 0.1 * air
         )
 
         st.session_state["final_phot_table"] = _phot_table
 
-        # --- Plotting --- #
-        fig = create_figure(size="medium", dpi=100)
-        ax = fig.add_subplot(111)
+        fig, ax = plt.subplots(figsize=FIGURE_SIZES["medium"], dpi=100)
 
         # Calculate residuals
         _matched_table["residual"] = (
@@ -1099,27 +1625,16 @@ def calculate_zero_point(
         )
 
         # Create bins for magnitude ranges
-        bin_width = 0.5
+        bin_width = 0.5  # 0.5 magnitude width bins
         min_mag = _matched_table[filter_band].min()
         max_mag = _matched_table[filter_band].max()
-        if pd.isna(min_mag) or pd.isna(max_mag):
-             st.warning("Could not determine magnitude range for plotting bins.")
-             bins = np.array([])
-        else:
-             bins = np.arange(np.floor(min_mag), np.ceil(max_mag) + bin_width, bin_width)
+        bins = np.arange(np.floor(min_mag), np.ceil(max_mag) + bin_width, bin_width)
 
-        # Group data by magnitude bins if bins exist
-        if len(bins) > 1:
-            grouped = _matched_table.groupby(pd.cut(_matched_table[filter_band], bins))
-            bin_centers = [(bin.left + bin.right) / 2 for bin in grouped.groups.keys()]
-            bin_means = grouped["calib_mag"].mean().values
-            bin_stds = grouped["calib_mag"].std().values
-            valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds)
-        else:
-            valid_bins = np.array([], dtype=bool)
-            bin_centers = []
-            bin_means = []
-            bin_stds = []
+        # Group data by magnitude bins
+        grouped = _matched_table.groupby(pd.cut(_matched_table[filter_band], bins))
+        bin_centers = [(bin.left + bin.right) / 2 for bin in grouped.groups.keys()]
+        bin_means = grouped["calib_mag"].mean().values
+        bin_stds = grouped["calib_mag"].std().values
 
         # Plot individual points
         ax.scatter(
@@ -1128,160 +1643,130 @@ def calculate_zero_point(
             alpha=0.5,
             label="Matched sources",
             color="blue",
-            s=10 # Smaller points
         )
 
-        # Plot binned means with error bars
-        if np.any(valid_bins):
-            ax.errorbar(
-                np.array(bin_centers)[valid_bins],
-                bin_means[valid_bins],
-                yerr=bin_stds[valid_bins],
-                fmt="ro-",
-                label="Mean ± StdDev (binned)",
-                capsize=5,
-            )
+        # Plot binned means with error bars showing standard deviation
+        valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds)
+        ax.errorbar(
+            np.array(bin_centers)[valid_bins],
+            bin_means[valid_bins],
+            yerr=bin_stds[valid_bins],
+            fmt="ro-",
+            label="Mean ± StdDev (binned)",
+            capsize=5,
+        )
 
-        # Add a diagonal line for reference (y=x)
-        if not pd.isna(min_mag) and not pd.isna(max_mag):
-            ideal_mag = np.linspace(min_mag, max_mag, 10)
-            ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
+        # Add a diagonal line for reference
+        ideal_mag = np.linspace(min_mag, max_mag, 10)
+        ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
 
         ax.set_xlabel(f"Gaia {filter_band}")
-        ax.set_ylabel("Calibrated Instrumental Mag")
-        ax.set_title(f"Zero Point Calibration (ZP = {zero_point_value:.2f} ± {zero_point_std:.2f})")
+        ax.set_ylabel("Calib mag")
+        ax.set_title("Gaia magnitude vs Calibrated magnitude")
         ax.legend()
-        ax.grid(True, alpha=0.3)
-        # Invert y-axis for magnitudes
-        ax.invert_yaxis()
+        ax.grid(True, alpha=0.5)
 
         st.success(
             f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f}"
         )
 
-        # Save the plot
         try:
+            base_name = st.session_state.get("base_filename", "photometry")
             output_dir = st.session_state.get("output_dir", ".")
-            base_filename = st.session_state.get("base_filename", "photometry")
-            plot_filename = os.path.join(output_dir, f"{base_filename}_zero_point_plot.png")
-            fig.savefig(plot_filename, bbox_inches="tight")
-            st.image(plot_filename, caption="Zero Point Calibration Plot")
-            write_to_log(st.session_state.get("log_buffer"), f"Saved zero point plot to {plot_filename}")
+            zero_point_plot_path = os.path.join(
+                output_dir, f"{base_name}_zero_point_plot.png"
+            )
+            plt.savefig(zero_point_plot_path)
         except Exception as e:
-            st.warning(f"Could not save zero point plot: {e}")
+            st.warning(f"Could not save plot to file: {e}")
 
-        return zero_point_value, zero_point_std, fig
-
+        return round(zero_point_value, 2), round(zero_point_std, 2), fig
     except Exception as e:
         st.error(f"Error calculating zero point: {e}")
         return None, None, None
 
 
 def run_zero_point_calibration(
-    image_to_process: np.ndarray,
-    header: Optional[dict | fits.Header],
-    pixel_size_arcsec: float,
-    mean_fwhm_pixel: float,
-    threshold_sigma: float,
-    detection_mask: int,
-    filter_band: str,
-    filter_max_mag: float,
-    air: float,
-) -> Tuple[Optional[float], Optional[float], Optional[pd.DataFrame]]:
+    header,
+    pixel_size_arcsec,
+    mean_fwhm_pixel,
+    threshold_sigma,
+    detection_mask,
+    filter_band,
+    filter_max_mag,
+    air,
+):
     """
-    Orchestrate the full photometric calibration pipeline.
+    Run the complete photometric zero point calibration workflow.
 
-    This function executes the sequence:
-    1. Source detection and aperture photometry.
-    2. Cross-matching detected sources with the Gaia catalog.
-    3. Calculating the photometric zero point using the matched stars.
+    This function orchestrates the full photometric analysis pipeline:
+    1. Source detection and photometry
+    2. GAIA catalog cross-matching
+    3. Zero point determination
+    4. Results display and catalog creation
 
     Parameters
     ----------
-    image_to_process : np.ndarray
-        The image data array ready for analysis.
-    header : Optional[dict | fits.Header]
-        FITS header containing WCS and other metadata.
+    header : dict or astropy.io.fits.Header
+        FITS header with observation metadata
     pixel_size_arcsec : float
-        Pixel scale of the image in arcseconds per pixel.
+        Pixel scale in arcseconds per pixel
     mean_fwhm_pixel : float
-        Estimated or initial guess for the FWHM in pixels.
+        FWHM estimate in pixels
     threshold_sigma : float
-        Detection threshold in sigma units above the background noise.
+        Detection threshold in sigma units
     detection_mask : int
-        Width of the border mask in pixels to exclude from detection.
+        Border mask size in pixels
     filter_band : str
-        Gaia magnitude band to use for calibration (e.g., 'phot_g_mean_mag').
+        GAIA magnitude band to use
     filter_max_mag : float
-        Maximum (faintest) magnitude for Gaia sources used in calibration.
+        Magnitude limits for GAIA sources
     air : float
-        Airmass of the observation for extinction correction.
+        Airmass value for extinction correction
 
     Returns
     -------
-    Tuple[Optional[float], Optional[float], Optional[pd.DataFrame]]
-        - zero_point_value: The calculated zero point, or None on failure.
-        - zero_point_std: The standard deviation of the zero point, or None.
-        - final_phot_table: A pandas DataFrame containing the full photometry
-          catalog with calibrated magnitudes, or None if the process fails early.
-          This table is also stored in `st.session_state['final_phot_table']`.
+    tuple
+        (zero_point_value, zero_point_std, final_phot_table) where:
+        - zero_point_value: Calculated zero point value
+        - zero_point_std: Standard deviation of the zero point
+        - final_phot_table: DataFrame with the complete photometry catalog
 
     Notes
     -----
-    - Manages the workflow using Streamlit spinners and status messages.
-    - Calls `detection_and_photometry`, `cross_match_with_gaia`, and `calculate_zero_point`.
-    - Handles potential failures at each step and returns None values accordingly.
-    - Displays intermediate results (matched table head) in the Streamlit interface.
+    This function manages the workflow with appropriate Streamlit spinners and messages,
+    creates downloadable output files, logs progress, and provides interactive data views.
+
+    If PSF photometry results are available, they're added to the final catalog alongside
+    aperture photometry results.
     """
     with st.spinner("Finding sources and performing photometry..."):
-        # Assuming data_not_normalized and gb are not strictly needed based on usage
-        phot_table_qtable, epsf_table, _, fwhm_estimate = detection_and_photometry(
+        phot_table_qtable, epsf_table, _, _ = detection_and_photometry(
             image_to_process,
             header,
-            None, # data_not_normalized placeholder
             mean_fwhm_pixel,
             threshold_sigma,
             detection_mask,
             filter_band,
-            # gb="Gmag" # Default, placeholder
         )
 
         if phot_table_qtable is None:
-            st.error("Source detection or photometry failed. Cannot proceed.")
+            st.error("Failed to perform photometry - no sources found")
             return None, None, None
-        else:
-            st.success(f"Detected {len(phot_table_qtable)} sources.")
-            # Add instrumental magnitude calculation if not done in detection_and_photometry
-            if 'instrumental_mag' not in phot_table_qtable.colnames:
-                 if 'aperture_sum' in phot_table_qtable.colnames:
-                      # Basic instrumental mag: -2.5 * log10(flux)
-                      # Handle zero or negative flux
-                      valid_flux = phot_table_qtable['aperture_sum'] > 0
-                      phot_table_qtable['instrumental_mag'] = np.nan
-                      phot_table_qtable['instrumental_mag'][valid_flux] = -2.5 * np.log10(phot_table_qtable['aperture_sum'][valid_flux])
-                 else:
-                      st.warning("Cannot calculate instrumental magnitude: 'aperture_sum' missing.")
-                      # Cannot proceed without instrumental magnitudes
-                      return None, None, None
 
     with st.spinner("Cross-matching with Gaia..."):
-        # Use the estimated FWHM if available, otherwise the input guess
-        fwhm_to_use = fwhm_estimate if fwhm_estimate is not None else mean_fwhm_pixel
         matched_table = cross_match_with_gaia(
             phot_table_qtable,
             header,
             pixel_size_arcsec,
-            fwhm_to_use,
+            mean_fwhm_pixel,
             filter_band,
             filter_max_mag,
         )
 
         if matched_table is None:
-            st.warning("Cross-matching with Gaia failed or found no matches. Zero point calibration skipped.")
-            # Return the uncalibrated table if matching failed
-            final_phot_table = phot_table_qtable.to_pandas() if isinstance(phot_table_qtable, Table) else phot_table_qtable
-            st.session_state["final_phot_table"] = final_phot_table
-            return None, None, final_phot_table
+            st.error("Failed to cross-match with Gaia")
+            return None, None, phot_table_qtable
 
     st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
     st.dataframe(matched_table.head(10))
@@ -1291,673 +1776,901 @@ def run_zero_point_calibration(
             phot_table_qtable, matched_table, filter_band, air
         )
 
-        # Retrieve the potentially updated table from session state
-        final_phot_table = st.session_state.get("final_phot_table")
-
         if zero_point_value is not None:
-            st.success("Zero point calibration completed.")
-            # Optionally add ZP info to the final table metadata or columns if needed
-        else:
-            st.error("Zero point calculation failed.")
-            # Ensure final_phot_table is still set, even if uncalibrated
-            if final_phot_table is None:
-                 final_phot_table = phot_table_qtable.to_pandas() if isinstance(phot_table_qtable, Table) else phot_table_qtable
-                 st.session_state["final_phot_table"] = final_phot_table
+            st.pyplot(zp_plot)
+            write_to_log(
+                log_buffer, f"Zero point: {zero_point_value:.3f} ± {zero_point_std:.3f}"
+            )
+            write_to_log(log_buffer, f"Airmass: {air:.2f}")
 
-        return zero_point_value, zero_point_std, final_phot_table
+            try:
+                if (
+                    "epsf_photometry_result" in st.session_state
+                    and epsf_table is not None
+                ):
+                    epsf_df = (
+                        epsf_table.to_pandas()
+                        if not isinstance(epsf_table, pd.DataFrame)
+                        else epsf_table
+                    )
+
+                    epsf_df["match_id"] = (
+                        epsf_df["xcenter"].round(2).astype(str)
+                        + "_"
+                        + epsf_df["ycenter"].round(2).astype(str)
+                    )
+                    final_table["match_id"] = (
+                        final_table["xcenter"].round(2).astype(str)
+                        + "_"
+                        + final_table["ycenter"].round(2).astype(str)
+                    )
+
+                    epsf_cols = {
+                        "match_id": "match_id",
+                        "flux_fit": "psf_flux_fit",
+                        "flux_err": "psf_flux_err",
+                        "instrumental_mag": "psf_instrumental_mag",
+                    }
+
+                    st.dataframe(epsf_df.head())
+                    st.dataframe(final_table.head())
+
+                    if (
+                        len(epsf_cols) > 1
+                        and "match_id" in epsf_df.columns
+                        and "match_id" in final_table.columns
+                    ):
+                        epsf_subset = epsf_df[
+                            [col for col in epsf_cols.keys() if col in epsf_df.columns]
+                        ].rename(columns=epsf_cols)
+                        st.dataframe(epsf_subset.head())
+
+                    final_table = pd.merge(final_table,
+                                           epsf_subset,
+                                           on="match_id",
+                                           how="left"
+                                           )
+
+                    st.dataframe(final_table.head())
+
+                    if "psf_instrumental_mag" in final_table.columns:
+                        final_table["psf_calib_mag"] = (
+                            final_table["psf_instrumental_mag"]
+                            + zero_point_value
+                            + 0.1 * air
+                        )
+
+                    final_table.drop("match_id", axis=1, inplace=True)
+
+                    st.success("Added PSF photometry results to the catalog")
+
+                csv_buffer = StringIO()
+
+                cols_to_drop = []
+                for col_name in ["sky_center.ra", "sky_center.dec"]:
+                    if col_name in final_table.columns:
+                        cols_to_drop.append(col_name)
+
+                if cols_to_drop:
+                    final_table = final_table.drop(columns=cols_to_drop)
+
+                if "match_id" in final_table.columns:
+                    final_table.drop("match_id", axis=1, inplace=True)
+
+                final_table["zero_point"] = zero_point_value
+                final_table["zero_point_std"] = zero_point_std
+                final_table["airmass"] = air
+
+                st.subheader("Final Photometry Catalog")
+                st.dataframe(final_table.head(10))
+
+                final_table.to_csv(csv_buffer, index=False)
+                csv_data = csv_buffer.getvalue()
+
+                filename = (
+                    catalog_name
+                    if catalog_name.endswith(".csv")
+                    else f"{catalog_name}.csv"
+                )
+                catalog_path = os.path.join(output_dir, filename)
+
+                with open(catalog_path, "w") as f:
+                    f.write(csv_data)
+
+                metadata_filename = f"{base_catalog_name}_metadata.txt"
+                metadata_path = os.path.join(output_dir, metadata_filename)
+
+                with open(metadata_path, "w") as f:
+                    f.write("RAPAS Photometry Analysis Metadata\n")
+                    f.write("================================\n\n")
+                    f.write(
+                        f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    )
+                    f.write(f"Input File: {science_file.name}\n")
+                    f.write(f"Catalog File: {filename}\n\n")
+
+                    f.write(
+                        f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n"
+                    )
+                    f.write(f"Airmass: {air:.3f}\n")
+                    f.write(f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n")
+                    f.write(
+                        f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n"
+                    )
+
+                    f.write("Detection Parameters:\n")
+                    f.write(f"  Threshold: {threshold_sigma} sigma\n")
+                    f.write(f"  Border Mask: {detection_mask} pixels\n")
+
+                write_to_log(log_buffer, "Saved catalog metadata")
+
+            except Exception as e:
+                st.error(f"Error preparing download: {e}")
+                st.exception(e)
+
+        return zero_point_value, zero_point_std, final_table
 
 
 def enhance_catalog(
-    api_key: Optional[str],
-    final_table: Optional[pd.DataFrame],
-    matched_table: Optional[pd.DataFrame],
-    header: Optional[dict | fits.Header],
-    pixel_scale_arcsec: Optional[float],
-    search_radius_arcsec: float = 60.0,
-) -> Optional[pd.DataFrame]:
+    api_key,
+    final_table,
+    matched_table,
+    header,
+    pixel_scale_arcsec,
+    search_radius_arcsec=60,
+):
     """
-    Enhance the photometric catalog by cross-matching with multiple astronomical databases.
+    Enhance a photometric catalog with cross-matches from multiple
+    astronomical databases.
 
-    Queries GAIA DR3 (using pre-matched calibration stars), Astro-Colibri,
-    SIMBAD, SkyBoT (solar system objects), AAVSO VSX (variable stars), and
-    VizieR VII/294 (Milliquas quasar catalog) to identify known objects within
-    the field of view.
+    This function queries several catalogs and databases including:
+    - GAIA DR3 (using previously matched sources)
+    - Astro-Colibri (for known astronomical sources)
+    - SIMBAD (for object identifications and classifications)
+    - SkyBoT (for solar system objects)
+    - AAVSO VSX (for variable stars)
+    - VizieR VII/294 (for quasars)
 
     Parameters
     ----------
-    api_key : Optional[str]
-        API key for Astro-Colibri service. If None, attempts to read from
-        the 'ASTROCOLIBRI_API' environment variable.
-    final_table : Optional[pd.DataFrame]
-        The main photometry catalog DataFrame, expected to contain 'ra' and 'dec'
-        columns in degrees.
-    matched_table : Optional[pd.DataFrame]
-        DataFrame containing sources already matched with Gaia (used for calibration).
-        Used here to flag calibration stars.
-    header : Optional[dict | fits.Header]
-        FITS header containing observation metadata, used to determine field center,
-        observation time (for SkyBoT), and field size.
-    pixel_scale_arcsec : Optional[float]
-        Pixel scale in arcseconds per pixel. Used with header NAXIS values to
-        estimate field size if available.
+    final_table : pandas.DataFrame
+        Final photometry catalog with RA/Dec coordinates
+    matched_table : pandas.DataFrame
+        Table of already matched GAIA sources (used for calibration)
+    header : dict or astropy.io.fits.Header
+        FITS header with observation information
+    pixel_scale_arcsec : float
+        Pixel scale in arcseconds per pixel
     search_radius_arcsec : float, optional
-        Search radius used for matching sources within the `final_table` to
-        catalog results (e.g., Astro-Colibri), by default 60.0 arcseconds.
-        Note: Catalog queries (SIMBAD, VizieR, etc.) use the field width.
+        Search radius for cross-matching in arcseconds, default=60
 
     Returns
     -------
-    Optional[pd.DataFrame]
-        The input `final_table` DataFrame enhanced with new columns for each
-        catalog queried (e.g., 'simbad_main_id', 'skybot_NAME', 'aavso_Name',
-        'qso_name', 'astrocolibri_name'). Also adds a 'catalog_matches' summary
-        column listing all catalogs a source was matched in. Returns None or the
-        original table if input is invalid.
+    pandas.DataFrame
+        Input dataframe with added catalog information including:
+        - GAIA data for calibration stars
+        - Astro-Colibri source identifications
+        - SIMBAD identifications and object types
+        - Solar system object identifications from SkyBoT
+        - Variable star information from AAVSO VSX
+        - Quasar information from VizieR VII/294
+        - A summary column 'catalog_matches' listing all catalog matches
 
     Notes
     -----
-    - Determines field center and size from the header if possible.
-    - Uses `safe_catalog_query` for robust SIMBAD queries.
-    - Queries external services (Astro-Colibri, SkyBoT, VizieR) via HTTP requests
-      or astroquery, handling potential errors.
-    - Matches catalog results back to the `final_table` based on RA/Dec proximity.
-    - Updates Streamlit interface with progress messages and summary tables.
-    - Logs actions and findings using `write_to_log`.
+    The function shows progress updates in the Streamlit interface and creates
+    a summary display of matched objects. Queries are made with appropriate
+    error handling to prevent failures if any catalog service is unavailable.
+    API requests are processed in batches to avoid overwhelming servers.
     """
-    # ...existing code...
     if final_table is None or len(final_table) == 0:
-        st.warning("No sources in the final table to cross-match with catalogs.")
+        st.warning("No sources to cross-match with catalogs.")
         return final_table
 
-    # Ensure RA/Dec columns exist
-    if 'ra' not in final_table.columns or 'dec' not in final_table.columns:
-        st.error("Final table must contain 'ra' and 'dec' columns for cross-matching.")
-        return final_table
-
-    # Initialize catalog match columns if they don't exist
-    catalog_info = {
-        'gaia_calib_star': False, # Flag for stars used in ZP calc
-        'astrocolibri_name': None,
-        'astrocolibri_type': None,
-        'astrocolibri_classification': None,
-        'simbad_main_id': None,
-        'simbad_otype': None,
-        'skybot_NAME': None,
-        'skybot_class': None,
-        'aavso_Name': None,
-        'aavso_Type': None,
-        'qso_name': None,
-        'qso_redshift': np.nan,
-        'catalog_matches': None # Summary column
-    }
-    for col, default_val in catalog_info.items():
-        if col not in final_table.columns:
-            # Use appropriate dtype based on default
-            dtype = object if default_val is None or isinstance(default_val, str) else type(default_val)
-            if dtype == float:
-                 final_table[col] = pd.Series(np.nan, index=final_table.index, dtype=float)
-            else:
-                 final_table[col] = pd.Series(default_val, index=final_table.index, dtype=dtype)
-
-    # Compute field of view (arcmin) ONCE
-    # ...existing code...
+    # Compute field of view (arcmin) ONCE and use everywhere
+    field_center_ra = None
+    field_center_dec = None
+    field_width_arcmin = 30.0  # fallback default
     if header is not None:
-        # ... [logic to find field_center_ra, field_center_dec] ...
-        ra_keys = ["CRVAL1", "RA", "OBJRA"]
-        dec_keys = ["CRVAL2", "DEC", "OBJDEC"]
-        field_center_ra = get_header_value(header, ra_keys)
-        field_center_dec = get_header_value(header, dec_keys)
-
+        if "CRVAL1" in header and "CRVAL2" in header:
+            field_center_ra = float(header["CRVAL1"])
+            field_center_dec = float(header["CRVAL2"])
+        elif "RA" in header and "DEC" in header:
+            field_center_ra = float(header["RA"])
+            field_center_dec = float(header["DEC"])
+        elif "OBJRA" in header and "OBJDEC" in header:
+            field_center_ra = float(header["OBJRA"])
+            field_center_dec = float(header["OBJDEC"])
         # Compute field width if possible
-        if "NAXIS1" in header and pixel_scale_arcsec:
-            field_width_arcmin = (header["NAXIS1"] * pixel_scale_arcsec) / 60.0
-        elif "NAXIS2" in header and pixel_scale_arcsec:
-             # Fallback using NAXIS2 if NAXIS1 missing
-             field_width_arcmin = (header["NAXIS2"] * pixel_scale_arcsec) / 60.0
-        else:
-             st.warning("Could not determine field width accurately from header.")
+        if "NAXIS1" in header and "NAXIS2" in header and pixel_scale_arcsec:
+            field_width_arcmin = (
+                max(header.get("NAXIS1", 1000), header.get("NAXIS2", 1000))
+                * pixel_scale_arcsec
+                / 60.0
+            )
 
-    # ...existing code...
+    status_text = st.empty()
+    status_text.write("Starting cross-match process...")
+
     if matched_table is not None and len(matched_table) > 0:
         status_text.write("Adding Gaia calibration matches...")
-        # Assuming matched_table contains unique identifiers or coordinates
-        # that can be used to match back to final_table.
-        # If matched_table has 'ra'/'dec', we can match by coordinates.
-        # If it has an index corresponding to final_table, use that.
 
-        # Example: Matching by coordinates (adjust tolerance as needed)
-        if 'ra' in matched_table.columns and 'dec' in matched_table.columns:
-            calib_coords = SkyCoord(ra=matched_table['ra'].values, dec=matched_table['dec'].values, unit='deg')
-            final_coords = SkyCoord(ra=final_table['ra'].values, dec=final_table['dec'].values, unit='deg')
-            idx, d2d, _ = final_coords.match_to_catalog_sky(calib_coords)
-            # Use a small tolerance, e.g., 1 arcsec, assuming they are the same sources
-            is_calib_match = d2d < 1.0 * u.arcsec
-            final_table.loc[is_calib_match, 'gaia_calib_star'] = True
-            st.write(f"Flagged {is_calib_match.sum()} Gaia calibration stars.")
-        else:
-            st.warning("Could not identify Gaia calibration stars in the final table.")
-
-    # --- Astro-Colibri Query --- #
-    if field_center_ra is not None and field_center_dec is not None:
-        # ... [validation for field_center_ra, field_center_dec] ...
-        if not (-360 <= field_center_ra <= 360) or not (-90 <= field_center_dec <= 90):
-            st.error("Invalid field center coordinates from header.")
-            # Decide whether to proceed without Astro-Colibri or stop
-        else:
-            st.info("Querying Astro-Colibri API...")
-            if api_key is None:
-                api_key = os.environ.get("ASTROCOLIBRI_API")
-                if api_key is None:
-                    st.warning("Astro-Colibri API key not provided. Skipping query.")
-                else:
-                    st.info("Using Astro-Colibri API key from environment variable.")
-
-            if api_key:
-                try:
-                    # ... [Astro-Colibri API call logic] ...
-                    url = "https://astro-colibri.science/api/v1/events/cone_search"
-                    headers = {"Content-Type": "application/json"}
-                    observation_date = get_header_value(header, ["DATE-OBS", "DATE"])
-                    if observation_date:
-                        try:
-                            base_date = Time(observation_date).datetime
-                        except ValueError:
-                            st.warning(f"Could not parse observation date '{observation_date}', using current date.")
-                            base_date = datetime.utcnow()
-                    else:
-                        st.warning("Observation date not found in header, using current date.")
-                        base_date = datetime.utcnow()
-
-                    date_min = (base_date - timedelta(days=14)).isoformat()
-                    date_max = (base_date + timedelta(days=7)).isoformat()
-
-                    body = {
-                        "uid": api_key,
-                        "filter": None,
-                        "time_range": {"max": date_max, "min": date_min},
-                        "properties": {
-                            "type": "cone",
-                            "position": {"ra": field_center_ra, "dec": field_center_dec},
-                            "radius": field_width_arcmin / 2.0, # Use field radius in arcmin
-                        },
-                    }
-                    response = requests.post(url, headers=headers, data=json.dumps(body), timeout=30)
-                    response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
-
-                    events = response.json().get("events", [])
-                    if events:
-                        # ... [Process Astro-Colibri results and match to final_table] ...
-                        sources = {
-                            "ra": [], "dec": [], "name": [], "type": [], "classification": []
-                        }
-                        for event in events:
-                            pos = event.get('position', {}).get('coordinates')
-                            if pos and len(pos) == 2:
-                                sources["ra"].append(pos[0])
-                                sources["dec"].append(pos[1])
-                                sources["name"].append(event.get('discoverer_internal_name', 'Unknown'))
-                                sources["type"].append(event.get('type', 'Unknown'))
-                                sources["classification"].append(event.get('classification', 'Unknown'))
-
-                        astrostars = pd.DataFrame(sources)
-                        st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.")
-                        # st.dataframe(astrostars) # Optional: display raw results
-
-                        # Match to final_table
-                        if not astrostars.empty:
-                            source_coords = SkyCoord(ra=final_table["ra"].values, dec=final_table["dec"].values, unit="deg")
-                            astro_colibri_coords = SkyCoord(ra=astrostars["ra"].values, dec=astrostars["dec"].values, unit="deg")
-
-                            match_radius = search_radius_arcsec * u.arcsec
-                            idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
-                            matches = d2d < match_radius
-
-                            matched_indices_final = np.where(matches)[0]
-                            matched_indices_astro = idx[matches]
-
-                            final_table.loc[matched_indices_final, 'astrocolibri_name'] = astrostars.iloc[matched_indices_astro]['name'].values
-                            final_table.loc[matched_indices_final, 'astrocolibri_type'] = astrostars.iloc[matched_indices_astro]['type'].values
-                            final_table.loc[matched_indices_final, 'astrocolibri_classification'] = astrostars.iloc[matched_indices_astro]['classification'].values
-
-                            st.success(f"Matched {len(matched_indices_final)} sources with Astro-Colibri.")
-                            write_to_log(st.session_state.get("log_buffer"), f"Matched {len(matched_indices_final)} sources with Astro-Colibri.")
-                        else:
-                             st.write("No valid Astro-Colibri sources to match.")
-                    else:
-                        st.write("No Astro-Colibri events found in the specified region and time range.")
-                        write_to_log(st.session_state.get("log_buffer"), "No Astro-Colibri events found.")
-
-                except requests.exceptions.RequestException as e:
-                    st.error(f"Error querying Astro-Colibri API: {str(e)}")
-                    write_to_log(st.session_state.get("log_buffer"), f"Astro-Colibri API Error: {str(e)}", "ERROR")
-                except json.JSONDecodeError:
-                    st.error("Error decoding Astro-Colibri API response.")
-                    write_to_log(st.session_state.get("log_buffer"), "Astro-Colibri JSON Decode Error", "ERROR")
-                except Exception as e:
-                    st.error(f"An unexpected error occurred during Astro-Colibri query: {str(e)}")
-                    write_to_log(st.session_state.get("log_buffer"), f"Astro-Colibri Unexpected Error: {str(e)}", "ERROR")
-    else:
-        st.warning("Could not extract field center coordinates from header. Skipping Astro-Colibri query.")
-        write_to_log(st.session_state.get("log_buffer"), "Skipped Astro-Colibri query due to missing field center.")
-
-    # --- SIMBAD Query --- #
-    status_text.write("Querying SIMBAD for object identifications...")
-    if field_center_ra is not None and field_center_dec is not None:
-        try:
-            custom_simbad = Simbad()
-            # Add fields relevant for identification
-            custom_simbad.add_votable_fields("otype", "main_id", "ids")
-            # Remove default flux fields if not needed
-            # custom_simbad.remove_votable_fields('flux(U)', 'flux(B)', ...) 
-
-            center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit="deg")
-            simbad_result, error = safe_catalog_query(
-                custom_simbad.query_region,
-                "SIMBAD query failed",
-                center_coord,
-                radius=field_width_arcmin * u.arcmin,
+        if "xcenter" in final_table.columns and "ycenter" in final_table.columns:
+            final_table["match_id"] = (
+                final_table["xcenter"].round(2).astype(str)
+                + "_"
+                + final_table["ycenter"].round(2).astype(str)
             )
-            if error:
-                st.warning(f"SIMBAD query issue: {error}")
-                write_to_log(st.session_state.get("log_buffer"), f"SIMBAD query issue: {error}", "WARNING")
-            elif simbad_result is not None and len(simbad_result) > 0:
-                st.success(f"Found {len(simbad_result)} SIMBAD objects in field.")
-                simbad_df = simbad_result.to_pandas()
-                # Match to final_table
-                source_coords = SkyCoord(ra=final_table["ra"].values, dec=final_table["dec"].values, unit="deg")
-                simbad_coords = SkyCoord(ra=simbad_df["RA"].values, dec=simbad_df["DEC"].values, unit="deg", frame='icrs') # Assuming Simbad returns ICRS
 
-                match_radius = search_radius_arcsec * u.arcsec
-                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
-                matches = d2d < match_radius
+        if "xcenter" in matched_table.columns and "ycenter" in matched_table.columns:
+            matched_table["match_id"] = (
+                matched_table["xcenter"].round(2).astype(str)
+                + "_"
+                + matched_table["ycenter"].round(2).astype(str)
+            )
 
-                matched_indices_final = np.where(matches)[0]
-                matched_indices_simbad = idx[matches]
+            gaia_cols = [
+                col
+                for col in matched_table.columns
+                if any(x in col for x in ["gaia", "phot_"])
+            ]
+            gaia_cols.append("match_id")
 
-                final_table.loc[matched_indices_final, 'simbad_main_id'] = simbad_df.iloc[matched_indices_simbad]['MAIN_ID'].values
-                final_table.loc[matched_indices_final, 'simbad_otype'] = simbad_df.iloc[matched_indices_simbad]['OTYPE'].values
+            gaia_subset = matched_table[gaia_cols].copy()
 
-                st.success(f"Matched {len(matched_indices_final)} sources with SIMBAD.")
-                write_to_log(st.session_state.get("log_buffer"), f"Matched {len(matched_indices_final)} sources with SIMBAD.")
+            rename_dict = {}
+            for col in gaia_subset.columns:
+                if col != "match_id" and not col.startswith("gaia_"):
+                    rename_dict[col] = f"gaia_{col}"
+
+            if rename_dict:
+                gaia_subset = gaia_subset.rename(columns=rename_dict)
+
+            final_table = pd.merge(final_table, gaia_subset, on="match_id", how="left")
+
+            final_table["gaia_calib_star"] = final_table["match_id"].isin(
+                matched_table["match_id"]
+            )
+
+            st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
+
+    if field_center_ra is not None and field_center_dec is not None:
+        if not (-360 <= field_center_ra <= 360) or not (-90 <= field_center_dec <= 90):
+            st.warning(
+                f"Invalid coordinates: RA={field_center_ra}, DEC={field_center_dec}"
+            )
+        else:
+            pass
+    else:
+        st.warning("Could not extract field center coordinates from header")
+
+    st.info("Querying Astro-Colibri API...")
+
+    if api_key is None:
+        api_key = os.environ.get("ASTROCOLIBRI_API")
+        if api_key is None:
+            st.warning("No API key for ASTRO-COLIBRI provided or found")
+            pass
+
+    try:
+        try:
+            # Base URL of the API
+            url = URL + "cone_search"
+
+            # Request parameters (headers, body)
+            headers = {"Content-Type": "application/json"}
+
+            # Define date range for the query
+            observation_date = None
+            if header is not None:
+                if "DATE-OBS" in header:
+                    observation_date = header["DATE-OBS"]
+                elif "DATE" in header:
+                    observation_date = header["DATE"]
+
+            # Set time range to ±7 days from observation date or current date
+            if observation_date:
+                try:
+                    base_date = datetime.fromisoformat(
+                        observation_date.replace("T", " ").split(".")[0]
+                    )
+                except (ValueError, TypeError):
+                    base_date = datetime.now()
+            else:
+                base_date = datetime.now()
+
+            date_min = (base_date - timedelta(days=14)).isoformat()
+            date_max = (base_date + timedelta(days=7)).isoformat()
+
+            body = {
+                "uid": api_key,
+                "filter": None,
+                "time_range": {
+                    "max": date_max,
+                    "min": date_min,
+                },
+                "properties": {
+                    "type": "cone",
+                    "position": {"ra": field_center_ra, "dec": field_center_dec},
+                    "radius": field_width_arcmin / 2.0,
+                },
+            }
+
+            # Perform the POST request
+            response = requests.post(url, headers=headers, data=json.dumps(body))
+
+            # Process the response
+            try:
+                if response.status_code == 200:
+                    events = response.json()["voevents"]
+                else:
+                    st.warning(f"url: {url}")
+                    st.warning(
+                        f"Request failed with status code: {response.status_code}"
+                    )
+
+            except json.JSONDecodeError:
+                st.error("Request did NOT succeed : ", response.status_code)
+                st.error("Error message : ", response.content.decode("UTF-8"))
+
+        except Exception as e:
+            st.error(f"Error querying Astro-Colibri API: {str(e)}")
+            # Continue with function instead of returning None
+
+        if response is not None and response.status_code == 200:
+            sources = {
+                "ra": [],
+                "dec": [],
+                "discoverer_internal_name": [],
+                "type": [],
+                "classification": [],
+            }
+
+            # astrostars = pd.DataFrame(source)
+            final_table["astrocolibri_name"] = None
+            final_table["astrocolibri_type"] = None
+            final_table["astrocolibri_classification"] = None
+            for event in events:
+                if "ra" in event and "dec" in event:
+                    sources["ra"].append(event["ra"])
+                    sources["dec"].append(event["dec"])
+                    sources["discoverer_internal_name"].append(
+                        event["discoverer_internal_name"]
+                    )
+                    sources["type"].append(event["type"])
+                    sources["classification"].append(event["classification"])
+            astrostars = pd.DataFrame(sources)
+            st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.")
+            st.dataframe(astrostars)
+
+            source_coords = SkyCoord(
+                ra=final_table["ra"].values,
+                dec=final_table["dec"].values,
+                unit="deg",
+            )
+
+            astro_colibri_coords = SkyCoord(
+                ra=astrostars["ra"],
+                dec=astrostars["dec"],
+                unit=(u.deg, u.deg),
+            )
+
+            if not isinstance(search_radius_arcsec, (int, float)):
+                raise ValueError("Search radius must be a number")
+
+            idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
+            matches = d2d < (15 * u.arcsec)
+
+            for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                if match:
+                    final_table.loc[i, "astro_colibri_name"] = astrostars[
+                        "discoverer_internal_name"
+                    ][match_idx]
+                    final_table.loc[i, "astro_colibri_type"] = astrostars["type"][match_idx]
+                    final_table.loc[i, "astro_colibri_classification"] = astrostars[
+                        "classification"][match_idx]
+            
+            st.success("Astro-Colibri matched objects in field.")
+        else:
+            st.write("No Astro-Colibri sources found in the field.")
+
+    except Exception as e:
+        st.error(f"Error querying Astro-Colibri: {str(e)}")
+        st.write("No Astro-Colibri sources found.")
+
+    status_text.write("Querying SIMBAD for object identifications...")
+
+    custom_simbad = Simbad()
+    custom_simbad.add_votable_fields("otype", "main_id", "ids", "B", "V")
+
+    st.info("Querying SIMBAD")
+
+    try:
+        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit="deg")
+        simbad_result, error = safe_catalog_query(
+            custom_simbad.query_region,
+            "SIMBAD query failed",
+            center_coord,
+            radius=field_width_arcmin * u.arcmin,
+        )
+        if error:
+            st.warning(error)
+        else:
+            if simbad_result is not None and len(simbad_result) > 0:
+                final_table["simbad_main_id"] = None
+                final_table["simbad_otype"] = None
+                final_table["simbad_ids"] = None
+                final_table["simbad_B"] = None
+                final_table["simbad_V"] = None
+
+                source_coords = SkyCoord(
+                    ra=final_table["ra"].values,
+                    dec=final_table["dec"].values,
+                    unit="deg",
+                )
+
+                if all(col in simbad_result.colnames for col in ["ra", "dec"]):
+                    try:
+                        simbad_coords = SkyCoord(
+                            ra=simbad_result["ra"],
+                            dec=simbad_result["dec"],
+                            unit=(u.hourangle, u.deg),
+                        )
+
+                        idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
+                        matches = d2d <= (10 * u.arcsec)
+
+                        for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                            if match:
+                                final_table.loc[i, "simbad_main_id"] = simbad_result[
+                                    "main_id"
+                                ][match_idx]
+                                final_table.loc[i, "simbad_otype"] = simbad_result[
+                                    "otype"
+                                ][match_idx]
+                                final_table.loc[i, "simbad_B"] = simbad_result["B"][
+                                    match_idx
+                                ]
+                                final_table.loc[i, "simbad_V"] = simbad_result["V"][
+                                    match_idx
+                                ]
+                                if "ids" in simbad_result.colnames:
+                                    final_table.loc[i, "simbad_ids"] = simbad_result[
+                                        "ids"
+                                    ][match_idx]
+
+                        st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+                    except Exception as e:
+                        st.error(
+                            f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
+                        )
+                        st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
+                else:
+                    available_cols = ", ".join(simbad_result.colnames)
+                    st.error(
+                        f"SIMBAD result missing required columns. Available columns: {available_cols}"
+                    )
             else:
                 st.write("No SIMBAD objects found in the field.")
-                write_to_log(st.session_state.get("log_buffer"), "No SIMBAD objects found.")
-        except Exception as e:
-            st.error(f"SIMBAD query execution failed: {str(e)}")
-            write_to_log(st.session_state.get("log_buffer"), f"SIMBAD query execution failed: {str(e)}", "ERROR")
-    else:
-        st.warning("Skipping SIMBAD query due to missing field center.")
-        write_to_log(st.session_state.get("log_buffer"), "Skipped SIMBAD query due to missing field center.")
+    except Exception as e:
+        st.error(f"SIMBAD query execution failed: {str(e)}")
 
-    # --- SkyBoT Query --- #
     status_text.write("Querying SkyBoT for solar system objects...")
+
     try:
         if field_center_ra is not None and field_center_dec is not None:
-            obs_date = get_header_value(header, ["DATE-OBS", "DATE"])
-            if not obs_date:
-                st.warning("Observation date not found for SkyBoT query, using current time.")
-                obs_time_obj = Time.now()
+            if "DATE-OBS" in header:
+                obs_date = header["DATE-OBS"]
+            elif "DATE" in header:
+                obs_date = header["DATE"]
             else:
-                try:
-                    obs_time_obj = Time(obs_date)
-                except ValueError:
-                    st.warning(f"Could not parse observation date '{obs_date}' for SkyBoT, using current time.")
-                    obs_time_obj = Time.now()
+                obs_date = Time.now().isot
 
-            obs_time_iso = obs_time_obj.isot
-            # Use a slightly larger radius for cone search than field width? Or stick to field width?
-            # Skybot uses degrees for SR
-            sr_value_deg = field_width_arcmin / 60.0
-            # Ensure minimum radius if field is very small?
-            sr_value_deg = max(sr_value_deg, 0.1) # Example: min 6 arcmin radius
+            obs_time = Time(obs_date).isot
 
+            sr_value = min(field_width_arcmin / 60.0, 1.0)
             skybot_url = (
                 f"http://vo.imcce.fr/webservices/skybot/skybotconesearch_query.php?"
-                f"RA={field_center_ra}&DEC={field_center_dec}&SR={sr_value_deg:.4f}&"
-                f"EPOCH={quote(obs_time_iso)}&mime=json"
+                f"RA={field_center_ra}&DEC={field_center_dec}&SR={sr_value}&"
+                f"EPOCH={quote(obs_time)}&mime=json"
             )
-            st.info(f"Querying SkyBoT: RA={field_center_ra:.4f}, Dec={field_center_dec:.4f}, SR={sr_value_deg:.4f} deg, Epoch={obs_time_iso}")
+
+            st.info("Querying SkyBoT for solar system objects...")
 
             try:
-                skybot_response = requests.get(skybot_url, timeout=30)
-                skybot_response.raise_for_status()
-                skybot_data = skybot_response.json()
+                final_table["skybot_NAME"] = None
+                final_table["skybot_OBJECT_TYPE"] = None
+                final_table["skybot_MAGV"] = None
 
-                if skybot_data and isinstance(skybot_data, list) and len(skybot_data) > 0:
-                    st.success(f"Found {len(skybot_data)} potential solar system objects via SkyBoT.")
-                    skybot_df = pd.DataFrame(skybot_data)
-                    # Convert SkyBoT RA/Dec (often sexagesimal) to degrees if needed
-                    # Assuming SkyBoT returns degrees directly in JSON response based on mime=json
-                    skybot_df['RA_deg'] = skybot_df['RA'].astype(float)
-                    skybot_df['DEC_deg'] = skybot_df['DEC'].astype(float)
+                response = requests.get(skybot_url, timeout=15)
 
-                    # Match to final_table
-                    source_coords = SkyCoord(ra=final_table["ra"].values, dec=final_table["dec"].values, unit="deg")
-                    skybot_coords = SkyCoord(ra=skybot_df["RA_deg"].values, dec=skybot_df["DEC_deg"].values, unit="deg")
+                if response.status_code == 200:
+                    response_text = response.text.strip()
 
-                    match_radius = search_radius_arcsec * u.arcsec
-                    idx, d2d, _ = source_coords.match_to_catalog_sky(skybot_coords)
-                    matches = d2d < match_radius
+                    if response_text.startswith("{") or response_text.startswith("["):
+                        try:
+                            skybot_result = response.json()
 
-                    matched_indices_final = np.where(matches)[0]
-                    matched_indices_skybot = idx[matches]
+                            if "data" in skybot_result and skybot_result["data"]:
+                                skybot_coords = SkyCoord(
+                                    ra=[
+                                        float(obj["RA"])
+                                        for obj in skybot_result["data"]
+                                    ],
+                                    dec=[
+                                        float(obj["DEC"])
+                                        for obj in skybot_result["data"]
+                                    ],
+                                    unit=u.deg,
+                                )
 
-                    final_table.loc[matched_indices_final, 'skybot_NAME'] = skybot_df.iloc[matched_indices_skybot]['NAME'].values
-                    final_table.loc[matched_indices_final, 'skybot_class'] = skybot_df.iloc[matched_indices_skybot]['CLASS'].values
+                                source_coords = SkyCoord(
+                                    ra=final_table["ra"].values,
+                                    dec=final_table["dec"].values,
+                                    unit=u.deg,
+                                )
 
-                    st.success(f"Matched {len(matched_indices_final)} sources with SkyBoT.")
-                    write_to_log(st.session_state.get("log_buffer"), f"Matched {len(matched_indices_final)} sources with SkyBoT.")
+                                idx, d2d, _ = source_coords.match_to_catalog_sky(
+                                    skybot_coords
+                                )
+                                matches = d2d <= (10 * u.arcsec)
+
+                                for i, (match, match_idx) in enumerate(
+                                    zip(matches, idx)
+                                ):
+                                    if match:
+                                        obj = skybot_result["data"][match_idx]
+                                        final_table.loc[i, "skybot_NAME"] = obj["NAME"]
+                                        final_table.loc[i, "skybot_OBJECT_TYPE"] = obj[
+                                            "OBJECT_TYPE"
+                                        ]
+                                        if "MAGV" in obj:
+                                            final_table.loc[i, "skybot_MAGV"] = obj[
+                                                "MAGV"
+                                            ]
+
+                                st.success(
+                                    f"Found {sum(matches)} solar system objects in field."
+                                )
+                            else:
+                                st.warning("No solar system objects found in the field.")
+                        except ValueError as e:
+                            st.warning(
+                                f"No solar system objects found (no valid JSON data returned). {str(e)}"
+                            )
+                    else:
+                        st.warning("No solar system objects found in the field.")
                 else:
-                    st.write("No solar system objects found by SkyBoT in the field.")
-                    write_to_log(st.session_state.get("log_buffer"), "No SkyBoT objects found.")
+                    st.warning(
+                        f"SkyBoT query failed with status code {response.status_code}"
+                    )
 
             except requests.exceptions.RequestException as req_err:
-                st.warning(f"SkyBoT query failed: {req_err}")
-                write_to_log(st.session_state.get("log_buffer"), f"SkyBoT query failed: {req_err}", "WARNING")
-            except json.JSONDecodeError:
-                 st.warning("Failed to decode SkyBoT response.")
-                 write_to_log(st.session_state.get("log_buffer"), "SkyBoT JSON Decode Error", "WARNING")
+                st.warning(f"Request to SkyBoT failed: {req_err}")
         else:
             st.warning("Could not determine field center for SkyBoT query")
-            write_to_log(st.session_state.get("log_buffer"), "Skipped SkyBoT query due to missing field center.")
     except Exception as e:
         st.error(f"Error in SkyBoT processing: {str(e)}")
-        write_to_log(st.session_state.get("log_buffer"), f"SkyBoT processing error: {str(e)}", "ERROR")
 
-    # --- AAVSO VSX Query --- #
     st.info("Querying AAVSO VSX for variable stars...")
     try:
         if field_center_ra is not None and field_center_dec is not None:
-            Vizier.ROW_LIMIT = -1 # Ensure all results are fetched
-            # Query VizieR B/vsx/vsx catalog
+            Vizier.ROW_LIMIT = -1
             vizier_result = Vizier.query_region(
                 SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=u.deg),
                 radius=field_width_arcmin * u.arcmin,
                 catalog=["B/vsx/vsx"],
             )
 
-            if vizier_result and "B/vsx/vsx" in vizier_result.keys() and len(vizier_result["B/vsx/vsx"]) > 0:
+            if (
+                vizier_result
+                and "B/vsx/vsx" in vizier_result.keys()
+                and len(vizier_result["B/vsx/vsx"]) > 0
+            ):
                 vsx_table = vizier_result["B/vsx/vsx"]
-                st.success(f"Found {len(vsx_table)} AAVSO VSX entries in field.")
-                vsx_df = vsx_table.to_pandas()
 
-                # Match to final_table
-                source_coords = SkyCoord(ra=final_table["ra"].values, dec=final_table["dec"].values, unit="deg")
-                # VSX coordinates are often J2000
-                vsx_coords = SkyCoord(ra=vsx_df["RAJ2000"].values, dec=vsx_df["DEJ2000"].values, unit="deg")
+                vsx_coords = SkyCoord(
+                    ra=vsx_table["RAJ2000"], dec=vsx_table["DEJ2000"], unit=u.deg
+                )
+                source_coords = SkyCoord(
+                    ra=final_table["ra"].values,
+                    dec=final_table["dec"].values,
+                    unit=u.deg,
+                )
 
-                match_radius = search_radius_arcsec * u.arcsec
                 idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
-                matches = d2d < match_radius
+                matches = d2d <= (10 * u.arcsec)
 
-                matched_indices_final = np.where(matches)[0]
-                matched_indices_vsx = idx[matches]
+                final_table["aavso_Name"] = None
+                final_table["aavso_Type"] = None
+                final_table["aavso_Period"] = None
 
-                final_table.loc[matched_indices_final, 'aavso_Name'] = vsx_df.iloc[matched_indices_vsx]['Name'].values
-                final_table.loc[matched_indices_final, 'aavso_Type'] = vsx_df.iloc[matched_indices_vsx]['Type'].values
+                for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                    if match:
+                        final_table.loc[i, "aavso_Name"] = vsx_table["Name"][match_idx]
+                        final_table.loc[i, "aavso_Type"] = vsx_table["Type"][match_idx]
+                        if "Period" in vsx_table.colnames:
+                            final_table.loc[i, "aavso_Period"] = vsx_table["Period"][
+                                match_idx
+                            ]
 
-                st.success(f"Matched {len(matched_indices_final)} sources with AAVSO VSX.")
-                write_to_log(st.session_state.get("log_buffer"), f"Matched {len(matched_indices_final)} sources with AAVSO VSX.")
+                st.success(f"Found {sum(matches)} variable stars in field.")
             else:
-                st.write("No AAVSO VSX variable stars found in the field.")
-                write_to_log(st.session_state.get("log_buffer"), "No AAVSO VSX objects found.")
-        else:
-             st.warning("Skipping AAVSO VSX query due to missing field center.")
-             write_to_log(st.session_state.get("log_buffer"), "Skipped AAVSO VSX query due to missing field center.")
+                st.write("No variable stars found in the field.")
     except Exception as e:
-        st.error(f"Error querying AAVSO VSX via VizieR: {e}")
-        write_to_log(st.session_state.get("log_buffer"), f"AAVSO VSX query error: {str(e)}", "ERROR")
+        st.error(f"Error querying AAVSO VSX: {e}")
 
-    # --- Milliquas Quasar Query --- #
-    st.info("Querying Milliquas Catalog (VII/294) for quasars...")
+    st.info("Querying Milliquas Catalog for quasars...")
     try:
         if field_center_ra is not None and field_center_dec is not None:
+            # Set columns to retrieve from the quasar catalog
             v = Vizier(columns=["RAJ2000", "DEJ2000", "Name", "z", "Rmag"])
-            v.ROW_LIMIT = -1
-            result_tables = v.query_region(
+            v.ROW_LIMIT = -1  # No row limit
+
+            # Query the VII/294 catalog around the field center
+            result = v.query_region(
                 SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg, u.deg)),
-                radius=field_width_arcmin * u.arcmin, # Use radius here
+                width=field_width_arcmin * u.arcmin,
                 catalog="VII/294",
             )
 
-            if result_tables and len(result_tables) > 0:
-                qso_table = result_tables[0] # Assuming the first table is the result
-                st.success(f"Found {len(qso_table)} quasars in field from Milliquas catalog.")
+            if result and len(result) > 0:
+                qso_table = result[0]
+
+                # Convert to pandas DataFrame for easier matching
                 qso_df = qso_table.to_pandas()
+                qso_coords = SkyCoord(
+                    ra=qso_df["RAJ2000"], dec=qso_df["DEJ2000"], unit=u.deg
+                )
 
-                # Match to final_table
-                source_coords = SkyCoord(ra=final_table["ra"].values, dec=final_table["dec"].values, unit="deg")
-                qso_coords = SkyCoord(ra=qso_df["RAJ2000"].values, dec=qso_df["DEJ2000"].values, unit="deg")
+                # Create source coordinates for matching
+                source_coords = SkyCoord(
+                    ra=final_table["ra"], dec=final_table["dec"], unit=u.deg
+                )
 
-                match_radius = search_radius_arcsec * u.arcsec
-                idx, d2d, _ = source_coords.match_to_catalog_sky(qso_coords)
-                matches = d2d < match_radius
+                # Perform cross-matching
+                idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
+                matches = d2d.arcsec <= 10
 
-                matched_indices_final = np.where(matches)[0]
-                matched_indices_qso = idx[matches]
+                # Add matched quasar information to the final table
+                final_table["qso_name"] = None
+                final_table["qso_redshift"] = None
+                final_table["qso_Rmag"] = None
 
-                final_table.loc[matched_indices_final, 'qso_name'] = qso_df.iloc[matched_indices_qso]['Name'].values
-                # Ensure redshift 'z' column exists and handle potential non-numeric values
-                if 'z' in qso_df.columns:
-                     final_table.loc[matched_indices_final, 'qso_redshift'] = pd.to_numeric(qso_df.iloc[matched_indices_qso]['z'].values, errors='coerce')
-                else:
-                     final_table.loc[matched_indices_final, 'qso_redshift'] = np.nan
+                # Initialize catalog_matches column if it doesn't exist
+                if "catalog_matches" not in final_table.columns:
+                    final_table["catalog_matches"] = ""
 
-                st.success(f"Matched {len(matched_indices_final)} sources with Milliquas quasars.")
-                write_to_log(st.session_state.get("log_buffer"), f"Matched {len(matched_indices_final)} sources with Milliquas.")
+                matched_sources = np.where(matches)[0]
+                matched_qsos = idx[matches]
+
+                for source_idx, qso_idx in zip(matched_sources, matched_qsos):
+                    final_table.loc[source_idx, "qso_name"] = qso_df.iloc[qso_idx][
+                        "Name"
+                    ]
+                    final_table.loc[source_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
+                        "z"
+                    ]
+                    final_table.loc[source_idx, "qso_Rmag"] = qso_df.iloc[qso_idx][
+                        "Rmag"
+                    ]
+
+                # Update the catalog_matches column for matched quasars
+                has_qso = final_table["qso_name"].notna()
+                final_table.loc[has_qso, "catalog_matches"] += "QSO; "
+
+                st.success(
+                    f"Found {sum(has_qso)} quasars in field from Milliquas catalog."
+                )
+                write_to_log(
+                    st.session_state.get("log_buffer"),
+                    f"Found {sum(has_qso)} quasar matches in Milliquas catalog",
+                    "INFO",
+                )
             else:
                 st.write("No quasars found in field from Milliquas catalog.")
-                write_to_log(st.session_state.get("log_buffer"), "No Milliquas quasars found.")
-        else:
-             st.warning("Skipping Milliquas query due to missing field center.")
-             write_to_log(st.session_state.get("log_buffer"), "Skipped Milliquas query due to missing field center.")
+                write_to_log(
+                    st.session_state.get("log_buffer"),
+                    "No quasars found in field from Milliquas catalog",
+                    "INFO",
+                )
     except Exception as e:
-        st.error(f"Error querying VizieR Milliquas (VII/294): {str(e)}")
-        write_to_log(st.session_state.get("log_buffer"), f"Milliquas query error: {str(e)}", "ERROR")
+        st.error(f"Error querying VizieR Milliquas: {str(e)}")
+        write_to_log(
+            st.session_state.get("log_buffer"),
+            f"Error in Milliquas catalog processing: {str(e)}",
+            "ERROR",
+        )
 
-    # --- Final Summary Column --- #
-    status_text.write("Generating catalog match summary...")
+    status_text.write("Cross-matching complete")
     final_table["catalog_matches"] = ""
 
-    # Add flags based on which columns have non-null values
     if "gaia_calib_star" in final_table.columns:
-        is_calib = final_table["gaia_calib_star"] == True # Explicit check for True
-        final_table.loc[is_calib, "catalog_matches"] += "GAIA(calib); "
-
-    if "astrocolibri_name" in final_table.columns:
-        has_match = final_table["astrocolibri_name"].notna()
-        final_table.loc[has_match, "catalog_matches"] += "AstroColibri; "
+        is_calib = final_table["gaia_calib_star"]
+        final_table.loc[is_calib, "catalog_matches"] += "GAIA (calib); "
 
     if "simbad_main_id" in final_table.columns:
-        has_match = final_table["simbad_main_id"].notna()
-        final_table.loc[has_match, "catalog_matches"] += "SIMBAD; "
+        has_simbad = final_table["simbad_main_id"].notna()
+        final_table.loc[has_simbad, "catalog_matches"] += "SIMBAD; "
 
     if "skybot_NAME" in final_table.columns:
-        has_match = final_table["skybot_NAME"].notna()
-        final_table.loc[has_match, "catalog_matches"] += "SkyBoT; "
+        has_skybot = final_table["skybot_NAME"].notna()
+        final_table.loc[has_skybot, "catalog_matches"] += "SkyBoT; "
 
     if "aavso_Name" in final_table.columns:
-        has_match = final_table["aavso_Name"].notna()
-        final_table.loc[has_match, "catalog_matches"] += "AAVSO; "
+        has_aavso = final_table["aavso_Name"].notna()
+        final_table.loc[has_aavso, "catalog_matches"] += "AAVSO; "
 
     if "qso_name" in final_table.columns:
-        has_match = final_table["qso_name"].notna()
-        final_table.loc[has_match, "catalog_matches"] += "QSO; "
+        has_qso = final_table["qso_name"].notna()
+        final_table.loc[has_qso, "catalog_matches"] += "QSO; "
 
-    # Clean up the summary string
-    final_table["catalog_matches"] = final_table["catalog_matches"].str.strip("; ")
-    # Replace empty strings with None for clarity
+    final_table["catalog_matches"] = final_table["catalog_matches"].str.rstrip("; ")
     final_table.loc[final_table["catalog_matches"] == "", "catalog_matches"] = None
 
-    status_text.write("Cross-matching complete.")
-
-    # Display summary of matched objects
     matches_count = final_table["catalog_matches"].notna().sum()
     if matches_count > 0:
         st.subheader(f"Matched Objects Summary ({matches_count} sources)")
         matched_df = final_table[final_table["catalog_matches"].notna()].copy()
 
-        # Define columns to display, ensuring they exist
-        display_cols_base = [
-            "xcenter", "ycenter", "ra", "dec",
+        display_cols = [
+            "xcenter",
+            "ycenter",
+            "ra",
+            "dec",
+            "aperture_calib_mag",
+            "catalog_matches",
         ]
-        # Try to find the best magnitude column available
-        mag_col_options = ['calib_mag', 'instrumental_mag', 'aperture_sum']
-        mag_col_to_display = next((col for col in mag_col_options if col in matched_df.columns), None)
-        if mag_col_to_display:
-             display_cols_base.append(mag_col_to_display)
+        display_cols = [col for col in display_cols if col in matched_df.columns]
 
-        display_cols_final = display_cols_base + ["catalog_matches"]
-        display_cols_final = [col for col in display_cols_final if col in matched_df.columns]
+        st.dataframe(matched_df[display_cols])
 
-        # Format coordinate columns for display
-        for col in ['ra', 'dec', 'xcenter', 'ycenter']:
-             if col in display_cols_final:
-                  matched_df[col] = matched_df[col].map('{:.4f}'.format)
-        if mag_col_to_display and mag_col_to_display in display_cols_final:
-             matched_df[mag_col_to_display] = matched_df[mag_col_to_display].map('{:.3f}'.format)
-
-        st.dataframe(matched_df[display_cols_final])
-    else:
-        st.info("No sources were matched with any external catalogs.")
-
-    # Clean up temporary columns if any were added (e.g., match_id)
-    # if "match_id" in final_table.columns:
-    #     final_table.drop("match_id", axis=1, inplace=True)
+    if "match_id" in final_table.columns:
+        final_table.drop("match_id", axis=1, inplace=True)
 
     return final_table
 
 
-def save_header_to_txt(header: Optional[dict | fits.Header], filename: str) -> Optional[str]:
+def save_header_to_txt(header, filename):
     """
-    Save a FITS header to a formatted text file in the designated output directory.
+    Save a FITS header to a formatted text file.
 
     Parameters
     ----------
-    header : Optional[dict | astropy.io.fits.Header]
-        The FITS header object or dictionary to save. If None, returns None.
+    header : dict or astropy.io.fits.Header
+        FITS header dictionary or object
     filename : str
-        The base filename (without extension) for the output text file.
-        The final name will be '{filename}.txt'.
+        Base filename to use (without extension)
 
     Returns
     -------
-    Optional[str]
-        The full path to the saved text file if successful, otherwise None.
+    str or None
+        Full path to the saved file, or None if saving failed
 
     Notes
     -----
-    - Retrieves the output directory path from `st.session_state['output_dir']`.
-    - Formats the header with 'KEY = VALUE' pairs, one per line.
-    - Includes a simple text header within the file.
-    - Handles potential errors during file writing.
+    The function formats the header with each keyword-value pair on a separate line,
+    includes a header section, and saves the file to the current output directory
+    (retrieved from session state).
     """
-    # ...existing code...
-    try:
-        with open(output_filename, "w", encoding='utf-8') as f:
-            f.write(header_txt)
-        return output_filename
-    except Exception as e:
-        st.error(f"Failed to save header file {output_filename}: {e}")
+    if header is None:
         return None
+
+    header_txt = "FITS Header\n"
+    header_txt += "==========\n\n"
+
+    for key, value in header.items():
+        header_txt += f"{key:8} = {value}\n"
+
+    output_dir = st.session_state.get("output_dir", ".")
+    output_filename = os.path.join(output_dir, f"{filename}.txt")
+
+    with open(output_filename, "w") as f:
+        f.write(header_txt)
+
+    return output_filename
 
 
 def display_catalog_in_aladin(
-    final_table: Optional[pd.DataFrame],
-    ra_center: Optional[float],
-    dec_center: Optional[float],
-    fov: float = 0.5, # Default FOV in degrees
+    final_table: pd.DataFrame,
+    ra_center: float,
+    dec_center: float,
+    fov: float = 1.5,
     ra_col: str = "ra",
     dec_col: str = "dec",
-    mag_col: str = "calib_mag", # Primary magnitude column
-    alt_mag_col: str = "instrumental_mag", # Fallback magnitude column
+    mag_col: str = "calib_mag",
+    alt_mag_col: str = "aperture_calib_mag",
     catalog_col: str = "catalog_matches",
-    id_cols: List[str] = [
-        "simbad_main_id", "aavso_Name", "qso_name", "skybot_NAME", "astrocolibri_name"
-    ],
+    id_cols: list[str] = ["simbad_main_id", "skybot_NAME", "aavso_Name"],
     fallback_id_prefix: str = "Source",
     survey: str = "CDS/P/DSS2/color",
 ) -> None:
     """
-    Display a catalog DataFrame in an embedded Aladin Lite viewer within Streamlit.
+    Display a DataFrame catalog in an embedded Aladin Lite interactive sky viewer.
 
-    Generates an interactive HTML component showing a sky survey image centered
-    at the given coordinates, overlaying sources from the DataFrame as clickable markers.
+    This function creates an interactive astronomical image with catalog overlay
+    that allows exploring detected sources and their cross-matches.
 
     Parameters
     ----------
-    final_table : Optional[pd.DataFrame]
-        DataFrame containing the catalog data. Must include columns specified by
-        `ra_col` and `dec_col`.
-    ra_center : Optional[float]
-        Right Ascension (degrees) for the center of the Aladin view.
-    dec_center : Optional[float]
-        Declination (degrees) for the center of the Aladin view.
+    final_table : pandas.DataFrame
+        DataFrame containing catalog data with coordinates and photometry
+    ra_center : float
+        Right Ascension center coordinate for the Aladin view (degrees)
+    dec_center : float
+        Declination center coordinate for the Aladin view (degrees)
     fov : float, optional
-        Initial field of view in degrees, by default 0.5.
+        Initial field of view in degrees, default=0.5
     ra_col : str, optional
-        Column name for Right Ascension values, by default "ra".
+        Name of the column containing Right Ascension values, default='ra'
     dec_col : str, optional
-        Column name for Declination values, by default "dec".
+        Name of the column containing Declination values, default='dec'
     mag_col : str, optional
-        Primary column name for source magnitude, by default "calib_mag".
+        Name of the primary magnitude column, default='calib_mag'
     alt_mag_col : str, optional
-        Fallback column name for source magnitude if `mag_col` is absent or NaN,
-        by default "instrumental_mag".
+        Name of an alternative (preferred) magnitude column, default='aperture_calib_mag'
     catalog_col : str, optional
-        Column name for catalog match information, by default "catalog_matches".
-    id_cols : List[str], optional
-        List of column names (in order of preference) to use for the source name
-        displayed in the popup. Defaults to common catalog ID columns.
+        Name of the column containing catalog match information, default='catalog_matches'
+    id_cols : list[str], optional
+        List of column names (in order of preference) to use for source identifiers
     fallback_id_prefix : str, optional
-        Prefix used for the source name if no ID is found in `id_cols`, followed
-        by the DataFrame index + 1. Default is "Source".
+        Prefix to use for source names if no ID is found, default="Source"
     survey : str, optional
-        Initial sky survey image to display (e.g., "CDS/P/DSS2/color").
-        Default is "CDS/P/DSS2/color".
-
-    Returns
-    -------
-    None
-        Renders the Aladin Lite component directly in the Streamlit app.
+        The initial sky survey to display in Aladin Lite, default="CDS/P/DSS2/color"
 
     Notes
     -----
-    - Handles missing or invalid input gracefully.
-    - Constructs JavaScript code to initialize Aladin Lite and add sources.
-    - Source popups display Name, RA, Dec, Magnitude (if available), and Catalog matches.
-    - Uses `streamlit.components.v1.html` to embed the viewer.
+    The function creates an interactive HTML component embedded in Streamlit that
+    shows a DSS image of the field with catalog sources overlaid as interactive markers.
+    Each marker shows a popup with detailed source information when clicked.
+
+    Handles errors gracefully and provides feedback in the Streamlit interface
+    if any issues occur.
     """
-    # ...existing code...
+    if not (
+        isinstance(ra_center, (int, float)) and isinstance(dec_center, (int, float))
+    ):
+        st.error("Missing or invalid center coordinates (RA/Dec) for Aladin display.")
+        return
+
     if not isinstance(final_table, pd.DataFrame) or final_table.empty:
         st.warning("Input table is empty or not a DataFrame. Cannot display in Aladin.")
         return
 
-    # ...existing code...
+    if ra_col not in final_table.columns or dec_col not in final_table.columns:
+        st.error(
+            f"Required columns '{ra_col}' or '{dec_col}' not found in the DataFrame."
+        )
+        return
+
+    catalog_sources = []
+    required_cols = {ra_col, dec_col}
+    optional_cols = {mag_col, alt_mag_col, catalog_col}.union(set(id_cols))
+    available_cols = set(final_table.columns)
+
+    present_optional_cols = optional_cols.intersection(available_cols)
+    cols_to_iterate = list(required_cols.union(present_optional_cols))
+
     for idx, row in final_table[cols_to_iterate].iterrows():
         ra_val = row[ra_col]
         dec_val = row[dec_col]
         if pd.notna(ra_val) and pd.notna(dec_val):
             try:
-                # Ensure coordinates are valid floats
                 source = {"ra": float(ra_val), "dec": float(dec_val)}
             except (ValueError, TypeError):
-                st.warning(f"Skipping source at index {idx} due to invalid coordinates: RA={ra_val}, Dec={dec_val}")
-                continue # Skip this source if coordinates are invalid
+                continue
 
             mag_to_use = None
-            # Prioritize alt_mag_col if it exists and is valid
             if alt_mag_col in present_optional_cols and pd.notna(row[alt_mag_col]):
                 try:
                     mag_to_use = float(row[alt_mag_col])
                 except (ValueError, TypeError):
-                    mag_to_use = None # Ignore invalid magnitude
-            # Fallback to mag_col if alt_mag_col was not used
+                    pass
             elif mag_col in present_optional_cols and pd.notna(row[mag_col]):
                 try:
                     mag_to_use = float(row[mag_col])
                 except (ValueError, TypeError):
-                    mag_to_use = None # Ignore invalid magnitude
+                    pass
 
             if mag_to_use is not None:
                 source["mag"] = mag_to_use
@@ -1965,50 +2678,1343 @@ def display_catalog_in_aladin(
             if catalog_col in present_optional_cols and pd.notna(row[catalog_col]):
                 source["catalog"] = str(row[catalog_col])
 
-            # Determine the source name/ID
-            source_id = None
+            source_id = f"{fallback_id_prefix} {idx + 1}"
             if id_cols:
                 for id_col in id_cols:
                     if id_col in present_optional_cols and pd.notna(row[id_col]):
                         source_id = str(row[id_col])
-                        break # Use the first valid ID found
-            # Fallback name if no ID was found
-            if source_id is None:
-                source_id = f"{fallback_id_prefix} {idx + 1}"
+                        break
             source["name"] = source_id
 
             catalog_sources.append(source)
 
-    # ...existing code...
+    if not catalog_sources:
+        st.warning("No valid sources with RA/Dec found in the table to display.")
+        return
 
-def provide_download_buttons(folder_path: str) -> None:
+    with st.spinner("Loading Aladin Lite viewer..."):
+        try:
+            sources_json_b64 = base64.b64encode(
+                json.dumps(catalog_sources).encode("utf-8")
+            ).decode("utf-8")
+
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Aladin Lite</title>
+            </head>
+            <body>
+                <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
+                <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+                <script type="text/javascript">
+                    document.addEventListener("DOMContentLoaded", function(event) {{
+                        try {{
+                            let aladin = A.aladin('#aladin-lite-div', {{
+                                target: '{ra_center} {dec_center}',
+                                fov: {fov},
+                                survey: '{survey}',
+                                cooFrame: 'J2000',
+                                showReticle: false,
+                                showZoomControl: true,
+                                showFullscreenControl: true,
+                                showLayersControl: true,
+                                showGotoControl: true,
+                                showSimbadPointerControl: true
+                            }});
+
+                            let cat = A.catalog({{
+                                name: 'Photometry Results',
+                                sourceSize: 12,
+                                shape: 'circle',
+                                color: '#00ff88',
+                                onClick: 'showPopup'
+                            }});
+                            aladin.addCatalog(cat);
+
+                            let sourcesData = JSON.parse(atob("{sources_json_b64}"));
+                            let aladinSources = [];
+
+                            sourcesData.forEach(function(source) {{
+                                let popupContent = '<div style="padding:5px;">';
+                                if(source.name) {{
+                                    popupContent += '<b>' + source.name + '</b><br/>';
+                                }}
+                                popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '<br/>';
+                                popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '<br/>';
+
+                                if(source.mag) {{
+                                    popupContent += 'Mag: ' + (typeof source.mag === 'number' ? source.mag.toFixed(2) : source.mag) + '<br/>';
+                                }}
+                                if(source.catalog) {{
+                                    popupContent += 'Catalogs: ' + source.catalog + '<br/>';
+                                }}
+                                popupContent += '</div>';
+
+                                let aladinSource = A.source(
+                                    source.ra,
+                                    source.dec,
+                                    {{ description: popupContent }}
+                                );
+                                aladinSources.push(aladinSource);
+                            }});
+
+                            if (aladinSources.length > 0) {{
+                                cat.addSources(aladinSources);
+                            }}
+
+                        }} catch (error) {{
+                            console.error("Error initializing Aladin Lite or adding sources:", error);
+                            document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin viewer. Check console.</p>';
+                        }}
+                    }});
+                </script>
+            </body>
+            </html>
+            """
+
+            components.html(
+                html_content,
+                height=600,
+                scrolling=True,
+            )
+
+        except Exception as e:
+            st.error(f"Streamlit failed to render the Aladin HTML component: {str(e)}")
+            st.exception(e)
+
+
+def provide_download_buttons(folder_path):
     """
-    Create a Streamlit download button for a ZIP archive of result files.
+    Creates a single download button for a zip file containing all files in the specified folder.
 
-    Collects all files within the specified `folder_path` that start with the
-    `base_filename` stored in session state, compresses them into a single
-    ZIP file in memory, and presents a download button.
+    This function compresses all files in the given folder into a single zip archive
+    and provides a download button for the archive.
 
-    Parameters
-    ----------
-    folder_path : str
-        The path to the directory containing the result files to be zipped.
+    Args:
+        folder_path (str): The path to the folder containing files to be zipped and made downloadable
 
-    Returns
-    -------
-    None
-        Renders a download button and caption directly in the Streamlit app.
-
-    Notes
-    -----
-    - Relies on `st.session_state['base_filename']` to identify relevant files.
-    - Creates a timestamped ZIP filename like '{base_filename}_{YYYYMMDD_HHMMSS}.zip'.
-    - Uses `BytesIO` for in-memory ZIP creation.
-    - Displays the number of files included in the archive.
-    - Handles errors during file listing or ZIP creation.
+    Returns:
+        None: The function creates a Streamlit download button directly in the app interface
     """
-    # ...existing code...
+    try:
+        base_filename = st.session_state.get("base_filename", "")
+
+        # Filter files to only include those starting with the base filename prefix
+        files = [
+            f
+            for f in os.listdir(folder_path)
+            if os.path.isfile(os.path.join(folder_path, f))
+            and f.startswith(base_filename)
+        ]
+        if not files:
+            st.write("No files found in output directory")
+            return
+
+        # Create a timestamp for the zip filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_name = st.session_state.get("base_filename", "rpp_results")
+        zip_filename = f"{base_name}_{timestamp}.zip"
+
+        # Create in-memory zip file
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            for file in files:
+                file_path = os.path.join(folder_path, file)
+                zip_file.write(file_path, arcname=file)
+
+        # Reset buffer position to the beginning
+        zip_buffer.seek(0)
+
+        # Create download button for the zip file
+        st.download_button(
+            label="📦 Download All Results (ZIP)",
+            data=zip_buffer,
+            file_name=zip_filename,
+            mime="application/zip",
+            on_click="ignore",
+        )
+        # Show number of files included
+        st.caption(f"Archive contains {len(files)} files")
+
+    except Exception as e:
+        st.error(f"Error creating zip archive: {str(e)}")
+
 
 ###################################################################
 
-# ... rest of the Streamlit app code ...
+
+# Main Streamlit app
+# initialize_session_state() already called above
+
+# --- Sync session state with loaded config before creating widgets ---
+if "observatory_data" in st.session_state:
+    obs = st.session_state["observatory_data"]
+    st.session_state["observatory_name"] = obs.get("name", "")
+    st.session_state["observatory_latitude"] = obs.get("latitude", 0.0)
+    st.session_state["observatory_longitude"] = obs.get("longitude", 0.0)
+    st.session_state["observatory_elevation"] = obs.get("elevation", 0.0)
+
+if "analysis_parameters" in st.session_state:
+    ap = st.session_state["analysis_parameters"]
+    # Ensure all relevant keys from the loaded dictionary are copied to individual state keys
+    for key in [
+        "seeing", "threshold_sigma", "detection_mask",
+        "astrometry_check", "calibrate_cosmic_rays",
+        "cr_gain", "cr_readnoise", "cr_sigclip", "cr_sigfrac", "cr_objlim",
+        "filter_band", "filter_max_mag" # Also sync Gaia filter params if needed by widgets
+    ]:
+        if key in ap:
+            st.session_state[key] = ap[key]
+
+if "gaia_parameters" in st.session_state:
+    gaia = st.session_state["gaia_parameters"]
+    st.session_state["filter_band"] = gaia.get("filter_band", "G")
+    st.session_state["filter_max_mag"] = gaia.get("filter_max_mag", 20.0)
+
+if "colibri_api_key" in st.session_state:
+    st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
+
+st.title("🔭 _RAPAS Photometry Pipeline_")
+
+with st.sidebar:
+    st.sidebar.header("Upload Image File")
+
+    # File uploader for Image
+    science_file = st.file_uploader(
+        "Image (required)", type=["fits", "fit", "fts", "fits.gz"], key="science_uploader"
+    )
+
+    # Get absolute path if we need it (for tools like Siril that need direct file access)
+    science_file_path = None
+    if science_file is not None:
+        # Save the uploaded file to a temporary location to get an absolute path
+
+        # Create temporary file with the same extension as the uploaded file
+        suffix = os.path.splitext(science_file.name)[1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+            # Write the uploaded file content to the temporary file
+            tmp_file.write(science_file.getvalue())
+            science_file_path = tmp_file.name
+
+        st.session_state["science_file_path"] = science_file_path
+        # st.info(f"File saved temporarily at: {science_file_path}")
+    if science_file is not None:
+        st.session_state.files_loaded["science_file"] = science_file
+
+        base_filename = get_base_filename(science_file)
+        st.session_state["base_filename"] = base_filename
+
+        st.session_state["log_buffer"] = initialize_log(science_file.name)
+
+    st.header("Process Options")
+    astrometry_check = st.checkbox(
+        "Astrometry +",
+        value=st.session_state.get("astrometry_check", False),
+        help="Try to refine astrometry (stdpipe)",
+    )
+    st.session_state["astrometry_check"] = astrometry_check
+    calibrate_cosmic_rays = st.checkbox(
+        "Remove Cosmic Rays",
+        value=st.session_state.get("calibrate_cosmic_rays", False),
+        help="Detect and remove cosmic rays (astroscrappy)",
+    )
+    st.session_state["calibrate_cosmic_rays"] = calibrate_cosmic_rays
+
+    cr_params = st.expander("CRR Parameters", expanded=False)
+    with cr_params:
+        cr_gain = st.number_input(
+            "Detector Gain (e-/ADU)",
+            min_value=0.1,
+            max_value=200.0,
+            value=1.0,
+            step=0.2,
+            help="CCD gain in electrons per ADU",
+        )
+        cr_readnoise = st.number_input(
+            "Read Noise (e-)",
+            min_value=0.0,
+            max_value=10.0,
+            value=6.5,
+            step=0.5,
+            help="CCD read noise in electrons",
+        )
+        cr_sigclip = st.number_input(
+            "Detection Threshold (σ)",
+            min_value=3.0,
+            max_value=10.0,
+            value=6.0,
+            step=0.5,
+            help="Threshold for cosmic ray detection",
+        )
+
+    st.sidebar.header("Observatory Location")
+    # Initialize default values if not in session state
+    if "observatory_name" not in st.session_state:
+        st.session_state.observatory_name = "TJMS"
+    if "observatory_latitude" not in st.session_state:
+        st.session_state.observatory_latitude = 48.29166
+    if "observatory_longitude" not in st.session_state:
+        st.session_state.observatory_longitude = 2.43805
+    if "observatory_elevation" not in st.session_state:
+        st.session_state.observatory_elevation = 94.0
+
+    # Create the input widgets with permanent keys
+    observatory_name = st.text_input(
+        "Observatory/Telescope",
+        value=st.session_state.observatory_name,
+        help="Name of the observatory",
+        key="obs_name_input",
+    )
+
+    latitude = st.number_input(
+        "Latitude (°)",
+        value=float(st.session_state.observatory_latitude),
+        min_value=-90.0,
+        max_value=90.0,
+        help="Observatory latitude in degrees",
+        key="obs_lat_input",
+    )
+
+    longitude = st.number_input(
+        "Longitude (°)",
+        value=float(st.session_state.observatory_longitude),
+        min_value=-180.0,
+        max_value=180.0,
+        help="Observatory longitude in degrees",
+        key="obs_lon_input",
+    )
+
+    elevation = st.number_input(
+        "Elevation (m)",
+        value=float(st.session_state.observatory_elevation),
+        min_value=0.0,
+        help="Observatory elevation in meters above sea level",
+        key="obs_elev_input",
+    )
+
+    # Update session state with current values
+    st.session_state.observatory_name = observatory_name
+    st.session_state.observatory_latitude = latitude
+    st.session_state.observatory_longitude = longitude
+    st.session_state.observatory_elevation = elevation
+
+    # Store in the observatory_data dict for consistency with existing code
+    st.session_state.observatory_data = {
+        "name": observatory_name,
+        "latitude": latitude,
+        "longitude": longitude,
+        "elevation": elevation,
+    }
+
+    st.sidebar.header("Astro-Colibri")
+    colibri_api_key = st.text_input(
+        "UID key",
+        value=st.session_state.get("colibri_api_key", None),
+        help="Enter your Astro-Colibri UID key",
+        type="password",
+    )
+    st.session_state["colibri_api_key"] = colibri_api_key
+    st.caption("[Get your key](https://astro-colibri.science)")
+
+    st.header("Analysis Parameters")
+    seeing = st.slider(
+        "Seeing (arcsec)",
+        1.0,
+        6.0,
+        float(st.session_state.get("seeing", 3.0)),
+        0.5,
+        help="Estimate of the atmospheric seeing in arcseconds",
+    )
+    threshold_sigma = st.slider(
+        "Detection Threshold (σ)",
+        0.5,
+        5.0,
+        float(st.session_state.get("threshold_sigma", 2.5)),
+        0.5,
+        help="Source detection threshold in sigma above background",
+    )
+    detection_mask = st.slider(
+        "Border Mask (pixels)",
+        0,
+        200,
+        int(st.session_state.get("detection_mask", 0)),
+        25,
+        help="Size of border to exclude from source detection",
+    )
+
+    st.session_state["seeing"] = seeing
+    st.session_state["threshold_sigma"] = threshold_sigma
+    st.session_state["detection_mask"] = detection_mask
+
+    st.session_state["analysis_parameters"].update(
+        {
+            "seeing": seeing,
+            "threshold_sigma": threshold_sigma,
+            "detection_mask": detection_mask,
+        }
+    )
+
+    st.header("Photometry Parameters")
+    selected_band = st.session_state.get("filter_band", "phot_g_mean_mag")
+    if selected_band not in GAIA_BAND:
+        selected_band = GAIA_BAND[0]
+    index = GAIA_BAND.index(selected_band)
+    filter_band = st.selectbox(
+        "Filter Band",
+        GAIA_BAND,
+        index=index,
+        help="Filter magnitude band to use for calibration",
+    )
+    filter_max_mag = st.slider(
+        "Filter Max Magnitude",
+        15.0,
+        20.0,
+        float(st.session_state.get("filter_max_mag") or 20.),
+        0.5,
+        help="Maximum magnitude for filter sources",
+    )
+    # Ensure Gaia parameters are updated in session state for saving
+    st.session_state["filter_band"] = filter_band
+    st.session_state["filter_max_mag"] = filter_max_mag
+
+    # st.header("Output Options")
+    catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
+
+    # --- Save Session Parameters as JSON to results directory and backend DB
+    st.sidebar.header("Save Configuration")
+    if st.sidebar.button("Save"):
+        analysis_params = dict(st.session_state.get("analysis_parameters", {}))
+        # Remove unwanted keys from analysis_params
+        for k in [
+            "filter_band",
+            "filter_max_mag",
+        ]:
+            analysis_params.pop(k, None)
+
+        # Only keep relevant keys
+        gaia_params = {
+            "filter_band": st.session_state.get("filter_band"),
+            "filter_max_mag": st.session_state.get("filter_max_mag"),
+        }
+        observatory_params = dict(st.session_state.get("observatory_data", {}))
+        colibri_api_key = st.session_state.get("colibri_api_key")
+        # Add pre-process options to analysis_parameters
+        analysis_params["astrometry_check"] = st.session_state.get(
+            "astrometry_check", False
+        )
+        analysis_params["calibrate_cosmic_rays"] = st.session_state.get(
+            "calibrate_cosmic_rays", False
+        )
+        params = {
+            "analysis_parameters": analysis_params,
+            "gaia_parameters": gaia_params,
+            "observatory_parameters": observatory_params,
+            "astro_colibri_api_key": colibri_api_key,
+        }
+        username = st.session_state.get("username", "user")
+        config_filename = f"{username}_config.json"
+        config_path = os.path.join(
+            st.session_state.get("output_dir", "rpp_results"), config_filename
+        )
+        try:
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(params, f, indent=2)
+            st.sidebar.success("Parameters Saved")
+        except Exception as e:
+            st.sidebar.error(f"Failed to save config: {e}")
+
+        # Save to backend DB
+        try:
+            backend_url = "http://localhost:5000/save_config"
+            resp = requests.post(
+                backend_url,
+                json={"username": username, "config_json": json.dumps(params)},
+            )
+            if resp.status_code != 200:
+                st.sidebar.warning(f"Could not save config to DB: {resp.text}")
+        except Exception as e:
+            st.sidebar.warning(f"Could not connect to backend: {e}")
+
+    st.header("Quick Links")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
+        st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
+        st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
+
+    with col2:
+        st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
+        st.link_button("AAVSO", "https://www.aavso.org/vsx/")
+        st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+
+
+output_dir = ensure_output_directory("rpp_results")
+st.session_state["output_dir"] = output_dir
+
+if science_file is not None:
+    science_data, data_not_scaled, science_header = load_fits_data(science_file)
+
+    # Apply cosmic ray removal if enabled
+    if st.session_state.get("calibrate_cosmic_rays", False):
+        st.info("Applying cosmic ray removal...")
+        try:
+            cr_gain = st.session_state.get("cr_gain", 1.0)
+            cr_readnoise = st.session_state.get("cr_readnoise", 6.5)
+            cr_sigclip = st.session_state.get("cr_sigclip", 6.0)
+            clean_data, _ = detect_remove_cosmic_rays(
+                science_data,
+                gain=cr_gain,
+                readnoise=cr_readnoise,
+                sigclip=cr_sigclip,
+            )
+            if clean_data is not None:
+                science_data = clean_data
+                st.success("Cosmic ray removal applied.")
+            else:
+                st.warning("Cosmic ray removal did not return valid data.")
+        except Exception as e:
+            st.error(f"Error during cosmic ray removal: {e}")
+
+    # Update observatory values from header if available
+    if science_header is not None:
+        # Only update if values aren't already set by the user (non-default)
+        if st.session_state.observatory_name == "":
+            obs_name = science_header.get(
+                "TELESCOP", science_header.get("OBSERVER", "")
+            )
+            st.session_state.observatory_name = obs_name
+        if st.session_state.observatory_latitude == 0.0:
+            lat = float(
+                science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0))
+            )
+            st.session_state.observatory_latitude = lat
+        if st.session_state.observatory_longitude == 0.0:
+            lon = float(
+                science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0))
+            )
+            st.session_state.observatory_longitude = lon
+        if st.session_state.observatory_elevation == 0.0:
+            elev = float(
+                science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0))
+            )
+            st.session_state.observatory_elevation = elev
+
+        # Update the dictionary
+        st.session_state.observatory_data = {
+            "name": st.session_state.observatory_name,
+            "latitude": st.session_state.observatory_latitude,
+            "longitude": st.session_state.observatory_longitude,
+            "elevation": st.session_state.observatory_elevation,
+        }
+
+    wcs_obj, wcs_error = safe_wcs_create(science_header)
+    if wcs_obj is None:
+        st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
+
+        use_astrometry = st.checkbox(
+            "Attempt plate solving with Siril?",
+            value=True,
+            help="Uses the Siril platesolve to determine WCS coordinates",
+        )
+
+        if use_astrometry:
+            with st.spinner("Running plate solve (this may take a while)..."):
+                result = solve_with_siril(science_file_path)
+                if result is None:
+                    st.error("Plate solving failed. No WCS solution was returned.")
+                    wcs_obj, science_header = None, None
+                else:
+                    wcs_obj, science_header = result
+
+                log_buffer = st.session_state["log_buffer"]
+
+                if wcs_obj is not None:
+                    st.success("Siril plate solving successful!")
+                    write_to_log(
+                        log_buffer,
+                        "Solved plate with Siril",
+                    )
+
+                    wcs_header_filename = (
+                        f"{st.session_state['base_filename']}_wcs_header"
+                    )
+                    wcs_header_file_path = save_header_to_txt(
+                        science_header, wcs_header_filename
+                    )
+                    if wcs_header_file_path:
+                        st.info("Updated WCS header saved")
+                else:
+                    st.error("Plate solving failed")
+                    write_to_log(
+                        log_buffer,
+                        "Failed to solve plat",
+                        level="ERROR",
+                    )
+    else:
+        st.success("Valid WCS found in the FITS header.")
+        log_buffer = st.session_state["log_buffer"]
+        write_to_log(log_buffer, "Valid WCS found in header")
+
+    if science_header is not None:
+        log_buffer = st.session_state["log_buffer"]
+
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        header_filename = f"{st.session_state['base_filename']}_header"
+        header_file_path = os.path.join(output_dir, f"{header_filename}.txt")
+
+        header_file = save_header_to_txt(science_header, header_filename)
+        if header_file:
+            write_to_log(log_buffer, f"Saved header to {header_file}")
+
+    log_buffer = st.session_state["log_buffer"]
+    write_to_log(log_buffer, f"Loaded Image: {science_file.name}")
+
+    if science_header is None:
+        science_header = {}
+
+    st.header("Image", anchor="science-image")
+
+    if science_data is not None:
+        try:
+            # Create a side-by-side plot using matplotlib subplots
+            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2 * FIGURE_SIZES["medium"][0], FIGURE_SIZES["medium"][1]))
+            # ZScale Visualization
+            ax1.set_title("ZScale Visualization")
+            try:
+                norm = ImageNormalize(science_data, interval=ZScaleInterval())
+                im1 = ax1.imshow(science_data, norm=norm, origin="lower", cmap="viridis")
+            except Exception as norm_error:
+                st.warning(f"ZScale normalization failed: {norm_error}. Using simple normalization.")
+                vmin, vmax = np.percentile(science_data, [1, 99])
+                im1 = ax1.imshow(science_data, vmin=vmin, vmax=vmax, origin="lower", cmap="viridis")
+            fig.colorbar(im1, ax=ax1, label="Pixel Value")
+            ax1.axis("off")
+
+            # Histogram Equalization
+            ax2.set_title("Histogram Equalization")
+            try:
+                data_finite = science_data[np.isfinite(science_data)]
+                if len(data_finite) > 0:
+                    vmin, vmax = np.percentile(data_finite, [0.5, 99.5])
+                    data_scaled = np.clip(science_data, vmin, vmax)
+                    data_scaled = (data_scaled - vmin) / (vmax - vmin)
+                    im2 = ax2.imshow(data_scaled, origin="lower", cmap="viridis")
+                    fig.colorbar(im2, ax=ax2, label="Normalized Value")
+                    ax2.axis("off")
+                    # Add small histogram inset
+                    ax_inset = fig.add_axes([0.65, 0.15, 0.15, 0.25])
+                    ax_inset.hist(data_scaled.flatten(), bins=50, color='skyblue', alpha=0.8)
+                    ax_inset.set_title('Pixel Distribution', fontsize=8)
+                    ax_inset.tick_params(axis='both', which='major', labelsize=6)
+                else:
+                    st.warning("No finite values in image data for histogram equalization")
+            except Exception as hist_error:
+                st.warning(f"Histogram equalization failed: {hist_error}")
+
+            fig.suptitle(f"{science_file.name}")
+            st.pyplot(fig)
+
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            image_filename = f"{st.session_state['base_filename']}_image.png"
+            image_path = os.path.join(output_dir, image_filename)
+
+            try:
+                fig.savefig(image_path, dpi=120, bbox_inches="tight")
+                write_to_log(log_buffer, "Saved image plot")
+                # Save histogram visualization too (just the right panel)
+                hist_image_filename = f"{st.session_state['base_filename']}_image_hist.png"
+                hist_image_path = os.path.join(output_dir, hist_image_filename)
+                # Save only the histogram equalization panel
+                fig_hist, ax_hist = plt.subplots(figsize=FIGURE_SIZES["medium"])
+                try:
+                    if len(data_finite) > 0:
+                        im_hist = ax_hist.imshow(data_scaled, origin="lower", cmap="viridis")
+                        fig_hist.colorbar(im_hist, ax=ax_hist, label="Normalized Value")
+                        ax_hist.axis("off")
+                        ax_hist.set_title(f"{science_file.name}")
+                        ax_inset = fig_hist.add_axes([0.15, 0.15, 0.25, 0.25])
+                        ax_inset.hist(data_scaled.flatten(), bins=50, color='skyblue', alpha=0.8)
+                        ax_inset.set_title('Pixel Distribution', fontsize=8)
+                        ax_inset.tick_params(axis='both', which='major', labelsize=6)
+                        fig_hist.savefig(hist_image_path, dpi=120, bbox_inches="tight")
+                        write_to_log(log_buffer, "Saved histogram equalization plot")
+                except Exception as save_hist_error:
+                    write_to_log(log_buffer, f"Failed to save histogram plot: {str(save_hist_error)}", level="ERROR")
+                plt.close(fig_hist)
+            except Exception as save_error:
+                write_to_log(
+                    log_buffer,
+                    f"Failed to save image plot: {str(save_error)}",
+                    level="ERROR",
+                )
+                st.error(f"Error saving image: {str(save_error)}")
+
+            plt.close(fig)
+
+        except Exception as e:
+            st.error(f"Error displaying image: {str(e)}")
+            st.exception(e)
+
+        with st.expander("Image Header"):
+            if science_header:
+                st.text(repr(science_header))
+            else:
+                st.warning("No header information available for Image.")
+
+    st.subheader("Image Statistics")
+    if science_data is not None:
+        stats_col1, stats_col2, stats_col3, stats_col4, stats_col5 = st.columns(5)
+        stats_col1.metric("Mean", f"{np.mean(science_data):.3f}")
+        stats_col2.metric("Median", f"{np.median(science_data):.3f}")
+        stats_col3.metric("Rms", f"{np.std(science_data):.3f}")
+        stats_col4.metric("Min", f"{np.min(science_data):.3f}")
+        stats_col5.metric("Max", f"{np.max(science_data):.3f}")
+
+        pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
+        st.metric(
+            "Mean Pixel Scale (arcsec/pixel)",
+            f"{pixel_size_arcsec:.2f}",
+        )
+        write_to_log(
+            log_buffer,
+            f"Pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
+        )
+
+        mean_fwhm_pixel = seeing / pixel_size_arcsec
+        st.metric("Mean FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
+        write_to_log(
+            log_buffer,
+            f"Seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
+        )
+
+        ra_val, dec_val, coord_source = extract_coordinates(science_header)
+        if ra_val is not None and dec_val is not None:
+            st.write(f"Target: RA={round(ra_val, 4)}°, DEC={round(dec_val, 4)}°")
+            write_to_log(
+                log_buffer,
+                f"Target coordinates: RA={ra_val}°, DEC={dec_val}° ({coord_source})",
+            )
+            ra_missing = dec_missing = False
+        else:
+            st.warning(f"Coordinate issue: {coord_source}")
+            write_to_log(
+                log_buffer, f"Coordinate issue: {coord_source}", level="WARNING"
+            )
+            ra_missing = dec_missing = True
+
+        if "manual_ra" not in st.session_state:
+            st.session_state["manual_ra"] = ""
+        if "manual_dec" not in st.session_state:
+            st.session_state["manual_dec"] = ""
+
+        if ra_missing or dec_missing:
+            st.warning(
+                "Target coordinates (RA/DEC) not found in FITS header. Please enter them manually:"
+            )
+
+            coord_col1, coord_col2 = st.columns(2)
+
+            with coord_col1:
+                default_ra = st.session_state["manual_ra"]
+                if (
+                    not default_ra
+                    and "NAXIS1" in science_header
+                    and "CRPIX1" in science_header
+                    and "CD1_1" in science_header
+                ):
+                    default_ra = str(science_header.get("CRVAL1", ""))
+
+                manual_ra = st.text_input(
+                    "Right Ascension (degrees)",
+                    value=default_ra,
+                    help="Enter RA in decimal degrees (0-360)",
+                    key="ra_input",
+                )
+                st.session_state["manual_ra"] = manual_ra
+
+            with coord_col2:
+                default_dec = st.session_state["manual_dec"]
+                if (
+                    not default_dec
+                    and "NAXIS2" in science_header
+                    and "CRPIX2" in science_header
+                    and "CD2_2" in science_header
+                ):
+                    default_dec = str(science_header.get("CRVAL2", ""))
+
+                manual_dec = st.text_input(
+                    "Declination (degrees)",
+                    value=default_dec,
+                    help="Enter DEC in decimal degrees (-90 to +90)",
+                    key="dec_input",
+                )
+                st.session_state["manual_dec"] = manual_dec
+
+            if manual_ra and manual_dec:
+                try:
+                    ra_val = float(manual_ra)
+                    dec_val = float(manual_dec)
+
+                    if not (0 <= ra_val < 360):
+                        st.error("RA must be between 0 and 360 degrees")
+                    elif not (-90 <= dec_val <= 90):
+                        st.error("DEC must be between -90 and +90 degrees")
+                    else:
+                        science_header["RA"] = ra_val
+                        science_header["DEC"] = dec_val
+
+                        st.session_state["valid_ra"] = ra_val
+                        st.session_state["valid_dec"] = dec_val
+
+                        st.success(
+                            f"Using manual coordinates: RA={ra_val}°, DEC={dec_val}°"
+                        )
+                except ValueError:
+                    st.error("RA and DEC must be valid numbers")
+            else:
+                st.warning("Please enter both RA and DEC coordinates")
+        else:
+            for ra_key in ["RA", "OBJRA", "RA---", "CRVAL1"]:
+                if ra_key in science_header:
+                    st.session_state["valid_ra"] = science_header[ra_key]
+                    break
+
+            for dec_key in ["DEC", "OBJDEC", "DEC---", "CRVAL2"]:
+                if dec_key in science_header:
+                    st.session_state["valid_dec"] = science_header[dec_key]
+                    break
+
+        if "valid_ra" in st.session_state and "valid_dec" in st.session_state:
+            science_header["RA"] = st.session_state["valid_ra"]
+            science_header["DEC"] = st.session_state["valid_dec"]
+
+        try:
+            # Create observatory dictionary using user inputs
+            observatory_data = {
+                "name": st.session_state.observatory_data["name"],
+                "latitude": st.session_state.observatory_data["latitude"],
+                "longitude": st.session_state.observatory_data["longitude"],
+                "elevation": st.session_state.observatory_data["elevation"],
+            }
+
+            air = airmass(science_header, observatory=observatory_data)
+            st.write(f"Airmass: {air:.2f}")
+        except Exception as e:
+            st.warning(f"Error calculating airmass: {e}")
+            air = 0.0
+            st.write(f"Using default airmass: {air:.2f}")
+
+        exposure_time_science = science_header.get(
+            "EXPOSURE", science_header.get("EXPTIME", 1.0)
+        )
+
+        zero_point_button_disabled = science_file is None
+        if st.button(
+            "Photometric Calibration",
+            disabled=zero_point_button_disabled,
+            key="run_zp",
+        ):
+            image_to_process = science_data
+            header_to_process = science_header
+            original_data = data_not_scaled
+
+            if image_to_process is not None:
+                try:
+                    with st.spinner(
+                        "Background Extraction, FWHM Computation, Sources Detection and Photometry..."
+                    ):
+                        phot_table_qtable, epsf_table, daofind, bkg = (
+                            detection_and_photometry(
+                                image_to_process,
+                                header_to_process,
+                                data_not_scaled,
+                                mean_fwhm_pixel,
+                                threshold_sigma,
+                                detection_mask,
+                                filter_band,
+                            )
+                        )
+
+                        if phot_table_qtable is not None:
+                            phot_table_df = phot_table_qtable.to_pandas().copy(
+                                deep=True
+                            )
+                        else:
+                            st.error("No sources detected in the image.")
+                            phot_table_df = None
+
+                    if phot_table_df is not None:
+                        with st.spinner("Cross-matching with Gaia..."):
+                            matched_table = cross_match_with_gaia(
+                                phot_table_qtable,
+                                header_to_process,
+                                pixel_size_arcsec,
+                                mean_fwhm_pixel,
+                                filter_band,
+                                filter_max_mag,
+                            )
+
+                        if matched_table is not None:
+                            st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
+                            st.dataframe(matched_table.head(10))
+
+                            with st.spinner("Calculating zero point..."):
+                                zero_point_value, zero_point_std, zp_plot = (
+                                    calculate_zero_point(
+                                        phot_table_qtable, matched_table, filter_band, air
+                                    )
+                                )
+
+                                if zero_point_value is not None:
+                                    st.pyplot(zp_plot)
+                                    write_to_log(
+                                        log_buffer,
+                                        f"Zero point: {zero_point_value:.3f} ± {zero_point_std:.3f}",
+                                    )
+                                    write_to_log(log_buffer, f"Airmass: {air:.2f}")
+
+                                    if "final_phot_table" in st.session_state:
+                                        final_table = st.session_state[
+                                            "final_phot_table"
+                                        ]
+
+                                        try:
+                                            if (
+                                                "epsf_photometry_result"
+                                                in st.session_state
+                                                and epsf_table is not None
+                                            ):
+                                                epsf_df = (
+                                                    epsf_table.to_pandas()
+                                                    if not isinstance(
+                                                        epsf_table, pd.DataFrame
+                                                    )
+                                                    else epsf_table
+                                                )
+
+                                                epsf_x_col = (
+                                                    "x_init"
+                                                    if "x_init" in epsf_df.columns
+                                                    else "xcenter"
+                                                )
+                                                epsf_y_col = (
+                                                    "y_init"
+                                                    if "y_init" in epsf_df.columns
+                                                    else "ycenter"
+                                                )
+
+                                                final_x_col = (
+                                                    "xcenter"
+                                                    if "xcenter" in final_table.columns
+                                                    else "x_0"
+                                                )
+                                                final_y_col = (
+                                                    "ycenter"
+                                                    if "ycenter" in final_table.columns
+                                                    else "y_0"
+                                                )
+
+                                                if (
+                                                    epsf_x_col in epsf_df.columns
+                                                    and epsf_y_col in epsf_df.columns
+                                                ):
+                                                    epsf_df["match_id"] = (
+                                                        epsf_df[epsf_x_col]
+                                                        .round(2)
+                                                        .astype(str)
+                                                        + "_"
+                                                        + epsf_df[epsf_y_col]
+                                                        .round(2)
+                                                        .astype(str)
+                                                    )
+
+                                                if (
+                                                    final_x_col in final_table.columns
+                                                    and final_y_col
+                                                    in final_table.columns
+                                                ):
+                                                    final_table["match_id"] = (
+                                                        final_table[final_x_col]
+                                                        .round(2)
+                                                        .astype(str)
+                                                        + "_"
+                                                        + final_table[final_y_col]
+                                                        .round(2)
+                                                        .astype(str)
+                                                    )
+                                                else:
+                                                    st.warning(
+                                                        f"Coordinate columns not found in final table. Available columns: {final_table.columns.tolist()}"
+                                                    )
+
+                                                epsf_cols = {}
+                                                epsf_cols["match_id"] = "match_id"
+                                                epsf_cols["flux_fit"] = "psf_flux_fit"
+                                                epsf_cols["flux_err"] = "psf_flux_err"
+                                                epsf_cols["instrumental_mag"] = (
+                                                    "psf_instrumental_mag"
+                                                )
+
+                                                if (
+                                                    len(epsf_cols) > 1
+                                                    and "match_id" in epsf_df.columns
+                                                    and "match_id" in final_table.columns
+                                                ):
+                                                    epsf_subset = epsf_df[
+                                                        [col for col in epsf_cols.keys() if col in epsf_df.columns]
+                                                    ].rename(columns=epsf_cols)
+
+                                                final_table = pd.merge(
+                                                    final_table, epsf_df, on="match_id", how="left"
+                                                )
+
+                                                if (
+                                                    "instrumental_mag_y"
+                                                    in final_table.columns
+                                                ):
+                                                    final_table["psf_calib_mag"] = (
+                                                        final_table[
+                                                            "instrumental_mag_y"
+                                                        ]
+                                                        + zero_point_value
+                                                        + 0.1 * air
+                                                    )
+                                                    st.success(
+                                                        "Added PSF photometry"
+                                                    )
+
+                                                if (
+                                                    "instrumental_mag_x"
+                                                    in final_table.columns
+                                                ):
+                                                    if (
+                                                        "calib_mag"
+                                                        not in final_table.columns
+                                                    ):
+                                                        final_table[
+                                                            "aperture_instrumental_mag"
+                                                        ] = final_table[
+                                                            "instrumental_mag_x"
+                                                        ]
+                                                        final_table[
+                                                            "aperture_calib_mag"
+                                                        ] = (
+                                                            final_table[
+                                                                "instrumental_mag_x"
+                                                            ]
+                                                            + zero_point_value
+                                                            + 0.1 * air
+                                                        )
+                                                    else:
+                                                        final_table = final_table.rename(
+                                                            columns={
+                                                                "instrumental_mag_x": "aperture_instrumental_mag",
+                                                                "calib_mag": "aperture_calib_mag",
+                                                                "instrumental_mag_y": "psf_instrumental_mag",
+                                                                "ra_x": "ra",
+                                                                "dec_x": "dec",
+                                                                "id_x": "id",
+                                                            }
+                                                        )
+                                                    st.success(
+                                                        "Added Aperture photometry"
+                                                    )
+
+                                                final_table.drop(
+                                                    "match_id", axis=1, inplace=True
+                                                )
+
+                                            csv_buffer = StringIO()
+
+                                            cols_to_drop = []
+                                            for col_name in [
+                                                "ra_y",
+                                                "dec_y",
+                                                "id_y",
+                                                "group_id",
+                                                "group_size",
+                                                "x_init",
+                                                "y_init",
+                                                "flux_init",
+                                                "sky_center.ra",
+                                                "sky_center.dec",
+                                                "inter_detected",
+                                                "local_bkg",
+                                                "npixfit",
+                                                "x_err",
+                                                "y_err"
+                                            ]:
+                                                if col_name in final_table.columns:
+                                                    cols_to_drop.append(col_name)
+
+                                            if cols_to_drop:
+                                                final_table = final_table.drop(
+                                                    columns=cols_to_drop
+                                                )
+
+                                            if "match_id" in final_table.columns:
+                                                final_table.drop(
+                                                    "match_id", axis=1, inplace=True
+                                                )
+
+                                            final_table["zero_point"] = zero_point_value
+                                            final_table["zero_point_std"] = (
+                                                zero_point_std
+                                            )
+                                            final_table["airmass"] = air
+
+                                            st.subheader("Final Photometry Catalog")
+                                            st.dataframe(final_table.head(10))
+
+                                            st.success(
+                                                f"Catalog includes {len(final_table)} sources."
+                                            )
+
+                                            # Plot histogram of aperture_calib_mag and psf_calib_mag before catalog enhancement
+                                            st.subheader("Magnitude Distribution (Aperture vs PSF)")
+                                            fig_mag, ax_mag = plt.subplots(figsize=(8, 5), dpi=100)
+                                            bins = np.linspace(
+                                                min(
+                                                    final_table["aperture_calib_mag"].min() if "aperture_calib_mag" in final_table.columns else np.nan,
+                                                    final_table["psf_calib_mag"].min() if "psf_calib_mag" in final_table.columns else np.nan
+                                                ),
+                                                max(
+                                                    final_table["aperture_calib_mag"].max() if "aperture_calib_mag" in final_table.columns else np.nan,
+                                                    final_table["psf_calib_mag"].max() if "psf_calib_mag" in final_table.columns else np.nan
+                                                ),
+                                                40
+                                            )
+
+                                            if "aperture_calib_mag" in final_table.columns:
+                                                ax_mag.hist(
+                                                    final_table["aperture_calib_mag"].dropna(),
+                                                    bins=bins,
+                                                    alpha=0.6,
+                                                    label="Aperture Calib Mag",
+                                                    color="tab:blue",
+                                                )
+                                            if "psf_calib_mag" in final_table.columns:
+                                                ax_mag.hist(
+                                                    final_table["psf_calib_mag"].dropna(),
+                                                    bins=bins,
+                                                    alpha=0.6,
+                                                    label="PSF Calib Mag",
+                                                    color="tab:orange",
+                                                )
+                                            ax_mag.set_xlabel("Calibrated Magnitude")
+                                            ax_mag.set_ylabel("Number of Sources")
+                                            ax_mag.set_title("Distribution of Calibrated Magnitudes")
+                                            ax_mag.legend()
+                                            ax_mag.grid(True, alpha=0.3)
+                                            st.pyplot(fig_mag)
+
+                                            # Save the histogram as an image file
+                                            try:
+                                                base_filename = st.session_state.get("base_filename", "photometry")
+                                                output_dir = ensure_output_directory("rpp_results")
+                                                hist_filename = f"{base_filename}_histogram_mag.png"
+                                                hist_filepath = os.path.join(output_dir, hist_filename)
+                                                fig_mag.savefig(hist_filepath, dpi=120, bbox_inches="tight")
+                                                write_to_log(log_buffer, f"Saved magnitude histogram plot: {hist_filename}")
+                                            except Exception as e:
+                                                st.warning(f"Could not save magnitude histogram plot: {e}")
+
+                                            if (
+                                                final_table is not None
+                                                and "ra" in final_table.columns
+                                                and "dec" in final_table.columns
+                                            ):
+                                                st.subheader(
+                                                    "Cross-matching with Astronomical Catalogs"
+                                                )
+                                                search_radius = (
+                                                    max(
+                                                        header_to_process["NAXIS1"],
+                                                        header_to_process["NAXIS2"],
+                                                    )
+                                                    * pixel_size_arcsec
+                                                    / 2.0
+                                                )
+                                                final_table = enhance_catalog(
+                                                    colibri_api_key,
+                                                    final_table,
+                                                    matched_table,
+                                                    header_to_process,
+                                                    pixel_size_arcsec,
+                                                    search_radius_arcsec=search_radius,
+                                                )
+                                            elif final_table is not None:
+                                                st.warning(
+                                                    "RA/DEC coordinates not available for catalog cross-matching"
+                                                )
+                                            else:
+                                                st.error(
+                                                    "Final photometry table is None - cannot perform cross-matching"
+                                                )
+
+                                            final_table.to_csv(csv_buffer, index=False)
+                                            csv_data = csv_buffer.getvalue()
+
+                                            timestamp_str = datetime.now().strftime(
+                                                "%Y%m%d_%H%M%S"
+                                            )
+                                            base_catalog_name = catalog_name
+                                            if base_catalog_name.endswith(".csv"):
+                                                base_catalog_name = base_catalog_name[
+                                                    :-4
+                                                ]
+                                            filename = f"{base_catalog_name}.csv"
+
+                                            catalog_path = os.path.join(
+                                                output_dir, filename
+                                            )
+
+                                            with open(catalog_path, "w") as f:
+                                                f.write(csv_data)
+
+                                            metadata_filename = (
+                                                f"{base_catalog_name}_metadata.txt"
+                                            )
+                                            metadata_path = os.path.join(
+                                                output_dir, metadata_filename
+                                            )
+
+                                            with open(metadata_path, "w") as f:
+                                                f.write(
+                                                    "RAPAS Photometry Analysis Metadata\n"
+                                                )
+                                                f.write(
+                                                    "================================\n\n"
+                                                )
+                                                f.write(
+                                                    f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                                                )
+                                                f.write(
+                                                    f"Input File: {science_file.name}\n"
+                                                )
+                                                f.write(f"Catalog File: {filename}\n\n")
+
+                                                f.write(
+                                                    f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n"
+                                                )
+                                                f.write(f"Airmass: {air:.3f}\n")
+                                                f.write(
+                                                    f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n"
+                                                )
+                                                f.write(
+                                                    f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n"
+                                                )
+
+                                                f.write("Detection Parameters:\n")
+                                                f.write(
+                                                    f"  Threshold: {threshold_sigma} sigma\n"
+                                                )
+                                                f.write(
+                                                    f"  Border Mask: {detection_mask} pixels\n"
+                                                )
+
+                                            write_to_log(
+                                                log_buffer, "Saved catalog metadata"
+                                            )
+
+                                        except Exception as e:
+                                            st.error(f"Error preparing download: {e}")
+                        else:
+                            st.error(
+                                "Failed to cross-match with Gaia catalog. Check WCS information in image header."
+                            )
+                except Exception as e:
+                    st.error(f"Error during zero point calibration: {str(e)}")
+                    st.exception(e)
+
+                ra_center = None
+                dec_center = None
+
+                if "CRVAL1" in header_to_process and "CRVAL2" in header_to_process:
+                    ra_center = header_to_process["CRVAL1"]
+                    dec_center = header_to_process["CRVAL2"]
+                elif "RA" in header_to_process and "DEC" in header_to_process:
+                    ra_center = header_to_process["RA"]
+                    dec_center = header_to_process["DEC"]
+                elif "OBJRA" in header_to_process and "OBJDEC" in header_to_process:
+                    ra_center = header_to_process["OBJRA"]
+                    dec_center = header_to_process["OBJDEC"]
+
+                if ra_center is not None and dec_center is not None:
+                    if (
+                        "final_phot_table" in st.session_state
+                        and st.session_state["final_phot_table"] is not None
+                        and not st.session_state["final_phot_table"].empty
+                    ):
+                        st.subheader("Aladin Catalog Viewer")
+
+                        display_catalog_in_aladin(
+                            final_table=final_table,
+                            ra_center=ra_center,
+                            dec_center=dec_center,
+                            fov=1.5,
+                            alt_mag_col="aperture_calib_mag",
+                            id_cols=["simbad_main_id"],
+                        )
+
+                    st.link_button(
+                        "ESA Sky Viewer",
+                        f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=DSS2+color&fov=1.0&projection=SIN&cooframe=J2000&sci=true&lang=en",
+                        help="Open ESA Sky with the same target coordinates",
+                    )
+
+                    provide_download_buttons(output_dir)
+                    cleanup_temp_files()
+
+                else:
+                    st.warning(
+                        "Could not determine coordinates from image header. Cannot display ESASky."
+                    )
+else:
+    st.text(
+        "👆 Please upload an image FITS file to start.",
+    )
+
+if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not None:
+    log_buffer = st.session_state["log_buffer"]
+    log_filename = f"{st.session_state['base_filename']}.log"
+    log_filepath = os.path.join(output_dir, log_filename)
+
+    # Log all sidebar parameters
+    write_to_log(log_buffer, "Analysis Parameters", level="INFO")
+    write_to_log(log_buffer, f"Seeing: {seeing} arcsec")
+    write_to_log(log_buffer, f"Detection Threshold: {threshold_sigma} sigma")
+    write_to_log(log_buffer, f"Border Mask: {detection_mask} pixels")
+
+    write_to_log(log_buffer, "Observatory Information", level="INFO")
+    write_to_log(
+        log_buffer, f"Observatory Name: {st.session_state.observatory_data['name']}"
+    )
+    write_to_log(
+        log_buffer, f"Latitude: {st.session_state.observatory_data['latitude']}°"
+    )
+    write_to_log(
+        log_buffer, f"Longitude: {st.session_state.observatory_data['longitude']}°"
+    )
+    write_to_log(
+        log_buffer, f"Elevation: {st.session_state.observatory_data['elevation']} m"
+    )
+
+    write_to_log(log_buffer, "Gaia Parameters", level="INFO")
+    write_to_log(log_buffer, f"Gaia Band: {filter_band}")
+    write_to_log(log_buffer, f"Gaia Max Magnitude: {filter_max_mag}")
+
+    write_to_log(log_buffer, "Calibration Options", level="INFO")
+
+    # Finalize and save the log
+    write_to_log(log_buffer, "Processing completed", level="INFO")
+    with open(log_filepath, "w") as f:
+        f.write(log_buffer.getvalue())
+        write_to_log(log_buffer, f"Log saved to {log_filepath}")
+
+# at the end archive a zip version and remove all the results
+atexit.register(partial(zip_rpp_results_on_exit, science_file))
