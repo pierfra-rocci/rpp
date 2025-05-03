@@ -558,7 +558,7 @@ if "analysis_parameters" in st.session_state:
     for key in [
         "seeing", "threshold_sigma", "detection_mask",
         "astrometry_check", "calibrate_cosmic_rays",
-        "cr_gain", "cr_readnoise", "cr_sigclip", "cr_sigfrac", "cr_objlim",
+        "cr_gain", "cr_readnoise", "cr_sigclip",
         "filter_band", "filter_max_mag" # Also sync Gaia filter params if needed by widgets
     ]:
         if key in ap:
