@@ -61,12 +61,24 @@ An astronomical image processing and photometry tool designed specifically for [
    cd rpp
    ```
 
-2. Install dependencies:
+2. Create and activate a virtual environment (recommended):
+   ```bash
+   # Using venv (built into Python)
+   python -m venv venv
+   
+   # On Windows
+   venv\Scripts\activate
+   
+   # On macOS/Linux
+   source venv/bin/activate
+   ```
+
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Start the backend server (use `backend_prod.py` for production):
+4. Start the backend server (use `backend_prod.py` for production):
    ```bash
    # For development with auto-reload
    python backend_dev.py
@@ -74,7 +86,7 @@ An astronomical image processing and photometry tool designed specifically for [
    # python backend_prod.py 
    ```
 
-4. In a new terminal, start the frontend Streamlit app:
+5. In a new terminal, start the frontend Streamlit app:
    ```bash
    streamlit run run_frontend.py
    ```
@@ -83,26 +95,36 @@ An astronomical image processing and photometry tool designed specifically for [
 
 ## Usage
 
-
 1. **Login/Register**
-   - On first use, register a new account. Credentials are stored in `users.db` (SQLite).
-   - Login to access the main photometry app.
+   - On first use, click the "Register" button and create an account with username, password, and email.
+   - For returning users, enter your credentials and click "Login".
+   - If you forget your password, use the "Recover Password" section to reset it via email.
 
 2. **Upload your FITS files**
-   - Required: Science image
+   - Click "Browse files" in the sidebar to upload your science FITS image.
+   - The app supports various FITS formats including compressed files (.fits.gz).
 
 3. **Configure parameters**
-   - Set seeing estimate, detection threshold, border mask size, observatory info, Gaia calibration parameters, and API keys as needed.
+   - **Pre-processing Options**: Enable/disable "Astrometry+" and "Remove Cosmic Rays" as needed.
+   - **Observatory Location**: Set your observatory's name, latitude, longitude, and elevation.
+   - **Analysis Parameters**: Adjust seeing estimate, detection threshold, and border mask size.
+   - **Photometry Parameters**: Select the Gaia filter band and maximum magnitude limit.
+   - **API Keys**: Enter your Astro-Colibri UID key for transient event queries.
 
 4. **Run the analysis pipeline**
-   - Apply cosmic ray removal, plate solving, source detection, photometry, zero-point calibration, and catalog cross-matching.
-   - View results and interactive visualizations (including Aladin Lite and ESA Sky links).
+   - Click "Photometric Calibration" to process the uploaded image.
+   - The app will perform source detection, background estimation, photometry, and catalog cross-matching.
+   - View interactive plots including the image visualization, FWHM distribution, and zero-point calibration.
+   - Explore matched objects in the Aladin Lite viewer and via ESA Sky.
    - **New:** Inspect the FWHM distribution plot to evaluate image quality and star sharpness.
 
 5. **Export and analyze results**
-   - Download photometry catalog, metadata, and all results as a ZIP archive from the `rpp_results` directory.
-   - Session parameters can be saved to both the backend and as a JSON file.
+   - Download all results as a single ZIP archive using the "Download All Results" button.
+   - Save your configuration for future sessions using the "Save" button in the sidebar.
+   - All files are saved in the `rpp_results` directory for later access.
 
+6. **Logout**
+   - Click "Logout" in the sidebar when finished to secure your session.
 
 ## Workflow
 
