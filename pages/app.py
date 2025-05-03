@@ -91,9 +91,7 @@ def initialize_session_state():
         "calibrate_cosmic_rays": False,   # CRR toggle
         "cr_gain": 1.0,                   # CRR default gain
         "cr_readnoise": 6.5,              # CRR default readnoise
-        "cr_sigclip": 4.5,                # CRR default sigclip
-        "cr_sigfrac": 0.3,                # CRR default sigfrac
-        "cr_objlim": 5.0,                 # CRR default objlim
+        "cr_sigclip": 4.5                 # CRR default sigclip
     }
     if "analysis_parameters" not in st.session_state:
         st.session_state.analysis_parameters = default_analysis_params.copy()
