@@ -27,7 +27,12 @@ from tools import (FIGURE_SIZES, GAIA_BAND, extract_coordinates,
                    extract_pixel_scale, get_base_filename,
                    safe_wcs_create, ensure_output_directory,
                    cleanup_temp_files, initialize_log, write_to_log,
-                   zip_rpp_results_on_exit)
+                   zip_rpp_results_on_exit, save_header_to_txt)
+
+from pipeline import (solve_with_siril, cross_match_with_gaia,
+                      calculate_zero_point, detection_and_photometry,
+                      detect_remove_cosmic_rays, enhance_catalog,
+                      airmass)
 
 from __version__ import version
 
