@@ -109,10 +109,10 @@ else:
 
             if "analysis_parameters" in config:
                 st.session_state["analysis_parameters"] = config["analysis_parameters"]
-            
+
             if "observatory_data" in config:  # Use 'observatory_data' key
                 st.session_state["observatory_data"] = config["observatory_data"]
-            
+
             if "colibri_api_key" in config:  # Use 'colibri_api_key' key
                 st.session_state["colibri_api_key"] = config["colibri_api_key"]
             st.info("User configuration loaded.")
@@ -126,7 +126,7 @@ else:
 
     except Exception as e:
         st.warning(f"Could not load user config: {e}")
-        
+
         if "analysis_parameters" not in st.session_state:
             st.session_state["analysis_parameters"] = {}
         if "observatory_data" not in st.session_state:

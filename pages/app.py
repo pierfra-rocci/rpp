@@ -698,12 +698,11 @@ if st.sidebar.button("💾 Save Configuration"):
     analysis_params["calibrate_cosmic_rays"] = st.session_state.get(
         "calibrate_cosmic_rays", False
     )
-    params = {
-        "analysis_parameters": analysis_params,
-        "observatory_parameters": observatory_params,
-        "astro_colibri_api_key": colibri_api_key,
-    }
-    username = st.session_state.get("username", "user")
+    params = {"analysis_parameters": analysis_params,
+              "observatory_data": observatory_params,
+              "astro_colibri_api_key": colibri_api_key,
+              }
+    name = st.session_state.get("username", "user")
     config_filename = f"{username}_config.json"
     config_path = os.path.join(
         st.session_state.get("output_dir", "rpp_results"), config_filename
