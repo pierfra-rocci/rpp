@@ -627,16 +627,8 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     )
     st.session_state.analysis_parameters["filter_band"] = st.selectbox(
         "Calibration Filter Band",
-        options=[
-            "phot_g_mean_mag",
-            "phot_bp_mean_mag",
-            "phot_rp_mean_mag",
-        ],
-        index=[
-            "phot_g_mean_mag",
-            "phot_bp_mean_mag",
-            "phot_rp_mean_mag",
-        ].index(st.session_state.analysis_parameters["filter_band"]),
+        options=GAIA_BAND,
+        index=GAIA_BAND.index(st.session_state.analysis_parameters["filter_band"]),
         help="Filter Magnitude band used for photometric calibration.",
     )
     st.session_state.analysis_parameters["filter_max_mag"] = st.number_input(
