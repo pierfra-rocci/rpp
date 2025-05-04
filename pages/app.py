@@ -767,21 +767,7 @@ science_file = st.file_uploader(
 )
 science_file_path = None
 
-if science_file is not None:
-    suffix = os.path.splitext(science_file.name)[1]
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-        tmp_file.write(science_file.getvalue())
-        science_file_path = tmp_file.name
-
-    st.session_state["science_file_path"] = science_file_path
-    st.session_state.files_loaded["science_file"] = science_file
-
-    base_filename = get_base_filename(science_file)
-    st.session_state["base_filename"] = base_filename
-    st.session_state["log_buffer"] = initialize_log(science_file.name)
-
-
-st.session_state["calibrate_cosmic_rays"] = calibrate_cosmic_rays
+st.session_state["calibrate_cosmic_rays"] = st.session_state.analysis_parameters["calibrate_cosmic_rays"]
 
 if "observatory_name" not in st.session_state:
     st.session_state.observatory_name = "TJMS"
@@ -821,6 +807,20 @@ catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 output_dir = ensure_output_directory("rpp_results")
 st.session_state["output_dir"] = output_dir
 
+
+if science_file is not None:
+    suffix = os.path.splitext(science_file.name)[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+        tmp_file.write(science_file.getvalue())
+        science_file_path = tmp_file.name
+
+    st.session_state["science_file_path"] = science_file_path
+    st.session_state.files_loaded["science_file"] = science_file
+
+    base_filename = get_base_filename(science_file)
+    st.session_state["base_filename"] = base_filename
+    st.session_state["log_buffer"] = initialize_log(science_file.name)
+
 if science_file is not None:
     with st.spinner("Loading FITS data..."):
         normalized_data, raw_data, science_header = load_fits_data(science_file)
@@ -831,6 +831,36 @@ if science_file is not None:
             st.session_state.log_buffer,
             f"Loaded FITS file: {science_file.name}"
         )
+
+    # Only update if values aren't already set by the user (non-default)
+    if st.session_state.observatory_name == "":
+        obs_name = science_header.get(
+            "TELESCOP", science_header.get("OBSERVER", "")
+        )
+        st.session_state.observatory_name = obs_name
+    if st.session_state.observatory_latitude == 0.0:
+        lat = float(
+            science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0))
+        )
+        st.session_state.observatory_latitude = lat
+    if st.session_state.observatory_longitude == 0.0:
+        lon = float(
+            science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0))
+        )
+        st.session_state.observatory_longitude = lon
+    if st.session_state.observatory_elevation == 0.0:
+        elev = float(
+            science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0))
+        )
+        st.session_state.observatory_elevation = elev
+
+    # Update the dictionary
+    st.session_state.observatory_data = {
+        "name": st.session_state.observatory_name,
+        "latitude": st.session_state.observatory_latitude,
+        "longitude": st.session_state.observatory_longitude,
+        "elevation": st.session_state.observatory_elevation,
+    }
 
     # Apply cosmic ray removal if enabled
     if st.session_state.get("calibrate_cosmic_rays", False):
@@ -852,38 +882,6 @@ if science_file is not None:
                 st.warning("Cosmic ray removal did not return valid data.")
         except Exception as e:
             st.error(f"Error during cosmic ray removal: {e}")
-
-    # Update observatory values from header if available
-    if science_header is not None:
-        # Only update if values aren't already set by the user (non-default)
-        if st.session_state.observatory_name == "":
-            obs_name = science_header.get(
-                "TELESCOP", science_header.get("OBSERVER", "")
-            )
-            st.session_state.observatory_name = obs_name
-        if st.session_state.observatory_latitude == 0.0:
-            lat = float(
-                science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0))
-            )
-            st.session_state.observatory_latitude = lat
-        if st.session_state.observatory_longitude == 0.0:
-            lon = float(
-                science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0))
-            )
-            st.session_state.observatory_longitude = lon
-        if st.session_state.observatory_elevation == 0.0:
-            elev = float(
-                science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0))
-            )
-            st.session_state.observatory_elevation = elev
-
-        # Update the dictionary
-        st.session_state.observatory_data = {
-            "name": st.session_state.observatory_name,
-            "latitude": st.session_state.observatory_latitude,
-            "longitude": st.session_state.observatory_longitude,
-            "elevation": st.session_state.observatory_elevation,
-        }
 
     wcs_obj, wcs_error = safe_wcs_create(science_header)
     if wcs_obj is None:
