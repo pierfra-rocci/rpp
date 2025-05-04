@@ -1161,7 +1161,7 @@ if science_file is not None:
                         detection_mask = st.session_state.analysis_parameters["detection_mask"]
                         filter_band = st.session_state.analysis_parameters["filter_band"]
                         filter_max_mag = st.session_state.analysis_parameters["filter_max_mag"]
-                        
+
                         phot_table_qtable, epsf_table, daofind, bkg = (
                             detection_and_photometry(
                                 image_to_process,
@@ -1474,6 +1474,8 @@ if science_file is not None:
                                                     * pixel_size_arcsec
                                                     / 2.0
                                                 )
+                                                # Get colibri API key from session state
+                                                colibri_api_key = st.session_state.get("colibri_api_key", "")
                                                 final_table = enhance_catalog(
                                                     colibri_api_key,
                                                     final_table,
