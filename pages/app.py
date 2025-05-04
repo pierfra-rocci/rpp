@@ -649,7 +649,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         help="Faintest Gaia magnitude to use for calibration stars.",
     )
     st.session_state.analysis_parameters["astrometry_check"] = st.toggle(
-        "Refine Astrometry (Stdpipe)",
+        "Refine Astrometry  (Stdpipe)",
         value=st.session_state.analysis_parameters["astrometry_check"],
         help=(
             "Attempt to refine WCS using detected sources before photometry "
@@ -747,9 +747,9 @@ if st.session_state.logged_in:
         st.success("Logged out successfully.")
         st.switch_page("pages/login.py")
 
-with st.sidebar as s:
-    s.markdown("---")
-    s.markdown("### Quick Links")
+with st.sidebar:
+    st.markdown("---")
+    st.markdown("### Quick Links")
     col1, col2 = st.columns(2)
 
     with col1:
