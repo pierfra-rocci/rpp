@@ -718,7 +718,7 @@ if st.sidebar.button("💾 Save Configuration"):
         backend_url = "http://localhost:5000/save_config"
         resp = requests.post(
             backend_url,
-            json={"username": username, "config_json": json.dumps(params)},
+            json={"username": name, "config_json": json.dumps(params)},
         )
         if resp.status_code != 200:
             st.sidebar.warning(f"Could not save config to DB: {resp.text}")
@@ -1011,7 +1011,7 @@ if science_file is not None:
             log_buffer,
             f"Pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
         )
-
+        seeing = st.session_state.analysis_parameters["seeing"]
         mean_fwhm_pixel = seeing / pixel_size_arcsec
         st.metric("Mean FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
         write_to_log(
