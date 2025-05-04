@@ -61,7 +61,7 @@ if not st.session_state.logged_in:
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("## Recover Password")
-    recovery_email = st.sidebar.text_input("Recovery Email", value="", key="recovery_email")
+    recovery_email = st.sidebar.text_input("Email", value="", key="recovery_email")
     if st.session_state.recovery_step == 0:
         if st.sidebar.button("Send Recovery Code"):
             if recovery_email:
