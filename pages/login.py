@@ -106,35 +106,30 @@ else:
         resp = requests.get(config_url, params={"username": st.session_state.username})
         if resp.status_code == 200 and resp.text and resp.text != "{}":
             config = json.loads(resp.text)
-            # Store the loaded config dictionaries directly using consistent keys.
-            # app.py's initialize_session_state will handle defaults.
+
             if "analysis_parameters" in config:
                 st.session_state["analysis_parameters"] = config["analysis_parameters"]
+            
             if "observatory_data" in config:  # Use 'observatory_data' key
                 st.session_state["observatory_data"] = config["observatory_data"]
-            if "filter_parameters" in config:  # Add loading for gaia_parameters
-                st.session_state["filter_parameters"] = config["gaia_parameters"]
+            
             if "colibri_api_key" in config:  # Use 'colibri_api_key' key
                 st.session_state["colibri_api_key"] = config["colibri_api_key"]
             st.info("User configuration loaded.")
         else:
             st.info("No user configuration found or error loading. Using defaults.")
-            # Ensure default dictionaries exist if config load fails or is empty
+
             if "analysis_parameters" not in st.session_state:
-                st.session_state["analysis_parameters"] = {}  # Will be populated by app.py's init
+                st.session_state["analysis_parameters"] = {}
             if "observatory_data" not in st.session_state:
-                st.session_state["observatory_data"] = {}  # Will be populated by app.py's init
-            if "filter_parameters" not in st.session_state:  # Ensure gaia_parameters exists
-                st.session_state["filter_parameters"] = {}
+                st.session_state["observatory_data"] = {}
 
     except Exception as e:
         st.warning(f"Could not load user config: {e}")
-        # Ensure default dictionaries exist on error
+        
         if "analysis_parameters" not in st.session_state:
             st.session_state["analysis_parameters"] = {}
         if "observatory_data" not in st.session_state:
             st.session_state["observatory_data"] = {}
-        if "filter_parameters" not in st.session_state:  # Ensure gaia_parameters exists
-            st.session_state["filter_parameters"] = {}
 
     st.switch_page("pages/app.py")
