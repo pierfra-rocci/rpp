@@ -808,7 +808,8 @@ if science_file is not None:
 
 if science_file is not None:
     with st.spinner("Loading FITS data..."):
-        normalized_data, science_data, science_header = load_fits_data(science_file)
+        normalized_data, raw_data, science_header = load_fits_data(science_file)
+        science_data = normalized_data
 
     if science_data is not None and science_header is not None:
         st.success(f"Loaded '{science_file.name}' successfully.")
@@ -1148,7 +1149,7 @@ if science_file is not None:
         ):
             image_to_process = science_data
             header_to_process = science_header
-            original_data = data_not_scaled
+            original_data = raw_data
 
             if image_to_process is not None:
                 try:
@@ -1159,7 +1160,7 @@ if science_file is not None:
                             detection_and_photometry(
                                 image_to_process,
                                 header_to_process,
-                                data_not_scaled,
+                                raw_data,
                                 mean_fwhm_pixel,
                                 threshold_sigma,
                                 detection_mask,
@@ -1611,6 +1612,13 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     log_buffer = st.session_state["log_buffer"]
     log_filename = f"{st.session_state['base_filename']}.log"
     log_filepath = os.path.join(output_dir, log_filename)
+
+    # Get parameters from session state
+    seeing = st.session_state.analysis_parameters["seeing"]
+    threshold_sigma = st.session_state.analysis_parameters["threshold_sigma"]
+    detection_mask = st.session_state.analysis_parameters["detection_mask"]
+    filter_band = st.session_state.analysis_parameters["filter_band"]
+    filter_max_mag = st.session_state.analysis_parameters["filter_max_mag"]
 
     # Log all sidebar parameters
     write_to_log(log_buffer, "Analysis Parameters", level="INFO")
