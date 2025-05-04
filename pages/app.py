@@ -680,7 +680,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):
     st.session_state.colibri_api_key = st.text_input(
-        "Colibri API Key (Optional)",
+        "Colibri UID Key (Optional)",
         value=st.session_state.get("colibri_api_key", ""),
         type="password",
         help="API key for Colibri GRB catalog queries."
