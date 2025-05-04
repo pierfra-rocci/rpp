@@ -558,7 +558,7 @@ if "analysis_parameters" in st.session_state:
 
 if "gaia_parameters" in st.session_state:
     gaia = st.session_state["gaia_parameters"]
-    st.session_state["filter_band"] = gaia.get("filter_band", "G")
+    st.session_state["filter_band"] = gaia.get("filter_band", "phot_g_mean_mag")
     st.session_state["filter_max_mag"] = gaia.get("filter_max_mag", 20.0)
 
 if "colibri_api_key" in st.session_state:
