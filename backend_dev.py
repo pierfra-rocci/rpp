@@ -14,6 +14,8 @@ CORS(app)
 # Simple in-memory store for recovery codes (for demo; use persistent store in production)
 recovery_codes = {}
 
+# Use absolute path for database file
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.db")
 
 def get_db_connection():
     conn = sqlite3.connect("users.db")
@@ -23,17 +25,30 @@ def get_db_connection():
 
 # Create users table if it doesn't exist
 def init_db():
-    conn = get_db_connection()
-    conn.execute("""CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        config_json TEXT
-    )""")
-    conn.commit()
-    conn.close()
-
+    try: 
+        conn = get_db_connection()
+        conn.execute("""CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            config_json TEXT
+        )""")
+        conn.commit()
+        print("Database schema created successfully")
+        
+        # Verify the table exists
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        if cursor.fetchone():
+            print("Confirmed 'users' table exists")
+        else:
+            print("WARNING: 'users' table was not created!")
+            
+        conn.close()
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+        raise
 
 init_db()
 
