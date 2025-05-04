@@ -646,7 +646,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         value=st.session_state.analysis_parameters["filter_max_mag"],
         step=0.5,
         format="%.1f",
-        help="Faintest Gaia magnitude to use for calibration stars.",
+        help="Faintest magnitude to use for calibration stars.",
     )
     st.session_state.analysis_parameters["astrometry_check"] = st.toggle(
         "Refine Astrometry  (Stdpipe)",
