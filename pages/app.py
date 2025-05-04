@@ -778,17 +778,12 @@ if "observatory_longitude" not in st.session_state:
 if "observatory_elevation" not in st.session_state:
     st.session_state.observatory_elevation = 94.0
 
-# Update session state with current values
-st.session_state.observatory_name = observatory_name
-st.session_state.observatory_latitude = latitude
-st.session_state.observatory_longitude = longitude
-st.session_state.observatory_elevation = elevation
-
+# Update observatory_data dictionary with current session state values
 st.session_state.observatory_data = {
-    "name": observatory_name,
-    "latitude": latitude,
-    "longitude": longitude,
-    "elevation": elevation,
+    "name": st.session_state.observatory_name,
+    "latitude": st.session_state.observatory_latitude,
+    "longitude": st.session_state.observatory_longitude,
+    "elevation": st.session_state.observatory_elevation,
 }
 
 st.session_state["seeing"] = seeing
