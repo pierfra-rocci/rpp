@@ -688,7 +688,6 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
 
 if st.sidebar.button("💾 Save Configuration"):
     analysis_params = dict(st.session_state.get("analysis_parameters", {}))
-    # Remove unwanted keys from analysis_params
     for k in [
         "filter_band",
         "filter_max_mag",
