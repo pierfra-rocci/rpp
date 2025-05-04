@@ -1156,6 +1156,12 @@ if science_file is not None:
                     with st.spinner(
                         "Background Extraction, FWHM Computation, Sources Detection and Photometry..."
                     ):
+                        # Extract parameters from session state
+                        threshold_sigma = st.session_state.analysis_parameters["threshold_sigma"]
+                        detection_mask = st.session_state.analysis_parameters["detection_mask"]
+                        filter_band = st.session_state.analysis_parameters["filter_band"]
+                        filter_max_mag = st.session_state.analysis_parameters["filter_max_mag"]
+                        
                         phot_table_qtable, epsf_table, daofind, bkg = (
                             detection_and_photometry(
                                 image_to_process,
