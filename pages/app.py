@@ -749,19 +749,19 @@ if st.sidebar.button("💾 Save Configuration"):
     except Exception as e:
         st.sidebar.warning(f"Could not connect to backend: {e}")
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### Quick Links")
-col1, col2 = st.columns(2)
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### Quick Links")
+    col1, col2 = st.columns(2)
 
-with col1:
-    st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
-    st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
-    st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
+    with col1:
+        st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
+        st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
+        st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
 
-with col2:
-    st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
-    st.link_button("AAVSO", "https://www.aavso.org/vsx/")
-    st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+    with col2:
+        st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
+        st.link_button("AAVSO", "https://www.aavso.org/vsx/")
+        st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
 
 science_file = st.file_uploader(
     "Choose a FITS file for analysis", type=["fits", "fit", "fts", "fits.gz"],
