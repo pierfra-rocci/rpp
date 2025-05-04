@@ -747,8 +747,9 @@ if st.session_state.logged_in:
         st.success("Logged out successfully.")
         st.switch_page("pages/login.py")
 
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### Quick Links")
+with st.sidebar as s:
+    s.markdown("---")
+    s.markdown("### Quick Links")
     col1, col2 = st.columns(2)
 
     with col1:
