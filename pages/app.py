@@ -115,7 +115,6 @@ def initialize_session_state():
     if "observatory_data" not in st.session_state:
         st.session_state.observatory_data = default_observatory_data.copy()
     else:
-        # Ensure all keys exist, adding defaults if missing
         for key, value in default_observatory_data.items():
             if key not in st.session_state.observatory_data:
                 st.session_state.observatory_data[key] = value
@@ -150,6 +149,7 @@ if not st.session_state.logged_in:
     st.switch_page("pages/login.py")
 
 # Add application version to the sidebar
+st.title("🔭 RAPAS Photometry Pipeline")
 st.sidebar.markdown(f"**App Version:** _{version}_")
 
 # Add logout button at the top right if user is logged in
@@ -544,7 +544,6 @@ def provide_download_buttons(folder_path):
 
 ###################################################################
 
-
 # Main Streamlit app
 # initialize_session_state() already called above
 
@@ -575,8 +574,6 @@ if "gaia_parameters" in st.session_state:
 
 if "colibri_api_key" in st.session_state:
     st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
-
-st.title("🔭 _RAPAS Photometry Pipeline_")
 
 with st.sidebar:
     st.sidebar.header("Upload Image File")
@@ -1718,3 +1715,5 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
 
 # at the end archive a zip version and remove all the results
 atexit.register(partial(zip_rpp_results_on_exit, science_file))
+
+st.markdown("---")
