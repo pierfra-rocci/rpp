@@ -786,15 +786,17 @@ st.session_state.observatory_data = {
     "elevation": st.session_state.observatory_elevation,
 }
 
-st.session_state["seeing"] = seeing
-st.session_state["threshold_sigma"] = threshold_sigma
-st.session_state["detection_mask"] = detection_mask
+# These lines are duplicating values already in analysis_parameters
+st.session_state["seeing"] = st.session_state.analysis_parameters["seeing"]
+st.session_state["threshold_sigma"] = st.session_state.analysis_parameters["threshold_sigma"]
+st.session_state["detection_mask"] = st.session_state.analysis_parameters["detection_mask"]
 
+# You can remove it completely or keep it if you want to ensure consistency:
 st.session_state["analysis_parameters"].update(
     {
-        "seeing": seeing,
-        "threshold_sigma": threshold_sigma,
-        "detection_mask": detection_mask,
+        "seeing": st.session_state.analysis_parameters["seeing"],
+        "threshold_sigma": st.session_state.analysis_parameters["threshold_sigma"],
+        "detection_mask": st.session_state.analysis_parameters["detection_mask"],
     }
 )
 
