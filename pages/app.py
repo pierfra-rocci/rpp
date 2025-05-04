@@ -829,27 +829,27 @@ if science_file is not None:
             f"Loaded FITS file: {science_file.name}"
         )
 
-    # Only update if values aren't already set by the user (non-default)
-    if st.session_state.observatory_name == "":
-        obs_name = science_header.get(
-            "TELESCOP", science_header.get("OBSERVER", "")
-        )
-        st.session_state.observatory_name = obs_name
-    if st.session_state.observatory_latitude == 0.0:
-        lat = float(
-            science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0))
-        )
-        st.session_state.observatory_latitude = lat
-    if st.session_state.observatory_longitude == 0.0:
-        lon = float(
-            science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0))
-        )
-        st.session_state.observatory_longitude = lon
-    if st.session_state.observatory_elevation == 0.0:
-        elev = float(
-            science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0))
-        )
-        st.session_state.observatory_elevation = elev
+    # # Only update if values aren't already set by the user (non-default)
+    # if st.session_state.observatory_name == "":
+    #     obs_name = science_header.get(
+    #         "TELESCOP", science_header.get("OBSERVER", "")
+    #     )
+    #     st.session_state.observatory_name = obs_name
+    # if st.session_state.observatory_latitude == 0.0:
+    #     lat = float(
+    #         science_header.get("SITELAT", science_header.get("LAT-OBS", 0.0))
+    #     )
+    #     st.session_state.observatory_latitude = lat
+    # if st.session_state.observatory_longitude == 0.0:
+    #     lon = float(
+    #         science_header.get("SITELONG", science_header.get("LONG-OBS", 0.0))
+    #     )
+    #     st.session_state.observatory_longitude = lon
+    # if st.session_state.observatory_elevation == 0.0:
+    #     elev = float(
+    #         science_header.get("ELEVATIO", science_header.get("ALT-OBS", 0.0))
+    #     )
+    #     st.session_state.observatory_elevation = elev
 
     # Update the dictionary
     st.session_state.observatory_data = {
