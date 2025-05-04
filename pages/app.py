@@ -537,15 +537,6 @@ if not st.session_state.logged_in:
 st.title("🔭 RAPAS Photometry Pipeline")
 st.sidebar.markdown(f"**App Version:** _{version}_")
 
-# Add logout button at the top right if user is logged in
-if st.session_state.logged_in:
-    st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
-    if st.sidebar.button("Logout"):
-        st.session_state.logged_in = False
-        st.session_state.username = None
-        st.success("Logged out successfully.")
-        st.switch_page("pages/login.py")
-
 # --- Sync session state with loaded config before creating widgets ---
 if "observatory_data" in st.session_state:
     obs = st.session_state["observatory_data"]
@@ -556,12 +547,11 @@ if "observatory_data" in st.session_state:
 
 if "analysis_parameters" in st.session_state:
     ap = st.session_state["analysis_parameters"]
-    # Ensure all relevant keys from the loaded dictionary are copied to individual state keys
     for key in [
         "seeing", "threshold_sigma", "detection_mask",
         "astrometry_check", "calibrate_cosmic_rays",
         "cr_gain", "cr_readnoise", "cr_sigclip",
-        "filter_band", "filter_max_mag" # Also sync Gaia filter params if needed by widgets
+        "filter_band", "filter_max_mag"
     ]:
         if key in ap:
             st.session_state[key] = ap[key]
@@ -737,7 +727,6 @@ if st.sidebar.button("💾 Save Configuration"):
     except Exception as e:
         st.sidebar.error(f"Failed to save config: {e}")
 
-    # Save to backend DB
     try:
         backend_url = "http://localhost:5000/save_config"
         resp = requests.post(
@@ -748,6 +737,15 @@ if st.sidebar.button("💾 Save Configuration"):
             st.sidebar.warning(f"Could not save config to DB: {resp.text}")
     except Exception as e:
         st.sidebar.warning(f"Could not connect to backend: {e}")
+
+# Add logout button at the top right if user is logged in
+if st.session_state.logged_in:
+    st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
+    if st.sidebar.button("Logout"):
+        st.session_state.logged_in = False
+        st.session_state.username = None
+        st.success("Logged out successfully.")
+        st.switch_page("pages/login.py")
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### Quick Links")
