@@ -683,7 +683,7 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
         "Colibri UID Key (Optional)",
         value=st.session_state.get("colibri_api_key", ""),
         type="password",
-        help="API key for Colibri GRB catalog queries."
+        help="UID key for Colibri catalog queries.",
     )
 
 if st.sidebar.button("💾 Save Configuration"):
