@@ -28,11 +28,13 @@ An astronomical image processing and photometry tool designed specifically for [
 - **Authentication**: Secure login, registration, and password reset with session state management.
 - **User Configuration**: Save and load user-specific analysis parameters, observatory settings, and API keys.
 - **Pre-processing Options**: Toggle "Astrometry++" (stdpipe refinement) and "Remove Cosmic Rays" (L.A.Cosmic algorithm) before analysis.
-- **Interactive Analysis**: All parameters (seeing, detection threshold, border mask, Gaia band/mag range, etc.) are adjustable via sidebar widgets.
+- **Interactive Analysis**: All parameters (seeing, detection threshold, border mask, filter band/mag range, etc.) are adjustable via sidebar widgets.
 - **Catalog Cross-matching**: Automatic cross-match with Gaia DR3, SIMBAD, SkyBoT, AAVSO VSX, and Milliquas catalogs. Astro-Colibri API integration for transient events.
 - **Results Download**: All output files for a session can be downloaded as a ZIP archive. Detailed logs are generated for each analysis.
 - **Session State**: All parameters and results are managed via Streamlit session state for persistence and reproducibility.
 - **FWHM Distribution Plot**: Automatically generates and saves a histogram of star FWHM values (`[filename]_fwhm.png`) for quality assessment of image seeing and focus.
+- **Interactive Visualization**: View results in embedded Aladin Lite viewer and ESA Sky integration.
+- **Magnitude Distribution**: Visualize magnitude distributions with automatic histogram creation for both aperture and PSF photometry.
 
 
 ## Installation
@@ -108,7 +110,7 @@ An astronomical image processing and photometry tool designed specifically for [
    - **Pre-processing Options**: Enable/disable "Astrometry+" and "Remove Cosmic Rays" as needed.
    - **Observatory Location**: Set your observatory's name, latitude, longitude, and elevation.
    - **Analysis Parameters**: Adjust seeing estimate, detection threshold, and border mask size.
-   - **Photometry Parameters**: Select the Gaia filter band and maximum magnitude limit.
+   - **Photometry Parameters**: Select the filter band and maximum magnitude limit.
    - **API Keys**: Enter your Astro-Colibri UID key for transient event queries.
 
 4. **Run the analysis pipeline**
@@ -116,6 +118,7 @@ An astronomical image processing and photometry tool designed specifically for [
    - The app will perform source detection, background estimation, photometry, and catalog cross-matching.
    - View interactive plots including the image visualization, FWHM distribution, and zero-point calibration.
    - Explore matched objects in the Aladin Lite viewer and via ESA Sky.
+   - Examine magnitude distribution histograms comparing aperture and PSF photometry results.
    - **New:** Inspect the FWHM distribution plot to evaluate image quality and star sharpness.
 
 5. **Export and analyze results**
@@ -173,13 +176,17 @@ The application generates several output files in the `rpp_results` directory:
 - `[filename]_results.zip` - Downloadable archive of all output files for the session
 - `[filename]_bkg.fits` - Background model FITS file
 - `[filename]_image_hist.png` - Histogram of image pixel values
-- `[filename]_fwhm.png` - FWHM distribution histogram (new): shows the distribution of star FWHM values for image quality assessment
+- `[filename]_histogram_mag.png` - Magnitude distribution histogram comparing aperture and PSF photometry
+- `[filename]_fwhm.png` - FWHM distribution histogram for image quality assessment
 
 ## Key Updates
 
-- The Gaia minimum magnitude parameter has been removed. Now only a maximum magnitude ("Gaia Max Magnitude") is used for Gaia source filtering in the photometric calibration workflow.
+- The minimum magnitude parameter has been removed. Now only a maximum magnitude ("Max Calibration Mag") is used for source filtering in the photometric calibration workflow.
+- A magnitude distribution histogram is provided comparing aperture and PSF photometry results.
 - The output includes a FWHM distribution histogram for image quality assessment.
 - All results for a session can be downloaded as a single ZIP archive from the interface.
+- Interactive Aladin Lite viewer is embedded for examining identified sources.
+- ESA Sky integration for additional sky visualization options.
 - The workflow and sidebar options have been streamlined for clarity and ease of use.
 
 ## Contributing
