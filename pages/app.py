@@ -688,19 +688,9 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
 
 if st.sidebar.button("💾 Save Configuration"):
     analysis_params = dict(st.session_state.get("analysis_parameters", {}))
-    for k in [
-        "filter_band",
-        "filter_max_mag",
-    ]:
-        analysis_params.pop(k, None)
-
-    # Only keep relevant keys
-    gaia_params = {
-        "filter_band": st.session_state.get("filter_band"),
-        "filter_max_mag": st.session_state.get("filter_max_mag"),
-    }
     observatory_params = dict(st.session_state.get("observatory_data", {}))
     colibri_api_key = st.session_state.get("colibri_api_key")
+    
     # Add pre-process options to analysis_parameters
     analysis_params["astrometry_check"] = st.session_state.get(
         "astrometry_check", False
@@ -710,7 +700,6 @@ if st.sidebar.button("💾 Save Configuration"):
     )
     params = {
         "analysis_parameters": analysis_params,
-        "filter_parameters": gaia_params,
         "observatory_parameters": observatory_params,
         "astro_colibri_api_key": colibri_api_key,
     }
