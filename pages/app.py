@@ -575,284 +575,266 @@ if "gaia_parameters" in st.session_state:
 if "colibri_api_key" in st.session_state:
     st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
 
-with st.sidebar:
-    st.sidebar.header("Upload Image File")
-
-    # File uploader for Image
-    science_file = st.file_uploader(
-        "Image (required)", type=["fits", "fit", "fts", "fits.gz"], key="science_uploader"
-    )
-
-    # Get absolute path if we need it (for tools like Siril that need direct file access)
-    science_file_path = None
-    if science_file is not None:
-        # Save the uploaded file to a temporary location to get an absolute path
-
-        # Create temporary file with the same extension as the uploaded file
-        suffix = os.path.splitext(science_file.name)[1]
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-            # Write the uploaded file content to the temporary file
-            tmp_file.write(science_file.getvalue())
-            science_file_path = tmp_file.name
-
-        st.session_state["science_file_path"] = science_file_path
-        # st.info(f"File saved temporarily at: {science_file_path}")
-    if science_file is not None:
-        st.session_state.files_loaded["science_file"] = science_file
-
-        base_filename = get_base_filename(science_file)
-        st.session_state["base_filename"] = base_filename
-
-        st.session_state["log_buffer"] = initialize_log(science_file.name)
-
-    st.header("Process Options")
-    astrometry_check = st.checkbox(
-        "Astrometry +",
-        value=st.session_state.get("astrometry_check", False),
-        help="Try to refine astrometry (stdpipe)",
-    )
-    st.session_state["astrometry_check"] = astrometry_check
-    calibrate_cosmic_rays = st.checkbox(
-        "Remove Cosmic Rays",
-        value=st.session_state.get("calibrate_cosmic_rays", False),
-        help="Detect and remove cosmic rays (astroscrappy)",
-    )
-    st.session_state["calibrate_cosmic_rays"] = calibrate_cosmic_rays
-
-    cr_params = st.expander("CRR Parameters", expanded=False)
-    with cr_params:
-        cr_gain = st.number_input(
-            "Detector Gain (e-/ADU)",
-            min_value=0.1,
-            max_value=200.0,
-            value=1.0,
-            step=0.2,
-            help="CCD gain in electrons per ADU",
-        )
-        cr_readnoise = st.number_input(
-            "Read Noise (e-)",
-            min_value=0.0,
-            max_value=10.0,
-            value=6.5,
-            step=0.5,
-            help="CCD read noise in electrons",
-        )
-        cr_sigclip = st.number_input(
-            "Detection Threshold (σ)",
-            min_value=3.0,
-            max_value=10.0,
-            value=6.0,
-            step=0.5,
-            help="Threshold for cosmic ray detection",
-        )
-
-    st.sidebar.header("Observatory Location")
-    # Initialize default values if not in session state
-    if "observatory_name" not in st.session_state:
-        st.session_state.observatory_name = "TJMS"
-    if "observatory_latitude" not in st.session_state:
-        st.session_state.observatory_latitude = 48.29166
-    if "observatory_longitude" not in st.session_state:
-        st.session_state.observatory_longitude = 2.43805
-    if "observatory_elevation" not in st.session_state:
-        st.session_state.observatory_elevation = 94.0
-
-    # Create the input widgets with permanent keys
-    observatory_name = st.text_input(
-        "Observatory/Telescope",
+with st.sidebar.expander("🔭 Observatory Data", expanded=False):
+    st.session_state.observatory_name = st.text_input(
+        "Observatory Name",
         value=st.session_state.observatory_name,
-        help="Name of the observatory",
-        key="obs_name_input",
+        help="Name of the observatory (e.g., TJMS).",
+    )
+    st.session_state.observatory_latitude = st.number_input(
+        "Latitude (degrees)",
+        value=st.session_state.observatory_latitude,
+        format="%.6f",
+        help="Observatory latitude in decimal degrees (North positive).",
+    )
+    st.session_state.observatory_longitude = st.number_input(
+        "Longitude (degrees)",
+        value=st.session_state.observatory_longitude,
+        format="%.6f",
+        help="Observatory longitude in decimal degrees (East positive).",
+    )
+    st.session_state.observatory_elevation = st.number_input(
+        "Elevation (meters)",
+        value=st.session_state.observatory_elevation,
+        format="%.1f",
+        help="Observatory elevation above sea level in meters.",
     )
 
-    latitude = st.number_input(
-        "Latitude (°)",
-        value=float(st.session_state.observatory_latitude),
-        min_value=-90.0,
-        max_value=90.0,
-        help="Observatory latitude in degrees",
-        key="obs_lat_input",
+
+with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
+    st.session_state.analysis_parameters["seeing"] = st.number_input(
+        "Estimated Seeing (FWHM, arcsec)",
+        min_value=0.1,
+        max_value=20.0,
+        value=st.session_state.analysis_parameters["seeing"],
+        step=0.1,
+        format="%.1f",
+        help=(
+            "Initial guess for the Full Width at Half Maximum of stars in "
+            "arcseconds. Will be refined."
+        ),
     )
-
-    longitude = st.number_input(
-        "Longitude (°)",
-        value=float(st.session_state.observatory_longitude),
-        min_value=-180.0,
-        max_value=180.0,
-        help="Observatory longitude in degrees",
-        key="obs_lon_input",
+    st.session_state.analysis_parameters["threshold_sigma"] = st.number_input(
+        "Detection Threshold (sigma)",
+        min_value=1.0,
+        max_value=20.0,
+        value=st.session_state.analysis_parameters["threshold_sigma"],
+        step=0.5,
+        format="%.1f",
+        help=(
+            "Source detection threshold in units of background "
+            "standard deviation."
+        ),
     )
-
-    elevation = st.number_input(
-        "Elevation (m)",
-        value=float(st.session_state.observatory_elevation),
-        min_value=0.0,
-        help="Observatory elevation in meters above sea level",
-        key="obs_elev_input",
+    st.session_state.analysis_parameters["detection_mask"] = st.number_input(
+        "Border Mask Size (pixels)",
+        min_value=0,
+        max_value=500,
+        value=st.session_state.analysis_parameters["detection_mask"],
+        step=5,
+        help=(
+            "Size of the border region (in pixels) to exclude from "
+            "source detection."
+        ),
     )
+    st.session_state.analysis_parameters["filter_band"] = st.selectbox(
+        "Calibration Filter Band (Gaia)",
+        options=[
+            "phot_g_mean_mag",
+            "phot_bp_mean_mag",
+            "phot_rp_mean_mag",
+        ],
+        index=[
+            "phot_g_mean_mag",
+            "phot_bp_mean_mag",
+            "phot_rp_mean_mag",
+        ].index(st.session_state.analysis_parameters["filter_band"]),
+        help="Gaia magnitude band used for photometric calibration.",
+    )
+    st.session_state.analysis_parameters["filter_max_mag"] = st.number_input(
+        "Max Calibration Mag (Gaia)",
+        min_value=10.0,
+        max_value=25.0,
+        value=st.session_state.analysis_parameters["filter_max_mag"],
+        step=0.5,
+        format="%.1f",
+        help="Faintest Gaia magnitude to use for calibration stars.",
+    )
+    st.session_state.analysis_parameters["astrometry_check"] = st.toggle(
+        "Refine Astrometry (Stdpipe)",
+        value=st.session_state.analysis_parameters["astrometry_check"],
+        help=(
+            "Attempt to refine WCS using detected sources before photometry "
+            "(requires external solver like Siril or astrometry.net)."
+        ),
+    )
+    st.session_state.analysis_parameters["calibrate_cosmic_rays"] = st.toggle(
+        "Remove Cosmic Rays (Astroscrappy)",
+        value=st.session_state.analysis_parameters["calibrate_cosmic_rays"],
+        help="Detect and remove cosmic rays using the L.A.Cosmic algorithm.",
+    )
+    if st.session_state.analysis_parameters["calibrate_cosmic_rays"]:
+        st.session_state.analysis_parameters["cr_gain"] = st.number_input(
+            "CRR Gain (e-/ADU)",
+            value=st.session_state.analysis_parameters["cr_gain"],
+            min_value=0.1
+        )
+        st.session_state.analysis_parameters["cr_readnoise"] = st.number_input(
+            "CRR Read Noise (e-)",
+            value=st.session_state.analysis_parameters["cr_readnoise"],
+            min_value=0.1
+        )
+        st.session_state.analysis_parameters["cr_sigclip"] = st.number_input(
+            "CRR Sigma Clip",
+            value=st.session_state.analysis_parameters["cr_sigclip"],
+            min_value=1.0
+        )
 
-    # Update session state with current values
-    st.session_state.observatory_name = observatory_name
-    st.session_state.observatory_latitude = latitude
-    st.session_state.observatory_longitude = longitude
-    st.session_state.observatory_elevation = elevation
-
-    # Store in the observatory_data dict for consistency with existing code
-    st.session_state.observatory_data = {
-        "name": observatory_name,
-        "latitude": latitude,
-        "longitude": longitude,
-        "elevation": elevation,
-    }
-
-    st.sidebar.header("Astro-Colibri")
-    colibri_api_key = st.text_input(
-        "UID key",
-        value=st.session_state.get("colibri_api_key", None),
-        help="Enter your Astro-Colibri UID key",
+with st.sidebar.expander("🔑 API Keys", expanded=False):
+    st.session_state.colibri_api_key = st.text_input(
+        "Colibri API Key (Optional)",
+        value=st.session_state.get("colibri_api_key", ""),
         type="password",
-    )
-    st.session_state["colibri_api_key"] = colibri_api_key
-    st.caption("[Get your key](https://astro-colibri.science)")
-
-    st.header("Analysis Parameters")
-    seeing = st.slider(
-        "Seeing (arcsec)",
-        1.0,
-        6.0,
-        float(st.session_state.get("seeing", 3.0)),
-        0.5,
-        help="Estimate of the atmospheric seeing in arcseconds",
-    )
-    threshold_sigma = st.slider(
-        "Detection Threshold (σ)",
-        0.5,
-        5.0,
-        float(st.session_state.get("threshold_sigma", 2.5)),
-        0.5,
-        help="Source detection threshold in sigma above background",
-    )
-    detection_mask = st.slider(
-        "Border Mask (pixels)",
-        0,
-        200,
-        int(st.session_state.get("detection_mask", 0)),
-        25,
-        help="Size of border to exclude from source detection",
+        help="API key for Colibri GRB catalog queries."
     )
 
-    st.session_state["seeing"] = seeing
-    st.session_state["threshold_sigma"] = threshold_sigma
-    st.session_state["detection_mask"] = detection_mask
+if st.sidebar.button("💾 Save Configuration"):
+    analysis_params = dict(st.session_state.get("analysis_parameters", {}))
+    # Remove unwanted keys from analysis_params
+    for k in [
+        "filter_band",
+        "filter_max_mag",
+    ]:
+        analysis_params.pop(k, None)
 
-    st.session_state["analysis_parameters"].update(
-        {
-            "seeing": seeing,
-            "threshold_sigma": threshold_sigma,
-            "detection_mask": detection_mask,
-        }
+    # Only keep relevant keys
+    gaia_params = {
+        "filter_band": st.session_state.get("filter_band"),
+        "filter_max_mag": st.session_state.get("filter_max_mag"),
+    }
+    observatory_params = dict(st.session_state.get("observatory_data", {}))
+    colibri_api_key = st.session_state.get("colibri_api_key")
+    # Add pre-process options to analysis_parameters
+    analysis_params["astrometry_check"] = st.session_state.get(
+        "astrometry_check", False
     )
-
-    st.header("Photometry Parameters")
-    selected_band = st.session_state.get("filter_band", "phot_g_mean_mag")
-    if selected_band not in GAIA_BAND:
-        selected_band = GAIA_BAND[0]
-    index = GAIA_BAND.index(selected_band)
-    filter_band = st.selectbox(
-        "Filter Band",
-        GAIA_BAND,
-        index=index,
-        help="Filter magnitude band to use for calibration",
+    analysis_params["calibrate_cosmic_rays"] = st.session_state.get(
+        "calibrate_cosmic_rays", False
     )
-    filter_max_mag = st.slider(
-        "Filter Max Magnitude",
-        15.0,
-        20.0,
-        float(st.session_state.get("filter_max_mag") or 20.),
-        0.5,
-        help="Maximum magnitude for filter sources",
+    params = {
+        "analysis_parameters": analysis_params,
+        "gaia_parameters": gaia_params,
+        "observatory_parameters": observatory_params,
+        "astro_colibri_api_key": colibri_api_key,
+    }
+    username = st.session_state.get("username", "user")
+    config_filename = f"{username}_config.json"
+    config_path = os.path.join(
+        st.session_state.get("output_dir", "rpp_results"), config_filename
     )
-    # Ensure Gaia parameters are updated in session state for saving
-    st.session_state["filter_band"] = filter_band
-    st.session_state["filter_max_mag"] = filter_max_mag
+    try:
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(params, f, indent=2)
+        st.sidebar.success("Parameters Saved")
+    except Exception as e:
+        st.sidebar.error(f"Failed to save config: {e}")
 
-    # st.header("Output Options")
-    catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
-
-    # --- Save Session Parameters as JSON to results directory and backend DB
-    st.sidebar.header("Save Configuration")
-    if st.sidebar.button("Save"):
-        analysis_params = dict(st.session_state.get("analysis_parameters", {}))
-        # Remove unwanted keys from analysis_params
-        for k in [
-            "filter_band",
-            "filter_max_mag",
-        ]:
-            analysis_params.pop(k, None)
-
-        # Only keep relevant keys
-        gaia_params = {
-            "filter_band": st.session_state.get("filter_band"),
-            "filter_max_mag": st.session_state.get("filter_max_mag"),
-        }
-        observatory_params = dict(st.session_state.get("observatory_data", {}))
-        colibri_api_key = st.session_state.get("colibri_api_key")
-        # Add pre-process options to analysis_parameters
-        analysis_params["astrometry_check"] = st.session_state.get(
-            "astrometry_check", False
+    # Save to backend DB
+    try:
+        backend_url = "http://localhost:5000/save_config"
+        resp = requests.post(
+            backend_url,
+            json={"username": username, "config_json": json.dumps(params)},
         )
-        analysis_params["calibrate_cosmic_rays"] = st.session_state.get(
-            "calibrate_cosmic_rays", False
-        )
-        params = {
-            "analysis_parameters": analysis_params,
-            "gaia_parameters": gaia_params,
-            "observatory_parameters": observatory_params,
-            "astro_colibri_api_key": colibri_api_key,
-        }
-        username = st.session_state.get("username", "user")
-        config_filename = f"{username}_config.json"
-        config_path = os.path.join(
-            st.session_state.get("output_dir", "rpp_results"), config_filename
-        )
-        try:
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(params, f, indent=2)
-            st.sidebar.success("Parameters Saved")
-        except Exception as e:
-            st.sidebar.error(f"Failed to save config: {e}")
+        if resp.status_code != 200:
+            st.sidebar.warning(f"Could not save config to DB: {resp.text}")
+    except Exception as e:
+        st.sidebar.warning(f"Could not connect to backend: {e}")
 
-        # Save to backend DB
-        try:
-            backend_url = "http://localhost:5000/save_config"
-            resp = requests.post(
-                backend_url,
-                json={"username": username, "config_json": json.dumps(params)},
-            )
-            if resp.status_code != 200:
-                st.sidebar.warning(f"Could not save config to DB: {resp.text}")
-        except Exception as e:
-            st.sidebar.warning(f"Could not connect to backend: {e}")
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Quick Links")
+col1, col2 = st.columns(2)
 
-    st.header("Quick Links")
-    col1, col2 = st.columns(2)
+with col1:
+    st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
+    st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
+    st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
 
-    with col1:
-        st.link_button("GAIA", "https://gea.esac.esa.int/archive/")
-        st.link_button("Simbad", "http://simbad.u-strasbg.fr/simbad/")
-        st.link_button("SkyBoT", "https://ssp.imcce.fr/webservices/skybot/")
+with col2:
+    st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
+    st.link_button("AAVSO", "https://www.aavso.org/vsx/")
+    st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
 
-    with col2:
-        st.link_button("X-Match", "http://cdsxmatch.u-strasbg.fr/")
-        st.link_button("AAVSO", "https://www.aavso.org/vsx/")
-        st.link_button("VizieR", "http://vizier.u-strasbg.fr/viz-bin/VizieR")
+science_file = st.file_uploader(
+    "Choose a FITS file for analysis", type=["fits", "fit", "fts", "fits.gz"],
+    key="science_uploader"
+)
+science_file_path = None
+
+if science_file is not None:
+    suffix = os.path.splitext(science_file.name)[1]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+        tmp_file.write(science_file.getvalue())
+        science_file_path = tmp_file.name
+
+    st.session_state["science_file_path"] = science_file_path
+    st.session_state.files_loaded["science_file"] = science_file
+
+    base_filename = get_base_filename(science_file)
+    st.session_state["base_filename"] = base_filename
+    st.session_state["log_buffer"] = initialize_log(science_file.name)
 
 
+st.session_state["calibrate_cosmic_rays"] = calibrate_cosmic_rays
+
+if "observatory_name" not in st.session_state:
+    st.session_state.observatory_name = "TJMS"
+if "observatory_latitude" not in st.session_state:
+    st.session_state.observatory_latitude = 48.29166
+if "observatory_longitude" not in st.session_state:
+    st.session_state.observatory_longitude = 2.43805
+if "observatory_elevation" not in st.session_state:
+    st.session_state.observatory_elevation = 94.0
+
+# Update session state with current values
+st.session_state.observatory_name = observatory_name
+st.session_state.observatory_latitude = latitude
+st.session_state.observatory_longitude = longitude
+st.session_state.observatory_elevation = elevation
+
+st.session_state.observatory_data = {
+    "name": observatory_name,
+    "latitude": latitude,
+    "longitude": longitude,
+    "elevation": elevation,
+}
+
+st.session_state["seeing"] = seeing
+st.session_state["threshold_sigma"] = threshold_sigma
+st.session_state["detection_mask"] = detection_mask
+
+st.session_state["analysis_parameters"].update(
+    {
+        "seeing": seeing,
+        "threshold_sigma": threshold_sigma,
+        "detection_mask": detection_mask,
+    }
+)
+
+catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 output_dir = ensure_output_directory("rpp_results")
 st.session_state["output_dir"] = output_dir
 
 if science_file is not None:
-    science_data, data_not_scaled, science_header = load_fits_data(science_file)
+    with st.spinner("Loading FITS data..."):
+        normalized_data, raw_data, science_header = load_fits_data(science_file)
+
+    if raw_data is not None and science_header is not None:
+        st.success(f"Loaded '{science_file.name}' successfully.")
+        write_to_log(
+            st.session_state.log_buffer,
+            f"Loaded FITS file: {science_file.name}"
+        )
 
     # Apply cosmic ray removal if enabled
     if st.session_state.get("calibrate_cosmic_rays", False):
