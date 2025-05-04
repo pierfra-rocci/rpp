@@ -38,11 +38,16 @@ from __version__ import version
 
 # Conditional Import (already present, just noting its location)
 if getattr(sys, "frozen", False):
-    import importlib.metadata
-    importlib.metadata.distributions = lambda **kwargs: []
+    try:
+        import importlib.metadata
+        importlib.metadata.distributions = lambda **kwargs: []
+    except ImportError:
+        st.warning(
+            "Could not modify importlib.metadata, "
+            "potential issues in frozen mode."
+        )
 
 warnings.filterwarnings("ignore")
-
 
 st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭",
                    layout="wide")
@@ -77,7 +82,6 @@ def initialize_session_state():
     if "science_file_path" not in st.session_state:
         st.session_state.science_file_path = None
     if "output_dir" not in st.session_state:
-        # Ensure the default output directory exists when initialized
         st.session_state.output_dir = ensure_output_directory("rpp_results")
 
     # Analysis Parameters State (consolidated)
