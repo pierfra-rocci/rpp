@@ -640,9 +640,9 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         help="Filter Magnitude band used for photometric calibration.",
     )
     st.session_state.analysis_parameters["filter_max_mag"] = st.number_input(
-        "Max Calibration Mag (Gaia)",
-        min_value=10.0,
-        max_value=25.0,
+        "Max Calibration Mag",
+        min_value=11.0,
+        max_value=21.0,
         value=st.session_state.analysis_parameters["filter_max_mag"],
         step=0.5,
         format="%.1f",
