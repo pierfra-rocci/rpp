@@ -820,9 +820,9 @@ if science_file is not None:
 
 if science_file is not None:
     with st.spinner("Loading FITS data..."):
-        normalized_data, raw_data, science_header = load_fits_data(science_file)
+        normalized_data, science_data, science_header = load_fits_data(science_file)
 
-    if raw_data is not None and science_header is not None:
+    if science_data is not None and science_header is not None:
         st.success(f"Loaded '{science_file.name}' successfully.")
         write_to_log(
             st.session_state.log_buffer,
