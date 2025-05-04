@@ -36,154 +36,6 @@ from pipeline import (solve_with_siril, cross_match_with_gaia,
 
 from __version__ import version
 
-# Conditional Import (already present, just noting its location)
-if getattr(sys, "frozen", False):
-    try:
-        import importlib.metadata
-        importlib.metadata.distributions = lambda **kwargs: []
-    except ImportError:
-        st.warning(
-            "Could not modify importlib.metadata, "
-            "potential issues in frozen mode."
-        )
-
-warnings.filterwarnings("ignore")
-
-st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭",
-                   layout="wide")
-
-
-def initialize_session_state():
-    """
-    Initialize all session state variables for the application.
-    Ensures all required keys have default values.
-    """
-    # Login/User State
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-    if "username" not in st.session_state:
-        st.session_state.username = None
-
-    # Core Data/Results State
-    if "calibrated_header" not in st.session_state:
-        st.session_state.calibrated_header = None
-    if "final_phot_table" not in st.session_state:
-        st.session_state.final_phot_table = None
-    if "epsf_model" not in st.session_state:
-        st.session_state.epsf_model = None
-    if "epsf_photometry_result" not in st.session_state:
-        st.session_state.epsf_photometry_result = None
-
-    # Logging and File Handling State
-    if "log_buffer" not in st.session_state:
-        st.session_state.log_buffer = None
-    if "base_filename" not in st.session_state:
-        st.session_state.base_filename = "photometry"
-    if "science_file_path" not in st.session_state:
-        st.session_state.science_file_path = None
-    if "output_dir" not in st.session_state:
-        st.session_state.output_dir = ensure_output_directory("rpp_results")
-
-    # Analysis Parameters State (consolidated)
-    default_analysis_params = {
-        "seeing": 3.0,
-        "threshold_sigma": 3.0,
-        "detection_mask": 25,
-        "filter_band": "phot_g_mean_mag",  # Default Gaia band
-        "filter_max_mag": 20.0,           # Default Gaia mag limit
-        "astrometry_check": False,        # Astrometry refinement toggle
-        "calibrate_cosmic_rays": False,   # CRR toggle
-        "cr_gain": 1.0,                   # CRR default gain
-        "cr_readnoise": 6.5,              # CRR default readnoise
-        "cr_sigclip": 4.5                 # CRR default sigclip
-    }
-    if "analysis_parameters" not in st.session_state:
-        st.session_state.analysis_parameters = default_analysis_params.copy()
-    else:
-        # Ensure all keys exist, adding defaults if missing from loaded config
-        for key, value in default_analysis_params.items():
-            if key not in st.session_state.analysis_parameters:
-                st.session_state.analysis_parameters[key] = value
-
-    # Observatory Parameters State
-    default_observatory_data = {
-        "name": "Obs",
-        "latitude": 0.,
-        "longitude": 0.,
-        "elevation": 0.,
-    }
-    if "observatory_data" not in st.session_state:
-        st.session_state.observatory_data = default_observatory_data.copy()
-    else:
-        for key, value in default_observatory_data.items():
-            if key not in st.session_state.observatory_data:
-                st.session_state.observatory_data[key] = value
-
-    # Individual observatory keys for direct widget binding (synced later)
-    if "observatory_name" not in st.session_state:
-        st.session_state.observatory_name = st.session_state.observatory_data["name"]
-    if "observatory_latitude" not in st.session_state:
-        st.session_state.observatory_latitude = st.session_state.observatory_data["latitude"]
-    if "observatory_longitude" not in st.session_state:
-        st.session_state.observatory_longitude = st.session_state.observatory_data["longitude"]
-    if "observatory_elevation" not in st.session_state:
-        st.session_state.observatory_elevation = st.session_state.observatory_data["elevation"]
-
-    # API Keys State
-    if "colibri_api_key" not in st.session_state:
-        st.session_state.colibri_api_key = None  # Or load from env var if preferred
-
-    # File Loading State (Track which calibration files are loaded)
-    if "files_loaded" not in st.session_state:
-        st.session_state.files_loaded = {
-            "science_file": None,
-        }
-
-
-# --- Initialize Session State Early ---
-initialize_session_state()
-
-# Redirect to login if not authenticated
-if not st.session_state.logged_in:
-    st.warning("You must log in to access this page.")
-    st.switch_page("pages/login.py")
-
-# Add application version to the sidebar
-st.title("🔭 RAPAS Photometry Pipeline")
-st.sidebar.markdown(f"**App Version:** _{version}_")
-
-# Add logout button at the top right if user is logged in
-if st.session_state.logged_in:
-    st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
-    if st.sidebar.button("Logout"):
-        st.session_state.logged_in = False
-        st.session_state.username = None
-        st.success("Logged out successfully.")
-        st.switch_page("pages/login.py")
-
-# Custom CSS to control plot display size
-st.markdown(
-    """
-<style>
-    .stPlot > div {
-        display: flex;
-        justify-content: center;
-        min-height: 400px;
-    }
-    .main .block-container {
-        max-width: 1200px;
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-    .element-container img {
-        max-width: 100% !important;
-        height: auto !important;
-    }
-</style>
-""",
-    unsafe_allow_html=True,
-)
-
 
 @st.cache_data
 def load_fits_data(file):
@@ -542,10 +394,157 @@ def provide_download_buttons(folder_path):
         st.error(f"Error creating zip archive: {str(e)}")
 
 
+# Conditional Import (already present, just noting its location)
+if getattr(sys, "frozen", False):
+    try:
+        import importlib.metadata
+        importlib.metadata.distributions = lambda **kwargs: []
+    except ImportError:
+        st.warning(
+            "Could not modify importlib.metadata, "
+            "potential issues in frozen mode."
+        )
+
+warnings.filterwarnings("ignore")
+
+st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭",
+                   layout="wide")
+
+
+def initialize_session_state():
+    """
+    Initialize all session state variables for the application.
+    Ensures all required keys have default values.
+    """
+    # Login/User State
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+    if "username" not in st.session_state:
+        st.session_state.username = None
+
+    # Core Data/Results State
+    if "calibrated_header" not in st.session_state:
+        st.session_state.calibrated_header = None
+    if "final_phot_table" not in st.session_state:
+        st.session_state.final_phot_table = None
+    if "epsf_model" not in st.session_state:
+        st.session_state.epsf_model = None
+    if "epsf_photometry_result" not in st.session_state:
+        st.session_state.epsf_photometry_result = None
+
+    # Logging and File Handling State
+    if "log_buffer" not in st.session_state:
+        st.session_state.log_buffer = None
+    if "base_filename" not in st.session_state:
+        st.session_state.base_filename = "photometry"
+    if "science_file_path" not in st.session_state:
+        st.session_state.science_file_path = None
+    if "output_dir" not in st.session_state:
+        st.session_state.output_dir = ensure_output_directory("rpp_results")
+
+    # Analysis Parameters State (consolidated)
+    default_analysis_params = {
+        "seeing": 3.0,
+        "threshold_sigma": 3.0,
+        "detection_mask": 25,
+        "filter_band": "phot_g_mean_mag",  # Default Gaia band
+        "filter_max_mag": 20.0,           # Default Gaia mag limit
+        "astrometry_check": False,        # Astrometry refinement toggle
+        "calibrate_cosmic_rays": False,   # CRR toggle
+        "cr_gain": 1.0,                   # CRR default gain
+        "cr_readnoise": 6.5,              # CRR default readnoise
+        "cr_sigclip": 4.5                 # CRR default sigclip
+    }
+    if "analysis_parameters" not in st.session_state:
+        st.session_state.analysis_parameters = default_analysis_params.copy()
+    else:
+        # Ensure all keys exist, adding defaults if missing from loaded config
+        for key, value in default_analysis_params.items():
+            if key not in st.session_state.analysis_parameters:
+                st.session_state.analysis_parameters[key] = value
+
+    # Observatory Parameters State
+    default_observatory_data = {
+        "name": "Obs",
+        "latitude": 0.,
+        "longitude": 0.,
+        "elevation": 0.,
+    }
+    if "observatory_data" not in st.session_state:
+        st.session_state.observatory_data = default_observatory_data.copy()
+    else:
+        for key, value in default_observatory_data.items():
+            if key not in st.session_state.observatory_data:
+                st.session_state.observatory_data[key] = value
+
+    # Individual observatory keys for direct widget binding (synced later)
+    if "observatory_name" not in st.session_state:
+        st.session_state.observatory_name = st.session_state.observatory_data["name"]
+    if "observatory_latitude" not in st.session_state:
+        st.session_state.observatory_latitude = st.session_state.observatory_data["latitude"]
+    if "observatory_longitude" not in st.session_state:
+        st.session_state.observatory_longitude = st.session_state.observatory_data["longitude"]
+    if "observatory_elevation" not in st.session_state:
+        st.session_state.observatory_elevation = st.session_state.observatory_data["elevation"]
+
+    # API Keys State
+    if "colibri_api_key" not in st.session_state:
+        st.session_state.colibri_api_key = None  # Or load from env var if preferred
+
+    # File Loading State (Track which calibration files are loaded)
+    if "files_loaded" not in st.session_state:
+        st.session_state.files_loaded = {
+            "science_file": None,
+        }
+
+
+###################################################################
+# Main Streamlit app
 ###################################################################
 
-# Main Streamlit app
-# initialize_session_state() already called above
+# --- Initialize Session State Early ---
+initialize_session_state()
+
+# Custom CSS to control plot display size
+st.markdown(
+    """
+<style>
+    .stPlot > div {
+        display: flex;
+        justify-content: center;
+        min-height: 400px;
+    }
+    .main .block-container {
+        max-width: 1200px;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    .element-container img {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+# Redirect to login if not authenticated
+if not st.session_state.logged_in:
+    st.warning("You must log in to access this page.")
+    st.switch_page("pages/login.py")
+
+# Add application version to the sidebar
+st.title("🔭 RAPAS Photometry Pipeline")
+st.sidebar.markdown(f"**App Version:** _{version}_")
+
+# Add logout button at the top right if user is logged in
+if st.session_state.logged_in:
+    st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
+    if st.sidebar.button("Logout"):
+        st.session_state.logged_in = False
+        st.session_state.username = None
+        st.success("Logged out successfully.")
+        st.switch_page("pages/login.py")
 
 # --- Sync session state with loaded config before creating widgets ---
 if "observatory_data" in st.session_state:
@@ -600,7 +599,6 @@ with st.sidebar.expander("🔭 Observatory Data", expanded=False):
         help="Observatory elevation above sea level in meters.",
     )
 
-
 with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     st.session_state.analysis_parameters["seeing"] = st.number_input(
         "Estimated Seeing (FWHM, arcsec)",
@@ -629,7 +627,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     st.session_state.analysis_parameters["detection_mask"] = st.number_input(
         "Border Mask Size (pixels)",
         min_value=0,
-        max_value=500,
+        max_value=200,
         value=st.session_state.analysis_parameters["detection_mask"],
         step=5,
         help=(
