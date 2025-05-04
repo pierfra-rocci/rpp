@@ -22,7 +22,7 @@ FIGURE_SIZES = {
 
 URL = "https://astro-colibri.science/"
 
-GAIA_BAND = [
+GAIA_BANDS = [
     "phot_g_mean_mag",
     "phot_bp_mean_mag",
     "phot_rp_mean_mag",

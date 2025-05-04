@@ -23,7 +23,7 @@ from astropy.visualization import (ZScaleInterval, ImageNormalize,
                                    PercentileInterval)
 
 # Local Application Imports
-from tools import (FIGURE_SIZES, GAIA_BAND, extract_coordinates,
+from tools import (FIGURE_SIZES, GAIA_BANDS, extract_coordinates,
                    extract_pixel_scale, get_base_filename,
                    safe_wcs_create, ensure_output_directory,
                    cleanup_temp_files, initialize_log, write_to_log,
@@ -627,8 +627,8 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     )
     st.session_state.analysis_parameters["filter_band"] = st.selectbox(
         "Calibration Filter Band",
-        options=GAIA_BAND,
-        index=GAIA_BAND.index(st.session_state.analysis_parameters["filter_band"]),
+        options=GAIA_BANDS,
+        index=GAIA_BANDS.index(st.session_state.analysis_parameters["filter_band"]),
         help="Filter Magnitude band used for photometric calibration.",
     )
     st.session_state.analysis_parameters["filter_max_mag"] = st.number_input(
