@@ -556,8 +556,8 @@ if "analysis_parameters" in st.session_state:
         if key in ap:
             st.session_state[key] = ap[key]
 
-if "gaia_parameters" in st.session_state:
-    gaia = st.session_state["gaia_parameters"]
+if "filter_parameters" in st.session_state:
+    gaia = st.session_state["filter_parameters"]
     st.session_state["filter_band"] = gaia.get("filter_band", "phot_g_mean_mag")
     st.session_state["filter_max_mag"] = gaia.get("filter_max_mag", 20.0)
 
@@ -626,7 +626,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         ),
     )
     st.session_state.analysis_parameters["filter_band"] = st.selectbox(
-        "Calibration Filter Band (Gaia)",
+        "Calibration Filter Band",
         options=[
             "phot_g_mean_mag",
             "phot_bp_mean_mag",
@@ -637,7 +637,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
             "phot_bp_mean_mag",
             "phot_rp_mean_mag",
         ].index(st.session_state.analysis_parameters["filter_band"]),
-        help="Gaia magnitude band used for photometric calibration.",
+        help="Filter Magnitude band used for photometric calibration.",
     )
     st.session_state.analysis_parameters["filter_max_mag"] = st.number_input(
         "Max Calibration Mag (Gaia)",
@@ -710,7 +710,7 @@ if st.sidebar.button("💾 Save Configuration"):
     )
     params = {
         "analysis_parameters": analysis_params,
-        "gaia_parameters": gaia_params,
+        "filter_parameters": gaia_params,
         "observatory_parameters": observatory_params,
         "astro_colibri_api_key": colibri_api_key,
     }
