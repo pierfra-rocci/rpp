@@ -103,7 +103,7 @@ def initialize_session_state():
 
     # Observatory Parameters State
     default_observatory_data = {
-        "name": "",
+        "name": "Obs",
         "latitude": 0.,
         "longitude": 0.,
         "elevation": 0.,
