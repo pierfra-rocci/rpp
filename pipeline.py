@@ -2321,4 +2321,3 @@ def enhance_catalog(
         final_table.drop("match_id", axis=1, inplace=True)
 
     return final_table
-``` 
