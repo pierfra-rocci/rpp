@@ -1259,7 +1259,7 @@ def cross_match_with_gaia(
             WHERE 1 = CONTAINS(POINT('ICRS', s.ra, s.dec), CIRCLE('ICRS', 
             {image_center_ra_dec[0]}, {image_center_ra_dec[1]}, {radius_query.value / 60.}))
             """
-            job = Gaia.query(query=query)
+            job = Gaia.launch_job(query=query)
             gaia_table = job.get_results()
         else:
             # Use the SkyCoord object for cone search instead of raw list
