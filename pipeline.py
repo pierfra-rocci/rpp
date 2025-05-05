@@ -1164,6 +1164,8 @@ def cross_match_with_gaia(
 
     This function queries the GAIA catalog for a region matching the image field of view,
     applies filtering based on magnitude range, and matches GAIA sources to the detected sources.
+    It also applies quality filters including variability, color index, and astrometric quality
+    to ensure reliable photometric calibration stars.
 
     Parameters
     ----------
@@ -1176,7 +1178,8 @@ def cross_match_with_gaia(
     mean_fwhm_pixel : float
         FWHM in pixels, used to determine matching radius
     filter_band : str
-        GAIA magnitude band to use for filtering (e.g., 'phot_g_mean_mag')
+        GAIA magnitude band to use for filtering (e.g., 'phot_g_mean_mag', 'phot_bp_mean_mag', 
+        'phot_rp_mean_mag' or other synthetic photometry bands)
     filter_max_mag : float
         Maximum magnitude for GAIA source filtering
 
@@ -1189,8 +1192,13 @@ def cross_match_with_gaia(
     Notes
     -----
     - The maximum separation for matching is set to twice the FWHM in arcseconds
-    - Includes filtering to exclude variable stars if the information is available
+    - Applies multiple quality filters to ensure reliable calibration:
+      - Excludes variable stars (phot_variable_flag != "VARIABLE")
+      - Limits color index range (abs(bp_rp) < 1.5)
+      - Ensures good astrometric solutions (ruwe <= 1.5)
+    - For non-standard Gaia bands, queries synthetic photometry from gaiadr3.synthetic_photometry_gspc
     - Progress and status updates are displayed in the Streamlit interface
+    - The underscore prefix in parameter names prevents issues with caching when the function is called repeatedly
     """
     st.write("Cross-matching with Gaia DR3...")
 
