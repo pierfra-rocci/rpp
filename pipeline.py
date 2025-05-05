@@ -1215,9 +1215,8 @@ def cross_match_with_gaia(
         return None
 
     try:
-        image_center_ra_dec = w.pixel_to_world(
-            _science_header["NAXIS1"] // 2, _science_header["NAXIS2"] // 2
-        )
+        image_center_ra_dec = [_science_header["RA"],
+                               _science_header["DEC"]]
         gaia_search_radius_arcsec = (
             max(_science_header["NAXIS1"], _science_header["NAXIS2"])
             * pixel_size_arcsec
@@ -1226,7 +1225,8 @@ def cross_match_with_gaia(
         radius_query = gaia_search_radius_arcsec * u.arcsec
 
         st.write(
-            f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
+            f"Querying Gaia in a radius of {round(radius_query.value / 60.,
+                                                  2)} arcmin."
         )
 
         Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
@@ -1236,10 +1236,22 @@ def cross_match_with_gaia(
                                "phot_rp_mean_mag"]:
             secondary_table = 'gaiadr3.synthetic_photometry_gspc'
 
-            
-
-        job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
-        gaia_table = job.get_results()
+            query = f"""
+            SELECT s.source_id, s.ra, s.dec, s.bp_rp, p.c_star,
+            phot_variable_flag, p.u_jkc_mag, p.v_jkc_mag, p.b_jkc_mag,
+            p.r_jkc_mag, p.i_jkc_mag, p.u_sdss_mag, p.g_sdss_mag, 
+            p.r_sdss_mag, p.i_sdss_mag, p.z_sdss_mag
+            FROM gaiadr3.gaia_source AS s
+            JOIN gaiadr3.synthetic_photometry_gspc AS p
+            ON s.source_id = p.source_id
+            WHERE 1 = CONTAINS(POINT('ICRS', s.ra, s.dec), CIRCLE('ICRS', 
+            {image_center_ra_dec[0]}, {image_center_ra_dec[1]}, {radius_query.value / 60.}))
+            """
+            job = Gaia.query(query=query)
+            gaia_table = job.get_results()
+        else:
+            job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
+            gaia_table = job.get_results()
     except Exception as e:
         st.error(f"Error querying Gaia: {e}")
         return None
