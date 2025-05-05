@@ -234,9 +234,9 @@ def make_border_mask(
         elif len(border) == 4:
             top, bottom, left, right = border
         else:
-            raise ValueError("border must be an int or a tuple of 2 or 4 el")
+            raise ValueError("border must be an int")
     else:
-        raise TypeError("border must be an int or a tuple")
+        raise TypeError("border must be an int")
 
     if any(b < 0 for b in (top, bottom, left, right)):
         raise ValueError("Borders cannot be negative")
@@ -312,7 +312,8 @@ def estimate_background(image_data, box_size=128, filter_size=7):
         # Plot the background model with ZScale and save as FITS
         try:
             # Create a figure with two subplots side by side for background and RMS
-            fig_bkg, (ax1, ax2) = plt.subplots(1, 2, figsize=FIGURE_SIZES["wide"])
+            fig_bkg, (ax1, ax2) = plt.subplots(1, 2,
+                                               figsize=FIGURE_SIZES["wide"])
             
             # Use ZScaleInterval for better visualization
             zscale = ZScaleInterval()
@@ -384,7 +385,7 @@ def airmass(
         - Coordinates (RA/DEC or OBJRA/OBJDEC)
         - Observation date (DATE-OBS)
     observatory : Dict, optional
-        Information about the observatory. If not provided, uses the default (TJMS).
+        Information about the observatory. If not provided, uses the default.
         Format: {
             'name': str,           # Observatory name
             'latitude': float,     # Latitude in degrees
@@ -1228,13 +1229,14 @@ def cross_match_with_gaia(
             f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
         )
 
+        Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
+
         if filter_band not in ["phot_g_mean_mag",
                                "phot_bp_mean_mag",
                                "phot_rp_mean_mag"]:
-            st.warning("No GAIA band specified. Cannot filter GAIA sources.")
-            Gaia.MAIN_GAIA_TABLE = 'gaiadr3.synthetic_photometry_gspc'
-        else:
-            Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
+            secondary_table = 'gaiadr3.synthetic_photometry_gspc'
+
+            
 
         job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
         gaia_table = job.get_results()
