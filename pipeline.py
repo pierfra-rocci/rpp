@@ -643,7 +643,8 @@ def fwhm_fit(
                 x_cen = int(source["xcentroid"])
                 y_cen = int(source["ycentroid"])
 
-                fwhm_results = compute_fwhm_marginal_sums(_img, y_cen, x_cen, box_size)
+                fwhm_results = compute_fwhm_marginal_sums(_img, y_cen, x_cen,
+                                                          box_size)
                 if fwhm_results is None:
                     skipped_sources += 1
                     continue
@@ -1295,12 +1296,13 @@ def cross_match_with_gaia(
     try:
         mag_filter = (gaia_table[filter_band] < filter_max_mag)
 
-        if Gaia.MAIN_GAIA_TABLE == 'gaiadr3.gaia_source':
-            var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
-            color_index_filter = abs(gaia_table["bp_rp"]) < 1.5
-            astrometric_filter = gaia_table["ruwe"] <= 1.5
-            combined_filter = (mag_filter & var_filter &
-                               color_index_filter & astrometric_filter)
+        var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
+        color_index_filter = abs(gaia_table["bp_rp"]) < 1.5
+        astrometric_filter = gaia_table["ruwe"] <= 1.5
+        combined_filter = (mag_filter &
+                           var_filter &
+                           color_index_filter &
+                           astrometric_filter)
 
         gaia_table_filtered = gaia_table[combined_filter]
 
@@ -1317,7 +1319,8 @@ def cross_match_with_gaia(
 
     try:
         gaia_skycoords = SkyCoord(
-            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"], unit="deg"
+            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"],
+            unit="deg"
         )
         idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
