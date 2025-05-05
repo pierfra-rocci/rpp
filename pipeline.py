@@ -2298,7 +2298,8 @@ def enhance_catalog(
         final_table.loc[has_qso, "catalog_matches"] += "QSO; "
 
     final_table["catalog_matches"] = final_table["catalog_matches"].str.rstrip("; ")
-    final_table.loc[final_table["catalog_matches"] == "", "catalog_matches"] = None
+    final_table.loc[final_table["catalog_matches"] == "",
+                    "catalog_matches"] = None
 
     matches_count = final_table["catalog_matches"].notna().sum()
     if matches_count > 0:
@@ -2313,7 +2314,8 @@ def enhance_catalog(
             "aperture_calib_mag",
             "catalog_matches",
         ]
-        display_cols = [col for col in display_cols if col in matched_df.columns]
+        display_cols = [col for col in display_cols 
+                        if col in matched_df.columns]
 
         st.dataframe(matched_df[display_cols])
 
