@@ -109,7 +109,7 @@ def load_fits_data(file):
                     sliced_data = sliced_data[0]
                 data = sliced_data
             
-            norm = ImageNormalize(data, interval=PercentileInterval(99.9))
+            norm = ImageNormalize(data, interval=PercentileInterval(99.99))
             normalized_data = norm(data)
 
             return normalized_data, data, header
