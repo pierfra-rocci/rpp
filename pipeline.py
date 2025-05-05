@@ -1237,7 +1237,7 @@ def cross_match_with_gaia(
             query = f"""
             SELECT s.source_id, s.ra, s.dec, s.bp_rp, p.c_star,
             phot_variable_flag, p.u_jkc_mag, p.v_jkc_mag, p.b_jkc_mag,
-            p.r_jkc_mag, p.i_jkc_mag, p.u_sdss_mag, p.g_sdss_mag, 
+            p.r_jkc_mag, p.i_jkc_mag, p.u_sdss_mag, p.g_sdss_mag,
             p.r_sdss_mag, p.i_sdss_mag, p.z_sdss_mag
             FROM gaiadr3.gaia_source AS s
             JOIN gaiadr3.synthetic_photometry_gspc AS p
