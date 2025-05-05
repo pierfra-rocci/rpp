@@ -1234,8 +1234,6 @@ def cross_match_with_gaia(
         if filter_band not in ["phot_g_mean_mag",
                                "phot_bp_mean_mag",
                                "phot_rp_mean_mag"]:
-            secondary_table = 'gaiadr3.synthetic_photometry_gspc'
-
             query = f"""
             SELECT s.source_id, s.ra, s.dec, s.bp_rp, p.c_star,
             phot_variable_flag, p.u_jkc_mag, p.v_jkc_mag, p.b_jkc_mag,
