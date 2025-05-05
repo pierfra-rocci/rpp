@@ -453,7 +453,7 @@ def initialize_session_state():
         "calibrate_cosmic_rays": False,   # CRR toggle
         "cr_gain": 1.0,                   # CRR default gain
         "cr_readnoise": 6.5,              # CRR default readnoise
-        "cr_sigclip": 4.5                 # CRR default sigclip
+        "cr_sigclip": 6.0                 # CRR default sigclip
     }
     if "analysis_parameters" not in st.session_state:
         st.session_state.analysis_parameters = default_analysis_params.copy()
@@ -667,7 +667,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         st.session_state.analysis_parameters["cr_sigclip"] = st.number_input(
             "CRR Sigma Clip",
             value=st.session_state.analysis_parameters["cr_sigclip"],
-            min_value=1.0
+            min_value=3.
         )
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):
@@ -816,7 +816,7 @@ if science_file is not None:
         try:
             cr_gain = st.session_state.get("cr_gain", 1.0)
             cr_readnoise = st.session_state.get("cr_readnoise", 6.5)
-            cr_sigclip = st.session_state.get("cr_sigclip", 6.0)
+            cr_sigclip = st.session_state.get("cr_sigclip", 6.5)
             clean_data, _ = detect_remove_cosmic_rays(
                 science_data,
                 gain=cr_gain,
