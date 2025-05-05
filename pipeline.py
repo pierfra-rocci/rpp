@@ -1215,8 +1215,20 @@ def cross_match_with_gaia(
         return None
 
     try:
+        # Validate RA/DEC coordinates before using them
+        if "RA" not in _science_header or "DEC" not in _science_header:
+            st.error("Missing RA/DEC coordinates in header")
+            return None
+            
         image_center_ra_dec = [_science_header["RA"],
                                _science_header["DEC"]]
+        
+        # Validate coordinate values
+        if not (0 <= image_center_ra_dec[0] <= 360) or not (-90 <= image_center_ra_dec[1] <= 90):
+            st.error(f"Invalid coordinates: RA={image_center_ra_dec[0]}, DEC={image_center_ra_dec[1]}")
+            return None
+            
+        # Calculate search radius (divided by 1.5 to avoid field edge effects)
         gaia_search_radius_arcsec = (
             max(_science_header["NAXIS1"], _science_header["NAXIS2"])
             * pixel_size_arcsec
@@ -1225,15 +1237,17 @@ def cross_match_with_gaia(
         radius_query = gaia_search_radius_arcsec * u.arcsec
 
         st.write(
-            f"Querying Gaia in a radius of {round(radius_query.value / 60.,
-                                                  2)} arcmin."
+            f"Querying Gaia in a radius of {round(radius_query.value / 60., 2)} arcmin."
         )
 
+        # Set Gaia data release
         Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
-
-        if filter_band not in ["phot_g_mean_mag",
-                               "phot_bp_mean_mag",
-                               "phot_rp_mean_mag"]:
+        
+        # Create a SkyCoord object for more reliable coordinate handling
+        center_coord = SkyCoord(ra=image_center_ra_dec[0], dec=image_center_ra_dec[1], unit="deg")
+        
+        # Different query strategies based on filter band
+        if filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]:
             query = f"""
             SELECT s.source_id, s.ra, s.dec, s.bp_rp, p.c_star,
             phot_variable_flag, p.u_jkc_mag, p.v_jkc_mag, p.b_jkc_mag,
@@ -1248,8 +1262,14 @@ def cross_match_with_gaia(
             job = Gaia.query(query=query)
             gaia_table = job.get_results()
         else:
-            job = Gaia.cone_search(image_center_ra_dec, radius=radius_query)
+            # Use the SkyCoord object for cone search instead of raw list
+            job = Gaia.cone_search(center_coord, radius=radius_query)
             gaia_table = job.get_results()
+        
+        st.info(f"Retrieved {len(gaia_table) if gaia_table is not None else 0} sources from Gaia")
+    except KeyError as ke:
+        st.error(f"Missing header keyword: {ke}")
+        return None
     except Exception as e:
         st.error(f"Error querying Gaia: {e}")
         return None
@@ -2301,3 +2321,4 @@ def enhance_catalog(
         final_table.drop("match_id", axis=1, inplace=True)
 
     return final_table
+``` 
