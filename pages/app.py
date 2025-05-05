@@ -675,8 +675,9 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
         "Colibri UID Key (Optional)",
         value=st.session_state.get("colibri_api_key", ""),
         type="password",
-        help="UID key for Colibri catalog queries.",
+        help="key for Astro-Colibri query",
     )
+    st.markdown("[Get your key](https://www.astro-colibri.science)")
 
 if st.sidebar.button("💾 Save Configuration"):
     analysis_params = dict(st.session_state.get("analysis_parameters", {}))
