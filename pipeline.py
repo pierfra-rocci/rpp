@@ -14,7 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 import astroscrappy
-from astropy.table import Table
+from astropy.table import Table, join
 from astropy.wcs import WCS
 from astropy.stats import sigma_clip, SigmaClip
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
@@ -1219,15 +1219,15 @@ def cross_match_with_gaia(
         if "RA" not in _science_header or "DEC" not in _science_header:
             st.error("Missing RA/DEC coordinates in header")
             return None
-            
+
         image_center_ra_dec = [_science_header["RA"],
                                _science_header["DEC"]]
-        
+
         # Validate coordinate values
         if not (0 <= image_center_ra_dec[0] <= 360) or not (-90 <= image_center_ra_dec[1] <= 90):
             st.error(f"Invalid coordinates: RA={image_center_ra_dec[0]}, DEC={image_center_ra_dec[1]}")
             return None
-            
+
         # Calculate search radius (divided by 1.5 to avoid field edge effects)
         gaia_search_radius_arcsec = (
             max(_science_header["NAXIS1"], _science_header["NAXIS2"])
@@ -1242,31 +1242,45 @@ def cross_match_with_gaia(
 
         # Set Gaia data release
         Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
-        
+
         # Create a SkyCoord object for more reliable coordinate handling
         center_coord = SkyCoord(ra=image_center_ra_dec[0], dec=image_center_ra_dec[1], unit="deg")
-        
-        # Different query strategies based on filter band
-        if filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]:
-            query = f"""
-            SELECT s.source_id, s.ra, s.dec, s.bp_rp, p.c_star,
-            phot_variable_flag, p.u_jkc_mag, p.v_jkc_mag, p.b_jkc_mag,
-            p.r_jkc_mag, p.i_jkc_mag, p.u_sdss_mag, p.g_sdss_mag,
-            p.r_sdss_mag, p.i_sdss_mag, p.z_sdss_mag
-            FROM gaiadr3.gaia_source AS s
-            JOIN gaiadr3.synthetic_photometry_gspc AS p
-            ON s.source_id = p.source_id
-            WHERE 1 = CONTAINS(POINT('ICRS', s.ra, s.dec), CIRCLE('ICRS', 
-            {image_center_ra_dec[0]}, {image_center_ra_dec[1]}, {radius_query.value / 60.}))
-            """
-            job = Gaia.launch_job(query=query)
-            gaia_table = job.get_results()
-        else:
-            # Use the SkyCoord object for cone search instead of raw list
+
+        try:
+            # Use the SkyCoord object for cone search
             job = Gaia.cone_search(center_coord, radius=radius_query)
             gaia_table = job.get_results()
-        
-        st.info(f"Retrieved {len(gaia_table) if gaia_table is not None else 0} sources from Gaia")
+
+            st.info(f"Retrieved {len(gaia_table) if gaia_table is not None else 0} sources from Gaia")
+
+            # Different query strategies based on filter band
+            if (filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"] and
+                gaia_table is not None and len(gaia_table) > 0):
+
+                # Create a comma-separated list of source_ids (limit to 1000)
+                max_sources = min(len(gaia_table), 1000)
+                source_ids = list(gaia_table['source_id'][:max_sources])
+                source_ids_str = ','.join(str(id) for id in source_ids)
+
+                # Query synthetic photometry just for these specific sources
+                synth_query = f"""
+                SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
+                r_jkc_mag, i_jkc_mag, u_sdss_mag, g_sdss_mag, r_sdss_mag, i_sdss_mag, z_sdss_mag
+                FROM gaiadr3.synthetic_photometry_gspc
+                WHERE source_id IN ({source_ids_str})
+                """
+                synth_job = Gaia.launch_job(query=synth_query, timeout=120)
+                synth_table = synth_job.get_results()
+
+                # Join the two tables
+                if synth_table is not None and len(synth_table) > 0:
+                    st.info(f"Retrieved {len(synth_table)} synthetic photometry entries")
+                    gaia_table = join(gaia_table, synth_table, keys='source_id',
+                                      join_type='left')
+
+        except Exception as cone_error:
+            st.warning(f"Gaia query failed: {cone_error}")
+            return None
     except KeyError as ke:
         st.error(f"Missing header keyword: {ke}")
         return None
