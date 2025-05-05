@@ -1278,7 +1278,7 @@ def cross_match_with_gaia(
                 FROM gaiadr3.synthetic_photometry_gspc
                 WHERE source_id IN ({source_ids_str})
                 """
-                synth_job = Gaia.launch_job(query=synth_query, timeout=120)
+                synth_job = Gaia.launch_job(query=synth_query)
                 synth_table = synth_job.get_results()
 
                 # Join the two tables
