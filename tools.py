@@ -30,6 +30,7 @@ GAIA_BANDS = [
     "v_jkc_mag",
     "b_jkc_mag",
     "r_jkc_mag",
+    "i_jkc_mag",
     "u_sdss_mag",
     "g_sdss_mag",
     "r_sdss_mag",
