@@ -1274,7 +1274,8 @@ def cross_match_with_gaia(
                 # Query synthetic photometry just for these specific sources
                 synth_query = f"""
                 SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
-                r_jkc_mag, i_jkc_mag, u_sdss_mag, g_sdss_mag, r_sdss_mag, i_sdss_mag, z_sdss_mag
+                r_jkc_mag, i_jkc_mag, u_sdss_mag, g_sdss_mag, r_sdss_mag,
+                i_sdss_mag, z_sdss_mag
                 FROM gaiadr3.synthetic_photometry_gspc
                 WHERE source_id IN ({source_ids_str})
                 """
