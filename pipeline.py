@@ -1265,12 +1265,12 @@ def cross_match_with_gaia(
             # Different query strategies based on filter band
             if (filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"] and
                 gaia_table is not None and len(gaia_table) > 0):
-
+                
                 # Create a comma-separated list of source_ids (limit to 1000)
                 max_sources = min(len(gaia_table), 1000)
                 source_ids = list(gaia_table['source_id'][:max_sources])
                 source_ids_str = ','.join(str(id) for id in source_ids)
-
+                st.write("NOOOOOO")
                 # Query synthetic photometry just for these specific sources
                 synth_query = f"""
                 SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
@@ -1307,11 +1307,10 @@ def cross_match_with_gaia(
 
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
         color_index_filter = abs(gaia_table["bp_rp"]) < 1.5
-        astrometric_filter = gaia_table["ruwe"] <= 1.5
+        # astrometric_filter = gaia_table["ruwe"] <= 1.5
         combined_filter = (mag_filter &
                            var_filter &
-                           color_index_filter &
-                           astrometric_filter)
+                           color_index_filter)
 
         gaia_table_filtered = gaia_table[combined_filter]
 
@@ -2283,7 +2282,7 @@ def enhance_catalog(
                     "INFO",
                 )
             else:
-                st.write("No quasars found in field from Milliquas catalog.")
+                st.warning("No quasars found in field from Milliquas catalog.")
                 write_to_log(
                     st.session_state.get("log_buffer"),
                     "No quasars found in field from Milliquas catalog",
