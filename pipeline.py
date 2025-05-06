@@ -437,7 +437,7 @@ def airmass(
             if dec is None:
                 missing.append("DEC")
             if obstime_str is None:
-                missing.append("DATE-OBS")
+                missing.append("DATE")
             raise KeyError(f"Missing required header keywords: {', '.join(missing)}")
 
         coord = SkyCoord(ra=ra, dec=dec, unit=u.deg, frame="icrs")
@@ -463,7 +463,7 @@ def airmass(
 
         details = {
             "observatory": obs_data["name"],
-            "datetime": obstime.utc.iso,
+            "datetime": obstime.iso,
             "target_coords": {
                 "ra": coord.ra.to_string(unit=u.hour),
                 "observation_type": get_observation_type(sun_alt),
@@ -476,7 +476,7 @@ def airmass(
             },
         }
 
-        st.write(f"Date & Local-Time: {obstime.iso}")
+        st.write(f"Date & UTC-Time: {obstime.iso}")
         st.write(
             f"Altitude: {details['altaz']['altitude']}°, "
             f" Azimuth: {details['altaz']['azimuth']}°"
