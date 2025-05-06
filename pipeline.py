@@ -463,7 +463,7 @@ def airmass(
 
         details = {
             "observatory": obs_data["name"],
-            "datetime": obstime.iso,
+            "datetime": obstime.utc.iso,
             "target_coords": {
                 "ra": coord.ra.to_string(unit=u.hour),
                 "observation_type": get_observation_type(sun_alt),
