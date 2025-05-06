@@ -633,7 +633,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     )
     st.session_state.analysis_parameters["filter_max_mag"] = st.number_input(
         "Max Calibration Mag",
-        min_value=10.0,
+        min_value=15.0,
         max_value=21.0,
         value=st.session_state.analysis_parameters["filter_max_mag"],
         step=0.5,
