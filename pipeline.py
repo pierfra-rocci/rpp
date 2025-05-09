@@ -987,7 +987,7 @@ def detection_and_photometry(
         obj = photometry.get_objects_sep(
             data_not_normalized - bkg.background,
             header=_science_header,
-            sn=4,
+            sn=5,
             aper=1.5 * fwhm_estimate,
         )
 
@@ -1008,13 +1008,13 @@ def detection_and_photometry(
             wcs = pipeline.refine_astrometry(
                 obj,
                 cat,
-                1.75 * fwhm_estimate * pixel_scale / 3600,
+                1.5 * fwhm_estimate * pixel_scale / 3600,
                 wcs=w,
                 order=2,
                 cat_col_mag=cat_col_mag,
                 cat_col_mag_err=None,
-                n_iter=5,
-                min_matches=3,
+                n_iter=3,
+                min_matches=5,
                 use_photometry=True,
                 verbose=True,
             )
