@@ -1,6 +1,7 @@
 import os
 import subprocess
 import json
+import pathlib
 from io import StringIO
 
 import streamlit as st
@@ -43,35 +44,47 @@ from typing import Union, Any, Optional, Dict, Tuple
 
 def solve_with_siril(file_path):
     """
-    Solve astrometric plate using Siril through a PowerShell script.
-    This function sends an image file path to a PowerShell script that uses Siril
+    Solve astrometric plate using Siril through a PowerShell or Bash script.
+    This function sends an image file path to a platform-appropriate script that uses Siril
     to determine accurate WCS (World Coordinate System) information for the image.
     It then reads the resulting solved file to extract the WCS data.
 
     file_path : str
         Path to the image file that needs astrometric solving
-        FITS header parameter (not used in current implementation but kept
-        for interface compatibility)
     Returns
     -------
     - wcs_object: astropy.wcs.WCS object containing the WCS solution
     - updated_header: Header with WCS keywords from the solved image
 
-    The function expects a PowerShell script named 'plate_solve.ps1' to be available
-    in the current directory. The solved image will be saved with '_solved' appended
+    The function expects a PowerShell script named 'plate_solve.ps1' (Windows)
+    or a Bash script named 'plate_solve.sh' (Linux/macOS) to be available
+    in the current or parent directory. The solved image will be saved with '_solved' appended
     to the original filename.
     """
+    import platform
     try:
         if os.path.exists(file_path):
-            command = [
-                "powershell.exe",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                "plate_solve.ps1",
-                "-filepath",
-                f"{file_path}",
-            ]
+            # Find the absolute path to the plate solving script
+            script_dir = pathlib.Path(__file__).parent.resolve()
+            system = platform.system()
+            if system == "Windows":
+                script_name = "plate_solve.ps1"
+                command_base = ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File"]
+            else:
+                script_name = "plate_solve.sh"
+                command_base = ["bash"]
+            script_path = script_dir / script_name
+            if not script_path.exists():
+                # Try parent directory if not found in current
+                script_path = script_dir.parent / script_name
+            if not script_path.exists():
+                st.error(f"Could not find {script_name} at {script_path}")
+                return None
+
+            if system == "Windows":
+                command = command_base + [str(script_path), "-filepath", str(file_path)]
+            else:
+                command = command_base + [str(script_path), str(file_path)]
             subprocess.run(command, check=True)
         else:
             st.warning(f"File {file_path} does not exist.")
