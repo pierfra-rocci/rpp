@@ -34,7 +34,7 @@ from photutils.background import Background2D, SExtractorBackground
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from stdpipe import photometry, astrometry, catalogs, pipeline
 
-from tools import (FIGURE_SIZES, URL, safe_catalog_query,
+from src.tools import (FIGURE_SIZES, URL, safe_catalog_query,
                    safe_wcs_create, ensure_output_directory,
                    write_to_log)
 
