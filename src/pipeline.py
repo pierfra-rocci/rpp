@@ -1266,7 +1266,8 @@ def cross_match_with_gaia(
         Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
 
         # Create a SkyCoord object for more reliable coordinate handling
-        center_coord = SkyCoord(ra=image_center_ra_dec[0], dec=image_center_ra_dec[1], unit="deg")
+        center_coord = SkyCoord(ra=image_center_ra_dec[0],
+                                dec=image_center_ra_dec[1], unit="deg")
 
         try:
             # Use the SkyCoord object for cone search
