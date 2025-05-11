@@ -33,7 +33,7 @@ from src.pipeline import (solve_with_siril, cross_match_with_gaia,
                           detect_remove_cosmic_rays, enhance_catalog,
                           airmass)
 
-from __version__ import version
+from src.__version__ import version
 
 
 @st.cache_data
