@@ -90,7 +90,7 @@ An astronomical image processing and photometry tool designed specifically for [
 
 5. In a new terminal, start the frontend Streamlit app:
    ```bash
-   streamlit run run_frontend.py
+   streamlit run frontend.py
    ```
 
    This will redirect you to the login page. Register or log in to access the main app.
@@ -132,7 +132,7 @@ An astronomical image processing and photometry tool designed specifically for [
 ## Workflow
 
 1. **Start the backend**: `python backend_dev.py` (required for authentication and config saving).
-2. **Start the frontend**: `streamlit run run_frontend.py` (always redirects to login page).
+2. **Start the frontend**: `streamlit run frontend.py` (always redirects to login page).
 3. **Authenticate**: Register or log in. User/session parameters are loaded from the backend if available.
 4. **Upload and analyze**: Upload your science FITS file (and optional calibration frames), set parameters, and run the photometry pipeline.
 5. **Results**: All outputs (catalogs, plots, logs, config) are saved in `rpp_results` and can be downloaded as a ZIP archive. Cross-matching with Gaia, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, and Astro-Colibri is supported.
