@@ -1298,7 +1298,7 @@ if science_file is not None:
                                                     ].rename(columns=epsf_cols)
 
                                                 final_table = pd.merge(
-                                                    final_table, epsf_df, on="match_id", how="left"
+                                                    final_table, epsf_df, on="match_id", how="outer", indicator=True
                                                 )
 
                                                 if (
