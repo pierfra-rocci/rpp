@@ -17,8 +17,8 @@ BACKEND_PID=$!
 
 # Start run_frontend.py in the background, redirecting output to frontend.log
 
-echo "Starting run_frontend.py..."
-streamlit run run_frontend.py > "$frontend_log" 2>&1 &
+echo "Starting frontend.py..."
+streamlit run frontend.py > "$frontend_log" 2>&1 &
 FRONTEND_PID=$!
 
 echo "Backend PID: $BACKEND_PID"

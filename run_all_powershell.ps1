@@ -7,7 +7,7 @@ Start-Job -ScriptBlock { python backend_dev.py *>&1 | Tee-Object -FilePath backe
 # Start run_frontend.py as a background job, redirecting output to frontend.log
 # Original line
 # Start-Job -FilePath .\run_frontend.py -ArgumentList $args *>&1 | Tee-Object -FilePath frontend.log
-Start-Job -ScriptBlock { streamlit run run_frontend.py --server.port 8501 --server.address 127.0.0.1 } *>&1 | Tee-Object -FilePath frontend.log
+Start-Job -ScriptBlock { streamlit run frontend.py --server.port 8501 --server.address 127.0.0.1 } *>&1 | Tee-Object -FilePath frontend.log
 
 Write-Host "Both backend and frontend are running as background jobs."
 Write-Host "Backend URL: http://127.0.0.1:5000"

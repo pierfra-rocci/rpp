@@ -6,7 +6,7 @@ REM Start backend_dev.py in a new terminal, redirecting output to backend.log
 start "Python Backend" cmd /k "python backend_dev.py > backend.log 2>&1"
 
 REM Start Streamlit frontend in a new terminal
-start "Streamlit Frontend" cmd /k "streamlit run run_frontend.py --server.port 8501 --server.address 127.0.0.1"
+start "Streamlit Frontend" cmd /k "streamlit run frontend.py --server.port 8501 --server.address 127.0.0.1"
 
 REM Print URLs and log file names
 echo Backend URL: http://127.0.0.1:5000
