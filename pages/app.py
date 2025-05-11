@@ -849,6 +849,8 @@ if science_file is not None:
                     wcs_obj, science_header = None, None
                 else:
                     wcs_obj, science_header = result
+                    st.session_state["calibrated_header"] = science_header
+                    st.session_state["wcs_obj"] = wcs_obj
 
                 log_buffer = st.session_state["log_buffer"]
 
