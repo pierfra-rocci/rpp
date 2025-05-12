@@ -999,7 +999,8 @@ def detection_and_photometry(
             mask=mask
         )
 
-    sources = daofind(image_data - bkg.background, mask=mask)
+    sources = daofind(image_data - bkg.background,
+                      mask=mask)
 
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
