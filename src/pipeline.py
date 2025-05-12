@@ -1009,7 +1009,8 @@ def detection_and_photometry(
         return None, None, daofind, bkg
 
     # Check Astrometry+ option before refinement
-    if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
+    if hasattr(st, "session_state") and st.session_state.get("astrometry_check",
+                                                             False):
         st.write("Doing astrometry refinement using Stdpipe and Astropy...")
 
         ra0, dec0, sr0 = astrometry.get_frame_center(header=_science_header,
@@ -1026,7 +1027,7 @@ def detection_and_photometry(
                                       filters={gb: "<20"})
         cat_col_mag = gb
         try:
-            wcs = pipeline.refine_astrometry(
+            wcs_result = pipeline.refine_astrometry(
                 obj,
                 cat,
                 1.5 * fwhm_estimate * pixel_scale / 3600,
@@ -1039,6 +1040,13 @@ def detection_and_photometry(
                 use_photometry=True,
                 verbose=True,
             )
+
+            # Unpack if tuple
+            if isinstance(wcs_result, tuple):
+                wcs = wcs_result[0]
+            else:
+                wcs = wcs_result
+                
             if wcs:
                 st.info("Refined WCS successfully.")
                 astrometry.clear_wcs(
