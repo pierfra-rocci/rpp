@@ -10,7 +10,7 @@ $directory = [System.IO.Path]::GetDirectoryName($filepath) -replace '\\', '/'
 $solvedname = "$basename`_solved.fits"
 
 $scriptContent = @"
-requires 1.4.0
+requires 1.4.0-1
 
 cd "$directory"
 load "$filename"
