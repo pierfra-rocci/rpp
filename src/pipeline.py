@@ -997,7 +997,7 @@ def detection_and_photometry(
             sn=5,
             aper=1.5 * fwhm_estimate,
             mask=mask,
-            get_segmentation=True,
+            get_segmentation=False,
             subtract_bg=False
         )
 
@@ -1046,7 +1046,7 @@ def detection_and_photometry(
                 wcs = wcs_result[0]
             else:
                 wcs = wcs_result
-                
+
             if wcs:
                 st.info("Refined WCS successfully.")
                 astrometry.clear_wcs(
