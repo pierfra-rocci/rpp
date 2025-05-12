@@ -614,8 +614,14 @@ def fwhm_fit(
             fwhm_col = 2 * np.sqrt(2 * np.log(2)) * fitted_col.stddev.value
         except Exception:
             return None
+        
+        # Calculate relative flux in the box
+        box_flux = np.sum(box_data)
+        total_flux = np.sum(image_data)
+        relative_flux = box_flux / total_flux if total_flux != 0 else np.nan
 
-        return fwhm_row, fwhm_col, center_row_fit, center_col_fit
+
+        return fwhm_row, fwhm_col, center_row_fit, center_col_fit, relative_flux
 
     try:
         peak = 0.90 * np.nanmax(_img)
