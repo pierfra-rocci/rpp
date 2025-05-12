@@ -993,10 +993,12 @@ def detection_and_photometry(
     obj = photometry.get_objects_sep(
             data_not_normalized - bkg.background,
             header=_science_header,
-            thresh=threshold_sigma * np.std(image_data - bkg.background),
+            thresh=threshold_sigma,
             sn=4,
             aper=1.5 * fwhm_estimate,
-            mask=mask
+            mask=mask,
+            get_segmentation=True,
+            subtract_bg=False
         )
 
     sources = daofind(image_data - bkg.background,
