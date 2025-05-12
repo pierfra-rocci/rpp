@@ -10,11 +10,11 @@ $directory = [System.IO.Path]::GetDirectoryName($filepath) -replace '\\', '/'
 $solvedname = "$basename`_solved.fits"
 
 $scriptContent = @"
-requires 1.2.6
+requires 1.4.0
 
 cd "$directory"
 load "$filename"
-platesolve
+platesolve -localasnet
 save "$solvedname"
 close
 "@

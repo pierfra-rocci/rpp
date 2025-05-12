@@ -24,11 +24,11 @@ ssfPath="/tmp/solve_script.ssf"
 
 # Contenuto dello script Siril
 read -r -d '' scriptContent <<EOF
-requires 1.2.6
+requires 1.4.0
 
 cd "$directory"
 load "$filename"
-platesolve
+platesolve -localasnet
 save "$solvedname"
 close
 EOF
