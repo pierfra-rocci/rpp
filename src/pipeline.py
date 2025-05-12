@@ -36,8 +36,8 @@ from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from stdpipe import photometry, astrometry, catalogs, pipeline
 
 from src.tools import (FIGURE_SIZES, URL, safe_catalog_query,
-                   safe_wcs_create, ensure_output_directory,
-                   write_to_log)
+                       safe_wcs_create, ensure_output_directory,
+                       write_to_log)
 
 from typing import Union, Any, Optional, Dict, Tuple
 
