@@ -324,7 +324,7 @@ def estimate_background(image_data, box_size=128, filter_size=7):
 
         # Plot the background model with ZScale and save as FITS
         try:
-            # Create a figure with two subplots side by side for background and RMS
+            # Create a figure with two subplots side by side for background/RMS
             fig_bkg, (ax1, ax2) = plt.subplots(1, 2,
                                                figsize=FIGURE_SIZES["wide"])
             
