@@ -1344,8 +1344,8 @@ if science_file is not None:
                                                                 "instrumental_mag_x": "aperture_instrumental_mag",
                                                                 "calib_mag": "aperture_calib_mag",
                                                                 "instrumental_mag_y": "psf_instrumental_mag",
-                                                                "ra_x": "ra",
-                                                                "dec_x": "dec",
+                                                                "ra_y": "ra",
+                                                                "dec_y": "dec",
                                                                 "id_x": "id",
                                                             }
                                                         )
@@ -1361,8 +1361,8 @@ if science_file is not None:
 
                                             cols_to_drop = []
                                             for col_name in [
-                                                "ra_y",
-                                                "dec_y",
+                                                "ra_x",
+                                                "dec_x",
                                                 "id_y",
                                                 "group_id",
                                                 "group_size",
