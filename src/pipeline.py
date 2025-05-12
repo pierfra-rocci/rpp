@@ -994,7 +994,7 @@ def detection_and_photometry(
             data_not_normalized - bkg.background,
             header=_science_header,
             thresh=threshold_sigma,
-            sn=4,
+            sn=5,
             aper=1.5 * fwhm_estimate,
             mask=mask,
             get_segmentation=True,
