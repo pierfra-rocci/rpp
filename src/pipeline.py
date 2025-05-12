@@ -699,9 +699,11 @@ def fwhm_fit(
         mean_fwhm = np.mean(fwhm_values_arr[valid])
 
         # Add vertical lines for mean and median
-        ax_fwhm.axvline(median_fwhm, color='red', linestyle='dashed', linewidth=1.5,
+        ax_fwhm.axvline(median_fwhm, color='red', linestyle='dashed',
+                        linewidth=1.5,
                         label=f'Median: {median_fwhm:.2f}px')
-        ax_fwhm.axvline(mean_fwhm, color='green', linestyle='dashed', linewidth=1.5,
+        ax_fwhm.axvline(mean_fwhm, color='green', linestyle='dashed',
+                        linewidth=1.5,
                         label=f'Mean: {mean_fwhm:.2f}px')
 
         ax_fwhm.set_xlabel('FWHM (pixels)')
@@ -725,7 +727,8 @@ def fwhm_fit(
             # Write to log if available
             log_buffer = st.session_state.get("log_buffer")
             if log_buffer is not None:
-                write_to_log(log_buffer, f"FWHM histogram saved to {fwhm_filename}")
+                write_to_log(log_buffer,
+                             f"FWHM histogram saved to {fwhm_filename}")
         except Exception as e:
             st.warning(f"Error saving FWHM histogram: {str(e)}")
 
@@ -987,6 +990,15 @@ def detection_and_photometry(
         peakmax=peak_max,
     )
 
+    obj = photometry.get_objects_sep(
+            data_not_normalized - bkg.background,
+            header=_science_header,
+            thresh=threshold_sigma * np.std(image_data - bkg.background),
+            sn=4,
+            aper=1.5 * fwhm_estimate,
+            mask=mask
+        )
+
     sources = daofind(image_data - bkg.background, mask=mask)
 
     if sources is None or len(sources) == 0:
@@ -996,13 +1008,6 @@ def detection_and_photometry(
     # Check Astrometry+ option before refinement
     if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
         st.write("Doing astrometry refinement using Stdpipe and Astropy...")
-
-        obj = photometry.get_objects_sep(
-            data_not_normalized - bkg.background,
-            header=_science_header,
-            sn=5,
-            aper=1.5 * fwhm_estimate,
-        )
 
         ra0, dec0, sr0 = astrometry.get_frame_center(header=_science_header,
                                                      wcs=w,
