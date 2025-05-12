@@ -14,7 +14,7 @@ requires 1.3.4
 
 cd "$directory"
 load "$filename"
-platesolve -localasnet
+platesolve -force
 save "$solvedname"
 close
 "@
