@@ -24,7 +24,7 @@ ssfPath="/tmp/solve_script.ssf"
 
 # Contenuto dello script Siril
 read -r -d '' scriptContent <<EOF
-requires 1.4.0-1
+requires 1.3.4
 
 cd "$directory"
 load "$filename"
