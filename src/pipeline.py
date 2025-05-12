@@ -614,12 +614,11 @@ def fwhm_fit(
             fwhm_col = 2 * np.sqrt(2 * np.log(2)) * fitted_col.stddev.value
         except Exception:
             return None
-        
+
         # Calculate relative flux in the box
         box_flux = np.sum(box_data)
         total_flux = np.sum(image_data)
         relative_flux = box_flux / total_flux if total_flux != 0 else np.nan
-
 
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit, relative_flux
 
@@ -655,6 +654,7 @@ def fwhm_fit(
             box_size += 1
 
         fwhm_values = []
+        relative_fluxes = []
         skipped_sources = 0
 
         for source in filtered_sources:
@@ -662,16 +662,16 @@ def fwhm_fit(
                 x_cen = int(source["xcentroid"])
                 y_cen = int(source["ycentroid"])
 
-                fwhm_results = compute_fwhm_marginal_sums(_img, y_cen, x_cen,
-                                                          box_size)
+                fwhm_results = compute_fwhm_marginal_sums(_img, y_cen, x_cen, box_size)
                 if fwhm_results is None:
                     skipped_sources += 1
                     continue
 
-                fwhm_row, fwhm_col, _, _ = fwhm_results
+                fwhm_row, fwhm_col, _, _, relative_flux = fwhm_results
 
                 fwhm_source = np.mean([fwhm_row, fwhm_col])
                 fwhm_values.append(fwhm_source)
+                relative_fluxes.append(relative_flux)
 
             except Exception:
                 skipped_sources += 1
@@ -688,40 +688,33 @@ def fwhm_fit(
             raise ValueError(msg)
 
         fwhm_values_arr = np.array(fwhm_values)
-        valid = ~np.isnan(fwhm_values_arr) & ~np.isinf(fwhm_values_arr)
+        relative_fluxes_arr = np.array(relative_fluxes)
+        valid = ~np.isnan(fwhm_values_arr) & ~np.isinf(fwhm_values_arr) & \
+                ~np.isnan(relative_fluxes_arr) & ~np.isinf(relative_fluxes_arr)
         if not np.any(valid):
-            msg = "All FWHM values are NaN or infinite after marginal sums calculation."
+            msg = "All FWHM or relative flux values are NaN or infinite after marginal sums calculation."
             st.error(msg)
             raise ValueError(msg)
 
-        # Plot histogram of FWHM values
+        # Plot scatter of FWHM vs relative flux
         fig_fwhm, ax_fwhm = plt.subplots(figsize=FIGURE_SIZES["medium"])
-        n, bins, patches = ax_fwhm.hist(fwhm_values_arr[valid], bins=50,
-                                        color='skyblue', edgecolor='black',
-                                        alpha=0.7)
-
-        # Add statistics lines
-        median_fwhm = np.median(fwhm_values_arr[valid])
-        mean_fwhm = np.mean(fwhm_values_arr[valid])
-
-        # Add vertical lines for mean and median
-        ax_fwhm.axvline(median_fwhm, color='red', linestyle='dashed',
-                        linewidth=1.5,
-                        label=f'Median: {median_fwhm:.2f}px')
-        ax_fwhm.axvline(mean_fwhm, color='green', linestyle='dashed',
-                        linewidth=1.5,
-                        label=f'Mean: {mean_fwhm:.2f}px')
-
+        ax_fwhm.scatter(fwhm_values_arr[valid], relative_fluxes_arr[valid],
+                        color='skyblue', edgecolor='black', alpha=0.7,
+                        s=18)
         ax_fwhm.set_xlabel('FWHM (pixels)')
-        ax_fwhm.set_ylabel('Number of Stars')
-        ax_fwhm.set_xlim(0, round(3*mean_fwhm))
-        ax_fwhm.set_title('Distribution of FWHM Values')
+        ax_fwhm.set_ylabel('Relative Flux in Box')
+        ax_fwhm.set_title('FWHM vs Relative Flux')
         ax_fwhm.grid(True, alpha=0.3)
+
+        # Add median FWHM line in red
+        median_fwhm = np.median(fwhm_values_arr[valid])
+        ax_fwhm.axvline(median_fwhm, color='red', linestyle='--',
+                        linewidth=2, label=f"Median FWHM = {median_fwhm:.2f}")
         ax_fwhm.legend()
 
         st.pyplot(fig_fwhm)
         
-        # Save the FWHM histogram figure
+        # Save the FWHM scatter figure
         try:
             base_filename = st.session_state.get("base_filename", "photometry")
             output_dir = ensure_output_directory("rpp_results")
@@ -734,9 +727,9 @@ def fwhm_fit(
             log_buffer = st.session_state.get("log_buffer")
             if log_buffer is not None:
                 write_to_log(log_buffer,
-                             f"FWHM histogram saved to {fwhm_filename}")
+                             f"FWHM scatter plot saved to {fwhm_filename}")
         except Exception as e:
-            st.warning(f"Error saving FWHM histogram: {str(e)}")
+            st.warning(f"Error saving FWHM scatter plot: {str(e)}")
 
         mean_fwhm = np.median(fwhm_values_arr[valid])
         st.success(f"FWHM based on Gaussian model: {round(mean_fwhm, 2)} pixels")
