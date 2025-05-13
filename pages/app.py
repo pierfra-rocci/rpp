@@ -591,8 +591,8 @@ with st.sidebar.expander("🔭 Observatory Data", expanded=False):
 with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     st.session_state.analysis_parameters["seeing"] = st.number_input(
         "Estimated Seeing (FWHM, arcsec)",
-        min_value=0.1,
-        max_value=20.0,
+        min_value=1.0,
+        max_value=6.0,
         value=st.session_state.analysis_parameters["seeing"],
         step=0.1,
         format="%.1f",
@@ -603,8 +603,8 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     )
     st.session_state.analysis_parameters["threshold_sigma"] = st.number_input(
         "Detection Threshold (sigma)",
-        min_value=1.0,
-        max_value=20.0,
+        min_value=0.5,
+        max_value=4.5,
         value=st.session_state.analysis_parameters["threshold_sigma"],
         step=0.5,
         format="%.1f",
