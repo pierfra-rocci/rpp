@@ -656,17 +656,17 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         st.session_state.analysis_parameters["cr_gain"] = st.number_input(
             "CRR Gain (e-/ADU)",
             value=st.session_state.analysis_parameters["cr_gain"],
-            min_value=0.1
+            min_value=0.5
         )
         st.session_state.analysis_parameters["cr_readnoise"] = st.number_input(
             "CRR Read Noise (e-)",
             value=st.session_state.analysis_parameters["cr_readnoise"],
-            min_value=0.1
+            min_value=1.0
         )
         st.session_state.analysis_parameters["cr_sigclip"] = st.number_input(
             "CRR Sigma Clip",
             value=st.session_state.analysis_parameters["cr_sigclip"],
-            min_value=3.
+            min_value=3.5
         )
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):
