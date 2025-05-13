@@ -51,14 +51,17 @@ if not st.session_state.logged_in:
 
     if register_clicked:
         if username and password and email:
-            response = requests.post(
-                f"{backend_url}/register",
-                data={"username": username, "password": password, "email": email},
-            )
-            if response.status_code == 201:
-                st.success(response.text)
+            if len(password) < 8:
+                st.warning("Password must be at least 8 characters long.")
             else:
-                st.error(response.text)
+                response = requests.post(
+                    f"{backend_url}/register",
+                    data={"username": username, "password": password, "email": email},
+                )
+                if response.status_code == 201:
+                    st.success(response.text)
+                else:
+                    st.error(response.text)
         else:
             st.warning("Please enter username, password, and email.")
 
