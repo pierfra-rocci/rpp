@@ -640,7 +640,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         help="Faintest magnitude to use for calibration stars.",
     )
     st.session_state.analysis_parameters["astrometry_check"] = st.toggle(
-        "Refine Astrometry  (Stdpipe)",
+        "Refine Astrometry",
         value=st.session_state.analysis_parameters["astrometry_check"],
         help=(
             "Attempt to refine WCS using detected sources before photometry "
@@ -648,7 +648,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         ),
     )
     st.session_state.analysis_parameters["calibrate_cosmic_rays"] = st.toggle(
-        "Remove Cosmic Rays (Astroscrappy)",
+        "Remove Cosmic Rays",
         value=st.session_state.analysis_parameters["calibrate_cosmic_rays"],
         help="Detect and remove cosmic rays using the L.A.Cosmic algorithm.",
     )
