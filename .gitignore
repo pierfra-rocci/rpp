@@ -173,3 +173,4 @@ pfr-win32*
 *.ipynb_checkpoints
 users.db
 rpp_results/**
+PyZOGY-master/**
