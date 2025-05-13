@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astroquery.vizier import Vizier
 from astroquery.hips2fits import hips2fits
-from photutils import CircularAperture
+from photutils.aperture import CircularAperture
 from photutils.psf import extract_stars, EPSFBuilder
 from photutils.psf.matching import create_matching_kernel
 from astropy.convolution import convolve_fft
@@ -233,3 +233,44 @@ def match_psf_and_apply(
 
     st.success("PSF matching applied.")
     return matched_template, matched_science, kernel
+
+
+def visualize_matched_residuals(
+    matched_template: np.ndarray,
+    matched_science: np.ndarray
+) -> None:
+    """
+    Display the matched template, matched science image, and their residual in a 1x3 subplot.
+    """
+    try:
+        st.info("Calculating residual...")
+        residual = matched_science - matched_template
+
+        # Z-scale normalization
+        z = ZScaleInterval()
+        vmin_mt, vmax_mt = z.get_limits(matched_template)
+        vmin_ms, vmax_ms = z.get_limits(matched_science)
+        vmin_res, vmax_res = z.get_limits(residual)
+
+        fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+        # Matched template
+        axs[0].imshow(matched_template, origin='lower', vmin=vmin_mt, vmax=vmax_mt)
+        axs[0].set_title('Matched Template (ZScale)')
+        axs[0].axis('off')
+
+        # Matched science
+        axs[1].imshow(matched_science, origin='lower', vmin=vmin_ms, vmax=vmax_ms)
+        axs[1].set_title('Matched Science (ZScale)')
+        axs[1].axis('off')
+
+        # Residual
+        im = axs[2].imshow(residual, origin='lower', vmin=vmin_res, vmax=vmax_res, cmap='RdBu')
+        axs[2].set_title('Residual (Science - Template)')
+        axs[2].axis('off')
+        fig.colorbar(im, ax=axs[2], orientation='horizontal', fraction=0.05)
+
+        plt.tight_layout()
+        st.pyplot(fig)
+    except Exception as e:
+        st.error(f"Visualization of residuals failed: {e}")
+        raise
