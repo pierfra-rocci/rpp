@@ -990,14 +990,14 @@ def detection_and_photometry(
     )
 
     obj = photometry.get_objects_sep(
-            data_not_normalized - bkg.background,
+            data_not_normalized,
             header=_science_header,
             thresh=threshold_sigma,
             sn=5,
             aper=1.5 * fwhm_estimate,
             mask=mask,
             get_segmentation=False,
-            subtract_bg=False
+            subtract_bg=True
         )
 
     sources = daofind(image_data - bkg.background,
