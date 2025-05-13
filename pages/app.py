@@ -666,7 +666,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         st.session_state.analysis_parameters["cr_sigclip"] = st.number_input(
             "CRR Sigma Clip",
             value=st.session_state.analysis_parameters["cr_sigclip"],
-            min_value=3.5
+            min_value=4.0
         )
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):
