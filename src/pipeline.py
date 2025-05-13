@@ -1025,6 +1025,7 @@ def detection_and_photometry(
         cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3",
                                       filters={gb: "<20"})
         cat_col_mag = gb
+
         try:
             wcs_result = pipeline.refine_astrometry(
                 obj,
