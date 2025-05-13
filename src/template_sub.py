@@ -6,6 +6,9 @@ import astropy.units as u
 from astroquery.vizier import Vizier
 from astroquery.hips2fits import hips2fits
 from photutils import CircularAperture
+from photutils.psf import extract_stars, EPSFBuilder
+from photutils.psf.matching import create_matching_kernel
+from astropy.convolution import convolve_fft
 import matplotlib.pyplot as plt
 from astropy.visualization import ZScaleInterval
 
@@ -156,4 +159,77 @@ def visualize_results(
     axs[1,1].set_title('Science Mask')
     axs[1, 1].axis('off')
 
-    plt.tight_layout(); st.pyplot(fig)
+    plt.tight_layout()
+    st.pyplot(fig)
+
+
+def match_psf_and_apply(
+    hips_data: np.ndarray,
+    science_image: np.ndarray,
+    star_positions: np.ndarray,
+    cutout_size: int = 25
+) -> tuple:
+    """
+    Build PSF models for both images using isolated stars, create a matching kernel,
+    and apply it to the HiPS template and science image.
+
+    Parameters
+    ----------
+    hips_data : 2D array
+        HiPS template image.
+    science_image : 2D array
+        Science image.
+    template_mask, sci_mask : 2D bool arrays
+        Masks to exclude stars and bad pixels when estimating PSF.
+    star_positions : N x 2 array
+        Pixel positions (x, y) of stars to use for PSF extraction.
+    cutout_size : int
+        Size of square cutouts around each star for PSF building.
+
+    Returns
+    -------
+    matched_template : 2D array
+        Template convolved to match science PSF.
+    matched_science : 2D array
+        Science image convolved to match template PSF.
+    kernel : 2D array
+        Matching convolution kernel.
+    """
+    st.info("Extracting star cutouts for PSF modeling...")
+    try:
+        # create tiny table for extract_stars
+        from astropy.table import Table
+        tbl = Table(rows=star_positions, names=('x_mean', 'y_mean'))
+        # extract
+        hips_stars = extract_stars(hips_data, tbl, size=cutout_size)
+        sci_stars = extract_stars(science_image, tbl, size=cutout_size)
+    except Exception as e:
+        st.error(f"Star extraction failed: {e}")
+        raise
+
+    st.success("Stars extracted. Building EPSF models...")
+    try:
+        builder = EPSFBuilder(oversampling=2, maxiters=3)
+        epsf_hips = builder(hips_stars)
+        epsf_sci = builder(sci_stars)
+    except Exception as e:
+        st.error(f"EPSF building failed: {e}")
+        raise
+
+    st.success("EPSF models built. Creating matching kernel...")
+    try:
+        kernel = create_matching_kernel(epsf_hips.data, epsf_sci.data)
+    except Exception as e:
+        st.error(f"Kernel creation failed: {e}")
+        raise
+
+    st.info("Convolving images with matching kernel...")
+    try:
+        matched_template = convolve_fft(hips_data, kernel, normalize_kernel=True)
+        matched_science = convolve_fft(science_image, kernel[::-1, ::-1], normalize_kernel=True)
+    except Exception as e:
+        st.error(f"Convolution failed: {e}")
+        raise
+
+    st.success("PSF matching applied.")
+    return matched_template, matched_science, kernel
