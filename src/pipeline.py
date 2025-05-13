@@ -1034,7 +1034,7 @@ def detection_and_photometry(
                 order=1,
                 cat_col_mag=cat_col_mag,
                 cat_col_mag_err=None,
-                n_iter=5,
+                n_iter=3,
                 min_matches=5,
                 use_photometry=True,
                 verbose=True,
