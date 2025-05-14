@@ -107,16 +107,8 @@ def load_fits_data(file):
                 while len(sliced_data.shape) > 2:
                     sliced_data = sliced_data[0]
                 data = sliced_data
-            
-            if 'EXPOSURE' in header:
-                time = header['EXPOSURE']
-            elif 'EXPTIME' in header:
-                time = header['EXPTIME']
-            else:
-                st.warning("No Exposure Keys in the FITS !")
-                return data, data, header
 
-            return data/time, data, header
+            return data, data, header
 
         except Exception as e:
             st.error(f"Error loading FITS file: {str(e)}")
