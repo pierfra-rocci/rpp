@@ -1,6 +1,6 @@
 #!/bin/bash
 # Activate virtual environment
-source venv/bin/activate
+source .venv/bin/activate
 
 # Check if virtual environment is activated
 if [ -z "$VIRTUAL_ENV" ]; then
