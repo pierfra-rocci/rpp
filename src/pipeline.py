@@ -749,6 +749,7 @@ def perform_psf_photometry(
     fwhm: float,
     daostarfind: Any,
     mask: Optional[np.ndarray] = None,
+    error=None
 ) -> Tuple[Table, Any]:
     """
     Perform PSF (Point Spread Function) photometry using an empirically-constructed PSF model.
@@ -892,7 +893,7 @@ def perform_psf_photometry(
 
     try:
         st.write("Performing PSF photometry...")
-        phot_epsf_result = psfphot(img, mask=mask)
+        phot_epsf_result = psfphot(img, mask=mask, error=error)
         st.session_state["epsf_photometry_result"] = phot_epsf_result
         st.write("PSF photometry completed successfully.")
     except Exception as e:
@@ -1115,7 +1116,7 @@ def detection_and_photometry(
 
         try:
             epsf_table, _ = perform_psf_photometry(
-                image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask
+                image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask, total_error
             )
             
             epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_fit_err"]))
