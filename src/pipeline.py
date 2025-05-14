@@ -1103,7 +1103,7 @@ def detection_and_photometry(
 
         else:
             phot_table["snr"] = np.nan
-            phot_table['instr_mag_err'] = np.nan  # add to results table
+            phot_table['aperture_mag_err'] = np.nan  # add to results table
 
         if np.mean(image_data - bkg.background) > 1.0:
             exposure_time = _science_header.get("EXPTIME", 1.0)
@@ -1117,6 +1117,10 @@ def detection_and_photometry(
             epsf_table, _ = perform_psf_photometry(
                 image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask
             )
+            
+            epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_fit_err"]))
+            m_err = 1.0857 / epsf_table["snr"]
+            epsf_table['psf_mag_err'] = m_err
 
             epsf_instrumental_mags = -2.5 * np.log10(
                 epsf_table["flux_fit"] / exposure_time
