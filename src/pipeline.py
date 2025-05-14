@@ -29,6 +29,7 @@ from astropy.io import fits
 from astroquery.gaia import Gaia
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
+from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
@@ -973,7 +974,12 @@ def detection_and_photometry(
 
     mask = make_border_mask(image_data, border=detection_mask)
 
-    total_error = np.sqrt(2*bkg.background_rms**2 / bkg.background_median**2)
+    bkg_error = np.full_like(image_data - bkg.background, bkg.background_rms)
+
+    # effective_gain = (camera gain in e-/ADU) * exposure time (s)
+    # effective_gain = 2.0 * 30.0  # example values
+
+    total_error = calc_total_error(image_data - bkg.background, bkg_error)
 
     st.write("Estimating FWHM...")
     fwhm_estimate = fwhm_fit(image_data - bkg.background, mean_fwhm_pixel, mask)
@@ -1079,8 +1085,8 @@ def detection_and_photometry(
                 wcs_obj = None
 
         phot_table = aperture_photometry(
-            image_data - bkg.background, apertures, error=total_error, wcs=wcs_obj
-        )
+            image_data - bkg.background, apertures, error=total_error,
+            wcs=wcs_obj)
 
         phot_table["xcenter"] = sources["xcentroid"]
         phot_table["ycenter"] = sources["ycentroid"]
@@ -1092,9 +1098,12 @@ def detection_and_photometry(
             and "aperture_sum_err" in phot_table.colnames
         ):
             phot_table["snr"] = np.round(phot_table["aperture_sum"] / np.sqrt(phot_table["aperture_sum_err"]))
+            m_err = 1.0857 / phot_table["snr"]
+            phot_table['mag_err'] = m_err  # add to results table
 
         else:
             phot_table["snr"] = np.nan
+            phot_table['mag_err'] = np.nan  # add to results table
 
         if np.mean(image_data - bkg.background) > 1.0:
             exposure_time = _science_header.get("EXPTIME", 1.0)
