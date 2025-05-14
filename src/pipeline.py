@@ -1119,7 +1119,7 @@ def detection_and_photometry(
                 image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask, total_error
             )
             
-            epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_fit_err"]))
+            epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"]))
             m_err = 1.0857 / epsf_table["snr"]
             epsf_table['psf_mag_err'] = m_err
 
