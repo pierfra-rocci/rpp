@@ -1099,11 +1099,11 @@ def detection_and_photometry(
         ):
             phot_table["snr"] = np.round(phot_table["aperture_sum"] / np.sqrt(phot_table["aperture_sum_err"]))
             m_err = 1.0857 / phot_table["snr"]
-            phot_table['mag_err'] = m_err  # add to results table
+            phot_table['instr_mag_err'] = m_err  # add to results table
 
         else:
             phot_table["snr"] = np.nan
-            phot_table['mag_err'] = np.nan  # add to results table
+            phot_table['instr_mag_err'] = np.nan  # add to results table
 
         if np.mean(image_data - bkg.background) > 1.0:
             exposure_time = _science_header.get("EXPTIME", 1.0)
