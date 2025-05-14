@@ -977,12 +977,13 @@ def detection_and_photometry(
 
     bkg_error = np.full_like(image_data - bkg.background, bkg.background_rms)
 
-    if _science_header["EXPTIME"]:
-        exposure_time = _science_header["EXPTIME"]
-    elif _science_header["EXPOSURE"]:
-        exposure_time = _science_header["EXPOSURE"]
-    else:
-        exposure_time = 1.0
+    if (np.max(image_data) - np.min(image_data)) > 1:
+        if _science_header["EXPTIME"]:
+            exposure_time = _science_header["EXPTIME"]
+        elif _science_header["EXPOSURE"]:
+            exposure_time = _science_header["EXPOSURE"]
+        else:
+            exposure_time = 1.0
 
     st.info(f"exposure time: {exposure_time}")
 
