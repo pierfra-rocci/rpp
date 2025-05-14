@@ -977,10 +977,19 @@ def detection_and_photometry(
 
     bkg_error = np.full_like(image_data - bkg.background, bkg.background_rms)
 
-    # effective_gain = (camera gain in e-/ADU) * exposure time (s)
-    # effective_gain = 2.0 * 30.0  # example values
+    if _science_header["EXPTIME"]:
+        exposure_time = _science_header["EXPTIME"]
+    elif _science_header["EXPOSURE"]:
+        exposure_time = _science_header["EXPOSURE"]
+    else:
+        exposure_time = 1.0
 
-    total_error = calc_total_error(image_data - bkg.background, bkg_error)
+    st.info(f"exposure time: {exposure_time}")
+
+    # effective_gain = (camera gain in e-/ADU) * exposure time (s)
+    effective_gain = 2.5/np.std(image_data) * exposure_time
+
+    total_error = calc_total_error(image_data - bkg.background, bkg_error, effective_gain)
 
     st.write("Estimating FWHM...")
     fwhm_estimate = fwhm_fit(image_data - bkg.background, mean_fwhm_pixel, mask)
@@ -1106,11 +1115,6 @@ def detection_and_photometry(
             phot_table["snr"] = np.nan
             phot_table['aperture_mag_err'] = np.nan  # add to results table
 
-        if np.mean(image_data - bkg.background) > 1.0:
-            exposure_time = _science_header.get("EXPTIME", 1.0)
-        else:
-            exposure_time = 1.0
-
         instrumental_mags = -2.5 * np.log10(phot_table["aperture_sum"] / exposure_time)
         phot_table["instrumental_mag"] = instrumental_mags
 
@@ -1119,7 +1123,7 @@ def detection_and_photometry(
                 image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask, total_error
             )
             
-            epsf_table["snr"] = np.round(epsf_table["flux"] / np.sqrt(epsf_table["flux_err"]))
+            epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"]))
             m_err = 1.0857 / epsf_table["snr"]
             epsf_table['psf_mag_err'] = m_err
 
