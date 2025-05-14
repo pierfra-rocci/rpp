@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from astropy.io import fits
-from astropy.visualization import (ZScaleInterval, ImageNormalize)  # PercentileInterval)
+from astropy.visualization import (ZScaleInterval, ImageNormalize)
 
 # Local Application Imports
 from src.tools import (FIGURE_SIZES, GAIA_BANDS, extract_coordinates,
@@ -108,11 +108,16 @@ def load_fits_data(file):
                     sliced_data = sliced_data[0]
                 data = sliced_data
             
-            # norm = ImageNormalize(data, interval=PercentileInterval(100))
-            normalized_data = data
+            if 'EXPOSURE' in header:
+                time = header['EXPOSURE']
+            elif 'EXPTIME' in header:
+                time = header['EXPTIME']
+            else:
+                st.warning("No Exposure Keys in the FITS !")
+                return data, data, header
 
-            return normalized_data, data, header
-        
+            return data/time, data, header
+
         except Exception as e:
             st.error(f"Error loading FITS file: {str(e)}")
             return None, None, None
