@@ -1109,7 +1109,7 @@ def detection_and_photometry(
         ):
             phot_table["snr"] = np.round(phot_table["aperture_sum"] / np.sqrt(phot_table["aperture_sum_err"]))
             m_err = 1.0857 / phot_table["snr"]
-            phot_table['instr_mag_err'] = m_err  # add to results table
+            phot_table['aperture_mag_err'] = m_err  # add to results table
 
         else:
             phot_table["snr"] = np.nan
