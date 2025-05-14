@@ -8,25 +8,16 @@ if [ -z "$VIRTUAL_ENV" ]; then
     exit 1
 fi
 
-# Start backend_dev.py in the background, redirecting output to backend.log
 backend_log="backend.log"
 frontend_log="frontend.log"
-echo "Starting backend_dev.py..."
-python backend_dev.py > "$backend_log" 2>&1 &
-BACKEND_PID=$!
 
-# Start run_frontend.py in the background, redirecting output to frontend.log
+echo "Starting backend_dev.py in a new terminal..."
+gnome-terminal -- bash -c "source venv/bin/activate; python backend_dev.py | tee $backend_log; exec bash"
 
-echo "Starting frontend.py..."
-streamlit run frontend.py > "$frontend_log" 2>&1 &
-FRONTEND_PID=$!
+echo "Starting frontend.py in a new terminal..."
+gnome-terminal -- bash -c "source venv/bin/activate; streamlit run frontend.py | tee $frontend_log; exec bash"
 
-echo "Backend PID: $BACKEND_PID"
-echo "Frontend PID: $FRONTEND_PID"
 echo "Backend URL: http://127.0.0.1:5000"
 echo "Frontend URL: http://127.0.0.1:8501"
 echo "Logs: $backend_log, $frontend_log"
-echo "Both backend and frontend are running. Press Ctrl+C to stop."
-
-# Wait for both to finish
-wait $BACKEND_PID $FRONTEND_PID
+echo "Both backend and frontend are running in separate terminals."
