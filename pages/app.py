@@ -127,7 +127,7 @@ def display_catalog_in_aladin(
     ra_col: str = "ra",
     dec_col: str = "dec",
     mag_col: str = "calib_mag",
-    alt_mag_col: str = "aperture_calib_mag",
+    alt_mag_col: str = "aperture_mag",
     catalog_col: str = "catalog_matches",
     id_cols: list[str] = ["simbad_main_id", "skybot_NAME", "aavso_Name"],
     fallback_id_prefix: str = "Source",
@@ -156,7 +156,7 @@ def display_catalog_in_aladin(
     mag_col : str, optional
         Name of the primary magnitude column, default='calib_mag'
     alt_mag_col : str, optional
-        Name of an alternative (preferred) magnitude column, default='aperture_calib_mag'
+        Name of an alternative (preferred) magnitude column, default='aperture_mag'
     catalog_col : str, optional
         Name of the column containing catalog match information, default='catalog_matches'
     id_cols : list[str], optional
@@ -1302,7 +1302,7 @@ if science_file is not None:
                                                     "instrumental_mag_y"
                                                     in final_table.columns
                                                 ):
-                                                    final_table["psf_calib_mag"] = (
+                                                    final_table["psf_mag"] = (
                                                         final_table[
                                                             "instrumental_mag_y"
                                                         ]
@@ -1327,7 +1327,7 @@ if science_file is not None:
                                                             "instrumental_mag_x"
                                                         ]
                                                         final_table[
-                                                            "aperture_calib_mag"
+                                                            "aperture_mag"
                                                         ] = (
                                                             final_table[
                                                                 "instrumental_mag_x"
@@ -1339,7 +1339,7 @@ if science_file is not None:
                                                         final_table = final_table.rename(
                                                             columns={
                                                                 "instrumental_mag_x": "aperture_instrumental_mag",
-                                                                "calib_mag": "aperture_calib_mag",
+                                                                "calib_mag": "aperture_mag",
                                                                 "instrumental_mag_y": "psf_instrumental_mag",
                                                                 "ra_y": "ra",
                                                                 "dec_y": "dec",
@@ -1400,32 +1400,32 @@ if science_file is not None:
                                                 f"Catalog includes {len(final_table)} sources."
                                             )
 
-                                            # Plot histogram of aperture_calib_mag and psf_calib_mag before catalog enhancement
+                                            # Plot histogram of aperture_mag and psf_mag before catalog enhancement
                                             st.subheader("Magnitude Distribution (Aperture vs PSF)")
                                             fig_mag, ax_mag = plt.subplots(figsize=(8, 5), dpi=100)
                                             bins = np.linspace(
                                                 min(
-                                                    final_table["aperture_calib_mag"].min() if "aperture_calib_mag" in final_table.columns else np.nan,
-                                                    final_table["psf_calib_mag"].min() if "psf_calib_mag" in final_table.columns else np.nan
+                                                    final_table["aperture_mag"].min() if "aperture_mag" in final_table.columns else np.nan,
+                                                    final_table["psf_mag"].min() if "psf_mag" in final_table.columns else np.nan
                                                 ),
                                                 max(
-                                                    final_table["aperture_calib_mag"].max() if "aperture_calib_mag" in final_table.columns else np.nan,
-                                                    final_table["psf_calib_mag"].max() if "psf_calib_mag" in final_table.columns else np.nan
+                                                    final_table["aperture_mag"].max() if "aperture_mag" in final_table.columns else np.nan,
+                                                    final_table["psf_mag"].max() if "psf_mag" in final_table.columns else np.nan
                                                 ),
                                                 40
                                             )
 
-                                            if "aperture_calib_mag" in final_table.columns:
+                                            if "aperture_mag" in final_table.columns:
                                                 ax_mag.hist(
-                                                    final_table["aperture_calib_mag"].dropna(),
+                                                    final_table["aperture_mag"].dropna(),
                                                     bins=bins,
                                                     alpha=0.6,
                                                     label="Aperture Calib Mag",
                                                     color="tab:blue",
                                                 )
-                                            if "psf_calib_mag" in final_table.columns:
+                                            if "psf_mag" in final_table.columns:
                                                 ax_mag.hist(
-                                                    final_table["psf_calib_mag"].dropna(),
+                                                    final_table["psf_mag"].dropna(),
                                                     bins=bins,
                                                     alpha=0.6,
                                                     label="PSF Calib Mag",
@@ -1585,7 +1585,7 @@ if science_file is not None:
                             ra_center=ra_center,
                             dec_center=dec_center,
                             fov=1.5,
-                            alt_mag_col="aperture_calib_mag",
+                            alt_mag_col="aperture_mag",
                             id_cols=["simbad_main_id"],
                         )
 

@@ -1697,7 +1697,7 @@ def run_zero_point_calibration(
                     st.dataframe(final_table.head())
 
                     if "psf_instrumental_mag" in final_table.columns:
-                        final_table["psf_calib_mag"] = (
+                        final_table["psf_mag"] = (
                             final_table["psf_instrumental_mag"]
                             + zero_point_value
                             + 0.1 * air
@@ -2382,7 +2382,7 @@ def enhance_catalog(
             "ycenter",
             "ra",
             "dec",
-            "aperture_calib_mag",
+            "aperture_mag",
             "catalog_matches",
         ]
         display_cols = [col for col in display_cols 
