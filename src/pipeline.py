@@ -984,8 +984,6 @@ def detection_and_photometry(
         elif _science_header["EXPOSURE"]:
             exposure_time = _science_header["EXPOSURE"]
 
-    st.info(f"exposure time: {exposure_time}")
-
     # effective_gain = (camera gain in e-/ADU) * exposure time (s)
     effective_gain = 2.5/np.std(image_data) * exposure_time
 
