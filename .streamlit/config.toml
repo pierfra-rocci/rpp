@@ -59,7 +59,7 @@ maxUploadSize = 100
 # Max size, in megabytes, of messages that can be sent via the WebSocket
 # connection.
 # Default: 200
-maxMessageSize = 100
+maxMessageSize = 200
 
 [browser]
 # Whether to send usage statistics to Streamlit.
