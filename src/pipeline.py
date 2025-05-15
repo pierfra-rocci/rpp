@@ -906,7 +906,6 @@ def perform_psf_photometry(
 def detection_and_photometry(
     image_data,
     _science_header,
-    data_not_normalized,
     mean_fwhm_pixel,
     threshold_sigma,
     detection_mask,
@@ -914,43 +913,51 @@ def detection_and_photometry(
     gb="Gmag",
 ):
     """
-    Find astronomical sources and perform both aperture and PSF photometry.
+    Perform a complete photometry workflow on an astronomical image.
 
-    This comprehensive function handles the full photometry workflow:
-    1. Background estimation
-    2. Source detection
-    3. WCS refinement with GAIA DR3
-    4. Aperture photometry
-    5. PSF photometry
+    This function executes the following steps:
+      1. Estimate the sky background and its RMS.
+      2. Detect sources using DAOStarFinder.
+      3. Optionally refine the WCS using GAIA DR3 and stdpipe.
+      4. Perform aperture photometry on detected sources.
+      5. Perform PSF photometry using an empirical PSF model.
 
     Parameters
     ----------
     image_data : numpy.ndarray
-        Image data (2D array)
+        2D array of the image data.
     _science_header : dict or astropy.io.fits.Header
-        Header information from FITS file (underscore prevents caching issues)
+        FITS header or dictionary with image metadata.
     mean_fwhm_pixel : float
-        Estimated FWHM in pixels for aperture sizing
+        Estimated FWHM in pixels, used for aperture and PSF sizing.
     threshold_sigma : float
-        Detection threshold in sigma units above background
+        Detection threshold in sigma above background.
     detection_mask : int
-        Border size in pixels to mask during detection
+        Border size in pixels to mask during detection.
+    filter_band : str
+        Photometric band for catalog matching and calibration.
+    gb : str, optional
+        Gaia band name for catalog queries (default: "Gmag").
 
     Returns
     -------
     tuple
-        (phot_table, epsf_table, daofind, bkg) where:
-        - phot_table: Table with aperture photometry results
-        - epsf_table: Table with PSF photometry results
-        - daofind: The DAOStarFinder object used for detection
-        - bkg: Background2D object with background model
+        (phot_table, epsf_table, daofind, bkg), where:
+        phot_table : astropy.table.Table
+            Results of aperture photometry.
+        epsf_table : astropy.table.Table or None
+            Results of PSF photometry, or None if PSF fitting failed.
+        daofind : photutils.detection.DAOStarFinder
+            DAOStarFinder object used for source detection.
+        bkg : photutils.background.Background2D
+            Background2D object containing the background model.
 
     Notes
     -----
-    - Uses stdpipe for astrometry refinement with GAIA DR3
-    - Automatically adds celestial coordinates (RA/Dec) to the photometry tables if WCS is available
-    - Both aperture and PSF photometry include instrumental magnitude calculations
-    - Shows progress and status updates in the Streamlit interface
+    - WCS refinement uses stdpipe and GAIA DR3 if enabled in session state.
+    - Adds RA/Dec coordinates to photometry tables if WCS is available.
+    - Computes instrumental magnitudes for both aperture and PSF photometry.
+    - Displays progress and results in the Streamlit interface.
     """
     daofind = None
 
@@ -974,8 +981,9 @@ def detection_and_photometry(
         return None, None, daofind, None
 
     mask = make_border_mask(image_data, border=detection_mask)
+    image_sub = image_data - bkg.background
 
-    bkg_error = np.full_like(image_data - bkg.background, bkg.background_rms)
+    bkg_error = np.full_like(image_sub, bkg.background_rms)
 
     exposure_time = 1.0
     if (np.max(image_data) - np.min(image_data)) > 10:
@@ -984,37 +992,37 @@ def detection_and_photometry(
         elif _science_header["EXPOSURE"]:
             exposure_time = _science_header["EXPOSURE"]
 
-    # effective_gain = (camera gain in e-/ADU) * exposure time (s)
     effective_gain = 2.5/np.std(image_data) * exposure_time
 
-    total_error = calc_total_error(image_data - bkg.background, bkg_error, effective_gain)
+    total_error = calc_total_error(image_sub, bkg_error, effective_gain)
 
     st.write("Estimating FWHM...")
-    fwhm_estimate = fwhm_fit(image_data - bkg.background, mean_fwhm_pixel, mask)
+    fwhm_estimate = fwhm_fit(image_sub, mean_fwhm_pixel, mask)
 
     if fwhm_estimate is None:
         st.warning("Failed to estimate FWHM. Using the initial estimate.")
         fwhm_estimate = mean_fwhm_pixel
 
-    peak_max = 0.95 * np.max(image_data - bkg.background)
+    peak_max = 0.95 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=threshold_sigma * np.std(image_data - bkg.background),
+        threshold=threshold_sigma * np.std(image_sub),
         peakmax=peak_max,
     )
 
     obj = photometry.get_objects_sep(
-            data_not_normalized,
+            image_data,
             header=_science_header,
-            thresh=threshold_sigma,
+            thresh=3.0,
             sn=5,
             aper=1.5 * fwhm_estimate,
             mask=mask,
+            use_mask_large=True,
             get_segmentation=False,
             subtract_bg=True
         )
 
-    sources = daofind(image_data - bkg.background,
+    sources = daofind(image_sub,
                       mask=mask)
 
     if sources is None or len(sources) == 0:
@@ -1046,7 +1054,7 @@ def detection_and_photometry(
                 cat,
                 1.5 * fwhm_estimate * pixel_scale / 3600,
                 wcs=w,
-                order=1,
+                order=2,
                 cat_col_mag=cat_col_mag,
                 cat_col_mag_err=None,
                 n_iter=3,
@@ -1093,7 +1101,7 @@ def detection_and_photometry(
                 wcs_obj = None
 
         phot_table = aperture_photometry(
-            image_data - bkg.background, apertures, error=total_error,
+            image_sub, apertures, error=total_error,
             wcs=wcs_obj)
 
         phot_table["xcenter"] = sources["xcentroid"]
@@ -1118,7 +1126,7 @@ def detection_and_photometry(
 
         try:
             epsf_table, _ = perform_psf_photometry(
-                image_data - bkg.background, phot_table, fwhm_estimate, daofind, mask, total_error
+                image_sub, phot_table, fwhm_estimate, daofind, mask, total_error
             )
             
             epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"]))
@@ -1206,7 +1214,6 @@ def cross_match_with_gaia(
 ):
     """
     Cross-match detected sources with the GAIA DR3 star catalog.
-
     This function queries the GAIA catalog for a region matching the image field of view,
     applies filtering based on magnitude range, and matches GAIA sources to the detected sources.
     It also applies quality filters including variability, color index, and astrometric quality
@@ -1316,7 +1323,6 @@ def cross_match_with_gaia(
                 max_sources = min(len(gaia_table), 1000)
                 source_ids = list(gaia_table['source_id'][:max_sources])
                 source_ids_str = ','.join(str(id) for id in source_ids)
-                st.write("NOOOOOO")
                 # Query synthetic photometry just for these specific sources
                 synth_query = f"""
                 SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
@@ -1399,9 +1405,9 @@ def cross_match_with_gaia(
         valid_gaia_mags = np.isfinite(matched_table[filter_band])
         matched_table = matched_table[valid_gaia_mags]
 
-         # Remove sources with SNR == 0 before zero point calculation
+        # Remove sources with SNR < 1 before zero point calculation
         if "snr" in matched_table.columns:
-            matched_table = matched_table[matched_table["snr"] > 0]
+            matched_table = matched_table[matched_table["snr"] >= 1]
 
         st.success(f"Found {len(matched_table)} Gaia matches after filtering.")
         return matched_table
@@ -1547,229 +1553,230 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         return None, None, None
 
 
-def run_zero_point_calibration(
-    header,
-    pixel_size_arcsec,
-    mean_fwhm_pixel,
-    threshold_sigma,
-    detection_mask,
-    filter_band,
-    filter_max_mag,
-    air,
-):
-    """
-    Run the complete photometric zero point calibration workflow.
+# def run_zero_point_calibration(
+#     image_to_process,
+#     header,
+#     pixel_size_arcsec,
+#     mean_fwhm_pixel,
+#     threshold_sigma,
+#     detection_mask,
+#     filter_band,
+#     filter_max_mag,
+#     air,
+# ):
+#     """
+#     Run the complete photometric zero point calibration workflow.
 
-    This function orchestrates the full photometric analysis pipeline:
-    1. Source detection and photometry
-    2. GAIA catalog cross-matching
-    3. Zero point determination
-    4. Results display and catalog creation
+#     This function orchestrates the full photometric analysis pipeline:
+#     1. Source detection and photometry
+#     2. GAIA catalog cross-matching
+#     3. Zero point determination
+#     4. Results display and catalog creation
 
-    Parameters
-    ----------
-    header : dict or astropy.io.fits.Header
-        FITS header with observation metadata
-    pixel_size_arcsec : float
-        Pixel scale in arcseconds per pixel
-    mean_fwhm_pixel : float
-        FWHM estimate in pixels
-    threshold_sigma : float
-        Detection threshold in sigma units
-    detection_mask : int
-        Border mask size in pixels
-    filter_band : str
-        GAIA magnitude band to use
-    filter_max_mag : float
-        Magnitude limits for GAIA sources
-    air : float
-        Airmass value for extinction correction
+#     Parameters
+#     ----------
+#     header : dict or astropy.io.fits.Header
+#         FITS header with observation metadata
+#     pixel_size_arcsec : float
+#         Pixel scale in arcseconds per pixel
+#     mean_fwhm_pixel : float
+#         FWHM estimate in pixels
+#     threshold_sigma : float
+#         Detection threshold in sigma units
+#     detection_mask : int
+#         Border mask size in pixels
+#     filter_band : str
+#         GAIA magnitude band to use
+#     filter_max_mag : float
+#         Magnitude limits for GAIA sources
+#     air : float
+#         Airmass value for extinction correction
 
-    Returns
-    -------
-    tuple
-        (zero_point_value, zero_point_std, final_phot_table) where:
-        - zero_point_value: Calculated zero point value
-        - zero_point_std: Standard deviation of the zero point
-        - final_phot_table: DataFrame with the complete photometry catalog
+#     Returns
+#     -------
+#     tuple
+#         (zero_point_value, zero_point_std, final_phot_table) where:
+#         - zero_point_value: Calculated zero point value
+#         - zero_point_std: Standard deviation of the zero point
+#         - final_phot_table: DataFrame with the complete photometry catalog
 
-    Notes
-    -----
-    This function manages the workflow with appropriate Streamlit spinners and messages,
-    creates downloadable output files, logs progress, and provides interactive data views.
+#     Notes
+#     -----
+#     This function manages the workflow with appropriate Streamlit spinners and messages,
+#     creates downloadable output files, logs progress, and provides interactive data views.
 
-    If PSF photometry results are available, they're added to the final catalog alongside
-    aperture photometry results.
-    """
-    with st.spinner("Finding sources and performing photometry..."):
-        phot_table_qtable, epsf_table, _, _ = detection_and_photometry(
-            image_to_process,
-            header,
-            mean_fwhm_pixel,
-            threshold_sigma,
-            detection_mask,
-            filter_band,
-        )
+#     If PSF photometry results are available, they're added to the final catalog alongside
+#     aperture photometry results.
+#     """
+#     with st.spinner("Finding sources and performing photometry..."):
+#         phot_table_qtable, epsf_table, _, _ = detection_and_photometry(
+#             image_to_process,
+#             header,
+#             mean_fwhm_pixel,
+#             threshold_sigma,
+#             detection_mask,
+#             filter_band,
+#         )
 
-        if phot_table_qtable is None:
-            st.error("Failed to perform photometry - no sources found")
-            return None, None, None
+#         if phot_table_qtable is None:
+#             st.error("Failed to perform photometry - no sources found")
+#             return None, None, None
 
-    with st.spinner("Cross-matching with Gaia..."):
-        matched_table = cross_match_with_gaia(
-            phot_table_qtable,
-            header,
-            pixel_size_arcsec,
-            mean_fwhm_pixel,
-            filter_band,
-            filter_max_mag,
-        )
+#     with st.spinner("Cross-matching with Gaia..."):
+#         matched_table = cross_match_with_gaia(
+#             phot_table_qtable,
+#             header,
+#             pixel_size_arcsec,
+#             mean_fwhm_pixel,
+#             filter_band,
+#             filter_max_mag,
+#         )
 
-        if matched_table is None:
-            st.error("Failed to cross-match with Gaia")
-            return None, None, phot_table_qtable
+#         if matched_table is None:
+#             st.error("Failed to cross-match with Gaia")
+#             return None, None, phot_table_qtable
 
-    st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
-    st.dataframe(matched_table.head(10))
+#     st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
+#     st.dataframe(matched_table.head(10))
 
-    with st.spinner("Calculating zero point..."):
-        zero_point_value, zero_point_std, zp_plot = calculate_zero_point(
-            phot_table_qtable, matched_table, filter_band, air
-        )
+#     with st.spinner("Calculating zero point..."):
+#         zero_point_value, zero_point_std, zp_plot = calculate_zero_point(
+#             phot_table_qtable, matched_table, filter_band, air
+#         )
 
-        if zero_point_value is not None:
-            st.pyplot(zp_plot)
-            write_to_log(
-                log_buffer, f"Zero point: {zero_point_value:.3f} ± {zero_point_std:.3f}"
-            )
-            write_to_log(log_buffer, f"Airmass: {air:.2f}")
+#         if zero_point_value is not None:
+#             st.pyplot(zp_plot)
+#             write_to_log(
+#                 log_buffer, f"Zero point: {zero_point_value:.3f} ± {zero_point_std:.3f}"
+#             )
+#             write_to_log(log_buffer, f"Airmass: {air:.2f}")
 
-            try:
-                if (
-                    "epsf_photometry_result" in st.session_state
-                    and epsf_table is not None
-                ):
-                    epsf_df = (
-                        epsf_table.to_pandas()
-                        if not isinstance(epsf_table, pd.DataFrame)
-                        else epsf_table
-                    )
+#             try:
+#                 if (
+#                     "epsf_photometry_result" in st.session_state
+#                     and epsf_table is not None
+#                 ):
+#                     epsf_df = (
+#                         epsf_table.to_pandas()
+#                         if not isinstance(epsf_table, pd.DataFrame)
+#                         else epsf_table
+#                     )
 
-                    epsf_df["match_id"] = (
-                        epsf_df["xcenter"].round(2).astype(str)
-                        + "_"
-                        + epsf_df["ycenter"].round(2).astype(str)
-                    )
-                    final_table["match_id"] = (
-                        final_table["xcenter"].round(2).astype(str)
-                        + "_"
-                        + final_table["ycenter"].round(2).astype(str)
-                    )
+#                     epsf_df["match_id"] = (
+#                         epsf_df["xcenter"].round(2).astype(str)
+#                         + "_"
+#                         + epsf_df["ycenter"].round(2).astype(str)
+#                     )
+#                     final_table["match_id"] = (
+#                         final_table["xcenter"].round(2).astype(str)
+#                         + "_"
+#                         + final_table["ycenter"].round(2).astype(str)
+#                     )
 
-                    epsf_cols = {
-                        "match_id": "match_id",
-                        "flux_fit": "psf_flux_fit",
-                        "flux_err": "psf_flux_err",
-                        "instrumental_mag": "psf_instrumental_mag",
-                    }
+#                     epsf_cols = {
+#                         "match_id": "match_id",
+#                         "flux_fit": "psf_flux_fit",
+#                         "flux_err": "psf_flux_err",
+#                         "instrumental_mag": "psf_instrumental_mag",
+#                     }
 
-                    st.dataframe(epsf_df.head())
-                    st.dataframe(final_table.head())
+#                     st.dataframe(epsf_df.head())
+#                     st.dataframe(final_table.head())
 
-                    if (
-                        len(epsf_cols) > 1
-                        and "match_id" in epsf_df.columns
-                        and "match_id" in final_table.columns
-                    ):
-                        epsf_subset = epsf_df[
-                            [col for col in epsf_cols.keys() if col in epsf_df.columns]
-                        ].rename(columns=epsf_cols)
-                        st.dataframe(epsf_subset.head())
+#                     if (
+#                         len(epsf_cols) > 1
+#                         and "match_id" in epsf_df.columns
+#                         and "match_id" in final_table.columns
+#                     ):
+#                         epsf_subset = epsf_df[
+#                             [col for col in epsf_cols.keys() if col in epsf_df.columns]
+#                         ].rename(columns=epsf_cols)
+#                         st.dataframe(epsf_subset.head())
 
-                    final_table = pd.merge(final_table,
-                                           epsf_subset,
-                                           on="match_id",
-                                           how="left"
-                                           )
+#                     final_table = pd.merge(final_table,
+#                                            epsf_subset,
+#                                            on="match_id",
+#                                            how="left"
+#                                            )
 
-                    st.dataframe(final_table.head())
+#                     st.dataframe(final_table.head())
 
-                    if "psf_instrumental_mag" in final_table.columns:
-                        final_table["psf_mag"] = (
-                            final_table["psf_instrumental_mag"]
-                            + zero_point_value
-                            + 0.1 * air
-                        )
+#                     if "psf_instrumental_mag" in final_table.columns:
+#                         final_table["psf_mag"] = (
+#                             final_table["psf_instrumental_mag"]
+#                             + zero_point_value
+#                             + 0.1 * air
+#                         )
 
-                    final_table.drop("match_id", axis=1, inplace=True)
+#                     final_table.drop("match_id", axis=1, inplace=True)
 
-                    st.success("Added PSF photometry results to the catalog")
+#                     st.success("Added PSF photometry results to the catalog")
 
-                csv_buffer = StringIO()
+#                 csv_buffer = StringIO()
 
-                cols_to_drop = []
-                for col_name in ["sky_center.ra", "sky_center.dec"]:
-                    if col_name in final_table.columns:
-                        cols_to_drop.append(col_name)
+#                 cols_to_drop = []
+#                 for col_name in ["sky_center.ra", "sky_center.dec"]:
+#                     if col_name in final_table.columns:
+#                         cols_to_drop.append(col_name)
 
-                if cols_to_drop:
-                    final_table = final_table.drop(columns=cols_to_drop)
+#                 if cols_to_drop:
+#                     final_table = final_table.drop(columns=cols_to_drop)
 
-                if "match_id" in final_table.columns:
-                    final_table.drop("match_id", axis=1, inplace=True)
+#                 if "match_id" in final_table.columns:
+#                     final_table.drop("match_id", axis=1, inplace=True)
 
-                final_table["zero_point"] = zero_point_value
-                final_table["zero_point_std"] = zero_point_std
-                final_table["airmass"] = air
+#                 final_table["zero_point"] = zero_point_value
+#                 final_table["zero_point_std"] = zero_point_std
+#                 final_table["airmass"] = air
 
-                st.subheader("Final Photometry Catalog")
-                st.dataframe(final_table.head(10))
+#                 st.subheader("Final Photometry Catalog")
+#                 st.dataframe(final_table.head(10))
 
-                final_table.to_csv(csv_buffer, index=False)
-                csv_data = csv_buffer.getvalue()
+#                 final_table.to_csv(csv_buffer, index=False)
+#                 csv_data = csv_buffer.getvalue()
 
-                filename = (
-                    catalog_name
-                    if catalog_name.endswith(".csv")
-                    else f"{catalog_name}.csv"
-                )
-                catalog_path = os.path.join(output_dir, filename)
+#                 filename = (
+#                     catalog_name
+#                     if catalog_name.endswith(".csv")
+#                     else f"{catalog_name}.csv"
+#                 )
+#                 catalog_path = os.path.join(output_dir, filename)
 
-                with open(catalog_path, "w") as f:
-                    f.write(csv_data)
+#                 with open(catalog_path, "w") as f:
+#                     f.write(csv_data)
 
-                metadata_filename = f"{base_catalog_name}_metadata.txt"
-                metadata_path = os.path.join(output_dir, metadata_filename)
+#                 metadata_filename = f"{base_catalog_name}_metadata.txt"
+#                 metadata_path = os.path.join(output_dir, metadata_filename)
 
-                with open(metadata_path, "w") as f:
-                    f.write("RAPAS Photometry Analysis Metadata\n")
-                    f.write("================================\n\n")
-                    f.write(
-                        f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                    )
-                    f.write(f"Input File: {science_file.name}\n")
-                    f.write(f"Catalog File: {filename}\n\n")
+#                 with open(metadata_path, "w") as f:
+#                     f.write("RAPAS Photometry Analysis Metadata\n")
+#                     f.write("================================\n\n")
+#                     f.write(
+#                         f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+#                     )
+#                     f.write(f"Input File: {science_file.name}\n")
+#                     f.write(f"Catalog File: {filename}\n\n")
 
-                    f.write(
-                        f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n"
-                    )
-                    f.write(f"Airmass: {air:.3f}\n")
-                    f.write(f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n")
-                    f.write(
-                        f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n"
-                    )
+#                     f.write(
+#                         f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n"
+#                     )
+#                     f.write(f"Airmass: {air:.3f}\n")
+#                     f.write(f"Pixel Scale: {pixel_size_arcsec:.3f} arcsec/pixel\n")
+#                     f.write(
+#                         f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n"
+#                     )
 
-                    f.write("Detection Parameters:\n")
-                    f.write(f"  Threshold: {threshold_sigma} sigma\n")
-                    f.write(f"  Border Mask: {detection_mask} pixels\n")
+#                     f.write("Detection Parameters:\n")
+#                     f.write(f"  Threshold: {threshold_sigma} sigma\n")
+#                     f.write(f"  Border Mask: {detection_mask} pixels\n")
 
-                write_to_log(log_buffer, "Saved catalog metadata")
+#                 write_to_log(log_buffer, "Saved catalog metadata")
 
-            except Exception as e:
-                st.error(f"Error preparing download: {e}")
-                st.exception(e)
+#             except Exception as e:
+#                 st.error(f"Error preparing download: {e}")
+#                 st.exception(e)
 
-        return zero_point_value, zero_point_std, final_table
+#         return zero_point_value, zero_point_std, final_table
 
 
 def enhance_catalog(

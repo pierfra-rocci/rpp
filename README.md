@@ -9,19 +9,22 @@ An astronomical image processing and photometry tool designed specifically for [
 ![RPP Screenshot](doc/_static/logo.png)
 
 ## Table of Contents
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Workflow](#workflow)
-- [Authentication & Backend](#authentication--backend)
-- [Documentation](#documentation)
-- [Example Output](#example-output)
-- [Key Updates](#key-updates)
-- [Contributing](#contributing)
-- [Reporting Issues](#reporting-issues)
-- [License](#license)
-- [Acknowledgements](#acknowledgements)
-- [Contact](#contact)
+- [RAPAS Photometry Pipeline (RPP)](#rapas-photometry-pipeline-rpp)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Installation](#installation)
+    - [Requirements](#requirements)
+    - [Quick Start](#quick-start)
+  - [Usage](#usage)
+  - [Workflow](#workflow)
+  - [Authentication \& Backend](#authentication--backend)
+  - [Documentation](#documentation)
+  - [Example Output](#example-output)
+  - [Key Updates](#key-updates)
+  - [Contributing](#contributing)
+  - [Reporting Issues](#reporting-issues)
+  - [License](#license)
+  - [Acknowledgements](#acknowledgements)
 
 ## Features
 
@@ -66,13 +69,13 @@ An astronomical image processing and photometry tool designed specifically for [
 2. Create and activate a virtual environment (recommended):
    ```bash
    # Using venv (built into Python)
-   python -m venv venv
+   python -m venv .venv
    
    # On Windows
-   venv\Scripts\activate
+   .venv\Scripts\activate
    
    # On macOS/Linux
-   source venv/bin/activate
+   source .venv/bin/activate
    ```
 
 3. Install dependencies:

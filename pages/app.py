@@ -108,25 +108,26 @@ def load_fits_data(file):
                     sliced_data = sliced_data[0]
                 data = sliced_data
 
-            return data, data, header
+            return data, header
 
         except Exception as e:
             st.error(f"Error loading FITS file: {str(e)}")
-            return None, None, None
+            return None, None
         finally:
             hdul.close()
 
-    return None, None, None
+    return None, None
 
 
 def display_catalog_in_aladin(
+    image: np.array,
     final_table: pd.DataFrame,
     ra_center: float,
     dec_center: float,
     fov: float = 1.5,
     ra_col: str = "ra",
     dec_col: str = "dec",
-    mag_col: str = "calib_mag",
+    mag_col: str = "psf_mag",
     alt_mag_col: str = "aperture_mag",
     catalog_col: str = "catalog_matches",
     id_cols: list[str] = ["simbad_main_id", "skybot_NAME", "aavso_Name"],
@@ -240,6 +241,20 @@ def display_catalog_in_aladin(
         st.warning("No valid sources with RA/Dec found in the table to display.")
         return
 
+    fits_data_url = None
+    if image is not None:
+        try:
+            buf = BytesIO()
+            hdu = fits.PrimaryHDU(image)
+            hdu.writeto(buf, overwrite=True)
+            buf.seek(0)
+            fits_bytes = buf.read()
+            fits_b64 = base64.b64encode(fits_bytes).decode("utf-8")
+            fits_data_url = f"data:application/fits;base64,{fits_b64}"
+        except Exception as e:
+            st.warning(f"Could not convert image to FITS for Aladin: {e}")
+            fits_data_url = None
+
     with st.spinner("Loading Aladin Lite viewer..."):
         try:
             sources_json_b64 = base64.b64encode(
@@ -271,6 +286,9 @@ def display_catalog_in_aladin(
                                 showGotoControl: true,
                                 showSimbadPointerControl: true
                             }});
+
+                            // --- NEW: Display FITS image if available ---
+                            {"aladin.displayFITS('" + fits_data_url + "');" if fits_data_url else ""}
 
                             let cat = A.catalog({{
                                 name: 'Photometry Results',
@@ -442,13 +460,13 @@ def initialize_session_state():
     default_analysis_params = {
         "seeing": 3.0,
         "threshold_sigma": 3.0,
-        "detection_mask": 25,
+        "detection_mask": 10,
         "filter_band": "phot_g_mean_mag",  # Default Gaia band
         "filter_max_mag": 20.0,           # Default Gaia mag limit
         "astrometry_check": False,        # Astrometry refinement toggle
         "calibrate_cosmic_rays": False,   # CRR toggle
         "cr_gain": 1.0,                   # CRR default gain
-        "cr_readnoise": 6.5,              # CRR default readnoise
+        "cr_readnoise": 2.5,              # CRR default readnoise
         "cr_sigclip": 6.0                 # CRR default sigclip
     }
     if "analysis_parameters" not in st.session_state:
@@ -653,7 +671,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         st.session_state.analysis_parameters["cr_gain"] = st.number_input(
             "CRR Gain (e-/ADU)",
             value=st.session_state.analysis_parameters["cr_gain"],
-            min_value=0.5
+            min_value=0.1
         )
         st.session_state.analysis_parameters["cr_readnoise"] = st.number_input(
             "CRR Read Noise (e-)",
@@ -749,9 +767,9 @@ st.session_state["calibrate_cosmic_rays"] = st.session_state.analysis_parameters
 if "observatory_name" not in st.session_state:
     st.session_state.observatory_name = "TJMS"
 if "observatory_latitude" not in st.session_state:
-    st.session_state.observatory_latitude = 48.29166
+    st.session_state.observatory_latitude = 48.2917
 if "observatory_longitude" not in st.session_state:
-    st.session_state.observatory_longitude = 2.43805
+    st.session_state.observatory_longitude = 2.4381
 if "observatory_elevation" not in st.session_state:
     st.session_state.observatory_elevation = 94.0
 
@@ -797,8 +815,8 @@ if science_file is not None:
 
 if science_file is not None:
     with st.spinner("Loading FITS data..."):
-        normalized_data, raw_data, science_header = load_fits_data(science_file)
-        science_data = normalized_data
+        raw_data, science_header = load_fits_data(science_file)
+        science_data = raw_data
 
     if science_data is not None and science_header is not None:
         st.success(f"Loaded '{science_file.name}' successfully.")
@@ -812,7 +830,7 @@ if science_file is not None:
         st.info("Applying cosmic ray removal...")
         try:
             cr_gain = st.session_state.get("cr_gain", 1.0)
-            cr_readnoise = st.session_state.get("cr_readnoise", 6.5)
+            cr_readnoise = st.session_state.get("cr_readnoise", 2.5)
             cr_sigclip = st.session_state.get("cr_sigclip", 6.5)
             clean_data, _ = detect_remove_cosmic_rays(
                 science_data,
@@ -1140,7 +1158,6 @@ if science_file is not None:
         ):
             image_to_process = science_data
             header_to_process = science_header
-            original_data = raw_data
 
             if image_to_process is not None:
                 try:
@@ -1157,7 +1174,6 @@ if science_file is not None:
                             detection_and_photometry(
                                 image_to_process,
                                 header_to_process,
-                                raw_data,
                                 mean_fwhm_pixel,
                                 threshold_sigma,
                                 detection_mask,
@@ -1525,7 +1541,6 @@ if science_file is not None:
                                                     f"Input File: {science_file.name}\n"
                                                 )
                                                 f.write(f"Catalog File: {filename}\n\n")
-
                                                 f.write(
                                                     f"Zero Point: {zero_point_value:.5f} ± {zero_point_std:.5f}\n"
                                                 )
@@ -1536,7 +1551,6 @@ if science_file is not None:
                                                 f.write(
                                                     f"FWHM (estimated): {mean_fwhm_pixel:.2f} pixels ({seeing:.2f} arcsec)\n\n"
                                                 )
-
                                                 f.write("Detection Parameters:\n")
                                                 f.write(
                                                     f"  Threshold: {threshold_sigma} sigma\n"
@@ -1581,12 +1595,10 @@ if science_file is not None:
                         st.subheader("Aladin Catalog Viewer")
 
                         display_catalog_in_aladin(
+                            science_data,
                             final_table=final_table,
                             ra_center=ra_center,
                             dec_center=dec_center,
-                            fov=1.5,
-                            alt_mag_col="aperture_mag",
-                            id_cols=["simbad_main_id"],
                         )
 
                     st.link_button(
