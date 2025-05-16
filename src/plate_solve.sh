@@ -44,7 +44,7 @@ requires 1.2.6
 
 cd "$directory"
 load "$filename"
-platesolve -force
+platesolve
 save "$solvedname"
 close
 EOF
