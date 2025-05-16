@@ -1557,6 +1557,11 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
                 output_dir, f"{base_name}_zero_point_plot.png"
             )
             plt.savefig(zero_point_plot_path)
+            # Save residuals plot as well
+            resid_plot_path = os.path.join(
+                output_dir, f"{base_name}_residuals_plot.png"
+            )
+            fig_resid.savefig(resid_plot_path)
         except Exception as e:
             st.warning(f"Could not save plot to file: {e}")
 
