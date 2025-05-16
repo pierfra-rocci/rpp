@@ -31,8 +31,8 @@ solvedpath="${directory}/${solvedname}"
 ssfPath="/tmp/solve_script.ssf"
 sirilLog="/tmp/siril_cli.log"
 
-# Contenuto dello script Siril
-read -r -d '' scriptContent <<EOF
+# Write Siril script directly to file
+cat > "$ssfPath" << EOF
 requires 1.2.6
 
 cd "$directory"
@@ -41,9 +41,6 @@ platesolve
 save "$solvedname"
 close
 EOF
-
-# Scrivi il file in UTF-8 senza BOM
-printf '%s\n' "$scriptContent" > "$ssfPath"
 
 # Debug: mostra i primi byte del file
 echo -n "Primi byte del file .ssf: "
@@ -67,4 +64,3 @@ fi
 # Mostra il log di Siril anche in caso di successo
 echo "Log di Siril:"
 cat "$sirilLog"
-
