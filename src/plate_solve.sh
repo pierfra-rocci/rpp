@@ -8,12 +8,6 @@ if [ ! -d /tmp ]; then
   mkdir -p /tmp
 fi
 
-# Check if virtual environment is activated
-# if [ -z "$VIRTUAL_ENV" ]; then
-#     echo "Error: Virtual environment not activated. Please run 'source venv/bin/activate' first."
-#     exit 1
-# fi
-
 filepath="$1"
 filepath="${filepath//\\//}"  # Sostituisce eventuali backslash con slash
 
