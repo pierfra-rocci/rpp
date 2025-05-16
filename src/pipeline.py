@@ -1545,9 +1545,10 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         fig_resid, ax_resid = plt.subplots(figsize=(6, 4))
         ax_resid.scatter(mag_cat, residuals, s=20)
         ax_resid.axhline(0, color='gray', ls='--')
-        ax_resid.set_xlabel('Aperture Calibrated magnitude')
+        ax_resid.set_xlabel('Calibrated magnitude')
         ax_resid.set_ylabel('Residual (catalog - calibrated)')
         ax_resid.set_title('Photometric Residuals')
+        ax_resid.grid(True, alpha=0.5)
         st.pyplot(fig_resid)
 
         try:
