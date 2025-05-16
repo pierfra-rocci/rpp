@@ -287,7 +287,6 @@ def display_catalog_in_aladin(
                                 showSimbadPointerControl: true
                             }});
 
-                            // --- NEW: Display FITS image if available ---
                             {"aladin.displayFITS('" + fits_data_url + "');" if fits_data_url else ""}
 
                             let cat = A.catalog({{
