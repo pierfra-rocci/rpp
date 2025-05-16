@@ -1537,6 +1537,19 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f}"
         )
 
+        # --- Residuals plot ---
+        mag_cat = _matched_table[filter_band]
+        mag_inst = _matched_table["aperture_instrumental_mag"]
+        zp_mean = zero_point_value
+        residuals = mag_cat - (mag_inst + zp_mean)
+        fig_resid, ax_resid = plt.subplots(figsize=(6, 4))
+        ax_resid.scatter(mag_cat, residuals, s=20)
+        ax_resid.axhline(0, color='gray', ls='--')
+        ax_resid.set_xlabel('Aperture Calibrated magnitude')
+        ax_resid.set_ylabel('Residual (catalog - calibrated)')
+        ax_resid.set_title('Photometric Residuals')
+        st.pyplot(fig_resid)
+
         try:
             base_name = st.session_state.get("base_filename", "photometry")
             output_dir = st.session_state.get("output_dir", ".")
