@@ -37,7 +37,8 @@ requires 1.2.6
 
 cd "$directory"
 load "$filename"
-platesolve
+# Use local catalog if available
+platesolve -local
 save "$solvedname"
 close
 EOF
