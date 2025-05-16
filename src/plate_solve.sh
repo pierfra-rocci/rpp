@@ -3,16 +3,15 @@
 set -e
 set -x
 
+# Ensure /tmp exists
+if [ ! -d /tmp ]; then
+  mkdir -p /tmp
+fi
+
 # Check if virtual environment is activated
 if [ -z "$VIRTUAL_ENV" ]; then
     echo "Error: Virtual environment not activated. Please run 'source venv/bin/activate' first."
     exit 1
-fi
-
-# Verifica argomento
-if [ -z "$1" ]; then
-  echo "Uso: $0 /percorso/immagine.fit"
-  exit 1
 fi
 
 filepath="$1"
