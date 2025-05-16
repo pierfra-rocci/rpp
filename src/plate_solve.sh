@@ -26,7 +26,7 @@ fi
 filename="$(basename "$filepath")"
 basename="${filename%.*}"
 directory="$(dirname "$filepath")"
-solvedname="${basename}_solved.fit"
+solvedname="${basename}_solved.fits"
 solvedpath="${directory}/${solvedname}"
 ssfPath="/tmp/solve_script.ssf"
 sirilLog="/tmp/siril_cli.log"
