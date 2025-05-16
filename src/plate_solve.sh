@@ -26,8 +26,13 @@ fi
 filename="$(basename "$filepath")"
 basename="${filename%.*}"
 directory="$(dirname "$filepath")"
-solvedname="${basename}_solved.fit"
+
+# Check for both possible extensions
+solvedname="${basename}_solved.fits"
 solvedpath="${directory}/${solvedname}"
+solvedname_alt="${basename}_solved.fit"
+solvedpath_alt="${directory}/${solvedname_alt}"
+
 ssfPath="/tmp/solve_script.ssf"
 sirilLog="/tmp/siril_cli.log"
 
@@ -37,8 +42,8 @@ requires 1.2.6
 
 cd "$directory"
 load "$filename"
-# Use local catalog if available
-platesolve
+# Try with local catalog and a longer timeout
+platesolve -local -timeout 60
 save "$solvedname"
 close
 EOF
@@ -48,20 +53,30 @@ echo -n "Primi byte del file .ssf: "
 xxd -p -l 8 "$ssfPath" | sed 's/../& /g'
 
 # Esegui Siril CLI e salva log
-if ! siril-cli -s "$ssfPath" > "$sirilLog" 2>&1; then
-  echo "Errore: Siril non ha risolto l'immagine. Log di Siril:"
-  cat "$sirilLog"
+siril-cli -s "$ssfPath" > "$sirilLog" 2>&1
+result=$?
+
+# Mostra sempre il log di Siril
+echo "Log di Siril:"
+cat "$sirilLog"
+
+# Check if plate solving failed
+if [ $result -ne 0 ]; then
+  echo "Errore: Siril ha restituito un errore (codice $result)."
   exit 2
 fi
 
-# Controlla se il file risolto è stato creato
-if [ ! -f "$solvedpath" ]; then
-  echo "Errore: il file risolto '$solvedpath' non è stato creato."
-  echo "Log di Siril:"
-  cat "$sirilLog"
+# Controlla se il file risolto è stato creato (prova entrambe le estensioni)
+if [ ! -f "$solvedpath" ] && [ ! -f "$solvedpath_alt" ]; then
+  echo "Errore: il file risolto '$solvedpath' o '$solvedpath_alt' non è stato creato."
   exit 3
 fi
 
-# Mostra il log di Siril anche in caso di successo
-echo "Log di Siril:"
-cat "$sirilLog"
+# Trova quale file è stato creato
+if [ -f "$solvedpath" ]; then
+  echo "File risolto: $solvedpath"
+elif [ -f "$solvedpath_alt" ]; then
+  echo "File risolto: $solvedpath_alt"
+fi
+
+echo "Plate solving completed successfully."
