@@ -63,3 +63,15 @@ if ! siril-cli -s "$ssfPath" > "$sirilLog" 2>&1; then
   exit 2
 fi
 
+# Controlla se il file risolto è stato creato
+if [ ! -f "$solvedpath" ]; then
+  echo "Errore: il file risolto '$solvedpath' non è stato creato."
+  echo "Log di Siril:"
+  cat "$sirilLog"
+  exit 3
+fi
+
+# Mostra il log di Siril anche in caso di successo
+echo "Log di Siril:"
+cat "$sirilLog"
+
