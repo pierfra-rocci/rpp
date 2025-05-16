@@ -1539,7 +1539,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # --- Residuals plot ---
         mag_cat = _matched_table[filter_band]
-        mag_inst = _matched_table["aperture_instrumental_mag"]
+        mag_inst = _matched_table["instrumental_mag"]
         zp_mean = zero_point_value
         residuals = mag_cat - (mag_inst + zp_mean)
         fig_resid, ax_resid = plt.subplots(figsize=(6, 4))
