@@ -1542,13 +1542,21 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         mag_inst = _matched_table["instrumental_mag"]
         zp_mean = zero_point_value
         residuals = mag_cat - (mag_inst + zp_mean)
+        if "aperture_mag_err" in _matched_table.columns:
+            aperture_mag_err = _matched_table["aperture_mag_err"].values
+        else:
+            aperture_mag_err = np.zeros_like(residuals)
+        zp_err = zero_point_std if zero_point_std is not None else 0.0
+        yerr = np.sqrt(aperture_mag_err**2 + zp_err**2)
+
         fig_resid, ax_resid = plt.subplots(figsize=(6, 4))
-        ax_resid.scatter(mag_cat, residuals, s=10)
+        ax_resid.errorbar(mag_cat, residuals, yerr=yerr, fmt='o', markersize=5, alpha=0.7, label='Residuals')
         ax_resid.axhline(0, color='gray', ls='--')
         ax_resid.set_xlabel('Calibrated magnitude')
         ax_resid.set_ylabel('Residual (catalog - calibrated)')
         ax_resid.set_title('Photometric Residuals')
         ax_resid.grid(True, alpha=0.5)
+        ax_resid.legend()
         st.pyplot(fig_resid)
 
         try:
