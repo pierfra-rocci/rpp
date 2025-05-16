@@ -241,20 +241,6 @@ def display_catalog_in_aladin(
         st.warning("No valid sources with RA/Dec found in the table to display.")
         return
 
-    fits_data_url = None
-    if image is not None:
-        try:
-            buf = BytesIO()
-            hdu = fits.PrimaryHDU(image)
-            hdu.writeto(buf, overwrite=True)
-            buf.seek(0)
-            fits_bytes = buf.read()
-            fits_b64 = base64.b64encode(fits_bytes).decode("utf-8")
-            fits_data_url = f"data:application/fits;base64,{fits_b64}"
-        except Exception as e:
-            st.warning(f"Could not convert image to FITS for Aladin: {e}")
-            fits_data_url = None
-
     with st.spinner("Loading Aladin Lite viewer..."):
         try:
             sources_json_b64 = base64.b64encode(
@@ -286,8 +272,6 @@ def display_catalog_in_aladin(
                                 showGotoControl: true,
                                 showSimbadPointerControl: true
                             }});
-
-                            {"aladin.displayFITS('" + fits_data_url + "');" if fits_data_url else ""}
 
                             let cat = A.catalog({{
                                 name: 'Photometry Results',
