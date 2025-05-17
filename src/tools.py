@@ -613,7 +613,7 @@ def write_to_log(log_buffer, message, level="INFO"):
     log_buffer.write(f"[{timestamp}] {level.upper()}: {message}\n")
 
 
-def zip_rpp_results_on_exit(science_file_obj):
+def zip_rpp_results_on_exit(science_file_obj, outputdir):
     """Compresses analysis result files into a timestamped ZIP archive.
 
     Finds all files in the 'rpp_results' directory that start with the same
@@ -648,7 +648,7 @@ def zip_rpp_results_on_exit(science_file_obj):
     - Errors during file removal are printed to standard output (consider
       using logging or st.warning).
     """
-    output_dir = os.path.join(os.getcwd(), "rpp_results")
+    output_dir = outputdir
     if not os.path.exists(output_dir):
         return
     base_name = get_base_filename(science_file_obj)

@@ -1606,7 +1606,7 @@ if science_file is not None:
                     provide_download_buttons(output_dir)
                     cleanup_temp_files()
                     # at the end archive a zip version and remove all the results
-                    atexit.register(partial(zip_rpp_results_on_exit, science_file))
+                    zip_rpp_results_on_exit(science_file, output_dir)
 
                 else:
                     st.warning(
