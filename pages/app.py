@@ -785,7 +785,17 @@ st.session_state["output_dir"] = output_dir
 
 if science_file is not None:
     suffix = os.path.splitext(science_file.name)[1]
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+
+    # Get the system temp directory
+    system_tmp = tempfile.gettempdir()
+    username = st.session_state.get("username", "anonymous")
+    user_tmp_dir = os.path.join(system_tmp, username)
+
+    # Create the user-specific temp directory if it doesn't exist
+    os.makedirs(user_tmp_dir, exist_ok=True)
+
+    # Now use this directory for the temp file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=user_tmp_dir) as tmp_file:
         tmp_file.write(science_file.getvalue())
         science_file_path = tmp_file.name
 
@@ -1650,3 +1660,4 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
 atexit.register(partial(zip_rpp_results_on_exit, science_file))
 
 st.markdown("---")
+``` 

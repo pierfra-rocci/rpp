@@ -9,7 +9,7 @@ if [ ! -d /tmp ]; then
 fi
 
 filepath="$1"
-filepath="${filepath//\\//}"  # Sostituisce eventuali backslash con slash
+filepath="${filepath//\\//}"
 
 # Check if file exists
 if [ ! -f "$filepath" ]; then

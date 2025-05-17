@@ -70,7 +70,8 @@ def solve_with_siril(file_path):
             system = platform.system()
             if system == "Windows":
                 script_name = "plate_solve.ps1"
-                command_base = ["powershell.exe", "-ExecutionPolicy", "Bypass", "-File"]
+                command_base = ["powershell.exe", "-ExecutionPolicy", "Bypass",
+                                "-File"]
             else:
                 script_name = "plate_solve.sh"
                 command_base = ["bash"]
@@ -83,7 +84,8 @@ def solve_with_siril(file_path):
                 return None
 
             if system == "Windows":
-                command = command_base + [str(script_path), "-filepath", str(file_path)]
+                command = command_base + [str(script_path), "-filepath",
+                                          str(file_path)]
             else:
                 command = command_base + [str(script_path), str(file_path)]
             subprocess.run(command, check=True)
