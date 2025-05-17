@@ -1605,6 +1605,8 @@ if science_file is not None:
 
                     provide_download_buttons(output_dir)
                     cleanup_temp_files()
+                    # at the end archive a zip version and remove all the results
+                    atexit.register(partial(zip_rpp_results_on_exit, science_file))
 
                 else:
                     st.warning(
@@ -1658,8 +1660,5 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     with open(log_filepath, "w", encoding='utf-8') as f:
         f.write(log_buffer.getvalue())
         write_to_log(log_buffer, f"Log saved to {log_filepath}")
-
-# at the end archive a zip version and remove all the results
-atexit.register(partial(zip_rpp_results_on_exit, science_file))
 
 st.markdown("---")
