@@ -19,7 +19,7 @@ save "$solvedname"
 close
 "@
 
-$ssfPath = "$env:TEMP\solve_script.ssf"
+$ssfPath = "${filepath}_solve_script.ssf"
 
 # Scrittura in UTF-8 senza BOM
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)

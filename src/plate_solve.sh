@@ -28,8 +28,8 @@ basename="${filename%.*}"
 directory="$(dirname "$filepath")"
 solvedname="${basename}_solved.fits"
 solvedpath="${directory}/${solvedname}"
-ssfPath="/tmp/solve_script.ssf"
-sirilLog="/tmp/siril_cli.log"
+ssfPath="${filepath}_solve_script.ssf"
+sirilLog="${filepath}_siril_cli.log"
 
 # Write Siril script directly to file
 cat > "$ssfPath" << EOF
