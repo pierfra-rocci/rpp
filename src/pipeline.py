@@ -353,7 +353,8 @@ def estimate_background(image_data, box_size=128, filter_size=7):
             
             # Save background as FITS file
             base_filename = st.session_state.get("base_filename", "photometry")
-            output_dir = ensure_output_directory("rpp_results")
+            username = st.session_state.get("username", "anonymous")
+            output_dir = ensure_output_directory(f"{username}_rpp_results")
             bkg_filename = f"{base_filename}_bkg.fits"
             bkg_filepath = os.path.join(output_dir, bkg_filename)
             
@@ -720,7 +721,8 @@ def fwhm_fit(
         # Save the FWHM scatter figure
         try:
             base_filename = st.session_state.get("base_filename", "photometry")
-            output_dir = ensure_output_directory("rpp_results")
+            username = st.session_state.get("username", "anonymous")
+            output_dir = ensure_output_directory(f"{username}_rpp_results")
             fwhm_filename = f"{base_filename}_fwhm.png"
             fwhm_filepath = os.path.join(output_dir, fwhm_filename)
             
@@ -840,8 +842,9 @@ def perform_psf_photometry(
             psf_filename = (
                 f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
             )
+            username = st.session_state.get("username", "anonymous")
             psf_filepath = os.path.join(
-                st.session_state.get("output_dir", "."), psf_filename
+                ensure_output_directory(f"{username}_rpp_results"), psf_filename
             )
 
             hdu.writeto(psf_filepath, overwrite=True)
@@ -1563,7 +1566,8 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         try:
             base_name = st.session_state.get("base_filename", "photometry")
-            output_dir = st.session_state.get("output_dir", ".")
+            username = st.session_state.get("username", "anonymous")
+            output_dir = ensure_output_directory(f"{username}_rpp_results")
             zero_point_plot_path = os.path.join(
                 output_dir, f"{base_name}_zero_point_plot.png"
             )

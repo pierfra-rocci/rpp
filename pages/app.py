@@ -437,7 +437,8 @@ def initialize_session_state():
     if "science_file_path" not in st.session_state:
         st.session_state.science_file_path = None
     if "output_dir" not in st.session_state:
-        st.session_state.output_dir = ensure_output_directory("rpp_results")
+        username = st.session_state.get("username", "anonymous")
+        st.session_state.output_dir = ensure_output_directory(f"{username}_rpp_results")
 
     # Analysis Parameters State (consolidated)
     default_analysis_params = {
@@ -695,7 +696,7 @@ if st.sidebar.button("💾 Save Configuration"):
     name = st.session_state.get("username", "user")
     config_filename = f"{name}_config.json"
     config_path = os.path.join(
-        st.session_state.get("output_dir", "rpp_results"), config_filename
+        st.session_state.get("output_dir", f"{name}_rpp_results"), config_filename
     )
     try:
         with open(config_path, "w", encoding="utf-8") as f:
@@ -779,7 +780,8 @@ st.session_state["analysis_parameters"].update(
 )
 
 catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
-output_dir = ensure_output_directory("rpp_results")
+username = st.session_state.get("username", "anonymous")
+output_dir = ensure_output_directory(f"{username}_rpp_results")
 st.session_state["output_dir"] = output_dir
 
 
@@ -1450,7 +1452,8 @@ if science_file is not None:
                                             # Save the histogram as an image file
                                             try:
                                                 base_filename = st.session_state.get("base_filename", "photometry")
-                                                output_dir = ensure_output_directory("rpp_results")
+                                                username = st.session_state.get("username", "anonymous")
+                                                output_dir = ensure_output_directory(f"{username}_rpp_results")
                                                 hist_filename = f"{base_filename}_histogram_mag.png"
                                                 hist_filepath = os.path.join(output_dir, hist_filename)
                                                 fig_mag.savefig(hist_filepath, dpi=120, bbox_inches="tight")
