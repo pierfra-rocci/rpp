@@ -1660,4 +1660,3 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
 atexit.register(partial(zip_rpp_results_on_exit, science_file))
 
 st.markdown("---")
-``` 
