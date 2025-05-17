@@ -2,7 +2,7 @@
 . .\.venv\Scripts\Activate.ps1
 
 # Start backend_dev.py as a background job, redirecting output to backend.log
-Start-Job -ScriptBlock { python backend_dev.py *>&1 | Tee-Object -FilePath backend.log }
+Start-Job -ScriptBlock { python backend.py *>&1 | Tee-Object -FilePath backend.log }
 
 # Start run_frontend.py as a background job, redirecting output to frontend.log
 # Original line
