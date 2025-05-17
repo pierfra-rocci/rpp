@@ -615,38 +615,6 @@ def write_to_log(log_buffer, message, level="INFO"):
 
 def zip_rpp_results_on_exit(science_file_obj, outputdir):
     """Compresses analysis result files into a timestamped ZIP archive.
-
-    Finds all files in the 'rpp_results' directory that start with the same
-    base filename as the input `science_file_obj`, compresses them into a
-    ZIP archive, and then deletes the original files.
-
-    Parameters
-    ----------
-    science_file_obj : file-like object or None
-        An object representing the input science file, expected to have a
-        `.name` attribute (like Streamlit's `UploadedFile`). Used by
-        `get_base_filename` to identify related result files. If None, the
-        function attempts to use "photometry" as the base name.
-
-    Returns
-    -------
-    None
-        This function performs file operations (zipping, deleting) and
-        returns None.
-
-    Notes
-    -----
-    - The target directory is hardcoded as 'rpp_results' relative to the
-      current working directory.
-    - The ZIP archive is created within the 'rpp_results' directory.
-    - Archive filename format: {base_filename}_{YYYYMMDD_HHMMSS}.zip
-    - Uses DEFLATE compression.
-    - Original files matching the base filename in 'rpp_results' are removed
-      after successful zipping.
-    - If the 'rpp_results' directory doesn't exist or no matching files are
-      found, the function returns silently without creating a ZIP file.
-    - Errors during file removal are printed to standard output (consider
-      using logging or st.warning).
     """
     output_dir = outputdir
     if not os.path.exists(output_dir):
@@ -657,6 +625,7 @@ def zip_rpp_results_on_exit(science_file_obj, outputdir):
         for f in os.listdir(output_dir)
         if os.path.isfile(os.path.join(output_dir, f))
         and f.startswith(base_name)
+        and not f.lower().endswith(".zip")
     ]
     if not files:
         return
@@ -667,6 +636,7 @@ def zip_rpp_results_on_exit(science_file_obj, outputdir):
         for file in files:
             file_path = os.path.join(output_dir, file)
             zipf.write(file_path, arcname=file)
+    # Do not remove .zip files, only remove the files that were zipped (non-zip)
     for file in files:
         try:
             os.remove(os.path.join(output_dir, file))
