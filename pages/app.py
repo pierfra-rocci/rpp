@@ -351,11 +351,13 @@ def provide_download_buttons(folder_path):
         base_filename = st.session_state.get("base_filename", "")
 
         # Filter files to only include those starting with the base filename prefix
+        # and exclude files ending with '.zip'
         files = [
             f
             for f in os.listdir(folder_path)
             if os.path.isfile(os.path.join(folder_path, f))
             and f.startswith(base_filename)
+            and not f.lower().endswith(".zip")
         ]
         if not files:
             st.write("No files found in output directory")
@@ -1605,7 +1607,6 @@ if science_file is not None:
 
                     provide_download_buttons(output_dir)
                     cleanup_temp_files()
-                    # at the end archive a zip version and remove all the results
                     zip_rpp_results_on_exit(science_file, output_dir)
 
                 else:
