@@ -174,3 +174,4 @@ pfr-win32*
 users.db
 rpp_results/**
 PyZOGY-master/**
+*_rpp_results/**
