@@ -1452,35 +1452,28 @@ if science_file is not None:
                                             ax_mag.legend()
                                             ax_mag.grid(True, alpha=0.3)
 
-                                            # Error distribution (right)
-                                            err_bins = np.linspace(
-                                                0,
-                                                max(
-                                                    final_table["aperture_mag_err"].max() if "aperture_mag_err" in final_table.columns else 0,
-                                                    final_table["psf_mag_err"].max() if "psf_mag_err" in final_table.columns else 0,
-                                                    0.1  # fallback
-                                                ),
-                                                30
-                                            )
-                                            if "aperture_mag_err" in final_table.columns:
-                                                ax_err.hist(
-                                                    final_table["aperture_mag_err"].dropna(),
-                                                    bins=err_bins,
-                                                    alpha=0.7,
-                                                    label="Aperture Mag Error",
-                                                    color="tab:blue",
+                                            # Scatter plot of magnitude vs error (right)
+                                            if "aperture_mag" in final_table.columns and "aperture_mag_err" in final_table.columns:
+                                                ax_err.scatter(
+                                                    final_table["aperture_mag"], 
+                                                    final_table["aperture_mag_err"], 
+                                                    alpha=0.7, 
+                                                    label="Aperture", 
+                                                    color="tab:blue", 
+                                                    s=18
                                                 )
-                                            if "psf_mag_err" in final_table.columns:
-                                                ax_err.hist(
-                                                    final_table["psf_mag_err"].dropna(),
-                                                    bins=err_bins,
-                                                    alpha=0.7,
-                                                    label="PSF Mag Error",
-                                                    color="tab:orange",
+                                            if "psf_mag" in final_table.columns and "psf_mag_err" in final_table.columns:
+                                                ax_err.scatter(
+                                                    final_table["psf_mag"], 
+                                                    final_table["psf_mag_err"], 
+                                                    alpha=0.7, 
+                                                    label="PSF", 
+                                                    color="tab:orange", 
+                                                    s=18
                                                 )
-                                            ax_err.set_xlabel("Magnitude Error")
-                                            ax_err.set_ylabel("Number of Sources")
-                                            ax_err.set_title("Distribution of Magnitude Errors")
+                                            ax_err.set_xlabel("Calibrated Magnitude")
+                                            ax_err.set_ylabel("Magnitude Error")
+                                            ax_err.set_title("Magnitude Error vs Magnitude")
                                             ax_err.legend()
                                             ax_err.grid(True, alpha=0.3)
 
