@@ -529,7 +529,7 @@ def cleanup_temp_files():
                         f
                         for f in os.listdir(base_dir)
                         if os.path.isfile(os.path.join(base_dir, f))
-                        and f.lower().endswith((".fits", ".fit", ".fts"))
+                        and f.lower().endswith((".fits", ".fit", ".fts",".ssf",".log"))
                     ]
                     for file in temp_dir_files:
                         try:
