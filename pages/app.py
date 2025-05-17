@@ -1415,7 +1415,9 @@ if science_file is not None:
 
                                             # Plot histogram of aperture_mag and psf_mag before catalog enhancement
                                             st.subheader("Magnitude Distribution (Aperture vs PSF)")
-                                            fig_mag, ax_mag = plt.subplots(figsize=(8, 5), dpi=100)
+                                            fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
+
+                                            # Magnitude distribution (left)
                                             bins = np.linspace(
                                                 min(
                                                     final_table["aperture_mag"].min() if "aperture_mag" in final_table.columns else np.nan,
@@ -1449,6 +1451,40 @@ if science_file is not None:
                                             ax_mag.set_title("Distribution of Calibrated Magnitudes")
                                             ax_mag.legend()
                                             ax_mag.grid(True, alpha=0.3)
+
+                                            # Error distribution (right)
+                                            err_bins = np.linspace(
+                                                0,
+                                                max(
+                                                    final_table["aperture_mag_err"].max() if "aperture_mag_err" in final_table.columns else 0,
+                                                    final_table["psf_mag_err"].max() if "psf_mag_err" in final_table.columns else 0,
+                                                    0.1  # fallback
+                                                ),
+                                                30
+                                            )
+                                            if "aperture_mag_err" in final_table.columns:
+                                                ax_err.hist(
+                                                    final_table["aperture_mag_err"].dropna(),
+                                                    bins=err_bins,
+                                                    alpha=0.7,
+                                                    label="Aperture Mag Error",
+                                                    color="tab:blue",
+                                                )
+                                            if "psf_mag_err" in final_table.columns:
+                                                ax_err.hist(
+                                                    final_table["psf_mag_err"].dropna(),
+                                                    bins=err_bins,
+                                                    alpha=0.7,
+                                                    label="PSF Mag Error",
+                                                    color="tab:orange",
+                                                )
+                                            ax_err.set_xlabel("Magnitude Error")
+                                            ax_err.set_ylabel("Number of Sources")
+                                            ax_err.set_title("Distribution of Magnitude Errors")
+                                            ax_err.legend()
+                                            ax_err.grid(True, alpha=0.3)
+
+                                            fig_mag.tight_layout()
                                             st.pyplot(fig_mag)
 
                                             # Save the histogram as an image file
