@@ -29,7 +29,7 @@ RUN cp .streamlit/config.toml ~/.streamlit/config.toml
 RUN cp .streamlit/credentials.toml ~/.streamlit/credentials.toml
 
 # Expose ports for Flask (5000) and Streamlit (8501)
-EXPOSE 5000 80
+EXPOSE 5000 8501
 
 # Create a script to run both backend and frontend
 RUN echo '#!/bin/bash\n\
