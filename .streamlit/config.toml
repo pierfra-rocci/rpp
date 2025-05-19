@@ -29,17 +29,16 @@ borderColor = "#586e75"                 # Subtle border if needed
 
 [global]
 developmentMode = false
+showWarningOnDirectExecution = true
 
 [logger]
-level = "info"
+level = "debug"
 messageFormat = "%(asctime)s %(message)s"
 
 [server]
-port = 8501
-enableStaticServing = true
+port = 80
+folderWatchBlacklist = ['']
 
-# Enables support for Cross-Origin Resource Sharing (CORS) protection,
-# for added security.
 # If XSRF protection is enabled and CORS protection is disabled at the
 # same time, Streamlit will enable them both instead.
 # Default: true
@@ -61,10 +60,23 @@ maxUploadSize = 100
 # Default: 200
 maxMessageSize = 200
 
+# Immediately share the app in such a way that enables live monitoring, and post-run analysis.
+# Default: false
+liveSave = false
+
+# Automatically rerun script when the file is modified on disk.
+# Default: false
+runOnSave = false
+
 [browser]
 # Whether to send usage statistics to Streamlit.
 # Default: true
-gatherUsageStats = true
+gatherUsageStats = false
+
+# Internet address of the server that the browser should connect to. Can be IP address or DNS name.
+# Default: 'localhost'
+serverAddress = "0.0.0.0"
+
 
 [client]
 # Controls whether uncaught app exceptions and deprecation warnings
