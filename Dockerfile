@@ -31,10 +31,5 @@ RUN cp .streamlit/credentials.toml ~/.streamlit/credentials.toml
 # Expose ports for Flask (5000) and Streamlit (8501)
 EXPOSE 5000 8501
 
-# Create a script to run both backend and frontend
-RUN echo '#!/bin/bash\n\
-python backend_pro.py &\n\
-streamlit run frontend.py --server.port 80 --server.address 0.0.0.0\n' > /app/start.sh && chmod +x /app/start.sh
-
 # Default command
-CMD ["/bin/bash", "/app/start.sh"]
+CMD ["/bin/bash", "/app/run_all_linux.sh"]
