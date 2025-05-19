@@ -11,7 +11,7 @@ Start-Job -ScriptBlock { streamlit run frontend.py --server.port 8501 --server.a
 
 Write-Host "Both backend and frontend are running as background jobs."
 Write-Host "Backend URL: http://127.0.0.1:5000"
-Write-Host "Frontend URL: http://127.0.0.1:8501"
+Write-Host "Frontend URL: http://127.0.0.1:80"
 Write-Host "Logs: backend.log, frontend.log"
 
 # Get-Job | Remove-Job

@@ -10,6 +10,6 @@ start "Streamlit Frontend" cmd /k "streamlit run frontend.py --server.port 8501 
 
 REM Print URLs and log file names
 echo Backend URL: http://127.0.0.1:5000
-echo Frontend URL: http://127.0.0.1:8501
+echo Frontend URL: http://127.0.0.1:80
 echo Backend Log: backend.log (in its own window or file)
 echo Frontend output will be in its own terminal window.
