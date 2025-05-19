@@ -56,7 +56,7 @@ An astronomical image processing and photometry tool designed specifically for [
   - streamlit
   - stdpipe
   - Flask (for backend)
-  - SIRIL 1.2.6+ (for plate solving)
+  - SIRIL 1.2.6 ou + (for plate solving)
 
 ### Quick Start
 
@@ -86,7 +86,7 @@ An astronomical image processing and photometry tool designed specifically for [
 4. Start the backend server (use `backend_prod.py` for production):
    ```bash
    # For development with auto-reload
-   python backend_dev.py
+   python backend.py
    # For production
    # python backend_prod.py 
    ```
@@ -127,14 +127,14 @@ An astronomical image processing and photometry tool designed specifically for [
 5. **Export and analyze results**
    - Download all results as a single ZIP archive using the "Download All Results" button.
    - Save your configuration for future sessions using the "Save" button in the sidebar.
-   - All files are saved in the `rpp_results` directory for later access.
+   - All files are saved in the `<user>_rpp_results` directory for later access.
 
 6. **Logout**
    - Click "Logout" in the sidebar when finished to secure your session.
 
 ## Workflow
 
-1. **Start the backend**: `python backend_dev.py` (required for authentication and config saving).
+1. **Start the backend**: `python backend.py` (required for authentication and config saving).
 2. **Start the frontend**: `streamlit run frontend.py` (always redirects to login page).
 3. **Authenticate**: Register or log in. User/session parameters are loaded from the backend if available.
 4. **Upload and analyze**: Upload your science FITS file (and optional calibration frames), set parameters, and run the photometry pipeline.
@@ -166,7 +166,7 @@ Then open `doc/_build/html/index.html` in your browser.
 
 ## Example Output
 
-The application generates several output files in the `rpp_results` directory:
+The application generates several output files in the `<user>_rpp_results` directory:
 
 - `[filename]_phot.csv` - Photometry catalog with calibrated magnitudes
 - `[filename]_header.txt` - FITS header information
