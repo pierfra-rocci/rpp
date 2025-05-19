@@ -23,10 +23,10 @@ RUN pip install --upgrade pip && \
 RUN mkdir ~/.streamlit
 
 # This copies your Streamlit configuration file into the .streamlit directory you just created.
-RUN cp app/.streamlit/config.toml ~/.streamlit/config.toml
+RUN cp .streamlit/config.toml ~/.streamlit/config.toml
 
 # Similar to the previous step, this copies your Streamlit credentials file into the .streamlit directory.
-RUN cp app/.streamlit/credentials.toml ~/.streamlit/credentials.toml
+RUN cp .streamlit/credentials.toml ~/.streamlit/credentials.toml
 
 # Expose ports for Flask (5000) and Streamlit (8501)
 EXPOSE 5000 80
