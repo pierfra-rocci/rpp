@@ -19,13 +19,22 @@ RUN apt-get update && \
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
+# This command creates a .streamlit directory in the home directory of the container.
+RUN mkdir ~/.streamlit
+
+# This copies your Streamlit configuration file into the .streamlit directory you just created.
+RUN cp app/.streamlit/config.toml ~/.streamlit/config.toml
+
+# Similar to the previous step, this copies your Streamlit credentials file into the .streamlit directory.
+RUN cp app/.streamlit/credentials.toml ~/.streamlit/credentials.toml
+
 # Expose ports for Flask (5000) and Streamlit (8501)
-EXPOSE 5000 8501
+EXPOSE 5000 80
 
 # Create a script to run both backend and frontend
 RUN echo '#!/bin/bash\n\
-python backend_dev.py &\n\
-streamlit run frontend.py --server.port 8501 --server.address 0.0.0.0\n' > /app/start.sh && chmod +x /app/start.sh
+python backend_pro.py &\n\
+streamlit run frontend.py --server.port 80 --server.address 0.0.0.0\n' > /app/start.sh && chmod +x /app/start.sh
 
 # Default command
 CMD ["/bin/bash", "/app/start.sh"]
