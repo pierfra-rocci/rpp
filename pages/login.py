@@ -23,8 +23,8 @@ backend_url = "http://localhost:5000"
 if not st.session_state.logged_in:
     st.title("🔒 _RAPAS Photometry Pipeline_")
     st.sidebar.markdown("## User Credentials")
-    username = st.sidebar.text_input("Username", value="admin")
-    password = st.sidebar.text_input("Password", value="admin",
+    username = st.sidebar.text_input("Username", value="")
+    password = st.sidebar.text_input("Password", value="",
                                      type="password")
     email = st.sidebar.text_input("Email", value="",
                                   help="Required for registration and password recovery.")
