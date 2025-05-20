@@ -693,7 +693,7 @@ if st.sidebar.button("💾 Save Configuration"):
     )
     params = {"analysis_parameters": analysis_params,
               "observatory_data": observatory_params,
-              "astro_colibri_api_key": colibri_api_key,
+              "colibri_api_key": colibri_api_key,
               }
     name = st.session_state.get("username", "user")
     config_filename = f"{name}_config.json"
