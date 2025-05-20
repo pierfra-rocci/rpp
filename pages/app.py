@@ -895,7 +895,7 @@ if science_file is not None:
 
         # Allow user to attempt plate solving even if WCS is valid
         replate_solve = st.checkbox(
-            # "Re-run plate solving with Siril (overwrite existing WCS)?",
+            "Re-run plate solving with Siril (overwrite existing WCS)?",
             value=False,
             help="Force a new plate solve using Siril, replacing the current WCS solution."
         )
