@@ -893,48 +893,48 @@ if science_file is not None:
         log_buffer = st.session_state["log_buffer"]
         write_to_log(log_buffer, "Valid WCS found in header")
 
-    # Allow user to attempt plate solving even if WCS is valid
-    # replate_solve = st.checkbox(
-    #     # "Re-run plate solving with Siril (overwrite existing WCS)?",
-    #     value=False,
-    #     help="Force a new plate solve using Siril, replacing the current WCS solution."
-    # )
+    Allow user to attempt plate solving even if WCS is valid
+    replate_solve = st.checkbox(
+        # "Re-run plate solving with Siril (overwrite existing WCS)?",
+        value=False,
+        help="Force a new plate solve using Siril, replacing the current WCS solution."
+    )
 
-    # if replate_solve:
-    #     with st.spinner("Running plate solve (this may take a while)..."):
-    #         result = solve_with_siril(science_file_path)
-    #         if result is None:
-    #             st.error("Plate solving failed. No WCS solution was returned.")
-    #             wcs_obj, science_header = None, None
-    #         else:
-    #             wcs_obj, science_header = result
-    #             st.session_state["calibrated_header"] = science_header
-    #             st.session_state["wcs_obj"] = wcs_obj
+    if replate_solve:
+        with st.spinner("Running plate solve (this may take a while)..."):
+            result = solve_with_siril(science_file_path)
+            if result is None:
+                st.error("Plate solving failed. No WCS solution was returned.")
+                wcs_obj, science_header = None, None
+            else:
+                wcs_obj, science_header = result
+                st.session_state["calibrated_header"] = science_header
+                st.session_state["wcs_obj"] = wcs_obj
 
-    #         log_buffer = st.session_state["log_buffer"]
+            log_buffer = st.session_state["log_buffer"]
 
-    #         if wcs_obj is not None:
-    #             st.success("Siril plate solving successful!")
-    #             write_to_log(
-    #                 log_buffer,
-    #                 "Solved plate with Siril (forced re-solve)",
-    #             )
+            if wcs_obj is not None:
+                st.success("Siril plate solving successful!")
+                write_to_log(
+                    log_buffer,
+                    "Solved plate with Siril (forced re-solve)",
+                )
 
-    #             wcs_header_filename = (
-    #                 f"{st.session_state['base_filename']}_wcs_header"
-    #             )
-    #             wcs_header_file_path = save_header_to_txt(
-    #                 science_header, wcs_header_filename
-    #             )
-    #             if wcs_header_file_path:
-    #                 st.info("Updated WCS header saved")
-    #         else:
-    #             st.error("Plate solving failed")
-    #             write_to_log(
-    #                 log_buffer,
-    #                 "Failed to solve plate (forced re-solve)",
-    #                 level="ERROR",
-    #             )
+                wcs_header_filename = (
+                    f"{st.session_state['base_filename']}_wcs_header"
+                )
+                wcs_header_file_path = save_header_to_txt(
+                    science_header, wcs_header_filename
+                )
+                if wcs_header_file_path:
+                    st.info("Updated WCS header saved")
+            else:
+                st.error("Plate solving failed")
+                write_to_log(
+                    log_buffer,
+                    "Failed to solve plate (forced re-solve)",
+                    level="ERROR",
+                )
 
     if science_header is not None:
         log_buffer = st.session_state["log_buffer"]
@@ -1363,7 +1363,7 @@ if science_file is not None:
                                                             "instrumental_mag_y"
                                                         ]
                                                         + zero_point_value
-                                                        + 0.1 * air
+                                                        - 0.1 * air
                                                     )
                                                     st.success(
                                                         "Added PSF photometry"
@@ -1389,7 +1389,7 @@ if science_file is not None:
                                                                 "instrumental_mag_x"
                                                             ]
                                                             + zero_point_value
-                                                            + 0.1 * air
+                                                            - 0.1 * air
                                                         )
                                                     else:
                                                         final_table = final_table.rename(
