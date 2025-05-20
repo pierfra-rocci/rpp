@@ -12,7 +12,7 @@ backend_log="backend.log"
 frontend_log="frontend.log"
 
 echo "Starting backend_prod.py in background..."
-python backend.py | tee $backend_log &
+python backend_prod.py | tee $backend_log &
 
 echo "Starting frontend.py in background..."
 streamlit run frontend.py | tee $frontend_log &
