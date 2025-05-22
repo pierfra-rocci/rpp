@@ -799,11 +799,69 @@ def perform_psf_photometry(
         st.error(f"Error creating NDData: {e}")
         raise
 
+    # Filter phot_table to select only the best stars for PSF model
+    try:
+        st.write("Filtering stars for PSF model construction...")
+        
+        # Get flux statistics
+        flux_median = np.median(phot_table["flux"])
+        flux_std = np.std(phot_table["flux"])
+        
+        # Define flux filtering criteria (median ± 1 sigma)
+        flux_min = flux_median - flux_std
+        flux_max = flux_median + flux_std
+        
+        # Shape-based filtering criteria
+        roundness_criteria = np.abs(phot_table["roundness1"]) < 0.2
+        sharpness_criteria = np.abs(phot_table["sharpness"]) < 0.5
+        flux_criteria = (phot_table["flux"] >= flux_min) & (phot_table["flux"] <= flux_max)
+        
+        # Additional quality filters
+        # Exclude sources too close to edges
+        edge_buffer = 2 * fwhm
+        edge_criteria = (
+            (phot_table["xcenter"] > edge_buffer) & 
+            (phot_table["xcenter"] < img.shape[1] - edge_buffer) &
+            (phot_table["ycenter"] > edge_buffer) & 
+            (phot_table["ycenter"] < img.shape[0] - edge_buffer)
+        )
+        
+        # Combine all filtering criteria
+        good_stars_mask = roundness_criteria & sharpness_criteria & flux_criteria & edge_criteria
+        
+        # Apply filters
+        filtered_phot_table = phot_table[good_stars_mask]
+        
+        st.write(f"Original sources: {len(phot_table)}")
+        st.write(f"Filtered sources for PSF model: {len(filtered_phot_table)}")
+        st.write(f"Flux range for PSF stars: {flux_min:.1f} - {flux_max:.1f}")
+        
+        # Check if we have enough stars for PSF construction
+        if len(filtered_phot_table) < 10:
+            st.warning(f"Only {len(filtered_phot_table)} stars available for PSF model. Relaxing criteria...")
+            
+            # Relax criteria if too few stars
+            roundness_criteria = np.abs(phot_table["roundness1"]) < 0.4
+            sharpness_criteria = np.abs(phot_table["sharpness"]) < 1.0
+            flux_criteria = (phot_table["flux"] >= flux_median - 2*flux_std) & (phot_table["flux"] <= flux_median + 2*flux_std)
+            
+            good_stars_mask = roundness_criteria & sharpness_criteria & flux_criteria & edge_criteria
+            filtered_phot_table = phot_table[good_stars_mask]
+            
+            st.write(f"After relaxing criteria: {len(filtered_phot_table)} stars")
+            
+        if len(filtered_phot_table) < 5:
+            raise ValueError("Too few good stars for PSF model construction. Need at least 5 stars.")
+            
+    except Exception as e:
+        st.error(f"Error filtering stars for PSF model: {e}")
+        raise
+
     try:
         stars_table = Table()
-        stars_table["x"] = phot_table["xcenter"]
-        stars_table["y"] = phot_table["ycenter"]
-        st.write("Star positions table prepared.")
+        stars_table["x"] = filtered_phot_table["xcenter"]
+        stars_table["y"] = filtered_phot_table["ycenter"]
+        st.write("Star positions table prepared from filtered sources.")
     except Exception as e:
         st.error(f"Error preparing star positions table: {e}")
         raise
@@ -817,7 +875,7 @@ def perform_psf_photometry(
 
     try:
         stars = extract_stars(nddata, stars_table, size=fit_shape)
-        st.write(f"{len(stars)} stars extracted.")
+        st.write(f"{len(stars)} stars extracted for PSF model.")
     except Exception as e:
         st.error(f"Error extracting stars: {e}")
         raise
@@ -837,6 +895,7 @@ def perform_psf_photometry(
             hdu.header["COMMENT"] = "PSF model created with photutils.EPSFBuilder"
             hdu.header["FWHMPIX"] = (fwhm, "FWHM in pixels used for extraction")
             hdu.header["OVERSAMP"] = (4, "Oversampling factor")
+            hdu.header["NSTARS"] = (len(filtered_phot_table), "Number of stars used for PSF model")
 
             psf_filename = (
                 f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
@@ -860,7 +919,7 @@ def perform_psf_photometry(
                 cmap="viridis",
                 interpolation="nearest",
             )
-            ax_epsf_model.set_title("Fitted PSF Model")
+            ax_epsf_model.set_title(f"Fitted PSF Model ({len(filtered_phot_table)} stars)")
             st.pyplot(fig_epsf_model)
         except Exception as e:
             st.warning(f"Error working with PSF model: {e}")
@@ -871,6 +930,7 @@ def perform_psf_photometry(
                 "The 'finder' parameter must be a callable star finder, such as DAOStarFinder."
             )
 
+    # Use the original phot_table for the actual PSF photometry (not just the filtered subset)
     psfphot = IterativePSFPhotometry(
         psf_model=epsf,
         fit_shape=fit_shape,
@@ -892,11 +952,12 @@ def perform_psf_photometry(
             "Invalid mask provided. Ensure the mask is a numpy array with the same shape as the image."
         )
 
+    # Use original phot_table positions for PSF photometry
     psfphot.x = phot_table["xcenter"]
     psfphot.y = phot_table["ycenter"]
 
     try:
-        st.write("Performing PSF photometry...")
+        st.write("Performing PSF photometry on all sources...")
         phot_epsf_result = psfphot(img, mask=mask, error=error)
         st.session_state["epsf_photometry_result"] = phot_epsf_result
         st.write("PSF photometry completed successfully.")
