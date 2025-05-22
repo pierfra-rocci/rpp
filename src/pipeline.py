@@ -748,7 +748,7 @@ def fwhm_fit(
 
 def perform_psf_photometry(
     img: np.ndarray,
-    phot_table: Table,
+    photo_table: Table,
     fwhm: float,
     daostarfind: Any,
     mask: Optional[np.ndarray] = None,
