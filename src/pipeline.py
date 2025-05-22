@@ -953,8 +953,8 @@ def perform_psf_photometry(
         )
 
     # Use original photo_table positions for PSF photometry
-    psfphot.x = photo_table["xcenter"]
-    psfphot.y = photo_table["ycenter"]
+    psfphot.x = photo_table["xcentroid"]
+    psfphot.y = photo_table["ycentroid"]
 
     try:
         st.write("Performing PSF photometry on all sources...")
