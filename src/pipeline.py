@@ -802,7 +802,7 @@ def perform_psf_photometry(
     # Filter photo_table to select only the best stars for PSF model
     try:
         st.write("Filtering stars for PSF model construction...")
-        
+        # st.write(photo_table.colnames)
         # Get flux statistics
         flux_median = np.median(photo_table["flux"])
         flux_std = np.std(photo_table["flux"])
@@ -820,10 +820,10 @@ def perform_psf_photometry(
         # Exclude sources too close to edges
         edge_buffer = 2 * fwhm
         edge_criteria = (
-            (photo_table["xcenter"] > edge_buffer) &
-            (photo_table["xcenter"] < img.shape[1] - edge_buffer) &
-            (photo_table["ycenter"] > edge_buffer) &
-            (photo_table["ycenter"] < img.shape[0] - edge_buffer)
+            (photo_table["xcentroid"] > edge_buffer) &
+            (photo_table["xcentroid"] < img.shape[1] - edge_buffer) &
+            (photo_table["ycentroid"] > edge_buffer) &
+            (photo_table["ycentroid"] < img.shape[0] - edge_buffer)
         )
         
         # Combine all filtering criteria
@@ -859,8 +859,8 @@ def perform_psf_photometry(
 
     try:
         stars_table = Table()
-        stars_table["x"] = filtered_photo_table["xcenter"]
-        stars_table["y"] = filtered_photo_table["ycenter"]
+        stars_table["x"] = filtered_photo_table["xcentroid"]
+        stars_table["y"] = filtered_photo_table["ycentroid"]
         st.write("Star positions table prepared from filtered sources.")
     except Exception as e:
         st.error(f"Error preparing star positions table: {e}")
@@ -1191,7 +1191,7 @@ def detection_and_photometry(
 
         try:
             epsf_table, _ = perform_psf_photometry(
-                image_sub, phot_table, fwhm_estimate, daofind, mask, total_error
+                image_sub, sources, fwhm_estimate, daofind, mask, total_error
             )
             
             epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"]))
