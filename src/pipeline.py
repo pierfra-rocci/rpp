@@ -820,9 +820,9 @@ def perform_psf_photometry(
         # Exclude sources too close to edges
         edge_buffer = 2 * fwhm
         edge_criteria = (
-            (phot_table["xcenter"] > edge_buffer) & 
+            (phot_table["xcenter"] > edge_buffer) &
             (phot_table["xcenter"] < img.shape[1] - edge_buffer) &
-            (phot_table["ycenter"] > edge_buffer) & 
+            (phot_table["ycenter"] > edge_buffer) &
             (phot_table["ycenter"] < img.shape[0] - edge_buffer)
         )
         
