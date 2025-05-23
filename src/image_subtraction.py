@@ -120,8 +120,6 @@ class TransientFinder:
                 result = hips2fits.query_with_wcs(
                     hips=hips_id,
                     wcs=self.sci_wcs,
-                    get_width=self.nx,
-                    get_height=self.ny,
                     format="fits"
                 )
                 with fits.open(result) as hdul:
