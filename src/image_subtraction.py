@@ -22,6 +22,8 @@ from astroquery.hips2fits import hips2fits
 from properimage.operations import subtract
 from photutils.detection import find_peaks
 from photutils.aperture import CircularAperture
+from astropy.wcs.utils import fit_wcs_from_points
+from reproject import reproject_interp
 import time
 import requests
 
@@ -234,6 +236,51 @@ class TransientFinder:
             print(f"Error saving reference image: {e}")
             return False
 
+    def align_images(self):
+        """
+        Align the reference image to match the science image WCS.
+        
+        Returns
+        -------
+        bool
+            True if alignment was successful, False otherwise
+        """
+        if self.ref_data is None:
+            print("Reference image not loaded. Cannot align.")
+            return False
+        
+        try:
+            print("Aligning reference image to science image WCS...")
+            
+            # Use reproject to align reference image to science image WCS
+            aligned_ref, footprint = reproject_interp(
+                (self.ref_data, self.ref_wcs), 
+                self.sci_wcs, 
+                shape_out=self.sci_data.shape
+            )
+            
+            # Replace NaN values with median background
+            median_ref = np.nanmedian(aligned_ref)
+            aligned_ref = np.where(np.isnan(aligned_ref), median_ref, aligned_ref)
+            
+            # Update reference data and WCS
+            self.ref_data = aligned_ref
+            self.ref_wcs = self.sci_wcs
+            self.ref_header = self.sci_header.copy()
+            self.ref_header['HISTORY'] = 'Reference image aligned to science image WCS'
+            
+            # Save aligned reference image
+            aligned_ref_path = os.path.join(self.output_dir, "aligned_reference.fits")
+            fits.writeto(aligned_ref_path, self.ref_data, self.ref_header, overwrite=True)
+            print(f"Aligned reference image saved to: {aligned_ref_path}")
+            print(f"Aligned reference shape: {self.ref_data.shape}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error during image alignment: {e}")
+            return False
+
     def perform_subtraction(self, method="proper"):
         """
         Perform image subtraction between science and reference images.
@@ -252,6 +299,10 @@ class TransientFinder:
             print("Reference image not loaded. Please run get_reference_image() first.")
             return False
         
+        # Align images before subtraction
+        if not self.align_images():
+            print("Image alignment failed. Proceeding with unaligned images...")
+        
         try:
             if method.lower() == "proper":
                 print("Performing ProperImage subtraction...")
@@ -269,16 +320,17 @@ class TransientFinder:
                     fits.writeto(temp_ref_path, ref_data_native, self.ref_header, overwrite=True)
                     
                     # Perform subtraction using ProperImage operations.subtract
+                    # Set align=True to let ProperImage do additional fine alignment
                     print("Performing difference imaging...")
                     result = subtract(
                         ref=temp_ref_path,
                         new=temp_sci_path,
                         smooth_psf=False,
                         fitted_psf=True,
-                        align=False,
+                        align=True,  # Enable ProperImage's internal alignment
                         iterative=False,
                         beta=False,
-                        shift=False
+                        shift=True   # Allow for small shifts
                     )
                     
                     # Extract results: D, P, Scorr, mask
@@ -310,15 +362,16 @@ class TransientFinder:
                     self.diff_data = sci_data_native - ref_data_native
                     
                     # Clean up temporary files if they exist
-                    for temp_file in [temp_sci_path, temp_ref_path]:
+                    for temp_file in ['temp_sci_path', 'temp_ref_path']:
                         try:
-                            if 'temp_file' in locals() and os.path.exists(temp_file):
-                                os.remove(temp_file)
+                            temp_path = os.path.join(self.output_dir, f"{temp_file}.fits")
+                            if os.path.exists(temp_path):
+                                os.remove(temp_path)
                         except (OSError, NameError):
                             pass
             else:
                 print("Performing direct subtraction...")
-                # For direct subtraction, ensure images are aligned in WCS
+                # For direct subtraction, images should already be aligned
                 self.diff_data = self.sci_data - self.ref_data
             
             # Save difference image
@@ -531,8 +584,7 @@ def main():
     if not args.no_plot:
         finder.plot_results(show=True)
     
-    print("Transient detection complete.")
-    return 0
+    print("Transient detection complete.")    return 0
 
 
 if __name__ == "__main__":
