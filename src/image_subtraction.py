@@ -198,7 +198,7 @@ class TransientFinder:
                         field_size_deg = float(self.field_size)
                     
                     # Limit field size to reasonable values for SkyView
-                    field_size_deg = min(field_size_deg, 2.0)  # Max 2 degrees
+                    field_size_deg = min(field_size_deg, 1.0)  # Max 2 degrees
                     field_size_deg = max(field_size_deg, 0.1)  # Min 0.1 degrees
                     
                     print(f"Requesting field size: {field_size_deg:.3f} degrees")
