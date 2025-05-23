@@ -482,37 +482,22 @@ class TransientFinder:
             return None
 
         try:
-            print(f"Detecting transients with threshold={threshold}σ...")
+            print(f"Detecting positive transients with threshold={threshold}σ...")
             # Calculate background statistics with sigma clipping
             _, median, std = sigma_clipped_stats(self.diff_data, sigma=3.0)
 
-            # Find positive peaks (new sources)
+            # Find positive peaks (new sources) only
             threshold_positive = median + (threshold * std)
             positive_peaks = find_peaks(self.diff_data, threshold_positive, box_size=5,
                                         npeaks=50, centroid_func=None)
+            
             if positive_peaks:
                 positive_peaks['peak_type'] = 'positive'
                 positive_peaks['significance'] = (positive_peaks['peak_value'] - median) / std
-
-            # Find negative peaks (disappeared sources)
-            threshold_negative = median - (threshold * std)
-            negative_peaks = find_peaks(-self.diff_data, -threshold_negative, box_size=5,
-                                        npeaks=50, centroid_func=None)
-            if negative_peaks:
-                negative_peaks['peak_value'] = -negative_peaks['peak_value']
-                negative_peaks['peak_type'] = 'negative'
-                negative_peaks['significance'] = (median - negative_peaks['peak_value']) / std
-
-            # Combine results
-            if positive_peaks and negative_peaks:
-                self.transient_table = Table(np.hstack([positive_peaks, negative_peaks]))
-            elif positive_peaks:
                 self.transient_table = positive_peaks
-            elif negative_peaks:
-                self.transient_table = negative_peaks
             else:
                 self.transient_table = Table()
-                print("No transient sources detected.")
+                print("No positive transient sources detected.")
                 return self.transient_table
 
             # Add RA, Dec coordinates for each source
@@ -530,7 +515,7 @@ class TransientFinder:
             # Save transient catalog
             catalog_path = os.path.join(self.output_dir, "transients.csv")
             self.transient_table.write(catalog_path, format='csv', overwrite=True)
-            print(f"Found {len(self.transient_table)} transient candidates.")
+            print(f"Found {len(self.transient_table)} positive transient candidates.")
             print(f"Transient catalog saved to: {catalog_path}")
 
             return self.transient_table
