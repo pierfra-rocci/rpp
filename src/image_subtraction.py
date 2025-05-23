@@ -584,7 +584,9 @@ def main():
     if not args.no_plot:
         finder.plot_results(show=True)
     
-    print("Transient detection complete.")    return 0
+    print("Transient detection complete.")
+    
+    return 0
 
 
 if __name__ == "__main__":
