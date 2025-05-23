@@ -181,12 +181,27 @@ class TransientFinder:
                 elif survey.lower() != "panstarrs":  # DSS2 or other SkyView surveys
                     # Use SkyView for DSS2 and others
                     print(f"Using SkyView for {survey}...")
+                    
+                    # Ensure field size has proper units
+                    if hasattr(self.field_size, 'unit'):
+                        field_size_deg = self.field_size.to(u.deg).value
+                    else:
+                        # If no units, assume it's already in degrees
+                        field_size_deg = float(self.field_size)
+                    
+                    # Limit field size to reasonable values for SkyView
+                    field_size_deg = min(field_size_deg, 2.0)  # Max 2 degrees
+                    field_size_deg = max(field_size_deg, 0.1)  # Min 0.1 degrees
+                    
+                    print(f"Requesting field size: {field_size_deg:.3f} degrees")
+                    
                     imgs = SkyView.get_images(
                         position=self.center_coord,
                         survey=[survey],
                         coordinates='J2000',
-                        height=self.field_size.to(u.deg).value,
-                        width=self.field_size.to(u.deg).value
+                        height=field_size_deg,
+                        width=field_size_deg,
+                        pixels=[self.ny, self.nx]  # Match science image dimensions
                     )
                     self.ref_data = imgs[0][0].data
                     self.ref_header = imgs[0][0].header
