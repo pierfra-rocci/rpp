@@ -258,9 +258,13 @@ class TransientFinder:
             if method.lower() == "proper":
                 print("Performing ProperImage subtraction...")
                 
+                # Ensure arrays have native byte order for ProperImage
+                sci_data_native = self.sci_data.astype(self.sci_data.dtype.newbyteorder('='))
+                ref_data_native = self.ref_data.astype(self.ref_data.dtype.newbyteorder('='))
+                
                 # Create ProperImage SingleImage objects
-                sci_img = si.SingleImage(self.sci_data, psf_basis_size=25)
-                ref_img = si.SingleImage(self.ref_data, psf_basis_size=25)
+                sci_img = si.SingleImage(sci_data_native)
+                ref_img = si.SingleImage(ref_data_native)
                 
                 # Align images - proper image ensures they're aligned
                 sci_img.coverage_mask
