@@ -804,7 +804,7 @@ def perform_psf_photometry(
         st.write("Filtering stars for PSF model construction...")
         # st.write(photo_table.colnames)
         # Get flux statistics
-        flux_median = np.median(photo_table["flux"])
+        flux_median = np.mean(photo_table["flux"])
         flux_std = np.std(photo_table["flux"])
         
         # Define flux filtering criteria (median ± 1 sigma)
