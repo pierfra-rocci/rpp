@@ -15,12 +15,11 @@ from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from astropy.visualization import ZScaleInterval, ImageNormalize
-from astropy.stats import sigma_clipped_stats, SigmaClip
+from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 from astroquery.skyview import SkyView
 from astroquery.sdss import SDSS
 from astroquery.hips2fits import hips2fits
-from properimage import single_image as si
 from properimage.operations import subtract
 from photutils.detection import find_peaks
 from photutils.aperture import CircularAperture
