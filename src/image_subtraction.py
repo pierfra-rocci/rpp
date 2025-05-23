@@ -195,18 +195,13 @@ class TransientFinder:
                     
                     print(f"Requesting field size: {field_size_deg:.3f} degrees")
                     
-                    # Convert center coordinate to string format to avoid unit issues
-                    ra_str = f"{self.center_coord.ra.deg:.6f}"
-                    dec_str = f"{self.center_coord.dec.deg:.6f}"
-                    coord_str = f"{ra_str} {dec_str}"
-                    
                     imgs = SkyView.get_images(
-                        position=coord_str,
+                        position=self.center_coord,
                         survey=[survey],
                         coordinates='J2000',
-                        height=f"{field_size_deg}d",
-                        width=f"{field_size_deg}d",
-                        pixels=f"{self.nx},{self.ny}"
+                        height=field_size_deg * u.deg,
+                        width=field_size_deg * u.deg,
+                        pixels=[self.nx, self.ny]
                     )
                     self.ref_data = imgs[0][0].data
                     self.ref_header = imgs[0][0].header
