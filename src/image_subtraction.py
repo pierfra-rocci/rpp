@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Transient Source Finder
-
 This script performs image differencing between a user-provided FITS image and a reference
 image retrieved from online surveys (PanSTARRS, SDSS, or DSS2) to detect transient sources.
 """
@@ -11,12 +10,10 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
 from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from astropy.nddata import NDData, StdDevUncertainty, CCDData
 from astropy.visualization import ZScaleInterval, ImageNormalize
 from astropy.stats import sigma_clipped_stats, SigmaClip
 from astropy.table import Table
@@ -25,8 +22,7 @@ from astroquery.sdss import SDSS
 from astroquery.hips2fits import hips2fits
 from properimage import single_image as si
 from properimage import propersubtract as ps
-from properimage import utils
-from photutils.detection import DAOStarFinder, find_peaks
+from photutils.detection import find_peaks
 from photutils.aperture import CircularAperture
 
 
