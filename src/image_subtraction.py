@@ -26,6 +26,12 @@ from astropy.wcs.utils import fit_wcs_from_points
 from reproject import reproject_interp
 import time
 import requests
+import warnings
+
+# Suppress FITS header fix warnings
+warnings.filterwarnings('ignore', category=fits.verify.VerifyWarning)
+warnings.filterwarnings('ignore', message='.*datfix.*')
+warnings.filterwarnings('ignore', message='.*FITSFixedWarning.*')
 
 
 class TransientFinder:
@@ -68,30 +74,33 @@ class TransientFinder:
     def load_science_image(self):
         """Load the science image and extract its key properties."""
         try:
-            with fits.open(self.science_fits_path) as hdul:
-                self.sci_data = hdul[0].data
-                self.sci_header = hdul[0].header
-                self.sci_wcs = WCS(self.sci_header)
-                
-                # Get image dimensions
-                self.ny, self.nx = self.sci_data.shape
-                
-                # Get central coordinates
-                central_x, central_y = self.nx // 2, self.ny // 2
-                ra, dec = self.sci_wcs.all_pix2world(central_x, central_y, 0)
-                self.center_coord = SkyCoord(ra, dec, unit='deg')
-                
-                # Get image size in degrees
-                corner_x, corner_y = self.nx - 1, self.ny - 1
-                ra_corner, dec_corner = self.sci_wcs.all_pix2world(corner_x,
-                                                                   corner_y, 0)
-                corner_coord = SkyCoord(ra_corner, dec_corner, unit='deg')
-                self.field_size = self.center_coord.separation(corner_coord)*2
-                
-                print(f"Science image loaded: {self.science_fits_path}")
-                print(f"Image center: RA={ra:.6f}°, Dec={dec:.6f}°")
-                print(f"Field size: {self.field_size.to(u.arcmin):.2f}")
-                
+            # Suppress specific FITS warnings during loading
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                with fits.open(self.science_fits_path) as hdul:
+                    self.sci_data = hdul[0].data
+                    self.sci_header = hdul[0].header
+                    self.sci_wcs = WCS(self.sci_header)
+            
+            # Get image dimensions
+            self.ny, self.nx = self.sci_data.shape
+            
+            # Get central coordinates
+            central_x, central_y = self.nx // 2, self.ny // 2
+            ra, dec = self.sci_wcs.all_pix2world(central_x, central_y, 0)
+            self.center_coord = SkyCoord(ra, dec, unit='deg')
+            
+            # Get image size in degrees
+            corner_x, corner_y = self.nx - 1, self.ny - 1
+            ra_corner, dec_corner = self.sci_wcs.all_pix2world(corner_x,
+                                                               corner_y, 0)
+            corner_coord = SkyCoord(ra_corner, dec_corner, unit='deg')
+            self.field_size = self.center_coord.separation(corner_coord)*2
+            
+            print(f"Science image loaded: {self.science_fits_path}")
+            print(f"Image center: RA={ra:.6f}°, Dec={dec:.6f}°")
+            print(f"Field size: {self.field_size.to(u.arcmin):.2f}")
+            
         except Exception as e:
             print(f"Error loading science image: {e}")
             sys.exit(1)
@@ -561,32 +570,32 @@ def main():
     parser.add_argument('--method', choices=['proper', 'direct'], default='proper', 
                         help='Image subtraction method')
     parser.add_argument('--no-plot', action='store_true', help='Skip plotting')
+     TransientFinder with science image
+    args = parser.parse_args()finder = TransientFinder(args.science_image, output_dir=args.output)
     
-    args = parser.parse_args()
-    
-    # Initialize TransientFinder with science image
-    finder = TransientFinder(args.science_image, output_dir=args.output)
-    
-    # Get reference image
-    if not finder.get_reference_image(survey=args.survey):
-        print("Failed to get reference image. Exiting.")
         return 1
-    
-    # Perform image subtraction
-    if not finder.perform_subtraction(method=args.method):
+    urvey):
+    # Perform image subtractionailed to get reference image. Exiting.")
+    if not finder.perform_subtraction(method=args.method):    return 1
         print("Image subtraction failed. Exiting.")
         return 1
-    
-    # Detect transient sources
+    if not finder.perform_subtraction(method=args.method):
+    # Detect transient sources.")
     transients = finder.detect_transients(threshold=args.threshold)
     
-    # Plot results unless --no-plot is specified
-    if not args.no_plot:
+    # Plot results unless --no-plot is specified# Detect transient sources
+    if not args.no_plot:threshold=args.threshold)
         finder.plot_results(show=True)
-    
-    print("Transient detection complete.")
-    
+    esults unless --no-plot is specified
+    print("Transient detection complete.")    if not args.no_plot:
+            finder.plot_results(show=True)
     return 0
+ detection complete.")
+    
+
+
+
+    sys.exit(main())if __name__ == "__main__":    return 0
 
 
 if __name__ == "__main__":
