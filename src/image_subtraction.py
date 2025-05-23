@@ -115,8 +115,8 @@ class TransientFinder:
         """
         print(f"Retrieving reference image from {survey}...")
         
-        max_retries = 3
-        retry_delay = 5  # seconds
+        max_retries = 2
+        retry_delay = 3  # seconds
         
         for attempt in range(max_retries):
             try:
