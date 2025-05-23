@@ -812,8 +812,8 @@ def perform_psf_photometry(
         flux_max = flux_median + 3*flux_std
         
         # Shape-based filtering criteria
-        roundness_criteria = np.abs(photo_table["roundness1"]) < 0.3
-        sharpness_criteria = np.abs(photo_table["sharpness"]) < 0.7
+        roundness_criteria = np.abs(photo_table["roundness1"]) < 0.25
+        sharpness_criteria = np.abs(photo_table["sharpness"]) < 0.6
         flux_criteria = (photo_table["flux"] >= flux_min) & (photo_table["flux"] <= flux_max)
         
         # Additional quality filters
