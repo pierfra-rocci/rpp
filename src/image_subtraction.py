@@ -5,7 +5,6 @@ Transient Source Finder
 This script performs image differencing between a user-provided FITS image and a reference
 image retrieved from online surveys (PanSTARRS, SDSS, or DSS2) to detect transient sources.
 """
-
 import os
 import sys
 import numpy as np
