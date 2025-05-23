@@ -21,7 +21,7 @@ from astroquery.skyview import SkyView
 from astroquery.sdss import SDSS
 from astroquery.hips2fits import hips2fits
 from properimage import single_image as si
-from properimage import propersubtract as ps
+from properimage.operations import subtract
 from photutils.detection import find_peaks
 from photutils.aperture import CircularAperture
 import time
@@ -262,34 +262,62 @@ class TransientFinder:
                 sci_data_native = self.sci_data.astype(self.sci_data.dtype.newbyteorder('='))
                 ref_data_native = self.ref_data.astype(self.ref_data.dtype.newbyteorder('='))
                 
-                # Create ProperImage SingleImage objects
-                sci_img = si.SingleImage(sci_data_native)
-                ref_img = si.SingleImage(ref_data_native)
-                
-                # Initialize coverage masks (if needed)
                 try:
-                    _ = sci_img.coverage_mask
-                except AttributeError:
-                    pass  # coverage_mask may not be available in all versions
-                
-                try:
-                    _ = ref_img.coverage_mask
-                except AttributeError:
-                    pass  # coverage_mask may not be available in all versions
-                
-                # Calculate PSF models
-                print("Calculating PSF models...")
-                sci_img.get_variable_psf()
-                ref_img.get_variable_psf()
-                
-                # Perform subtraction
-                print("Performing difference imaging...")
-                D, P, S_zoomed, R_zoomed, mask, subtr = ps.diff(sci_img, ref_img)
-                self.diff_data = D
-                
-                # Apply mask to exclude problematic regions in the difference image
-                if mask is not None:
-                    self.diff_data[~mask] = np.nan
+                    # Save temporary FITS files for ProperImage
+                    temp_sci_path = os.path.join(self.output_dir, "temp_science.fits")
+                    temp_ref_path = os.path.join(self.output_dir, "temp_reference.fits")
+                    
+                    fits.writeto(temp_sci_path, sci_data_native, self.sci_header, overwrite=True)
+                    fits.writeto(temp_ref_path, ref_data_native, self.ref_header, overwrite=True)
+                    
+                    # Perform subtraction using ProperImage operations.subtract
+                    print("Performing difference imaging...")
+                    result = subtract(
+                        ref=temp_ref_path,
+                        new=temp_sci_path,
+                        smooth_psf=False,
+                        fitted_psf=True,
+                        align=False,
+                        iterative=False,
+                        beta=False,
+                        shift=False
+                    )
+                    
+                    # Extract results: D, P, Scorr, mask
+                    if isinstance(result, (list, tuple)) and len(result) >= 4:
+                        D, P, Scorr, mask = result[:4]
+                        # Use the real part if complex
+                        if hasattr(D, 'real'):
+                            self.diff_data = D.real
+                        else:
+                            self.diff_data = D
+                        
+                        # Apply mask if available
+                        if mask is not None:
+                            self.diff_data = np.ma.array(self.diff_data, mask=mask).filled(np.nan)
+                    else:
+                        self.diff_data = result
+                    
+                    # Clean up temporary files
+                    try:
+                        os.remove(temp_sci_path)
+                        os.remove(temp_ref_path)
+                    except OSError:
+                        pass
+                        
+                except Exception as proper_error:
+                    print(f"ProperImage failed: {proper_error}")
+                    print("Falling back to direct subtraction...")
+                    # Fall back to direct subtraction
+                    self.diff_data = sci_data_native - ref_data_native
+                    
+                    # Clean up temporary files if they exist
+                    for temp_file in [temp_sci_path, temp_ref_path]:
+                        try:
+                            if 'temp_file' in locals() and os.path.exists(temp_file):
+                                os.remove(temp_file)
+                        except (OSError, NameError):
+                            pass
             else:
                 print("Performing direct subtraction...")
                 # For direct subtraction, ensure images are aligned in WCS
@@ -333,7 +361,6 @@ class TransientFinder:
             print(f"Detecting transients with threshold={threshold}σ...")
             
             # Calculate background statistics with sigma clipping
-            sigma_clip = SigmaClip(sigma=3.0)
             _, median, std = sigma_clipped_stats(self.diff_data, sigma=3.0)
             
             # Find positive peaks (new sources)
