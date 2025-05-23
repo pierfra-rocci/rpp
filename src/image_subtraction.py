@@ -186,8 +186,7 @@ class TransientFinder:
                         survey=[survey],
                         coordinates='J2000',
                         height=self.field_size.to(u.deg).value,
-                        width=self.field_size.to(u.deg).value,
-                        timeout=60
+                        width=self.field_size.to(u.deg).value
                     )
                     self.ref_data = imgs[0][0].data
                     self.ref_header = imgs[0][0].header
