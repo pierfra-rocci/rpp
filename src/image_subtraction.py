@@ -33,7 +33,7 @@ class TransientFinder:
     This class handles loading a science image, retrieving a reference image,
     aligning them, performing proper image subtraction, and detecting sources
     in the difference image.
-    """  
+    """
     def __init__(self, science_fits_path, output_dir=None):
         """
         Initialize the TransientFinder with the science image path.
@@ -63,7 +63,6 @@ class TransientFinder:
         self.diff_data = None
         self.transient_table = None
 
-      
     def load_science_image(self):
         """Load the science image and extract its key properties."""
         try:
@@ -82,9 +81,10 @@ class TransientFinder:
                 
                 # Get image size in degrees
                 corner_x, corner_y = self.nx - 1, self.ny - 1
-                ra_corner, dec_corner = self.sci_wcs.all_pix2world(corner_x, corner_y, 0)
+                ra_corner, dec_corner = self.sci_wcs.all_pix2world(corner_x,
+                                                                   corner_y, 0)
                 corner_coord = SkyCoord(ra_corner, dec_corner, unit='deg')
-                self.field_size = self.center_coord.separation(corner_coord) * 2
+                self.field_size = self.center_coord.separation(corner_coord)*2
                 
                 print(f"Science image loaded: {self.science_fits_path}")
                 print(f"Image center: RA={ra:.6f}°, Dec={dec:.6f}°")
@@ -94,7 +94,6 @@ class TransientFinder:
             print(f"Error loading science image: {e}")
             sys.exit(1)
 
- 
     def get_reference_image(self, survey="DSS2 Red"):
         """
         Retrieve a reference image from an online survey.
@@ -117,17 +116,18 @@ class TransientFinder:
         try:
             if survey.lower() == "panstarrs":
                 # Use HiPS2FITS for PanSTARRS
-                hips_id = "PanSTARRS/DR1/i"
+                hips_id = "PanSTARRS/DR1/r"
                 result = hips2fits.query_with_wcs(
                     hips=hips_id,
                     wcs=self.sci_wcs,
-                    width=self.nx,
-                    height=self.ny,
+                    get_width=self.nx,
+                    get_height=self.ny,
                     format="fits"
                 )
-                self.ref_data = fits.open(result)[0].data
-                self.ref_header = fits.open(result)[0].header
-                self.ref_wcs = self.sci_wcs  # Using same WCS
+                with fits.open(result) as hdul:
+                    self.ref_data = hdul[0].data
+                    self.ref_header = hdul[0].header
+                self.ref_wcs = self.sci_wcs
                 
             elif survey.lower() == "sdss":
                 # Query SDSS with center coordinates and field size
@@ -156,7 +156,8 @@ class TransientFinder:
             
             # Save reference image to FITS
             ref_fits_path = os.path.join(self.output_dir, "reference_image.fits")
-            fits.writeto(ref_fits_path, self.ref_data, self.ref_header, overwrite=True)
+            fits.writeto(ref_fits_path, self.ref_data, self.ref_header,
+                         overwrite=True)
             print(f"Reference image saved to: {ref_fits_path}")
             
             return True
@@ -164,8 +165,7 @@ class TransientFinder:
         except Exception as e:
             print(f"Error retrieving reference image: {e}")
             return False
-    
-    
+
     def perform_subtraction(self, method="proper"):
         """
         Perform image subtraction between science and reference images.
@@ -210,14 +210,14 @@ class TransientFinder:
             else:
                 print("Performing direct subtraction...")
                 # For direct subtraction, ensure images are aligned in WCS
-                # This is a simplified approach and may not work well for real astronomical images
                 self.diff_data = self.sci_data - self.ref_data
             
             # Save difference image
             diff_fits_path = os.path.join(self.output_dir, "difference_image.fits")
             diff_header = self.sci_header.copy()
             diff_header['HISTORY'] = 'Image differencing performed with TransientFinder'
-            fits.writeto(diff_fits_path, self.diff_data, diff_header, overwrite=True)
+            fits.writeto(diff_fits_path, self.diff_data, diff_header,
+                         overwrite=True)
             print(f"Difference image saved to: {diff_fits_path}")
             
             return True
@@ -225,8 +225,7 @@ class TransientFinder:
         except Exception as e:
             print(f"Error during image subtraction: {e}")
             return False
-    
-    
+
     def detect_transients(self, threshold=5.0, npixels=5):
         """
         Detect potential transient sources in the difference image.
@@ -252,11 +251,11 @@ class TransientFinder:
             
             # Calculate background statistics with sigma clipping
             sigma_clip = SigmaClip(sigma=3.0)
-            mean, median, std = sigma_clipped_stats(self.diff_data, sigma=3.0)
+            _, median, std = sigma_clipped_stats(self.diff_data, sigma=3.0)
             
             # Find positive peaks (new sources)
             threshold_positive = median + (threshold * std)
-            positive_peaks = find_peaks(self.diff_data, threshold_positive, box_size=5, 
+            positive_peaks = find_peaks(self.diff_data, threshold_positive, box_size=5,
                                         npeaks=50, centroid_func=None)
             if positive_peaks:
                 positive_peaks['peak_type'] = 'positive'
@@ -264,8 +263,8 @@ class TransientFinder:
             
             # Find negative peaks (disappeared sources)
             threshold_negative = median - (threshold * std)
-            negative_peaks = find_peaks(-self.diff_data, -threshold_negative, box_size=5, 
-                                       npeaks=50, centroid_func=None)
+            negative_peaks = find_peaks(-self.diff_data, -threshold_negative, box_size=5,
+                                        npeaks=50, centroid_func=None)
             if negative_peaks:
                 negative_peaks['peak_value'] = -negative_peaks['peak_value']
                 negative_peaks['peak_type'] = 'negative'
@@ -286,7 +285,7 @@ class TransientFinder:
             # Add RA, Dec coordinates for each source
             ra_list = []
             dec_list = []
-            
+
             for x, y in zip(self.transient_table['x_peak'], self.transient_table['y_peak']):
                 ra, dec = self.sci_wcs.all_pix2world(x, y, 0)
                 ra_list.append(ra)
@@ -306,8 +305,7 @@ class TransientFinder:
         except Exception as e:
             print(f"Error detecting transients: {e}")
             return None
-    
-    
+
     def plot_results(self, figsize=(15, 5), show=True):
         """
         Plot the science, reference, and difference images with detected transients.
@@ -423,11 +421,10 @@ def main():
     
     # Plot results unless --no-plot is specified
     if not args.no_plot:
-        finder.plot_results(show=False)
+        finder.plot_results(show=True)
     
     print("Transient detection complete.")
     return 0
-
 
 
 if __name__ == "__main__":
