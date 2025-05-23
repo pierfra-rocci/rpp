@@ -122,7 +122,7 @@ class TransientFinder:
             try:
                 if survey.lower() == "panstarrs":
                     # Use HiPS2FITS for PanSTARRS with retry logic
-                    hips_id = "PanSTARRS/DR1/r"
+                    hips_id = "CDS/P/PanSTARRS/DR1/r"
                     
                     print(f"Attempt {attempt + 1}/{max_retries} to retrieve PanSTARRS image...")
                     
