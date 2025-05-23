@@ -24,6 +24,8 @@ from properimage import single_image as si
 from properimage import propersubtract as ps
 from photutils.detection import find_peaks
 from photutils.aperture import CircularAperture
+import time
+import requests
 
 
 class TransientFinder:
@@ -113,55 +115,114 @@ class TransientFinder:
         """
         print(f"Retrieving reference image from {survey}...")
         
+        max_retries = 3
+        retry_delay = 5  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                if survey.lower() == "panstarrs":
+                    # Use HiPS2FITS for PanSTARRS with retry logic
+                    hips_id = "PanSTARRS/DR1/r"
+                    
+                    print(f"Attempt {attempt + 1}/{max_retries} to retrieve PanSTARRS image...")
+                    
+                    # Try with increased timeout and smaller field if needed
+                    try:
+                        result = hips2fits.query_with_wcs(
+                            hips=hips_id,
+                            wcs=self.sci_wcs,
+                            format="fits",
+                            timeout=60  # Increase timeout to 60 seconds
+                        )
+                        
+                        # Handle the result - it might be a URL string or file-like object
+                        if isinstance(result, str):
+                            # If it's a URL, download it
+                            response = requests.get(result, timeout=60)
+                            response.raise_for_status()
+                            from io import BytesIO
+                            fits_data = BytesIO(response.content)
+                            with fits.open(fits_data) as hdul:
+                                self.ref_data = hdul[0].data
+                                self.ref_header = hdul[0].header
+                        else:
+                            # If it's already a file-like object
+                            with fits.open(result) as hdul:
+                                self.ref_data = hdul[0].data
+                                self.ref_header = hdul[0].header
+                        
+                        self.ref_wcs = self.sci_wcs
+                        break  # Success, exit retry loop
+                        
+                    except Exception as e:
+                        if "timeout" in str(e).lower() or "connection" in str(e).lower():
+                            print(f"Network timeout on attempt {attempt + 1}. Error: {e}")
+                            if attempt < max_retries - 1:
+                                print(f"Retrying in {retry_delay} seconds...")
+                                time.sleep(retry_delay)
+                                continue
+                            else:
+                                print("Max retries reached for PanSTARRS. Falling back to DSS2...")
+                                survey = "DSS2 Red"  # Fall back to DSS2
+                        else:
+                            raise e
+                
+                if survey.lower() == "sdss":
+                    # Query SDSS with center coordinates and field size
+                    imgs = SDSS.get_images(
+                        coordinates=self.center_coord,
+                        band='r',
+                        radius=self.field_size/2,
+                        timeout=60
+                    )
+                    self.ref_data = imgs[0][0].data
+                    self.ref_header = imgs[0][0].header
+                    self.ref_wcs = WCS(self.ref_header)
+                    break  # Success
+                    
+                elif survey.lower() != "panstarrs":  # DSS2 or other SkyView surveys
+                    # Use SkyView for DSS2 and others
+                    print(f"Using SkyView for {survey}...")
+                    imgs = SkyView.get_images(
+                        position=self.center_coord,
+                        survey=[survey],
+                        coordinates='J2000',
+                        height=self.field_size.to(u.deg).value,
+                        width=self.field_size.to(u.deg).value,
+                        grid=False,
+                        timeout=60
+                    )
+                    self.ref_data = imgs[0][0].data
+                    self.ref_header = imgs[0][0].header
+                    self.ref_wcs = WCS(self.ref_header)
+                    break  # Success
+                    
+            except Exception as e:
+                print(f"Error on attempt {attempt + 1}: {e}")
+                if attempt < max_retries - 1:
+                    print(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    print(f"Failed to retrieve reference image after {max_retries} attempts.")
+                    return False
+        
         try:
-            if survey.lower() == "panstarrs":
-                # Use HiPS2FITS for PanSTARRS
-                hips_id = "PanSTARRS/DR1/r"
-                result = hips2fits.query_with_wcs(
-                    hips=hips_id,
-                    wcs=self.sci_wcs,
-                    format="fits"
-                )
-                with fits.open(result) as hdul:
-                    self.ref_data = hdul[0].data
-                    self.ref_header = hdul[0].header
-                self.ref_wcs = self.sci_wcs
-                
-            elif survey.lower() == "sdss":
-                # Query SDSS with center coordinates and field size
-                imgs = SDSS.get_images(
-                    coordinates=self.center_coord,
-                    band='r',
-                    radius=self.field_size/2
-                )
-                self.ref_data = imgs[0][0].data
-                self.ref_header = imgs[0][0].header
-                self.ref_wcs = WCS(self.ref_header)
-                
-            else:  # Default to DSS2
-                # Use SkyView for DSS2 and others
-                imgs = SkyView.get_images(
-                    position=self.center_coord,
-                    survey=[survey],
-                    coordinates='J2000',
-                    height=self.field_size.to(u.deg).value,
-                    width=self.field_size.to(u.deg).value,
-                    grid=False
-                )
-                self.ref_data = imgs[0][0].data
-                self.ref_header = imgs[0][0].header
-                self.ref_wcs = WCS(self.ref_header)
+            # Verify we got valid data
+            if self.ref_data is None or self.ref_data.size == 0:
+                print("Retrieved reference image is empty or invalid.")
+                return False
             
             # Save reference image to FITS
             ref_fits_path = os.path.join(self.output_dir, "reference_image.fits")
             fits.writeto(ref_fits_path, self.ref_data, self.ref_header,
                          overwrite=True)
             print(f"Reference image saved to: {ref_fits_path}")
+            print(f"Reference image shape: {self.ref_data.shape}")
             
             return True
             
         except Exception as e:
-            print(f"Error retrieving reference image: {e}")
+            print(f"Error saving reference image: {e}")
             return False
 
     def perform_subtraction(self, method="proper"):
