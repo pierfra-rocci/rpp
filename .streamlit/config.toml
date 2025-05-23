@@ -62,7 +62,7 @@ maxMessageSize = 200
 
 # Automatically rerun script when the file is modified on disk.
 # Default: false
-runOnSave = false
+runOnSave = true
 
 [browser]
 # Whether to send usage statistics to Streamlit.
