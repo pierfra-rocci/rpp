@@ -266,15 +266,24 @@ class TransientFinder:
                 sci_img = si.SingleImage(sci_data_native)
                 ref_img = si.SingleImage(ref_data_native)
                 
-                # Align images - proper image ensures they're aligned
-                sci_img.coverage_mask
-                ref_img.coverage_mask
+                # Initialize coverage masks (if needed)
+                try:
+                    _ = sci_img.coverage_mask
+                except AttributeError:
+                    pass  # coverage_mask may not be available in all versions
+                
+                try:
+                    _ = ref_img.coverage_mask
+                except AttributeError:
+                    pass  # coverage_mask may not be available in all versions
                 
                 # Calculate PSF models
+                print("Calculating PSF models...")
                 sci_img.get_variable_psf()
                 ref_img.get_variable_psf()
                 
                 # Perform subtraction
+                print("Performing difference imaging...")
                 D, P, S_zoomed, R_zoomed, mask, subtr = ps.diff(sci_img, ref_img)
                 self.diff_data = D
                 
