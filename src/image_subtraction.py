@@ -104,7 +104,7 @@ class TransientFinder:
             print(f"Error loading science image: {e}")
             sys.exit(1)
 
-    def get_reference_image(self, survey="DSS2 Red"):
+    def get_reference_image(self, survey="DSS2 Red", filter_band="r"):
         """
         Retrieve a reference image from an online survey.
         
@@ -112,27 +112,48 @@ class TransientFinder:
         ----------
         survey : str
             Survey to use. Options include:
-            - "PanSTARRS": PanSTARRS DR1 i-band
-            - "SDSS": SDSS r-band
-            - "DSS2 Red": Digital Sky Survey 2 Red band
+            - "PanSTARRS": PanSTARRS DR1
+            - "DSS2": Digital Sky Survey 2
+        filter_band : str
+            Filter/band to use:
+            - For PanSTARRS: 'g', 'r', 'i'
+            - For DSS2: 'Blue', 'Red'
         
         Returns
         -------
         bool
             True if reference retrieval was successful, False otherwise
         """
-        print(f"Retrieving reference image from {survey}...")
+        print(f"Retrieving reference image from {survey} in {filter_band} band...")
+        
+        # Check field size compatibility with different surveys
+        field_size_arcmin = self.field_size.to(u.arcmin).value
+        
+        # Define survey limitations
+        if survey.lower() == "panstarrs" and field_size_arcmin > 60.0:
+            print(f"Warning: Field size ({field_size_arcmin:.1f} arcmin) may exceed PanSTARRS practical limit.")
+            print("Consider using DSS2 for very large fields.")
         
         max_retries = 2
-        retry_delay = 3  # sec
+        retry_delay = 3  # seconds
         
         for attempt in range(max_retries):
             try:
                 if survey.lower() == "panstarrs":
                     # Use HiPS2FITS for PanSTARRS with retry logic
-                    hips_id = "CDS/P/PanSTARRS/DR1/r"
+                    # Map filter to HiPS ID
+                    hips_mapping = {
+                        'g': "CDS/P/PanSTARRS/DR1/g",
+                        'r': "CDS/P/PanSTARRS/DR1/r", 
+                        'i': "CDS/P/PanSTARRS/DR1/i"
+                    }
                     
-                    print(f"Attempt {attempt + 1}/{max_retries} to retrieve PanSTARRS image...")
+                    if filter_band.lower() not in hips_mapping:
+                        print(f"Warning: Filter '{filter_band}' not available for PanSTARRS. Using 'r' band.")
+                        filter_band = 'r'
+                    
+                    hips_id = hips_mapping[filter_band.lower()]
+                    print(f"Attempt {attempt + 1}/{max_retries} to retrieve PanSTARRS {filter_band}-band image...")
                     
                     # Try with increased timeout and smaller field if needed
                     try:
@@ -172,22 +193,26 @@ class TransientFinder:
                         else:
                             raise e
                 
-                if survey.lower() == "sdss":
-                    # Query SDSS with center coordinates and field size
-                    imgs = SDSS.get_images(
-                        coordinates=self.center_coord,
-                        band='r',
-                        radius=self.field_size/2,
-                        timeout=60
-                    )
-                    self.ref_data = imgs[0][0].data
-                    self.ref_header = imgs[0][0].header
-                    self.ref_wcs = WCS(self.ref_header)
-                    break
-                    
-                elif survey.lower() != "panstarrs":  # DSS2 or other SkyView surveys
+                else:  # DSS2 or other SkyView surveys
                     # Use SkyView for DSS2 and others
-                    print(f"Using SkyView for {survey}...")
+                    # Map filter to DSS2 survey name
+                    if survey.lower() == "dss2":
+                        dss2_mapping = {
+                            'blue': "DSS2 Blue",
+                            'b': "DSS2 Blue",
+                            'red': "DSS2 Red",
+                            'r': "DSS2 Red"
+                        }
+                        
+                        if filter_band.lower() not in dss2_mapping:
+                            print(f"Warning: Filter '{filter_band}' not available for DSS2. Using Red band.")
+                            survey_name = "DSS2 Red"
+                        else:
+                            survey_name = dss2_mapping[filter_band.lower()]
+                    else:
+                        survey_name = survey
+                    
+                    print(f"Using SkyView for {survey_name}...")
                     
                     # Ensure field size has proper units
                     if hasattr(self.field_size, 'unit'):
@@ -197,14 +222,14 @@ class TransientFinder:
                         field_size_deg = float(self.field_size)
                     
                     # Limit field size to reasonable values for SkyView
-                    field_size_deg = min(field_size_deg, 1.0)
-                    field_size_deg = max(field_size_deg, 0.1)
+                    field_size_deg = min(field_size_deg, 2.0)  # Max 2 degrees for DSS2
+                    field_size_deg = max(field_size_deg, 0.1)  # Min 0.1 degrees
                     
                     print(f"Requesting field size: {field_size_deg:.3f} degrees")
                     
                     imgs = SkyView.get_images(
                         position=self.center_coord,
-                        survey=[survey],
+                        survey=[survey_name],
                         coordinates='J2000',
                         height=field_size_deg * u.deg,
                         width=field_size_deg * u.deg,
@@ -340,20 +365,61 @@ class TransientFinder:
                         shift=True   # Allow for small shifts
                     )
 
-                    # Extract results: D, P, Scorr, mask
-                    if isinstance(result, (list, tuple)) and len(result) >= 4:
-                        D, P, Scorr, mask = result[:4]
-                        # Use the real part if complex
-                        if hasattr(D, 'real'):
-                            self.diff_data = D.real
+                    # Debug: print result type and structure
+                    print(f"ProperImage result type: {type(result)}")
+                    if hasattr(result, '__len__'):
+                        print(f"ProperImage result length: {len(result)}")
+                    
+                    # Handle different possible return formats from ProperImage
+                    if isinstance(result, (list, tuple)):
+                        if len(result) >= 1:
+                            # First element should be the difference image
+                            diff_candidate = result[0]
+                            
+                            # Check if it's a file path string
+                            if isinstance(diff_candidate, str):
+                                print(f"ProperImage returned file path: {diff_candidate}")
+                                # Try to load the difference image from file
+                                try:
+                                    with fits.open(diff_candidate) as hdul:
+                                        self.diff_data = hdul[0].data
+                                    print("Successfully loaded difference image from ProperImage output file")
+                                except Exception as load_error:
+                                    print(f"Failed to load ProperImage output file: {load_error}")
+                                    raise load_error
+                            else:
+                                # Handle as array data
+                                if hasattr(diff_candidate, 'real'):
+                                    self.diff_data = diff_candidate.real
+                                else:
+                                    self.diff_data = diff_candidate
+                                
+                                # Apply mask if available and result has multiple elements
+                                if len(result) >= 4:
+                                    mask = result[3]
+                                    if mask is not None:
+                                        self.diff_data = np.ma.array(self.diff_data, mask=mask).filled(np.nan)
                         else:
-                            self.diff_data = D
-
-                        # Apply mask if available
-                        if mask is not None:
-                            self.diff_data = np.ma.array(self.diff_data, mask=mask).filled(np.nan)
+                            raise ValueError("ProperImage returned empty result")
                     else:
-                        self.diff_data = result
+                        # Single result - could be array or file path
+                        if isinstance(result, str):
+                            print(f"ProperImage returned single file path: {result}")
+                            try:
+                                with fits.open(result) as hdul:
+                                    self.diff_data = hdul[0].data
+                                print("Successfully loaded difference image from ProperImage output file")
+                            except Exception as load_error:
+                                print(f"Failed to load ProperImage output file: {load_error}")
+                                raise load_error
+                        else:
+                            # Handle as direct array data
+                            if hasattr(result, 'real'):
+                                self.diff_data = result.real
+                            else:
+                                self.diff_data = result
+
+                    print(f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
 
                     # Clean up temporary files
                     try:
@@ -369,12 +435,12 @@ class TransientFinder:
                     self.diff_data = sci_data_native - ref_data_native
 
                     # Clean up temporary files if they exist
-                    for temp_file in ['temp_sci_path', 'temp_ref_path']:
+                    for temp_filename in ['temp_science.fits', 'temp_reference.fits']:
                         try:
-                            temp_path = os.path.join(self.output_dir, f"{temp_file}.fits")
+                            temp_path = os.path.join(self.output_dir, temp_filename)
                             if os.path.exists(temp_path):
                                 os.remove(temp_path)
-                        except (OSError, NameError):
+                        except OSError:
                             pass
             else:
                 print("Performing direct subtraction...")
@@ -560,8 +626,11 @@ def main():
 
     parser = argparse.ArgumentParser(description='Find transient sources in astronomical images.')
     parser.add_argument('science_image', help='Path to the science FITS image')
-    parser.add_argument('--survey', choices=['PanSTARRS', 'SDSS', 'DSS2 Red'], 
-                        default='DSS2 Red', help='Survey to use for reference image')
+    parser.add_argument('--survey', choices=['PanSTARRS', 'DSS2'], 
+                        default='DSS2', help='Survey to use for reference image')
+    parser.add_argument('--filter', dest='filter_band', 
+                        choices=['g', 'r', 'i', 'blue', 'red', 'Blue', 'Red'],
+                        default='r', help='Filter/band: g,r,i for PanSTARRS; blue,red for DSS2')
     parser.add_argument('--output', help='Output directory for results')
     parser.add_argument('--threshold', type=float, default=5.0, 
                         help='Detection threshold in sigma units')
@@ -575,7 +644,7 @@ def main():
     finder = TransientFinder(args.science_image, output_dir=args.output)
 
     # Get reference image from specified survey
-    if not finder.get_reference_image(survey=args.survey):
+    if not finder.get_reference_image(survey=args.survey, filter_band=args.filter_band):
         print("Failed to get reference image. Exiting.")
         return 1
 
