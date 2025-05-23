@@ -187,7 +187,6 @@ class TransientFinder:
                         coordinates='J2000',
                         height=self.field_size.to(u.deg).value,
                         width=self.field_size.to(u.deg).value,
-                        grid=False,
                         timeout=60
                     )
                     self.ref_data = imgs[0][0].data
