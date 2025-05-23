@@ -22,7 +22,6 @@ from astroquery.hips2fits import hips2fits
 from properimage.operations import subtract
 from photutils.detection import find_peaks
 from photutils.aperture import CircularAperture
-from astropy.wcs.utils import fit_wcs_from_points
 from reproject import reproject_interp
 import time
 import requests
