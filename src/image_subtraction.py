@@ -130,9 +130,7 @@ class TransientFinder:
                     try:
                         result = hips2fits.query_with_wcs(
                             hips=hips_id,
-                            wcs=self.sci_wcs,
-                            format="fits",
-                            timeout=60  # Increase timeout to 60 seconds
+                            wcs=self.sci_wcs
                         )
                         
                         # Handle the result - it might be a URL string or file-like object
