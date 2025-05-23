@@ -804,7 +804,7 @@ def perform_psf_photometry(
         st.write("Filtering stars for PSF model construction...")
         # st.write(photo_table.colnames)
         # Get flux statistics
-        flux_median = np.mean(photo_table["flux"])
+        flux_median = np.median(photo_table["flux"])
         flux_std = np.std(photo_table["flux"])
         
         # Define flux filtering criteria (median ± 1 sigma)
@@ -812,8 +812,8 @@ def perform_psf_photometry(
         flux_max = flux_median + 3*flux_std
         
         # Shape-based filtering criteria
-        roundness_criteria = np.abs(photo_table["roundness1"]) < 0.2
-        sharpness_criteria = np.abs(photo_table["sharpness"]) < 0.5
+        roundness_criteria = np.abs(photo_table["roundness1"]) < 0.3
+        sharpness_criteria = np.abs(photo_table["sharpness"]) < 0.7
         flux_criteria = (photo_table["flux"] >= flux_min) & (photo_table["flux"] <= flux_max)
         
         # Additional quality filters
