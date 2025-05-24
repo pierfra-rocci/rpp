@@ -175,3 +175,5 @@ users.db
 rpp_results/**
 PyZOGY-master/**
 *_rpp_results/**
+node_modules/**
+RPP-win32-x64/**
