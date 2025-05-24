@@ -1,7 +1,7 @@
-version = "0.8.1"
+version = "0.8.2"
 
 release = False
-version_info = (0, 8, 1)
+version_info = (0, 8, 2)
 # The version_info tuple is used to compare versions in a more granular way.
 __all__ = ["version", "release", "version_info"]
 __author__ = "Pier-Francesco Rocci"
