@@ -519,7 +519,7 @@ def display_archived_files_browser(output_dir):
                                     mime=mime_type,
                                     key=f"download_{file_info['name']}",
                                     help=f"Download {file_info['name']}",
-                                    on_click="ignore",
+                                    on_click="ignore"
                                 )
                             except Exception as e:
                                 st.error(f"Error reading file {file_info['name']}: {str(e)}")
@@ -556,7 +556,7 @@ def display_archived_files_browser(output_dir):
                             mime=mime_type,
                             key=f"download_{file_info['name']}",
                             help=f"Download {file_info['name']}",
-                            on_click="ignore",
+                            on_click="ignore"
                         )
                     except Exception as e:
                         st.error(f"Error reading file {file_info['name']}: {str(e)}")
