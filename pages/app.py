@@ -749,7 +749,6 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     return fig_mag
 
 
-
 def initialize_session_state():
     """
     Initialize all session state variables for the application.
@@ -1595,7 +1594,6 @@ if science_file is not None:
                                 )
 
                                 if zero_point_value is not None:
-                                    st.pyplot(zp_plot)
                                     write_to_log(
                                         log_buffer,
                                         f"Zero point: {zero_point_value:.3f} ± {zero_point_std:.3f}",
