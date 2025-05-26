@@ -564,8 +564,8 @@ def display_archived_files_browser(output_dir):
         # Directory cleanup option
         st.subheader("🗑️ File Management")
         
-        if st.button("🧹 Clean Old Files", help="Remove files older than 30 days",
-                     on_click='ignore'):
+        if st.button("🧹 Clean Old Files",
+                     help="Remove files older than 30 days"):
             try:
                 cutoff_date = datetime.now() - pd.Timedelta(days=30)
                 deleted_count = 0
