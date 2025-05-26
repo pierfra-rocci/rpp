@@ -1592,7 +1592,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         # Add a diagonal line for reference
         # Create ideal y=x reference line spanning the full range of magnitudes
         mag_range = [min(_matched_table[filter_band].min(), _matched_table["calib_mag"].min()),
-                 max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max())]
+                     max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max())]
         ideal_mag = np.linspace(mag_range[0], mag_range[1], 100)
         ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
 
@@ -1614,7 +1614,8 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         zp_err = zero_point_std if zero_point_std is not None else 0.0
         yerr = np.sqrt(aperture_mag_err**2 + zp_err**2)
 
-        ax_resid.errorbar(mag_cat, residuals, yerr=yerr, fmt='o', markersize=5, alpha=0.7, label='Residuals')
+        ax_resid.errorbar(mag_cat, residuals, yerr=yerr, fmt='o', markersize=5,
+                          alpha=0.7, label='Residuals')
         ax_resid.axhline(0, color='gray', ls='--')
         ax_resid.set_xlabel('Calibrated magnitude')
         ax_resid.set_ylabel('Residual (catalog - calibrated)')
