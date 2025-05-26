@@ -615,10 +615,10 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     
     if not has_aperture and not has_psf:
         # Create empty plots with message
-        ax_mag.text(0.5, 0.5, "No magnitude data available", 
-                   ha='center', va='center', transform=ax_mag.transAxes)
-        ax_err.text(0.5, 0.5, "No magnitude error data available", 
-                   ha='center', va='center', transform=ax_err.transAxes)
+        ax_mag.text(0.5, 0.5, "No magnitude data available",
+                    ha='center', va='center', transform=ax_mag.transAxes)
+        ax_err.text(0.5, 0.5, "No magnitude error data available",
+                    ha='center', va='center', transform=ax_err.transAxes)
         return fig_mag
     
     # Calculate bins for magnitude distribution
@@ -660,20 +660,20 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Scatter plot of magnitude vs error (right panel)
     if has_aperture and "aperture_mag_err" in final_table.columns:
         ax_err.scatter(
-            final_table["aperture_mag"], 
-            final_table["aperture_mag_err"], 
-            alpha=0.7, 
-            label="Aperture", 
-            color="tab:blue", 
+            final_table["aperture_mag"],
+            final_table["aperture_mag_err"],
+            alpha=0.7,
+            label="Aperture",
+            color="tab:blue",
             s=18
         )
     if has_psf and "psf_mag_err" in final_table.columns:
         ax_err.scatter(
-            final_table["psf_mag"], 
-            final_table["psf_mag_err"], 
-            alpha=0.7, 
-            label="PSF", 
-            color="tab:orange", 
+            final_table["psf_mag"],
+            final_table["psf_mag_err"],
+            alpha=0.7,
+            label="PSF",
+            color="tab:orange",
             s=18
         )
     
@@ -688,7 +688,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Log the plot creation if log_buffer is provided
     if log_buffer:
         write_to_log(log_buffer, "Created magnitude distribution plots")
-    
+
     return fig_mag
 
 
