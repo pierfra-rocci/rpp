@@ -648,6 +648,108 @@ def display_archived_files_browser(output_dir):
         st.error(f"Error accessing results directory: {str(e)}")
 
 
+def plot_magnitude_distribution(final_table, log_buffer=None):
+    """
+    Create magnitude distribution plots (histogram and error scatter plot).
+    
+    Parameters
+    ----------
+    final_table : pandas.DataFrame
+        DataFrame containing photometry results with magnitude columns
+    log_buffer : StringIO, optional
+        Log buffer for writing status messages
+        
+    Returns
+    -------
+    matplotlib.figure.Figure
+        Figure object containing the plots
+    """
+    fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
+    
+    # Check if we have magnitude columns
+    has_aperture = "aperture_mag" in final_table.columns
+    has_psf = "psf_mag" in final_table.columns
+    
+    if not has_aperture and not has_psf:
+        # Create empty plots with message
+        ax_mag.text(0.5, 0.5, "No magnitude data available", 
+                   ha='center', va='center', transform=ax_mag.transAxes)
+        ax_err.text(0.5, 0.5, "No magnitude error data available", 
+                   ha='center', va='center', transform=ax_err.transAxes)
+        return fig_mag
+    
+    # Calculate bins for magnitude distribution
+    mag_values = []
+    if has_aperture:
+        mag_values.extend(final_table["aperture_mag"].dropna().tolist())
+    if has_psf:
+        mag_values.extend(final_table["psf_mag"].dropna().tolist())
+    
+    if mag_values:
+        bins = np.linspace(min(mag_values), max(mag_values), 40)
+    else:
+        bins = 40
+    
+    # Magnitude distribution histogram (left panel)
+    if has_aperture:
+        ax_mag.hist(
+            final_table["aperture_mag"].dropna(),
+            bins=bins,
+            alpha=0.6,
+            label="Aperture Calib Mag",
+            color="tab:blue",
+        )
+    if has_psf:
+        ax_mag.hist(
+            final_table["psf_mag"].dropna(),
+            bins=bins,
+            alpha=0.6,
+            label="PSF Calib Mag",
+            color="tab:orange",
+        )
+    
+    ax_mag.set_xlabel("Calibrated Magnitude")
+    ax_mag.set_ylabel("Number of Sources")
+    ax_mag.set_title("Distribution of Calibrated Magnitudes")
+    ax_mag.legend()
+    ax_mag.grid(True, alpha=0.3)
+    
+    # Scatter plot of magnitude vs error (right panel)
+    if has_aperture and "aperture_mag_err" in final_table.columns:
+        ax_err.scatter(
+            final_table["aperture_mag"], 
+            final_table["aperture_mag_err"], 
+            alpha=0.7, 
+            label="Aperture", 
+            color="tab:blue", 
+            s=18
+        )
+    if has_psf and "psf_mag_err" in final_table.columns:
+        ax_err.scatter(
+            final_table["psf_mag"], 
+            final_table["psf_mag_err"], 
+            alpha=0.7, 
+            label="PSF", 
+            color="tab:orange", 
+            s=18
+        )
+    
+    ax_err.set_xlabel("Calibrated Magnitude")
+    ax_err.set_ylabel("Magnitude Error")
+    ax_err.set_title("Magnitude Error vs Magnitude")
+    ax_err.legend()
+    ax_err.grid(True, alpha=0.3)
+    
+    fig_mag.tight_layout()
+    
+    # Log the plot creation if log_buffer is provided
+    if log_buffer:
+        write_to_log(log_buffer, "Created magnitude distribution plots")
+    
+    return fig_mag
+
+
+
 def initialize_session_state():
     """
     Initialize all session state variables for the application.
@@ -1699,69 +1801,9 @@ if science_file is not None:
 
                                             # Plot histogram of aperture_mag and psf_mag before catalog enhancement
                                             st.subheader("Magnitude Distribution (Aperture vs PSF)")
-                                            fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
-
-                                            # Magnitude distribution (left)
-                                            bins = np.linspace(
-                                                min(
-                                                    final_table["aperture_mag"].min() if "aperture_mag" in final_table.columns else np.nan,
-                                                    final_table["psf_mag"].min() if "psf_mag" in final_table.columns else np.nan
-                                                ),
-                                                max(
-                                                    final_table["aperture_mag"].max() if "aperture_mag" in final_table.columns else np.nan,
-                                                    final_table["psf_mag"].max() if "psf_mag" in final_table.columns else np.nan
-                                                ),
-                                                40
-                                            )
-
-                                            if "aperture_mag" in final_table.columns:
-                                                ax_mag.hist(
-                                                    final_table["aperture_mag"].dropna(),
-                                                    bins=bins,
-                                                    alpha=0.6,
-                                                    label="Aperture Calib Mag",
-                                                    color="tab:blue",
-                                                )
-                                            if "psf_mag" in final_table.columns:
-                                                ax_mag.hist(
-                                                    final_table["psf_mag"].dropna(),
-                                                    bins=bins,
-                                                    alpha=0.6,
-                                                    label="PSF Calib Mag",
-                                                    color="tab:orange",
-                                                )
-                                            ax_mag.set_xlabel("Calibrated Magnitude")
-                                            ax_mag.set_ylabel("Number of Sources")
-                                            ax_mag.set_title("Distribution of Calibrated Magnitudes")
-                                            ax_mag.legend()
-                                            ax_mag.grid(True, alpha=0.3)
-
-                                            # Scatter plot of magnitude vs error (right)
-                                            if "aperture_mag" in final_table.columns and "aperture_mag_err" in final_table.columns:
-                                                ax_err.scatter(
-                                                    final_table["aperture_mag"], 
-                                                    final_table["aperture_mag_err"], 
-                                                    alpha=0.7, 
-                                                    label="Aperture", 
-                                                    color="tab:blue", 
-                                                    s=18
-                                                )
-                                            if "psf_mag" in final_table.columns and "psf_mag_err" in final_table.columns:
-                                                ax_err.scatter(
-                                                    final_table["psf_mag"], 
-                                                    final_table["psf_mag_err"], 
-                                                    alpha=0.7, 
-                                                    label="PSF", 
-                                                    color="tab:orange", 
-                                                    s=18
-                                                )
-                                            ax_err.set_xlabel("Calibrated Magnitude")
-                                            ax_err.set_ylabel("Magnitude Error")
-                                            ax_err.set_title("Magnitude Error vs Magnitude")
-                                            ax_err.legend()
-                                            ax_err.grid(True, alpha=0.3)
-
-                                            fig_mag.tight_layout()
+                                            
+                                            # Create and display the magnitude distribution plots
+                                            fig_mag = plot_magnitude_distribution(final_table, log_buffer)
                                             st.pyplot(fig_mag)
 
                                             # Save the histogram as an image file
@@ -1775,6 +1817,9 @@ if science_file is not None:
                                                 write_to_log(log_buffer, f"Saved magnitude histogram plot: {hist_filename}")
                                             except Exception as e:
                                                 st.warning(f"Could not save magnitude histogram plot: {e}")
+                                            
+                                            # Clean up the figure
+                                            plt.close(fig_mag)
 
                                             if (
                                                 final_table is not None
