@@ -377,17 +377,16 @@ def provide_download_buttons(folder_path):
 
         # Reset buffer position to the beginning
         zip_buffer.seek(0)
-
+        st.caption(f"Archive contains {len(files)} files")
         # Create download button for the zip file
-        st.download_button(
+        if st.download_button(
             label="📦 Download All Results (ZIP)",
             data=zip_buffer,
             file_name=zip_filename,
             mime="application/zip",
             on_click="ignore",
-        )
-        # Show number of files included
-        st.caption(f"Archive contains {len(files)} files")
+        ):
+            st.success("File downloaded !")
 
     except Exception as e:
         st.error(f"Error creating zip archive: {str(e)}")
