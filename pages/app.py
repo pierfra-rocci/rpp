@@ -258,20 +258,112 @@ def display_catalog_in_aladin(
                 json.dumps(catalog_sources).encode("utf-8")
             ).decode("utf-8")
 
+            # html_content = f"""
+            # <!DOCTYPE html>
+            # <html>
+            # <head>
+            #     <meta charset="utf-8">
+            #     <title>Aladin Lite</title>
+            # </head>
+            # <body>
+            #     <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
+            #     <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+            #     <script type="text/javascript">
+            #         document.addEventListener("DOMContentLoaded", function(event) {{
+            #             try {{
+            #                 let aladin = A.aladin('#aladin-lite-div', {{
+            #                     target: '{ra_center} {dec_center}',
+            #                     fov: {fov},
+            #                     survey: '{survey}',
+            #                     cooFrame: 'J2000',
+            #                     showReticle: false,
+            #                     showZoomControl: true,
+            #                     showFullscreenControl: true,
+            #                     showLayersControl: true,
+            #                     showGotoControl: true,
+            #                     showSimbadPointerControl: true
+            #                 }});
+
+            #                 let cat = A.catalog({{
+            #                     name: 'Photometry Results',
+            #                     sourceSize: 12,
+            #                     shape: 'circle',
+            #                     color: '#00ff88',
+            #                     onClick: 'showPopup'
+            #                 }});
+            #                 aladin.addCatalog(cat);
+
+            #                 let sourcesData = JSON.parse(atob("{sources_json_b64}"));
+            #                 let aladinSources = [];
+
+            #                 sourcesData.forEach(function(source) {{
+            #                     let popupContent = '<div style="padding:5px;">';
+            #                     if(source.name) {{
+            #                         popupContent += '<b>' + source.name + '</b><br/>';
+            #                     }}
+            #                     popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '<br/>';
+            #                     popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '<br/>';
+
+            #                     if(source.mag) {{
+            #                         popupContent += 'Mag: ' + (typeof source.mag === 'number' ? source.mag.toFixed(2) : source.mag) + '<br/>';
+            #                     }}
+            #                     if(source.catalog) {{
+            #                         popupContent += 'Catalogs: ' + source.catalog + '<br/>';
+            #                     }}
+            #                     popupContent += '</div>';
+
+            #                     let aladinSource = A.source(
+            #                         source.ra,
+            #                         source.dec,
+            #                         {{ description: popupContent }}
+            #                     );
+            #                     aladinSources.push(aladinSource);
+            #                 }});
+
+            #                 if (aladinSources.length > 0) {{
+            #                     cat.addSources(aladinSources);
+            #                 }}
+
+            #             }} catch (error) {{
+            #                 console.error("Error initializing Aladin Lite or adding sources:", error);
+            #                 document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin viewer. Check console.</p>';
+            #             }}
+            #         }});
+            #     </script>
+            # </body>
+            # </html>
+            # """
+
             html_content = f"""
             <!DOCTYPE html>
             <html>
             <head>
                 <meta charset="utf-8">
                 <title>Aladin Lite</title>
+                <style>
+                    #aladin-lite-div {{
+                        width: 100%;
+                        height: 550px;
+                        border: 1px solid #ccc;
+                    }}
+                </style>
             </head>
             <body>
-                <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
-                <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+                <div id="aladin-lite-div"></div>
+                <script type="text/javascript" src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js"></script>
                 <script type="text/javascript">
-                    document.addEventListener("DOMContentLoaded", function(event) {{
+                    let aladin;
+                    
+                    function initAladin() {{
                         try {{
-                            let aladin = A.aladin('#aladin-lite-div', {{
+                            if (typeof A === 'undefined') {{
+                                console.error('Aladin Lite library not loaded');
+                                document.getElementById('aladin-lite-div').innerHTML = 
+                                    '<p style="color:red; text-align:center; padding:20px;">Failed to load Aladin Lite library</p>';
+                                return;
+                            }}
+                            
+                            aladin = A.aladin('#aladin-lite-div', {{
                                 target: '{ra_center} {dec_center}',
                                 fov: {fov},
                                 survey: '{survey}',
@@ -315,7 +407,7 @@ def display_catalog_in_aladin(
                                 let aladinSource = A.source(
                                     source.ra,
                                     source.dec,
-                                    {{ description: popupContent }}
+                                    {{ data: {{ description: popupContent }} }}
                                 );
                                 aladinSources.push(aladinSource);
                             }});
@@ -325,10 +417,20 @@ def display_catalog_in_aladin(
                             }}
 
                         }} catch (error) {{
-                            console.error("Error initializing Aladin Lite or adding sources:", error);
-                            document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin viewer. Check console.</p>';
+                            console.error("Error initializing Aladin Lite:", error);
+                            document.getElementById('aladin-lite-div').innerHTML = 
+                                '<p style="color:red; text-align:center; padding:20px;">Error loading Aladin viewer: ' + error.message + '</p>';
                         }}
-                    }});
+                    }}
+                    
+                    // Wait for DOM and Aladin library to load
+                    if (document.readyState === 'loading') {{
+                        document.addEventListener('DOMContentLoaded', function() {{
+                            setTimeout(initAladin, 100);
+                        }});
+                    }} else {{
+                        setTimeout(initAladin, 100);
+                    }}
                 </script>
             </body>
             </html>
@@ -341,8 +443,12 @@ def display_catalog_in_aladin(
             )
 
         except Exception as e:
-            st.error(f"Streamlit failed to render the Aladin HTML component: {str(e)}")
-            st.exception(e)
+            st.error(f"Failed to render Aladin HTML component: {str(e)}")
+            # Fallback: show a simple coordinate table
+            st.subheader("Source Coordinates (Aladin viewer unavailable)")
+            display_df = pd.DataFrame(catalog_sources)
+            if not display_df.empty:
+                st.dataframe(display_df, use_container_width=True)
 
 
 def provide_download_buttons(folder_path):
