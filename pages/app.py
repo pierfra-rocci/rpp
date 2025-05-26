@@ -784,6 +784,7 @@ def initialize_session_state():
 # Main Streamlit app
 ###################################################################
 
+
 st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭",
                    layout="wide")
 
