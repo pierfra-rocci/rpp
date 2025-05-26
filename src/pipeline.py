@@ -1590,7 +1590,10 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         )
 
         # Add a diagonal line for reference
-        ideal_mag = np.linspace(min_mag, max_mag, 10)
+        # Create ideal y=x reference line spanning the full range of magnitudes
+        mag_range = [min(_matched_table[filter_band].min(), _matched_table["calib_mag"].min()),
+                 max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max())]
+        ideal_mag = np.linspace(mag_range[0], mag_range[1], 100)
         ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
 
         ax.set_xlabel(f"Gaia {filter_band}")
