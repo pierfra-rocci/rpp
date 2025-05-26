@@ -6,9 +6,7 @@ import base64
 import json
 import tempfile
 import warnings
-import atexit
 from datetime import datetime
-from functools import partial
 from io import StringIO, BytesIO
 
 # Third-Party Imports
@@ -34,6 +32,19 @@ from src.pipeline import (solve_with_siril, cross_match_with_gaia,
                           airmass)
 
 from src.__version__ import version
+
+# Conditional Import (already present, just noting its location)
+if getattr(sys, "frozen", False):
+    try:
+        import importlib.metadata
+        importlib.metadata.distributions = lambda **kwargs: []
+    except ImportError:
+        st.warning(
+            "Could not modify importlib.metadata, "
+            "potential issues in frozen mode."
+        )
+
+warnings.filterwarnings("ignore")
 
 
 @st.cache_data
@@ -392,21 +403,249 @@ def provide_download_buttons(folder_path):
         st.error(f"Error creating zip archive: {str(e)}")
 
 
-# Conditional Import (already present, just noting its location)
-if getattr(sys, "frozen", False):
+def display_archived_files_browser(output_dir):
+    """
+    Display a file browser for archived files in the user's results directory.
+    
+    This function creates a secure file browser that only allows access to files
+    within the specified output directory. Users can view and download individual
+    files or select multiple files for download.
+    
+    Parameters
+    ----------
+    output_dir : str
+        Path to the user's results directory
+        
+    Returns
+    -------
+    None
+        Creates Streamlit interface elements directly
+    """
+    if not os.path.exists(output_dir):
+        st.warning("No results directory found.")
+        return
+    
     try:
-        import importlib.metadata
-        importlib.metadata.distributions = lambda **kwargs: []
-    except ImportError:
-        st.warning(
-            "Could not modify importlib.metadata, "
-            "potential issues in frozen mode."
+        all_files = []
+        for item in os.listdir(output_dir):
+            item_path = os.path.join(output_dir, item)
+            if os.path.isfile(item_path):
+                # Get file stats
+                stat = os.stat(item_path)
+                file_size = stat.st_size
+                mod_time = datetime.fromtimestamp(stat.st_mtime)
+                
+                all_files.append({
+                    'name': item,
+                    'size': file_size,
+                    'modified': mod_time,
+                    'path': item_path
+                })
+        
+        if not all_files:
+            st.info("No archived files found in results directory.")
+            return
+        
+        # Sort files by modification time (newest first)
+        all_files.sort(key=lambda x: x['modified'], reverse=True)
+        
+        st.subheader(f"📁 Archived Files ({len(all_files)} files)")
+        
+        # Create a DataFrame for better display
+        display_data = []
+        for file_info in all_files:
+            size_str = f"{file_info['size']:,} bytes"
+            if file_info['size'] > 1024:
+                size_str = f"{file_info['size']/1024:.1f} KB"
+            if file_info['size'] > 1024*1024:
+                size_str = f"{file_info['size']/(1024*1024):.1f} MB"
+            
+            display_data.append({
+                'File Name': file_info['name'],
+                'Size': size_str,
+                'Modified': file_info['modified'].strftime('%Y-%m-%d %H:%M:%S'),
+                'Type': os.path.splitext(file_info['name'])[1] or 'No extension'
+            })
+        
+        files_df = pd.DataFrame(display_data)
+        st.dataframe(files_df, use_container_width=True)
+        
+        # File selection for individual downloads
+        st.subheader("📥 Download Individual Files")
+        
+        # Group files by type for easier selection
+        file_types = {}
+        for file_info in all_files:
+            ext = os.path.splitext(file_info['name'])[1].lower()
+            if ext not in file_types:
+                file_types[ext] = []
+            file_types[ext].append(file_info)
+        
+        # Create tabs for different file types
+        if len(file_types) > 1:
+            type_tabs = st.tabs([f"{ext or 'No ext'} ({len(files)})" for ext, files in file_types.items()])
+            
+            for tab, (ext, files) in zip(type_tabs, file_types.items()):
+                with tab:
+                    for file_info in files:
+                        col1, col2, col3 = st.columns([3, 1, 1])
+                        
+                        with col1:
+                            st.text(file_info['name'])
+                        
+                        with col2:
+                            size_str = f"{file_info['size']:,} bytes"
+                            if file_info['size'] > 1024:
+                                size_str = f"{file_info['size']/1024:.1f} KB"
+                            if file_info['size'] > 1024*1024:
+                                size_str = f"{file_info['size']/(1024*1024):.1f} MB"
+                            st.text(size_str)
+                        
+                        with col3:
+                            # Create download button for individual file
+                            try:
+                                with open(file_info['path'], 'rb') as f:
+                                    file_data = f.read()
+                                
+                                # Determine MIME type based on extension
+                                mime_type = "application/octet-stream"
+                                if ext == '.csv':
+                                    mime_type = "text/csv"
+                                elif ext == '.txt' or ext == '.log':
+                                    mime_type = "text/plain"
+                                elif ext == '.png':
+                                    mime_type = "image/png"
+                                elif ext == '.jpg' or ext == '.jpeg':
+                                    mime_type = "image/jpeg"
+                                elif ext == '.fits' or ext == '.fit':
+                                    mime_type = "application/fits"
+                                elif ext == '.zip':
+                                    mime_type = "application/zip"
+                                
+                                st.download_button(
+                                    label="📥",
+                                    data=file_data,
+                                    file_name=file_info['name'],
+                                    mime=mime_type,
+                                    key=f"download_{file_info['name']}",
+                                    help=f"Download {file_info['name']}"
+                                )
+                            except Exception as e:
+                                st.error(f"Error reading file {file_info['name']}: {str(e)}")
+        else:
+            # Single file type, display directly
+            for file_info in all_files:
+                col1, col2, col3 = st.columns([3, 1, 1])
+                
+                with col1:
+                    st.text(file_info['name'])
+                
+                with col2:
+                    size_str = f"{file_info['size']:,} bytes"
+                    if file_info['size'] > 1024:
+                        size_str = f"{file_info['size']/1024:.1f} KB"
+                    if file_info['size'] > 1024*1024:
+                        size_str = f"{file_info['size']/(1024*1024):.1f} MB"
+                    st.text(size_str)
+                
+                with col3:
+                    try:
+                        with open(file_info['path'], 'rb') as f:
+                            file_data = f.read()
+                        
+                        ext = os.path.splitext(file_info['name'])[1].lower()
+                        mime_type = "application/octet-stream"
+                        if ext == '.csv':
+                            mime_type = "text/csv"
+                        elif ext == '.txt' or ext == '.log':
+                            mime_type = "text/plain"
+                        elif ext == '.png':
+                            mime_type = "image/png"
+                        elif ext == '.jpg' or ext == '.jpeg':
+                            mime_type = "image/jpeg"
+                        elif ext == '.fits' or ext == '.fit':
+                            mime_type = "application/fits"
+                        elif ext == '.zip':
+                            mime_type = "application/zip"
+                        
+                        st.download_button(
+                            label="📥",
+                            data=file_data,
+                            file_name=file_info['name'],
+                            mime=mime_type,
+                            key=f"download_{file_info['name']}",
+                            help=f"Download {file_info['name']}"
+                        )
+                    except Exception as e:
+                        st.error(f"Error reading file {file_info['name']}: {str(e)}")
+        
+        # Multi-file selection and download
+        st.subheader("📦 Download Multiple Files")
+        
+        file_names = [f['name'] for f in all_files]
+        selected_files = st.multiselect(
+            "Select files to download as ZIP:",
+            options=file_names,
+            help="Select multiple files to download them together in a ZIP archive"
         )
-
-warnings.filterwarnings("ignore")
-
-st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭",
-                   layout="wide")
+        
+        if selected_files:
+            if st.button("📦 Download Selected Files as ZIP"):
+                try:
+                    # Create in-memory ZIP file with selected files
+                    zip_buffer = BytesIO()
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    base_name = st.session_state.get("base_filename", "selected_files")
+                    zip_filename = f"{base_name}_selected_{timestamp}.zip"
+                    
+                    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                        for filename in selected_files:
+                            file_path = os.path.join(output_dir, filename)
+                            if os.path.exists(file_path) and os.path.isfile(file_path):
+                                zip_file.write(file_path, arcname=filename)
+                    
+                    zip_buffer.seek(0)
+                    
+                    st.download_button(
+                        label=f"📥 Download {zip_filename}",
+                        data=zip_buffer,
+                        file_name=zip_filename,
+                        mime="application/zip",
+                        key="download_selected_zip"
+                    )
+                    
+                    st.success(f"ZIP archive ready with {len(selected_files)} files!")
+                    
+                except Exception as e:
+                    st.error(f"Error creating ZIP archive: {str(e)}")
+        
+        # Directory cleanup option
+        st.subheader("🗑️ File Management")
+        
+        if st.button("🧹 Clean Old Files", help="Remove files older than 7 days"):
+            try:
+                cutoff_date = datetime.now() - pd.Timedelta(days=7)
+                deleted_count = 0
+                
+                for file_info in all_files:
+                    if file_info['modified'] < cutoff_date:
+                        try:
+                            os.remove(file_info['path'])
+                            deleted_count += 1
+                        except Exception as e:
+                            st.warning(f"Could not delete {file_info['name']}: {str(e)}")
+                
+                if deleted_count > 0:
+                    st.success(f"Deleted {deleted_count} old files.")
+                    st.experimental_rerun()
+                else:
+                    st.info("No old files found to delete.")
+                    
+            except Exception as e:
+                st.error(f"Error during cleanup: {str(e)}")
+                
+    except Exception as e:
+        st.error(f"Error accessing results directory: {str(e)}")
 
 
 def initialize_session_state():
@@ -500,6 +739,9 @@ def initialize_session_state():
 ###################################################################
 # Main Streamlit app
 ###################################################################
+
+st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭",
+                   layout="wide")
 
 # --- Initialize Session State Early ---
 initialize_session_state()
@@ -1679,6 +1921,10 @@ if science_file is not None:
                     provide_download_buttons(output_dir)
                     cleanup_temp_files()
                     zip_rpp_results_on_exit(science_file, output_dir)
+
+                    # Add the archived files browser
+                    with st.expander("📁 Browse Archived Files", expanded=False):
+                        display_archived_files_browser(output_dir)
 
                 else:
                     st.warning(
