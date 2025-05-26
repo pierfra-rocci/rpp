@@ -1537,14 +1537,14 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             zero_point_std = float('nan')
 
         _matched_table["calib_mag"] = (
-            _matched_table["instrumental_mag"] + zero_point_value - 0.1 * air
+            _matched_table["instrumental_mag"] + zero_point_value + 0.1 * air
         )
 
         if not isinstance(_phot_table, pd.DataFrame):
             _phot_table = _phot_table.to_pandas()
 
         _phot_table["calib_mag"] = (
-            _phot_table["instrumental_mag"] + zero_point_value - 0.1 * air
+            _phot_table["instrumental_mag"] + zero_point_value + 0.1 * air
         )
 
         st.session_state["final_phot_table"] = _phot_table

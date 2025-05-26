@@ -509,17 +509,7 @@ def display_archived_files_browser(output_dir):
                                 
                                 # Determine MIME type based on extension
                                 mime_type = "application/octet-stream"
-                                if ext == '.csv':
-                                    mime_type = "text/csv"
-                                elif ext == '.txt' or ext == '.log':
-                                    mime_type = "text/plain"
-                                elif ext == '.png':
-                                    mime_type = "image/png"
-                                elif ext == '.jpg' or ext == '.jpeg':
-                                    mime_type = "image/jpeg"
-                                elif ext == '.fits' or ext == '.fit':
-                                    mime_type = "application/fits"
-                                elif ext == '.zip':
+                                if ext == '.zip':
                                     mime_type = "application/zip"
                                 
                                 st.download_button(
@@ -528,7 +518,8 @@ def display_archived_files_browser(output_dir):
                                     file_name=file_info['name'],
                                     mime=mime_type,
                                     key=f"download_{file_info['name']}",
-                                    help=f"Download {file_info['name']}"
+                                    help=f"Download {file_info['name']}",
+                                    on_click="ignore",
                                 )
                             except Exception as e:
                                 st.error(f"Error reading file {file_info['name']}: {str(e)}")
@@ -555,17 +546,7 @@ def display_archived_files_browser(output_dir):
                         
                         ext = os.path.splitext(file_info['name'])[1].lower()
                         mime_type = "application/octet-stream"
-                        if ext == '.csv':
-                            mime_type = "text/csv"
-                        elif ext == '.txt' or ext == '.log':
-                            mime_type = "text/plain"
-                        elif ext == '.png':
-                            mime_type = "image/png"
-                        elif ext == '.jpg' or ext == '.jpeg':
-                            mime_type = "image/jpeg"
-                        elif ext == '.fits' or ext == '.fit':
-                            mime_type = "application/fits"
-                        elif ext == '.zip':
+                        if ext == '.zip':
                             mime_type = "application/zip"
                         
                         st.download_button(
@@ -574,7 +555,8 @@ def display_archived_files_browser(output_dir):
                             file_name=file_info['name'],
                             mime=mime_type,
                             key=f"download_{file_info['name']}",
-                            help=f"Download {file_info['name']}"
+                            help=f"Download {file_info['name']}",
+                            on_click="ignore",
                         )
                     except Exception as e:
                         st.error(f"Error reading file {file_info['name']}: {str(e)}")
