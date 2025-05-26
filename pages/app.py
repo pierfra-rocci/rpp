@@ -697,6 +697,88 @@ def initialize_session_state():
     Initialize all session state variables for the application.
     Ensures all required keys have default values.
     """
+    # # Login/User State
+    # if "logged_in" not in st.session_state:
+    #     st.session_state.logged_in = False
+    # if "username" not in st.session_state:
+    #     st.session_state.username = None
+
+    # # Core Data/Results State
+    # if "calibrated_header" not in st.session_state:
+    #     st.session_state.calibrated_header = None
+    # if "final_phot_table" not in st.session_state:
+    #     st.session_state.final_phot_table = None
+    # if "epsf_model" not in st.session_state:
+    #     st.session_state.epsf_model = None
+    # if "epsf_photometry_result" not in st.session_state:
+    #     st.session_state.epsf_photometry_result = None
+
+    # # Logging and File Handling State
+    # if "log_buffer" not in st.session_state:
+    #     st.session_state.log_buffer = None
+    # if "base_filename" not in st.session_state:
+    #     st.session_state.base_filename = "photometry"
+    # if "science_file_path" not in st.session_state:
+    #     st.session_state.science_file_path = None
+    # if "output_dir" not in st.session_state:
+    #     username = st.session_state.get("username", "anonymous")
+    #     st.session_state.output_dir = ensure_output_directory(f"{username}_rpp_results")
+
+    # # Analysis Parameters State (consolidated)
+    # default_analysis_params = {
+    #     "seeing": 3.0,
+    #     "threshold_sigma": 3.0,
+    #     "detection_mask": 10,
+    #     "filter_band": "phot_g_mean_mag",  # Default Gaia band
+    #     "filter_max_mag": 20.0,           # Default Gaia mag limit
+    #     "astrometry_check": False,        # Astrometry refinement toggle
+    #     "calibrate_cosmic_rays": False,   # CRR toggle
+    #     "cr_gain": 1.0,                   # CRR default gain
+    #     "cr_readnoise": 2.5,              # CRR default readnoise
+    #     "cr_sigclip": 6.0                 # CRR default sigclip
+    # }
+    # if "analysis_parameters" not in st.session_state:
+    #     st.session_state.analysis_parameters = default_analysis_params.copy()
+    # else:
+    #     # Ensure all keys exist, adding defaults if missing from loaded config
+    #     for key, value in default_analysis_params.items():
+    #         if key not in st.session_state.analysis_parameters:
+    #             st.session_state.analysis_parameters[key] = value
+
+    # # Observatory Parameters State
+    # default_observatory_data = {
+    #     "name": "Obs",
+    #     "latitude": 0.,
+    #     "longitude": 0.,
+    #     "elevation": 0.,
+    # }
+    # if "observatory_data" not in st.session_state:
+    #     st.session_state.observatory_data = default_observatory_data.copy()
+    # else:
+    #     for key, value in default_observatory_data.items():
+    #         if key not in st.session_state.observatory_data:
+    #             st.session_state.observatory_data[key] = value
+
+    # # Individual observatory keys for direct widget binding (synced later)
+    # if "observatory_name" not in st.session_state:
+    #     st.session_state.observatory_name = st.session_state.observatory_data["name"]
+    # if "observatory_latitude" not in st.session_state:
+    #     st.session_state.observatory_latitude = st.session_state.observatory_data["latitude"]
+    # if "observatory_longitude" not in st.session_state:
+    #     st.session_state.observatory_longitude = st.session_state.observatory_data["longitude"]
+    # if "observatory_elevation" not in st.session_state:
+    #     st.session_state.observatory_elevation = st.session_state.observatory_data["elevation"]
+
+    # # API Keys State
+    # if "colibri_api_key" not in st.session_state:
+    #     st.session_state.colibri_api_key = None  # Or load from env var if preferred
+
+    # # File Loading State (Track which calibration files are loaded)
+    # if "files_loaded" not in st.session_state:
+    #     st.session_state.files_loaded = {
+    #         "science_file": None,
+    #     }
+
     # Login/User State
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
@@ -704,54 +786,55 @@ def initialize_session_state():
         st.session_state.username = None
 
     # Core Data/Results State
-    if "calibrated_header" not in st.session_state:
-        st.session_state.calibrated_header = None
-    if "final_phot_table" not in st.session_state:
-        st.session_state.final_phot_table = None
-    if "epsf_model" not in st.session_state:
-        st.session_state.epsf_model = None
-    if "epsf_photometry_result" not in st.session_state:
-        st.session_state.epsf_photometry_result = None
+    defaults = {
+        "calibrated_header": None,
+        "final_phot_table": None,
+        "epsf_model": None,
+        "epsf_photometry_result": None,
+        "log_buffer": None,
+        "base_filename": "photometry",
+        "science_file_path": None
+    }
+    
+    for key, default_value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = default_value
 
-    # Logging and File Handling State
-    if "log_buffer" not in st.session_state:
-        st.session_state.log_buffer = None
-    if "base_filename" not in st.session_state:
-        st.session_state.base_filename = "photometry"
-    if "science_file_path" not in st.session_state:
-        st.session_state.science_file_path = None
+    # Output directory
     if "output_dir" not in st.session_state:
         username = st.session_state.get("username", "anonymous")
         st.session_state.output_dir = ensure_output_directory(f"{username}_rpp_results")
 
-    # Analysis Parameters State (consolidated)
+    # Analysis Parameters (consolidated)
     default_analysis_params = {
         "seeing": 3.0,
         "threshold_sigma": 3.0,
         "detection_mask": 10,
-        "filter_band": "phot_g_mean_mag",  # Default Gaia band
-        "filter_max_mag": 20.0,           # Default Gaia mag limit
-        "astrometry_check": False,        # Astrometry refinement toggle
-        "calibrate_cosmic_rays": False,   # CRR toggle
-        "cr_gain": 1.0,                   # CRR default gain
-        "cr_readnoise": 2.5,              # CRR default readnoise
-        "cr_sigclip": 6.0                 # CRR default sigclip
+        "filter_band": "phot_g_mean_mag",
+        "filter_max_mag": 20.0,
+        "astrometry_check": False,
+        "calibrate_cosmic_rays": False,
+        "cr_gain": 1.0,
+        "cr_readnoise": 2.5,
+        "cr_sigclip": 6.0
     }
+    
     if "analysis_parameters" not in st.session_state:
         st.session_state.analysis_parameters = default_analysis_params.copy()
     else:
-        # Ensure all keys exist, adding defaults if missing from loaded config
+        # Ensure all keys exist
         for key, value in default_analysis_params.items():
             if key not in st.session_state.analysis_parameters:
                 st.session_state.analysis_parameters[key] = value
 
-    # Observatory Parameters State
+    # Observatory Parameters (keep only dictionary, remove individual keys)
     default_observatory_data = {
         "name": "Obs",
         "latitude": 0.,
         "longitude": 0.,
         "elevation": 0.,
     }
+    
     if "observatory_data" not in st.session_state:
         st.session_state.observatory_data = default_observatory_data.copy()
     else:
@@ -759,26 +842,11 @@ def initialize_session_state():
             if key not in st.session_state.observatory_data:
                 st.session_state.observatory_data[key] = value
 
-    # Individual observatory keys for direct widget binding (synced later)
-    if "observatory_name" not in st.session_state:
-        st.session_state.observatory_name = st.session_state.observatory_data["name"]
-    if "observatory_latitude" not in st.session_state:
-        st.session_state.observatory_latitude = st.session_state.observatory_data["latitude"]
-    if "observatory_longitude" not in st.session_state:
-        st.session_state.observatory_longitude = st.session_state.observatory_data["longitude"]
-    if "observatory_elevation" not in st.session_state:
-        st.session_state.observatory_elevation = st.session_state.observatory_data["elevation"]
-
-    # API Keys State
+    # API Keys and File Loading
     if "colibri_api_key" not in st.session_state:
-        st.session_state.colibri_api_key = None  # Or load from env var if preferred
-
-    # File Loading State (Track which calibration files are loaded)
+        st.session_state.colibri_api_key = None
     if "files_loaded" not in st.session_state:
-        st.session_state.files_loaded = {
-            "science_file": None,
-        }
-
+        st.session_state.files_loaded = {"science_file": None}
 
 ###################################################################
 # Main Streamlit app
@@ -1036,15 +1104,6 @@ science_file_path = None
 
 st.session_state["calibrate_cosmic_rays"] = st.session_state.analysis_parameters["calibrate_cosmic_rays"]
 
-if "observatory_name" not in st.session_state:
-    st.session_state.observatory_name = "TJMS"
-if "observatory_latitude" not in st.session_state:
-    st.session_state.observatory_latitude = 48.2917
-if "observatory_longitude" not in st.session_state:
-    st.session_state.observatory_longitude = 2.4381
-if "observatory_elevation" not in st.session_state:
-    st.session_state.observatory_elevation = 94.0
-
 # Update observatory_data dictionary with current session state values
 st.session_state.observatory_data = {
     "name": st.session_state.observatory_name,
@@ -1058,14 +1117,14 @@ st.session_state["seeing"] = st.session_state.analysis_parameters["seeing"]
 st.session_state["threshold_sigma"] = st.session_state.analysis_parameters["threshold_sigma"]
 st.session_state["detection_mask"] = st.session_state.analysis_parameters["detection_mask"]
 
-# You can remove it completely or keep it if you want to ensure consistency:
-st.session_state["analysis_parameters"].update(
-    {
-        "seeing": st.session_state.analysis_parameters["seeing"],
-        "threshold_sigma": st.session_state.analysis_parameters["threshold_sigma"],
-        "detection_mask": st.session_state.analysis_parameters["detection_mask"],
-    }
-)
+# # You can remove it completely or keep it if you want to ensure consistency:
+# st.session_state["analysis_parameters"].update(
+#     {
+#         "seeing": st.session_state.analysis_parameters["seeing"],
+#         "threshold_sigma": st.session_state.analysis_parameters["threshold_sigma"],
+#         "detection_mask": st.session_state.analysis_parameters["detection_mask"],
+#     }
+# )
 
 catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 username = st.session_state.get("username", "anonymous")
@@ -1363,6 +1422,7 @@ if science_file is not None:
                 f"Target coordinates: RA={ra_val}°, DEC={dec_val}° ({coord_source})",
             )
             ra_missing = dec_missing = False
+            ra_val = dec_val = None  # Add this line
         else:
             st.warning(f"Coordinate issue: {coord_source}")
             write_to_log(
