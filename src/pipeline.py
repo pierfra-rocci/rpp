@@ -1549,13 +1549,14 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         st.session_state["final_phot_table"] = _phot_table
 
-        fig, ax = plt.subplots(figsize=FIGURE_SIZES["medium"], dpi=100)
+        fig, (ax, ax_resid) = plt.subplots(1, 2, figsize=(14, 6), dpi=100)
 
         # Calculate residuals
         _matched_table["residual"] = (
             _matched_table[filter_band] - _matched_table["calib_mag"]
         )
 
+        # Left plot: Zero point calibration
         # Create bins for magnitude ranges
         bin_width = 0.5  # 0.5 magnitude width bins
         min_mag = _matched_table[filter_band].min()
@@ -1598,11 +1599,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         ax.legend()
         ax.grid(True, alpha=0.5)
 
-        st.success(
-            f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f}"
-        )
-
-        # --- Residuals plot ---
+        # Right plot: Residuals
         mag_cat = _matched_table[filter_band]
         mag_inst = _matched_table["instrumental_mag"]
         zp_mean = zero_point_value
@@ -1614,7 +1611,6 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         zp_err = zero_point_std if zero_point_std is not None else 0.0
         yerr = np.sqrt(aperture_mag_err**2 + zp_err**2)
 
-        fig_resid, ax_resid = plt.subplots(figsize=(6, 4))
         ax_resid.errorbar(mag_cat, residuals, yerr=yerr, fmt='o', markersize=5, alpha=0.7, label='Residuals')
         ax_resid.axhline(0, color='gray', ls='--')
         ax_resid.set_xlabel('Calibrated magnitude')
@@ -1622,7 +1618,14 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         ax_resid.set_title('Photometric Residuals')
         ax_resid.grid(True, alpha=0.5)
         ax_resid.legend()
-        st.pyplot(fig_resid)
+
+        # Adjust layout and display
+        fig.tight_layout()
+        st.pyplot(fig)
+
+        st.success(
+            f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f}"
+        )
 
         try:
             base_name = st.session_state.get("base_filename", "photometry")
@@ -1631,12 +1634,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             zero_point_plot_path = os.path.join(
                 output_dir, f"{base_name}_zero_point_plot.png"
             )
-            plt.savefig(zero_point_plot_path)
-            # Save residuals plot as well
-            resid_plot_path = os.path.join(
-                output_dir, f"{base_name}_residuals_plot.png"
-            )
-            fig_resid.savefig(resid_plot_path)
+            fig.savefig(zero_point_plot_path)
         except Exception as e:
             st.warning(f"Could not save plot to file: {e}")
 
