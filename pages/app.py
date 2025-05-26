@@ -579,52 +579,12 @@ def display_archived_files_browser(output_dir):
                     except Exception as e:
                         st.error(f"Error reading file {file_info['name']}: {str(e)}")
         
-        # Multi-file selection and download
-        st.subheader("📦 Download Multiple Files")
-        
-        file_names = [f['name'] for f in all_files]
-        selected_files = st.multiselect(
-            "Select files to download as ZIP:",
-            options=file_names,
-            help="Select multiple files to download them together in a ZIP archive"
-        )
-        
-        if selected_files:
-            if st.button("📦 Download Selected Files as ZIP"):
-                try:
-                    # Create in-memory ZIP file with selected files
-                    zip_buffer = BytesIO()
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    base_name = st.session_state.get("base_filename", "selected_files")
-                    zip_filename = f"{base_name}_selected_{timestamp}.zip"
-                    
-                    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                        for filename in selected_files:
-                            file_path = os.path.join(output_dir, filename)
-                            if os.path.exists(file_path) and os.path.isfile(file_path):
-                                zip_file.write(file_path, arcname=filename)
-                    
-                    zip_buffer.seek(0)
-                    
-                    st.download_button(
-                        label=f"📥 Download {zip_filename}",
-                        data=zip_buffer,
-                        file_name=zip_filename,
-                        mime="application/zip",
-                        key="download_selected_zip"
-                    )
-                    
-                    st.success(f"ZIP archive ready with {len(selected_files)} files!")
-                    
-                except Exception as e:
-                    st.error(f"Error creating ZIP archive: {str(e)}")
-        
         # Directory cleanup option
         st.subheader("🗑️ File Management")
         
-        if st.button("🧹 Clean Old Files", help="Remove files older than 7 days"):
+        if st.button("🧹 Clean Old Files", help="Remove files older than 30 days"):
             try:
-                cutoff_date = datetime.now() - pd.Timedelta(days=7)
+                cutoff_date = datetime.now() - pd.Timedelta(days=30)
                 deleted_count = 0
                 
                 for file_info in all_files:
