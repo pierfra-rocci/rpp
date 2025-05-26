@@ -1296,11 +1296,6 @@ if science_file is not None:
             try:
                 fig.savefig(image_path, dpi=120, bbox_inches="tight")
                 write_to_log(log_buffer, "Saved image plot")
-                # Save histogram visualization too (just the right panel)
-                hist_image_filename = f"{st.session_state['base_filename']}_image_hist.png"
-                hist_image_path = os.path.join(output_dir, hist_image_filename)
-                # Save only the histogram equalization panel
-                fig_hist, ax_hist = plt.subplots(figsize=FIGURE_SIZES["medium"])
                 try:
                     if len(data_finite) > 0:
                         im_hist = ax_hist.imshow(data_scaled, origin="lower", cmap="viridis")
