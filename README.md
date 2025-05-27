@@ -173,12 +173,10 @@ The application generates several output files in the `<user>_rpp_results` direc
 - `[filename].log` - Processing log with parameter details and analysis steps
 - `[filename]_image.png` - Preview image of the science image
 - `[filename]_psf.fits` - PSF model file
-- `[filename]_metadata.txt` - Analysis parameters and results
 - `[filename]_wcs_header.txt` - WCS solution from plate solving
 - `[filename]_zero_point_plot.png` - Visualization of zero-point calibration
 - `[filename]_results.zip` - Downloadable archive of all output files for the session
 - `[filename]_bkg.fits` - Background model FITS file
-- `[filename]_image_hist.png` - Histogram of image pixel values
 - `[filename]_histogram_mag.png` - Magnitude distribution histogram comparing aperture and PSF photometry
 - `[filename]_fwhm.png` - FWHM distribution histogram for image quality assessment
 
