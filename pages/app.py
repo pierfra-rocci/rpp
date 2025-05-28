@@ -1508,13 +1508,11 @@ if science_file is not None:
                             filter_band,
                         )
                         
-                        # Handle variable number of return values
-                        if len(result) == 4:
+                        # Handle the return values - should be a tuple of 4 elements
+                        if isinstance(result, tuple) and len(result) == 4:
                             phot_table_qtable, epsf_table, daofind, bkg = result
-                        elif len(result) == 5:
-                            phot_table_qtable, epsf_table, daofind, bkg, apertures_info = result
                         else:
-                            st.error(f"Unexpected number of return values from detection_and_photometry: {len(result)}")
+                            st.error(f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}")
                             phot_table_qtable = epsf_table = daofind = bkg = None
 
                         if phot_table_qtable is not None:

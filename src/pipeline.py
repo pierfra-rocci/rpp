@@ -1268,18 +1268,83 @@ def detection_and_photometry(
             phot_table["aperture_mag_err"] = phot_table["aperture_mag_err_r1.5"]
             phot_table["instrumental_mag"] = phot_table["instrumental_mag_r1.5"]
 
-        # Calculate background-subtracted flux and magnitude if not already done
-        if "aperture_sum_bkg_corr_r1.5" in phot_table.colnames:
-            phot_table["flux"] = phot_table["aperture_sum_bkg_corr_r1.5"]
-            phot_table["flux_err"] = phot_table["aperture_sum_err_r1.5"]
-            phot_table["magnitude"] = -2.5 * np.log10(phot_table["flux"] / exposure_time)
+        try:
+            epsf_table, _ = perform_psf_photometry(
+                image_sub, sources, fwhm_estimate, daofind, mask, total_error
+            )
+            
+            epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"]))
+            m_err = 1.0857 / epsf_table["snr"]
+            epsf_table['psf_mag_err'] = m_err
 
-        return phot_table
-    except ValueError as e:
-        raise e
+            epsf_instrumental_mags = -2.5 * np.log10(
+                epsf_table["flux_fit"] / exposure_time
+            )
+            epsf_table["instrumental_mag"] = epsf_instrumental_mags
+        except Exception as e:
+            st.error(f"Error performing EPSF photometry: {e}")
+            epsf_table = None
+
+        valid_sources = (phot_table["aperture_sum"] > 0) & np.isfinite(
+            phot_table["instrumental_mag"]
+        )
+        phot_table = phot_table[valid_sources]
+
+        if epsf_table is not None:
+            epsf_valid_sources = np.isfinite(epsf_table["instrumental_mag"])
+            epsf_table = epsf_table[epsf_valid_sources]
+
+        try:
+            if wcs_obj is not None:
+                ra, dec = wcs_obj.pixel_to_world_values(
+                    phot_table["xcenter"], phot_table["ycenter"]
+                )
+                phot_table["ra"] = ra * u.deg
+                phot_table["dec"] = dec * u.deg
+
+                if epsf_table is not None:
+                    try:
+                        epsf_ra, epsf_dec = wcs_obj.pixel_to_world_values(
+                            epsf_table["x_fit"], epsf_table["y_fit"]
+                        )
+                        epsf_table["ra"] = epsf_ra * u.deg
+                        epsf_table["dec"] = epsf_dec * u.deg
+                    except Exception as e:
+                        st.warning(f"Could not add coordinates to EPSF table: {e}")
+            else:
+                if all(
+                    key in _science_header for key in ["RA", "DEC", "NAXIS1", "NAXIS2"]
+                ):
+                    st.info("Using simple linear approximation for RA/DEC coordinates")
+                    center_ra = _science_header["RA"]
+                    center_dec = _science_header["DEC"]
+                    width = _science_header["NAXIS1"]
+                    height = _science_header["NAXIS2"]
+
+                    pix_scale = pixel_scale or 1.0
+
+                    center_x = width / 2
+                    center_y = height / 2
+
+                    for i, row in enumerate(phot_table):
+                        x = row["xcenter"]
+                        y = row["ycenter"]
+                        dx = (x - center_x) * pix_scale / 3600.0
+                        dy = (y - center_y) * pix_scale / 3600.0
+                        phot_table[i]["ra"] = center_ra + dx / np.cos(
+                            np.radians(center_dec)
+                        )
+                        phot_table[i]["dec"] = center_dec + dy
+        except Exception as e:
+            st.warning(
+                f"WCS transformation failed: {e}. RA and Dec not added to tables."
+            )
+
+        st.write(f"Found {len(phot_table)} sources and performed photometry.")
+        return phot_table, epsf_table, daofind, bkg
     except Exception as e:
-        st.error(f"Unexpected error in detection_and_photometry: {e}")
-        raise ValueError(f"Unexpected error in detection_and_photometry: {e}")
+        st.error(f"Error performing aperture photometry: {e}")
+        return None, None, daofind, bkg
 
 
 def cross_match_with_gaia(
@@ -1748,7 +1813,7 @@ def enhance_catalog(
         if "xcenter" in final_table.columns and "ycenter" in final_table.columns:
             final_table["match_id"] = (
                 final_table["xcenter"].round(2).astype(str)
-                + "_"
+                               + "_"
                 + final_table["ycenter"].round(2).astype(str)
             )
 
