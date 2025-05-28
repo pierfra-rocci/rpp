@@ -357,7 +357,7 @@ class TransientFinder:
                     result = subtract(
                         ref=temp_ref_path,
                         new=temp_sci_path,
-                        smooth_psf=False,
+                        smooth_psf=True,
                         fitted_psf=True,
                         align=True,  # Enable ProperImage's internal alignment
                         iterative=False,
@@ -461,7 +461,7 @@ class TransientFinder:
             print(f"Error during image subtraction: {e}")
             return False
 
-    def detect_transients(self, threshold=5.0, npixels=5):
+    def detect_transients(self, threshold=5.0):
         """
         Detect potential transient sources in the difference image.
 
@@ -489,7 +489,7 @@ class TransientFinder:
             # Find positive peaks (new sources) only
             threshold_positive = median + (threshold * std)
             positive_peaks = find_peaks(self.diff_data, threshold_positive, box_size=5,
-                                        npeaks=50, centroid_func=None)
+                                        npeaks=10, centroid_func=None)
             
             if positive_peaks:
                 positive_peaks['peak_type'] = 'positive'
