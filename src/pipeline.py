@@ -1621,9 +1621,47 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         if not isinstance(_phot_table, pd.DataFrame):
             _phot_table = _phot_table.to_pandas()
 
-        _phot_table["calib_mag"] = (
-            _phot_table["instrumental_mag"] + zero_point_value + 0.1 * air
-        )
+        # Apply calibration to all aperture radii
+        aperture_radii = [1.5, 2.0, 2.5, 3.0]
+        
+        # Remove old single-aperture columns if they exist
+        old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
+        for col in old_columns:
+            if col in _phot_table.columns:
+                _phot_table.drop(columns=[col], inplace=True)
+        
+        # Add calibrated magnitudes for all aperture radii
+        for radius in aperture_radii:
+            radius_suffix = f"_r{radius:.1f}"
+            instrumental_col = f"instrumental_mag{radius_suffix}"
+            aperture_mag_col = f"aperture_mag{radius_suffix}"
+            
+            if instrumental_col in _phot_table.columns:
+                _phot_table[aperture_mag_col] = (
+                    _phot_table[instrumental_col] + zero_point_value + 0.1 * air
+                )
+
+        # Also apply to matched table for all aperture radii
+        for radius in aperture_radii:
+            radius_suffix = f"_r{radius:.1f}"
+            instrumental_col = f"instrumental_mag{radius_suffix}"
+            aperture_mag_col = f"aperture_mag{radius_suffix}"
+            
+            if instrumental_col in _matched_table.columns:
+                _matched_table[aperture_mag_col] = (
+                    _matched_table[instrumental_col] + zero_point_value + 0.1 * air
+                )
+
+        # Keep the legacy "calib_mag" column using the 1.5*FWHM aperture for backward compatibility
+        if "instrumental_mag_r1.5" in _phot_table.columns:
+            _phot_table["calib_mag"] = (
+                _phot_table["instrumental_mag_r1.5"] + zero_point_value + 0.1 * air
+            )
+        
+        if "instrumental_mag_r1.5" in _matched_table.columns:
+            _matched_table["calib_mag"] = (
+                _matched_table["instrumental_mag_r1.5"] + zero_point_value + 0.1 * air
+            )
 
         st.session_state["final_phot_table"] = _phot_table
 
@@ -1773,7 +1811,7 @@ def enhance_catalog(
 
     Notes
     -----
-    The function shows progress updates in the Streamlit interface and creates
+       The function shows progress updates in the Streamlit interface and creates
     a summary display of matched objects. Queries are made with appropriate
     error handling to prevent failures if any catalog service is unavailable.
     API requests are processed in batches to avoid overwhelming servers.
