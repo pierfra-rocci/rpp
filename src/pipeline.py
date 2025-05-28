@@ -881,7 +881,7 @@ def perform_psf_photometry(
         raise
 
     try:
-        epsf_builder = EPSFBuilder(oversampling=2, maxiters=5, progress_bar=True)
+        epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
         epsf, _ = epsf_builder(stars)
         st.session_state["epsf_model"] = epsf
     except Exception as e:
@@ -894,7 +894,7 @@ def perform_psf_photometry(
 
             hdu.header["COMMENT"] = "PSF model created with photutils.EPSFBuilder"
             hdu.header["FWHMPIX"] = (fwhm, "FWHM in pixels used for extraction")
-            hdu.header["OVERSAMP"] = (4, "Oversampling factor")
+            hdu.header["OVERSAMP"] = (3, "Oversampling factor")
             hdu.header["NSTARS"] = (len(filtered_photo_table), "Number of stars used for PSF model")
 
             psf_filename = (
