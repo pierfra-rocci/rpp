@@ -1499,16 +1499,23 @@ if science_file is not None:
                         filter_band = st.session_state.analysis_parameters["filter_band"]
                         filter_max_mag = st.session_state.analysis_parameters["filter_max_mag"]
 
-                        phot_table_qtable, epsf_table, daofind, bkg = (
-                            detection_and_photometry(
-                                image_to_process,
-                                header_to_process,
-                                mean_fwhm_pixel,
-                                threshold_sigma,
-                                detection_mask,
-                                filter_band,
-                            )
+                        result = detection_and_photometry(
+                            image_to_process,
+                            header_to_process,
+                            mean_fwhm_pixel,
+                            threshold_sigma,
+                            detection_mask,
+                            filter_band,
                         )
+                        
+                        # Handle variable number of return values
+                        if len(result) == 4:
+                            phot_table_qtable, epsf_table, daofind, bkg = result
+                        elif len(result) == 5:
+                            phot_table_qtable, epsf_table, daofind, bkg, apertures_info = result
+                        else:
+                            st.error(f"Unexpected number of return values from detection_and_photometry: {len(result)}")
+                            phot_table_qtable = epsf_table = daofind = bkg = None
 
                         if phot_table_qtable is not None:
                             phot_table_df = phot_table_qtable.to_pandas().copy(
