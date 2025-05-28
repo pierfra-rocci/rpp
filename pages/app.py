@@ -1267,12 +1267,9 @@ if science_file is not None:
     if wcs_obj is None:
         st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
 
-        use_astrometry = st.checkbox(
-            "Attempt plate solving?",
-            value=True,
-            help="Uses the platesolve to determine WCS coordinates",
-        )
-
+        st.write("Attempt plate solving?")
+        use_astrometry = True
+        
         if use_astrometry:
             with st.spinner("Running plate solve (this may take a while)..."):
                 result = solve_with_siril(science_file_path)
