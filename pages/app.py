@@ -1296,21 +1296,6 @@ if science_file is not None:
             try:
                 fig.savefig(image_path, dpi=120, bbox_inches="tight")
                 write_to_log(log_buffer, "Saved image plot")
-                try:
-                    if len(data_finite) > 0:
-                        im_hist = ax_hist.imshow(data_scaled, origin="lower", cmap="viridis")
-                        fig_hist.colorbar(im_hist, ax=ax_hist, label="Normalized Value")
-                        ax_hist.axis("off")
-                        ax_hist.set_title(f"{science_file.name}")
-                        ax_inset = fig_hist.add_axes([0.15, 0.15, 0.25, 0.25])
-                        ax_inset.hist(data_scaled.flatten(), bins=50, color='skyblue', alpha=0.8)
-                        ax_inset.set_title('Pixel Distribution', fontsize=8)
-                        ax_inset.tick_params(axis='both', which='major', labelsize=6)
-                        fig_hist.savefig(hist_image_path, dpi=120, bbox_inches="tight")
-                        write_to_log(log_buffer, "Saved histogram equalization plot")
-                except Exception as save_hist_error:
-                    write_to_log(log_buffer, f"Failed to save histogram plot: {str(save_hist_error)}", level="ERROR")
-                plt.close(fig_hist)
             except Exception as save_error:
                 write_to_log(
                     log_buffer,
