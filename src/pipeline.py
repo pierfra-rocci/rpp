@@ -881,7 +881,7 @@ def perform_psf_photometry(
         raise
 
     try:
-        epsf_builder = EPSFBuilder(oversampling=4, maxiters=5, progress_bar=True)
+        epsf_builder = EPSFBuilder(oversampling=2, maxiters=5, progress_bar=True)
         epsf, _ = epsf_builder(stars)
         st.session_state["epsf_model"] = epsf
     except Exception as e:
