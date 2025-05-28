@@ -160,13 +160,13 @@ def display_catalog_in_aladin(
     dec_center : float
         Declination center coordinate for the Aladin view (degrees)
     fov : float, optional
-        Initial field of view in degrees, default=0.5
+        Initial field of view in degrees, default=1.5
     ra_col : str, optional
         Name of the column containing Right Ascension values, default='ra'
     dec_col : str, optional
         Name of the column containing Declination values, default='dec'
     mag_col : str, optional
-        Name of the primary magnitude column, default='calib_mag'
+        Name of the primary magnitude column, default='psf_mag'
     alt_mag_col : str, optional
         Name of an alternative (preferred) magnitude column, default='aperture_mag'
     catalog_col : str, optional
@@ -220,31 +220,79 @@ def display_catalog_in_aladin(
             except (ValueError, TypeError):
                 continue
 
+            # Handle magnitude - prefer alt_mag_col over mag_col
             mag_to_use = None
-            if alt_mag_col in present_optional_cols and pd.notna(row[alt_mag_col]):
-                try:
-                    mag_to_use = float(row[alt_mag_col])
-                except (ValueError, TypeError):
-                    pass
-            elif mag_col in present_optional_cols and pd.notna(row[mag_col]):
-                try:
-                    mag_to_use = float(row[mag_col])
-                except (ValueError, TypeError):
-                    pass
+            mag_source = ""
+            
+            # Check for multi-aperture columns first
+            for aperture_col in ["aperture_mag_r1.5", "aperture_mag_r2.0", "aperture_mag_r2.5"]:
+                if aperture_col in present_optional_cols and pd.notna(row[aperture_col]):
+                    try:
+                        mag_to_use = float(row[aperture_col])
+                        mag_source = aperture_col.replace("aperture_mag_r", "Ap(") + "×FWHM)"
+                        break
+                    except (ValueError, TypeError):
+                        pass
+            
+            # Fall back to standard magnitude columns
+            if mag_to_use is None:
+                if alt_mag_col in present_optional_cols and pd.notna(row[alt_mag_col]):
+                    try:
+                        mag_to_use = float(row[alt_mag_col])
+                        mag_source = "Aperture"
+                    except (ValueError, TypeError):
+                        pass
+                elif mag_col in present_optional_cols and pd.notna(row[mag_col]):
+                    try:
+                        mag_to_use = float(row[mag_col])
+                        mag_source = "PSF"
+                    except (ValueError, TypeError):
+                        pass
 
             if mag_to_use is not None:
                 source["mag"] = mag_to_use
+                source["mag_source"] = mag_source
 
+            # Handle catalog matches
+            catalog_info = ""
             if catalog_col in present_optional_cols and pd.notna(row[catalog_col]):
-                source["catalog"] = str(row[catalog_col])
+                catalog_info = str(row[catalog_col])
+            
+            # Check for specific catalog columns
+            catalog_matches = []
+            for cat_prefix in ["simbad_", "skybot_", "aavso_", "gaia_"]:
+                cat_cols = [col for col in present_optional_cols if col.startswith(cat_prefix)]
+                if cat_cols:
+                    for cat_col in cat_cols:
+                        if pd.notna(row[cat_col]) and str(row[cat_col]).strip() not in ["", "nan", "None"]:
+                            catalog_matches.append(f"{cat_prefix.rstrip('_').upper()}: {row[cat_col]}")
+            
+            if catalog_matches:
+                catalog_info = "; ".join(catalog_matches)
+            
+            if catalog_info:
+                source["catalog"] = catalog_info
 
+            # Handle source identification with priority
             source_id = f"{fallback_id_prefix} {idx + 1}"
             if id_cols:
                 for id_col in id_cols:
                     if id_col in present_optional_cols and pd.notna(row[id_col]):
-                        source_id = str(row[id_col])
-                        break
+                        id_value = str(row[id_col]).strip()
+                        if id_value and id_value not in ["nan", "None", ""]:
+                            source_id = id_value
+                            break
+            
             source["name"] = source_id
+            source["source_number"] = idx + 1
+
+            # Add additional useful information
+            for info_col in ["fwhm", "flux_fit", "sky_center"]:
+                if info_col in present_optional_cols and pd.notna(row[info_col]):
+                    try:
+                        source[info_col] = float(row[info_col])
+                    except (ValueError, TypeError):
+                        source[info_col] = str(row[info_col])
 
             catalog_sources.append(source)
 
@@ -269,6 +317,26 @@ def display_catalog_in_aladin(
                         width: 100%;
                         height: 550px;
                         border: 1px solid #ccc;
+                    }}
+                    .popup-content {{
+                        font-family: Arial, sans-serif;
+                        font-size: 12px;
+                        line-height: 1.4;
+                        max-width: 300px;
+                    }}
+                    .popup-title {{
+                        font-weight: bold;
+                        color: #2c5aa0;
+                        margin-bottom: 5px;
+                        border-bottom: 1px solid #ddd;
+                        padding-bottom: 3px;
+                    }}
+                    .popup-section {{
+                        margin: 5px 0;
+                    }}
+                    .popup-label {{
+                        font-weight: bold;
+                        color: #555;
                     }}
                 </style>
             </head>
@@ -302,42 +370,115 @@ def display_catalog_in_aladin(
 
                             let cat = A.catalog({{
                                 name: 'Photometry Results',
-                                sourceSize: 12,
+                                sourceSize: 14,
                                 shape: 'circle',
-                                color: '#00ff88',
-                                onClick: 'showPopup'
+                                color: '#00ff88'
                             }});
                             aladin.addCatalog(cat);
 
                             let sourcesData = JSON.parse(atob("{sources_json_b64}"));
                             let aladinSources = [];
 
-                            sourcesData.forEach(function(source) {{
-                                let popupContent = '<div style="padding:5px;">';
-                                if(source.name) {{
-                                    popupContent += '<b>' + source.name + '</b><br/>';
+                            sourcesData.forEach(function(source, index) {{
+                                // Create source name
+                                let sourceName = source.name || ('Source ' + (source.source_number || (index + 1)));
+                                
+                                // Build popup content as a simple text description
+                                let popupLines = [];
+                                
+                                // Add source information
+                                popupLines.push('Source: ' + sourceName);
+                                
+                                if(source.source_number) {{
+                                    popupLines.push('Number: ' + source.source_number);
                                 }}
-                                popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '<br/>';
-                                popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '<br/>';
+                                
+                                // Coordinates
+                                if(source.ra !== undefined && source.dec !== undefined) {{
+                                    let raStr = typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra;
+                                    let decStr = typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec;
+                                    popupLines.push('RA: ' + raStr + '°');
+                                    popupLines.push('Dec: ' + decStr + '°');
+                                }}
+                                
+                                // Magnitude
+                                if(source.mag !== undefined && source.mag !== null) {{
+                                    let magStr = typeof source.mag === 'number' ? source.mag.toFixed(2) : source.mag;
+                                    let magLine = 'Magnitude: ' + magStr;
+                                    if(source.mag_source) {{
+                                        magLine += ' (' + source.mag_source + ')';
+                                    }}
+                                    popupLines.push(magLine);
+                                }}
+                                
+                                // FWHM
+                                if(source.fwhm !== undefined && source.fwhm !== null) {{
+                                    let fwhmStr = typeof source.fwhm === 'number' ? source.fwhm.toFixed(2) : source.fwhm;
+                                    popupLines.push('FWHM: ' + fwhmStr + ' px');
+                                }}
+                                
+                                // Flux
+                                if(source.flux_fit !== undefined && source.flux_fit !== null) {{
+                                    let fluxStr = typeof source.flux_fit === 'number' ? source.flux_fit.toFixed(1) : source.flux_fit;
+                                    popupLines.push('Flux: ' + fluxStr);
+                                }}
+                                
+                                // Catalog matches
+                                if(source.catalog && source.catalog !== '') {{
+                                    popupLines.push('Catalogs: ' + source.catalog);
+                                }}
+                                
+                                // Join all information with line breaks
+                                let popupText = popupLines.join('\\n');
 
-                                if(source.mag) {{
-                                    popupContent += 'Mag: ' + (typeof source.mag === 'number' ? source.mag.toFixed(2) : source.mag) + '<br/>';
+                                // Create the Aladin source - try different API variations
+                                let aladinSource;
+                                try {{
+                                    // Method 1: Simple object with data
+                                    aladinSource = A.source(source.ra, source.dec, {{
+                                        name: sourceName,
+                                        popupTitle: sourceName,
+                                        popupDesc: popupText
+                                    }});
+                                }} catch (e1) {{
+                                    console.log('Method 1 failed, trying method 2:', e1);
+                                    try {{
+                                        // Method 2: With data object
+                                        aladinSource = A.source(source.ra, source.dec, {{
+                                            data: {{
+                                                name: sourceName,
+                                                description: popupText
+                                            }}
+                                        }});
+                                    }} catch (e2) {{
+                                        console.log('Method 2 failed, trying method 3:', e2);
+                                        try {{
+                                            // Method 3: Simple version
+                                            aladinSource = A.source(source.ra, source.dec, sourceName);
+                                            if (aladinSource && aladinSource.setPopupTitle) {{
+                                                aladinSource.setPopupTitle(sourceName);
+                                            }}
+                                            if (aladinSource && aladinSource.setPopupDesc) {{
+                                                aladinSource.setPopupDesc(popupText);
+                                            }}
+                                        }} catch (e3) {{
+                                            console.log('Method 3 failed, using basic source:', e3);
+                                            // Method 4: Most basic
+                                            aladinSource = A.source(source.ra, source.dec);
+                                        }}
+                                    }}
                                 }}
-                                if(source.catalog) {{
-                                    popupContent += 'Catalogs: ' + source.catalog + '<br/>';
+                                
+                                if (aladinSource) {{
+                                    aladinSources.push(aladinSource);
                                 }}
-                                popupContent += '</div>';
-
-                                let aladinSource = A.source(
-                                    source.ra,
-                                    source.dec,
-                                    {{ data: {{ description: popupContent }} }}
-                                );
-                                aladinSources.push(aladinSource);
                             }});
 
                             if (aladinSources.length > 0) {{
                                 cat.addSources(aladinSources);
+                                console.log('Added ' + aladinSources.length + ' sources to catalog');
+                            }} else {{
+                                console.warn('No sources to add to catalog');
                             }}
 
                         }} catch (error) {{
@@ -1098,7 +1239,7 @@ with st.sidebar.expander("📁 Archived Files", expanded=False):
                                     mime=mime_type,
                                     key=f"sidebar_download_{file_info['name']}",
                                     help=f"Download {file_info['name']}",
-                                    use_container_width=True
+                                    on_click="ignore"
                                 )
                             except Exception as e:
                                 st.error(f"Error: {str(e)[:20]}")
@@ -2007,23 +2148,7 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     detection_mask = st.session_state.analysis_parameters["detection_mask"]
     filter_band = st.session_state.analysis_parameters["filter_band"]
     filter_max_mag = st.session_state.analysis_parameters["filter_max_mag"]
-
-    # Log all sidebar parameters
-    write_to_log(log_buffer, "Analysis Parameters", level="INFO")
-    write_to_log(log_buffer, f"Seeing: {seeing} arcsec")
-    write_to_log(log_buffer, f"Detection Threshold: {threshold_sigma} sigma")
-    write_to_log(log_buffer, f"Border Mask: {detection_mask} pixels")
-
-    write_to_log(log_buffer, "Observatory Information", level="INFO")
-    write_to_log(
-        log_buffer, f"Observatory Name: {st.session_state.observatory_data['name']}"
-    )
-    write_to_log(
-        log_buffer, f"Latitude: {st.session_state.observatory_data['latitude']}°"
-    )
-    write_to_log(
-        log_buffer, f"Longitude: {st.session_state.observatory_data['longitude']}°"
-    )
+    
     write_to_log(
         log_buffer, f"Elevation: {st.session_state.observatory_data['elevation']} m"
     )
