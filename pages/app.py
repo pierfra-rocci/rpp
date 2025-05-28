@@ -2041,6 +2041,6 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     write_to_log(log_buffer, "Processing completed", level="INFO")
     with open(log_filepath, "w", encoding='utf-8') as f:
         f.write(log_buffer.getvalue())
-               write_to_log(log_buffer, f"Log saved to {log_filepath}")
+       write_to_log(log_buffer, f"Log saved to {log_filepath}")
 
 st.markdown("---")
