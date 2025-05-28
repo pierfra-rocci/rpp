@@ -1121,7 +1121,7 @@ with st.sidebar.expander("📁 Archived Files", expanded=False):
                             for file_info in all_files:
                                 zip_file.write(file_info['path'], arcname=file_info['name'])
                         
-                        zip_buffer.seek(0)
+                        zip_buffer.seek(0);
                         
                         st.download_button(
                             label=f"📦 {zip_filename}",
