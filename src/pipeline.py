@@ -92,7 +92,7 @@ def solve_with_siril(file_path):
             st.warning(f"File {file_path} does not exist.")
 
     except Exception as e:
-        st.error(f"Error solving with Siril: {str(e)}")
+        st.error(f"Error solving with : {str(e)}")
         return None
     try:
         file_path_list = file_path.split(".")
@@ -1128,7 +1128,6 @@ def detection_and_photometry(
                 verbose=True,
             )
 
-            # Unpack if tuple
             if isinstance(wcs_result, tuple):
                 wcs = wcs_result[0]
             else:
@@ -1151,7 +1150,19 @@ def detection_and_photometry(
         st.info("Astrometry+ is disabled. Skipping astrometry refinement.")
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
-    apertures = CircularAperture(positions, r=1.5 * fwhm_estimate)
+    
+    # Create multiple circular apertures with different radii
+    aperture_radii = [1.5, 2.0, 2.5, 3.0]
+    apertures = [CircularAperture(positions, r=radius * fwhm_estimate) 
+                 for radius in aperture_radii]
+    
+    # Create circular annulus apertures for background estimation
+    from photutils.aperture import CircularAnnulus
+    annulus_apertures = []
+    for radius in aperture_radii:
+        r_in = 2.0 * radius * fwhm_estimate
+        r_out = 2.5 * radius * fwhm_estimate
+        annulus_apertures.append(CircularAnnulus(positions, r_in=r_in, r_out=r_out))
 
     try:
         wcs_obj = None
@@ -1165,108 +1176,110 @@ def detection_and_photometry(
                 st.warning(f"Error creating WCS object: {e}")
                 wcs_obj = None
 
-        phot_table = aperture_photometry(
-            image_sub, apertures, error=total_error,
-            wcs=wcs_obj)
+        # Perform photometry for all apertures
+        phot_tables = []
+        annulus_tables = []
+        
+        for i, (aperture, annulus) in enumerate(zip(apertures, annulus_apertures)):
+            # Aperture photometry
+            phot_result = aperture_photometry(
+                image_sub, aperture, error=total_error, wcs=wcs_obj)
+            
+            # Background estimation from annulus
+            bkg_result = aperture_photometry(
+                image_sub, annulus, error=total_error, wcs=wcs_obj)
+            
+            # Add radius information to column names
+            radius_suffix = f"_r{aperture_radii[i]:.1f}"
+            
+            # Rename aperture columns
+            if f"aperture_sum" in phot_result.colnames:
+                phot_result.rename_column("aperture_sum", f"aperture_sum{radius_suffix}")
+            if f"aperture_sum_err" in phot_result.colnames:
+                phot_result.rename_column("aperture_sum_err", f"aperture_sum_err{radius_suffix}")
+            
+            # Rename annulus columns and calculate background per pixel
+            if f"aperture_sum" in bkg_result.colnames:
+                annulus_area = annulus.area
+                bkg_per_pixel = bkg_result["aperture_sum"] / annulus_area
+                aperture_area = aperture.area
+                total_bkg = bkg_per_pixel * aperture_area
+                
+                # Store background-corrected flux
+                if f"aperture_sum{radius_suffix}" in phot_result.colnames:
+                    phot_result[f"aperture_sum_bkg_corr{radius_suffix}"] = (
+                        phot_result[f"aperture_sum{radius_suffix}"] - total_bkg
+                    )
+                
+                # Store background information
+                phot_result[f"background{radius_suffix}"] = total_bkg
+                phot_result[f"background_per_pixel{radius_suffix}"] = bkg_per_pixel
+            
+            phot_tables.append(phot_result)
+        
+        # Combine all photometry results
+        phot_table = phot_tables[0]
+        for i in range(1, len(phot_tables)):
+            # Add columns from additional apertures
+            for col in phot_tables[i].colnames:
+                if col not in phot_table.colnames:
+                    phot_table[col] = phot_tables[i][col]
 
         phot_table["xcenter"] = sources["xcentroid"]
         phot_table["ycenter"] = sources["ycentroid"]
 
-        # Compute SNR for each source
-        # SNR = aperture_sum / total_error
-        if (
-            "aperture_sum" in phot_table.colnames
-            and "aperture_sum_err" in phot_table.colnames
-        ):
-            phot_table["snr"] = np.round(phot_table["aperture_sum"] / np.sqrt(phot_table["aperture_sum_err"]))
-            m_err = 1.0857 / phot_table["snr"]
-            phot_table['aperture_mag_err'] = m_err  # add to results table
-
-        else:
-            phot_table["snr"] = np.nan
-            phot_table['aperture_mag_err'] = np.nan  # add to results table
-
-        instrumental_mags = -2.5 * np.log10(phot_table["aperture_sum"] / exposure_time)
-        phot_table["instrumental_mag"] = instrumental_mags
-
-        try:
-            epsf_table, _ = perform_psf_photometry(
-                image_sub, sources, fwhm_estimate, daofind, mask, total_error
-            )
+        # Calculate SNR and magnitudes for each aperture
+        for i, radius in enumerate(aperture_radii):
+            radius_suffix = f"_r{radius:.1f}"
+            aperture_sum_col = f"aperture_sum{radius_suffix}"
+            aperture_err_col = f"aperture_sum_err{radius_suffix}"
+            bkg_corr_col = f"aperture_sum_bkg_corr{radius_suffix}"
             
-            epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"]))
-            m_err = 1.0857 / epsf_table["snr"]
-            epsf_table['psf_mag_err'] = m_err
-
-            epsf_instrumental_mags = -2.5 * np.log10(
-                epsf_table["flux_fit"] / exposure_time
-            )
-            epsf_table["instrumental_mag"] = epsf_instrumental_mags
-        except Exception as e:
-            st.error(f"Error performing EPSF photometry: {e}")
-            epsf_table = None
-
-        valid_sources = (phot_table["aperture_sum"] > 0) & np.isfinite(
-            phot_table["instrumental_mag"]
-        )
-        phot_table = phot_table[valid_sources]
-
-        if epsf_table is not None:
-            epsf_valid_sources = np.isfinite(epsf_table["instrumental_mag"])
-
-            epsf_table = epsf_table[epsf_valid_sources]
-
-        try:
-            if wcs_obj is not None:
-                ra, dec = wcs_obj.pixel_to_world_values(
-                    phot_table["xcenter"], phot_table["ycenter"]
+            if aperture_sum_col in phot_table.colnames and aperture_err_col in phot_table.colnames:
+                # SNR for raw aperture sum
+                phot_table[f"snr{radius_suffix}"] = np.round(
+                    phot_table[aperture_sum_col] / phot_table[aperture_err_col]
                 )
-                phot_table["ra"] = ra * u.deg
-                phot_table["dec"] = dec * u.deg
-
-                if epsf_table is not None:
-                    try:
-                        epsf_ra, epsf_dec = wcs_obj.pixel_to_world_values(
-                            epsf_table["x_fit"], epsf_table["y_fit"]
-                        )
-                        epsf_table["ra"] = epsf_ra * u.deg
-                        epsf_table["dec"] = epsf_dec * u.deg
-                    except Exception as e:
-                        st.warning(f"Could not add coordinates to EPSF table: {e}")
+                m_err = 1.0857 / phot_table[f"snr{radius_suffix}"]
+                phot_table[f"aperture_mag_err{radius_suffix}"] = m_err
+                
+                # Instrumental magnitude for raw aperture sum
+                instrumental_mags = -2.5 * np.log10(phot_table[aperture_sum_col] / exposure_time)
+                phot_table[f"instrumental_mag{radius_suffix}"] = instrumental_mags
+                
+                # If background-corrected flux is available, calculate its magnitude too
+                if bkg_corr_col in phot_table.colnames:
+                    # Handle negative or zero background-corrected fluxes
+                    valid_flux = phot_table[bkg_corr_col] > 0
+                    phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"] = np.nan
+                    phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"][valid_flux] = (
+                        -2.5 * np.log10(phot_table[bkg_corr_col][valid_flux] / exposure_time)
+                    )
             else:
-                if all(
-                    key in _science_header for key in ["RA", "DEC", "NAXIS1", "NAXIS2"]
-                ):
-                    st.info("Using simple linear approximation for RA/DEC coordinates")
-                    center_ra = _science_header["RA"]
-                    center_dec = _science_header["DEC"]
-                    width = _science_header["NAXIS1"]
-                    height = _science_header["NAXIS2"]
+                phot_table[f"snr{radius_suffix}"] = np.nan
+                phot_table[f"aperture_mag_err{radius_suffix}"] = np.nan
+                phot_table[f"instrumental_mag{radius_suffix}"] = np.nan
 
-                    pix_scale = pixel_scale or 1.0
+        # Keep the original columns for backward compatibility (using 1.5*FWHM aperture)
+        if "aperture_sum_r1.5" in phot_table.colnames:
+            phot_table["aperture_sum"] = phot_table["aperture_sum_r1.5"]
+            phot_table["aperture_sum_err"] = phot_table["aperture_sum_err_r1.5"]
+            phot_table["snr"] = phot_table["snr_r1.5"]
+            phot_table["aperture_mag_err"] = phot_table["aperture_mag_err_r1.5"]
+            phot_table["instrumental_mag"] = phot_table["instrumental_mag_r1.5"]
 
-                    center_x = width / 2
-                    center_y = height / 2
+        # Calculate background-subtracted flux and magnitude if not already done
+        if "aperture_sum_bkg_corr_r1.5" in phot_table.colnames:
+            phot_table["flux"] = phot_table["aperture_sum_bkg_corr_r1.5"]
+            phot_table["flux_err"] = phot_table["aperture_sum_err_r1.5"]
+            phot_table["magnitude"] = -2.5 * np.log10(phot_table["flux"] / exposure_time)
 
-                    for i, row in enumerate(phot_table):
-                        x = row["xcenter"]
-                        y = row["ycenter"]
-                        dx = (x - center_x) * pix_scale / 3600.0
-                        dy = (y - center_y) * pix_scale / 3600.0
-                        phot_table[i]["ra"] = center_ra + dx / np.cos(
-                            np.radians(center_dec)
-                        )
-                        phot_table[i]["dec"] = center_dec + dy
-        except Exception as e:
-            st.warning(
-                f"WCS transformation failed: {e}. RA and Dec not added to tables."
-            )
-
-        st.write(f"Found {len(phot_table)} sources and performed photometry.")
-        return phot_table, epsf_table, daofind, bkg
+        return phot_table
+    except ValueError as e:
+        raise e
     except Exception as e:
-        st.error(f"Error performing aperture photometry: {e}")
-        return None, None, daofind, bkg
+        st.error(f"Unexpected error in detection_and_photometry: {e}")
+        raise ValueError(f"Unexpected error in detection_and_photometry: {e}")
 
 
 def cross_match_with_gaia(
@@ -1813,6 +1826,7 @@ def enhance_catalog(
                     )
                 except (ValueError, TypeError):
                     base_date = datetime.now()
+           
             else:
                 base_date = datetime.now()
 

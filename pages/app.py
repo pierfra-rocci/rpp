@@ -947,7 +947,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         value=st.session_state.analysis_parameters["astrometry_check"],
         help=(
             "Attempt to refine WCS using detected sources before photometry "
-            "(requires external solver like Siril or astrometry.net)."
+            "(requires external solver)."
         ),
     )
     st.session_state.analysis_parameters["calibrate_cosmic_rays"] = st.toggle(
@@ -1141,9 +1141,9 @@ if science_file is not None:
         st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
 
         use_astrometry = st.checkbox(
-            "Attempt plate solving with Siril?",
+            "Attempt plate solving?",
             value=True,
-            help="Uses the Siril platesolve to determine WCS coordinates",
+            help="Uses the platesolve to determine WCS coordinates",
         )
 
         if use_astrometry:
@@ -1160,10 +1160,10 @@ if science_file is not None:
                 log_buffer = st.session_state["log_buffer"]
 
                 if wcs_obj is not None:
-                    st.success("Siril plate solving successful!")
+                    st.success("plate solving successful!")
                     write_to_log(
                         log_buffer,
-                        "Solved plate with Siril",
+                        "Solved",
                     )
 
                     wcs_header_filename = (
@@ -1188,9 +1188,9 @@ if science_file is not None:
 
         # Allow user to attempt plate solving even if WCS is valid
         replate_solve = st.checkbox(
-            "Re-run plate solving with Siril (overwrite existing WCS)?",
+            "Re-run plate solving (overwrite existing WCS)?",
             value=False,
-            help="Force a new plate solve using Siril, replacing the current WCS solution."
+            help="Force a new plate solve, replacing the current WCS solution."
         )
 
         if replate_solve:
@@ -1207,10 +1207,10 @@ if science_file is not None:
                 log_buffer = st.session_state["log_buffer"]
 
                 if wcs_obj is not None:
-                    st.success("Siril plate solving successful!")
+                    st.success("Plate solving successful!")
                     write_to_log(
                         log_buffer,
-                        "Solved plate with Siril (forced re-solve)",
+                        "Solved plate (forced re-solve)",
                     )
 
                     wcs_header_filename = (
