@@ -639,8 +639,8 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     """
     fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
     
-    # Check if we have magnitude columns
-    has_aperture = "aperture_mag" in final_table.columns
+    # Check if we have magnitude columns - use the new multi-aperture columns
+    has_aperture = "aperture_mag_r1.5" in final_table.columns
     has_psf = "psf_mag" in final_table.columns
     
     if not has_aperture and not has_psf:
@@ -654,7 +654,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Calculate bins for magnitude distribution
     mag_values = []
     if has_aperture:
-        mag_values.extend(final_table["aperture_mag"].dropna().tolist())
+        mag_values.extend(final_table["aperture_mag_r1.5"].dropna().tolist())
     if has_psf:
         mag_values.extend(final_table["psf_mag"].dropna().tolist())
     
@@ -666,10 +666,10 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Magnitude distribution histogram (left panel)
     if has_aperture:
         ax_mag.hist(
-            final_table["aperture_mag"].dropna(),
+            final_table["aperture_mag_r1.5"].dropna(),
             bins=bins,
             alpha=0.6,
-            label="Aperture Calib Mag",
+            label="Aperture Calib Mag (1.5×FWHM)",
             color="tab:blue",
         )
     if has_psf:
@@ -688,12 +688,12 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     ax_mag.grid(True, alpha=0.3)
     
     # Scatter plot of magnitude vs error (right panel)
-    if has_aperture and "aperture_mag_err" in final_table.columns:
+    if has_aperture and "aperture_mag_err_r1.5" in final_table.columns:
         ax_err.scatter(
-            final_table["aperture_mag"],
-            final_table["aperture_mag_err"],
+            final_table["aperture_mag_r1.5"],
+            final_table["aperture_mag_err_r1.5"],
             alpha=0.7,
-            label="Aperture",
+            label="Aperture (1.5×FWHM)",
             color="tab:blue",
             s=18
         )
