@@ -1178,7 +1178,6 @@ def detection_and_photometry(
 
         # Perform photometry for all apertures
         phot_tables = []
-        annulus_tables = []
         
         for i, (aperture, annulus) in enumerate(zip(apertures, annulus_apertures)):
             # Aperture photometry
@@ -1820,6 +1819,27 @@ def enhance_catalog(
         st.warning("No sources to cross-match with catalogs.")
         return final_table
 
+    # Ensure we have valid RA/Dec coordinates in final_table
+    if "ra" not in final_table.columns or "dec" not in final_table.columns:
+        st.error("final_table must contain 'ra' and 'dec' columns for cross-matching")
+        return final_table
+    
+    # Filter out sources with NaN coordinates at the beginning
+    valid_coords_mask = (
+        pd.notna(final_table["ra"]) & 
+        pd.notna(final_table["dec"]) & 
+        np.isfinite(final_table["ra"]) & 
+        np.isfinite(final_table["dec"])
+    )
+    
+    if not valid_coords_mask.any():
+        st.error("No sources with valid RA/Dec coordinates found for cross-matching")
+        return final_table
+    
+    num_invalid = len(final_table) - valid_coords_mask.sum()
+    if num_invalid > 0:
+        st.warning(f"Excluding {num_invalid} sources with invalid coordinates from cross-matching")
+
     # Compute field of view (arcmin) ONCE and use everywhere
     field_center_ra = None
     field_center_dec = None
@@ -1997,34 +2017,44 @@ def enhance_catalog(
             st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.")
             st.dataframe(astrostars)
 
-            source_coords = SkyCoord(
-                ra=final_table["ra"].values,
-                dec=final_table["dec"].values,
-                unit="deg",
-            )
-
-            astro_colibri_coords = SkyCoord(
-                ra=astrostars["ra"],
-                dec=astrostars["dec"],
-                unit=(u.deg, u.deg),
-            )
-
-            if not isinstance(search_radius_arcsec, (int, float)):
-                raise ValueError("Search radius must be a number")
-
-            idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
-            matches = d2d < (15 * u.arcsec)
-
-            for i, (match, match_idx) in enumerate(zip(matches, idx)):
-                if match:
-                    final_table.loc[i, "astro_colibri_name"] = astrostars[
-                        "discoverer_internal_name"
-                    ][match_idx]
-                    final_table.loc[i, "astro_colibri_type"] = astrostars["type"][match_idx]
-                    final_table.loc[i, "astro_colibri_classification"] = astrostars[
-                        "classification"][match_idx]
+            # Filter valid coordinates for astro-colibri matching
+            valid_final_coords = final_table[valid_coords_mask]
             
-            st.success("Astro-Colibri matched objects in field.")
+            if len(valid_final_coords) > 0 and len(astrostars) > 0:
+                source_coords = SkyCoord(
+                    ra=valid_final_coords["ra"].values,
+                    dec=valid_final_coords["dec"].values,
+                    unit="deg",
+                )
+
+                astro_colibri_coords = SkyCoord(
+                    ra=astrostars["ra"],
+                    dec=astrostars["dec"],
+                    unit=(u.deg, u.deg),
+                )
+
+                if not isinstance(search_radius_arcsec, (int, float)):
+                    raise ValueError("Search radius must be a number")
+
+                idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
+                matches = d2d < (15 * u.arcsec)
+
+                # Map matches back to the original table indices
+                valid_indices = valid_final_coords.index
+                
+                for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                    if match:
+                        original_idx = valid_indices[i]
+                        final_table.loc[original_idx, "astro_colibri_name"] = astrostars[
+                            "discoverer_internal_name"
+                        ][match_idx]
+                        final_table.loc[original_idx, "astro_colibri_type"] = astrostars["type"][match_idx]
+                        final_table.loc[original_idx, "astro_colibri_classification"] = astrostars[
+                            "classification"][match_idx]
+                
+                st.success("Astro-Colibri matched objects in field.")
+            else:
+                st.info("No valid coordinates available for Astro-Colibri matching")
         else:
             st.write("No Astro-Colibri sources found in the field.")
 
@@ -2057,53 +2087,76 @@ def enhance_catalog(
                 final_table["simbad_B"] = None
                 final_table["simbad_V"] = None
 
-                source_coords = SkyCoord(
-                    ra=final_table["ra"].values,
-                    dec=final_table["dec"].values,
-                    unit="deg",
-                )
-
-                if all(col in simbad_result.colnames for col in ["ra", "dec"]):
-                    try:
-                        simbad_coords = SkyCoord(
-                            ra=simbad_result["ra"],
-                            dec=simbad_result["dec"],
-                            unit=(u.hourangle, u.deg),
-                        )
-
-                        idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
-                        matches = d2d <= (10 * u.arcsec)
-
-                        for i, (match, match_idx) in enumerate(zip(matches, idx)):
-                            if match:
-                                final_table.loc[i, "simbad_main_id"] = simbad_result[
-                                    "main_id"
-                                ][match_idx]
-                                final_table.loc[i, "simbad_otype"] = simbad_result[
-                                    "otype"
-                                ][match_idx]
-                                final_table.loc[i, "simbad_B"] = simbad_result["B"][
-                                    match_idx
-                                ]
-                                final_table.loc[i, "simbad_V"] = simbad_result["V"][
-                                    match_idx
-                                ]
-                                if "ids" in simbad_result.colnames:
-                                    final_table.loc[i, "simbad_ids"] = simbad_result[
-                                        "ids"
-                                    ][match_idx]
-
-                        st.success(f"Found {sum(matches)} SIMBAD objects in field.")
-                    except Exception as e:
-                        st.error(
-                            f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
-                        )
-                        st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
-                else:
-                    available_cols = ", ".join(simbad_result.colnames)
-                    st.error(
-                        f"SIMBAD result missing required columns. Available columns: {available_cols}"
+                # Filter valid coordinates for SIMBAD matching
+                valid_final_coords = final_table[valid_coords_mask]
+                
+                if len(valid_final_coords) > 0:
+                    source_coords = SkyCoord(
+                        ra=valid_final_coords["ra"].values,
+                        dec=valid_final_coords["dec"].values,
+                        unit="deg",
                     )
+
+                    if all(col in simbad_result.colnames for col in ["ra", "dec"]):
+                        try:
+                            # Filter out NaN coordinates in SIMBAD result
+                            simbad_valid_mask = (
+                                pd.notna(simbad_result["ra"]) & 
+                                pd.notna(simbad_result["dec"]) &
+                                np.isfinite(simbad_result["ra"]) &
+                                np.isfinite(simbad_result["dec"])
+                            )
+                            
+                            if not simbad_valid_mask.any():
+                                st.warning("No SIMBAD sources with valid coordinates found")
+                            else:
+                                simbad_filtered = simbad_result[simbad_valid_mask]
+                                
+                                simbad_coords = SkyCoord(
+                                    ra=simbad_filtered["ra"],
+                                    dec=simbad_filtered["dec"],
+                                    unit=(u.hourangle, u.deg),
+                                )
+
+                                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
+                                matches = d2d <= (10 * u.arcsec)
+
+                                # Map matches back to the original table indices
+                                valid_indices = valid_final_coords.index
+
+                                for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                                    if match:
+                                        original_idx = valid_indices[i]
+                                        final_table.loc[original_idx, "simbad_main_id"] = simbad_filtered[
+                                            "main_id"
+                                        ][match_idx]
+                                        final_table.loc[original_idx, "simbad_otype"] = simbad_filtered[
+                                            "otype"
+                                        ][match_idx]
+                                        final_table.loc[original_idx, "simbad_B"] = simbad_filtered["B"][
+                                            match_idx
+                                        ]
+                                        final_table.loc[original_idx, "simbad_V"] = simbad_filtered["V"][
+                                            match_idx
+                                        ]
+                                        if "ids" in simbad_filtered.colnames:
+                                            final_table.loc[original_idx, "simbad_ids"] = simbad_filtered[
+                                                "ids"
+                                            ][match_idx]
+
+                                st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+                        except Exception as e:
+                            st.error(
+                                f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
+                            )
+                            st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
+                    else:
+                        available_cols = ", ".join(simbad_result.colnames)
+                        st.error(
+                            f"SIMBAD result missing required columns. Available columns: {available_cols}"
+                        )
+                else:
+                    st.info("No valid coordinates available for SIMBAD matching")
             else:
                 st.write("No SIMBAD objects found in the field.")
     except Exception as e:
@@ -2158,34 +2211,44 @@ def enhance_catalog(
                                     unit=u.deg,
                                 )
 
-                                source_coords = SkyCoord(
-                                    ra=final_table["ra"].values,
-                                    dec=final_table["dec"].values,
-                                    unit=u.deg,
-                                )
+                                # Filter valid coordinates for SkyBoT matching
+                                valid_final_coords = final_table[valid_coords_mask]
+                                
+                                if len(valid_final_coords) > 0:
+                                    source_coords = SkyCoord(
+                                        ra=valid_final_coords["ra"].values,
+                                        dec=valid_final_coords["dec"].values,
+                                        unit=u.deg,
+                                    )
 
-                                idx, d2d, _ = source_coords.match_to_catalog_sky(
-                                    skybot_coords
-                                )
-                                matches = d2d <= (10 * u.arcsec)
+                                    idx, d2d, _ = source_coords.match_to_catalog_sky(
+                                        skybot_coords
+                                    )
+                                    matches = d2d <= (10 * u.arcsec)
 
-                                for i, (match, match_idx) in enumerate(
-                                    zip(matches, idx)
-                                ):
-                                    if match:
-                                        obj = skybot_result["data"][match_idx]
-                                        final_table.loc[i, "skybot_NAME"] = obj["NAME"]
-                                        final_table.loc[i, "skybot_OBJECT_TYPE"] = obj[
-                                            "OBJECT_TYPE"
-                                        ]
-                                        if "MAGV" in obj:
-                                            final_table.loc[i, "skybot_MAGV"] = obj[
-                                                "MAGV"
+                                    # Map matches back to the original table indices
+                                    valid_indices = valid_final_coords.index
+
+                                    for i, (match, match_idx) in enumerate(
+                                        zip(matches, idx)
+                                    ):
+                                        if match:
+                                            original_idx = valid_indices[i]
+                                            obj = skybot_result["data"][match_idx]
+                                            final_table.loc[original_idx, "skybot_NAME"] = obj["NAME"]
+                                            final_table.loc[original_idx, "skybot_OBJECT_TYPE"] = obj[
+                                                "OBJECT_TYPE"
                                             ]
+                                            if "MAGV" in obj:
+                                                final_table.loc[original_idx, "skybot_MAGV"] = obj[
+                                                    "MAGV"
+                                                ]
 
-                                st.success(
-                                    f"Found {sum(matches)} solar system objects in field."
-                                )
+                                    st.success(
+                                        f"Found {sum(matches)} solar system objects in field."
+                                    )
+                                else:
+                                    st.info("No valid coordinates available for SkyBoT matching")
                             else:
                                 st.warning("No solar system objects found in the field.")
                         except ValueError as e:
@@ -2226,29 +2289,40 @@ def enhance_catalog(
                 vsx_coords = SkyCoord(
                     ra=vsx_table["RAJ2000"], dec=vsx_table["DEJ2000"], unit=u.deg
                 )
-                source_coords = SkyCoord(
-                    ra=final_table["ra"].values,
-                    dec=final_table["dec"].values,
-                    unit=u.deg,
-                )
+                
+                # Filter valid coordinates for AAVSO matching
+                valid_final_coords = final_table[valid_coords_mask]
+                
+                if len(valid_final_coords) > 0:
+                    source_coords = SkyCoord(
+                        ra=valid_final_coords["ra"].values,
+                        dec=valid_final_coords["dec"].values,
+                        unit=u.deg,
+                    )
 
-                idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
-                matches = d2d <= (10 * u.arcsec)
+                    idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
+                    matches = d2d <= (10 * u.arcsec)
 
-                final_table["aavso_Name"] = None
-                final_table["aavso_Type"] = None
-                final_table["aavso_Period"] = None
+                    final_table["aavso_Name"] = None
+                    final_table["aavso_Type"] = None
+                    final_table["aavso_Period"] = None
 
-                for i, (match, match_idx) in enumerate(zip(matches, idx)):
-                    if match:
-                        final_table.loc[i, "aavso_Name"] = vsx_table["Name"][match_idx]
-                        final_table.loc[i, "aavso_Type"] = vsx_table["Type"][match_idx]
-                        if "Period" in vsx_table.colnames:
-                            final_table.loc[i, "aavso_Period"] = vsx_table["Period"][
-                                match_idx
-                            ]
+                    # Map matches back to the original table indices
+                    valid_indices = valid_final_coords.index
 
-                st.success(f"Found {sum(matches)} variable stars in field.")
+                    for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                        if match:
+                            original_idx = valid_indices[i]
+                            final_table.loc[original_idx, "aavso_Name"] = vsx_table["Name"][match_idx]
+                            final_table.loc[original_idx, "aavso_Type"] = vsx_table["Type"][match_idx]
+                            if "Period" in vsx_table.colnames:
+                                final_table.loc[original_idx, "aavso_Period"] = vsx_table["Period"][
+                                    match_idx
+                                ]
+
+                    st.success(f"Found {sum(matches)} variable stars in field.")
+                else:
+                    st.info("No valid coordinates available for AAVSO matching")
             else:
                 st.write("No variable stars found in the field.")
     except Exception as e:
@@ -2277,50 +2351,59 @@ def enhance_catalog(
                     ra=qso_df["RAJ2000"], dec=qso_df["DEJ2000"], unit=u.deg
                 )
 
-                # Create source coordinates for matching
-                source_coords = SkyCoord(
-                    ra=final_table["ra"], dec=final_table["dec"], unit=u.deg
-                )
+                # Filter valid coordinates for QSO matching
+                valid_final_coords = final_table[valid_coords_mask]
+                
+                if len(valid_final_coords) > 0:
+                    # Create source coordinates for matching
+                    source_coords = SkyCoord(
+                        ra=valid_final_coords["ra"], dec=valid_final_coords["dec"], unit=u.deg
+                    )
 
-                # Perform cross-matching
-                idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
-                matches = d2d.arcsec <= 10
+                    # Perform cross-matching
+                    idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
+                    matches = d2d.arcsec <= 10
 
-                # Add matched quasar information to the final table
-                final_table["qso_name"] = None
-                final_table["qso_redshift"] = None
-                final_table["qso_Rmag"] = None
+                    # Add matched quasar information to the final table
+                    final_table["qso_name"] = None
+                    final_table["qso_redshift"] = None
+                    final_table["qso_Rmag"] = None
 
-                # Initialize catalog_matches column if it doesn't exist
-                if "catalog_matches" not in final_table.columns:
-                    final_table["catalog_matches"] = ""
+                    # Initialize catalog_matches column if it doesn't exist
+                    if "catalog_matches" not in final_table.columns:
+                        final_table["catalog_matches"] = ""
 
-                matched_sources = np.where(matches)[0]
-                matched_qsos = idx[matches]
+                    # Map matches back to the original table indices
+                    valid_indices = valid_final_coords.index
+                    matched_sources = np.where(matches)[0]
+                    matched_qsos = idx[matches]
 
-                for source_idx, qso_idx in zip(matched_sources, matched_qsos):
-                    final_table.loc[source_idx, "qso_name"] = qso_df.iloc[qso_idx][
-                        "Name"
-                    ]
-                    final_table.loc[source_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
-                        "z"
-                    ]
-                    final_table.loc[source_idx, "qso_Rmag"] = qso_df.iloc[qso_idx][
-                        "Rmag"
-                    ]
+                    for i, qso_idx in zip(matched_sources, matched_qsos):
+                        original_idx = valid_indices[i]
+                        final_table.loc[original_idx, "qso_name"] = qso_df.iloc[qso_idx][
+                            "Name"
+                        ]
+                        final_table.loc[original_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
+                            "z"
+                        ]
+                        final_table.loc[original_idx, "qso_Rmag"] = qso_df.iloc[qso_idx][
+                            "Rmag"
+                        ]
 
-                # Update the catalog_matches column for matched quasars
-                has_qso = final_table["qso_name"].notna()
-                final_table.loc[has_qso, "catalog_matches"] += "QSO; "
+                    # Update the catalog_matches column for matched quasars
+                    has_qso = final_table["qso_name"].notna()
+                    final_table.loc[has_qso, "catalog_matches"] += "QSO; "
 
-                st.success(
-                    f"Found {sum(has_qso)} quasars in field from Milliquas catalog."
-                )
-                write_to_log(
-                    st.session_state.get("log_buffer"),
-                    f"Found {sum(has_qso)} quasar matches in Milliquas catalog",
-                    "INFO",
-                )
+                    st.success(
+                        f"Found {sum(has_qso)} quasars in field from Milliquas catalog."
+                    )
+                    write_to_log(
+                        st.session_state.get("log_buffer"),
+                        f"Found {sum(has_qso)} quasar matches in Milliquas catalog",
+                        "INFO",
+                    )
+                else:
+                    st.info("No valid coordinates available for QSO matching")
             else:
                 st.warning("No quasars found in field from Milliquas catalog.")
                 write_to_log(
