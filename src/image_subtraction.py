@@ -611,32 +611,43 @@ class TransientFinder:
                 centroid_func=None
             )
 
-            # Combine results
-            all_transients = []
+            # Combine results - create new rows instead of modifying existing ones
+            all_rows = []
 
             # Process positive transients
-            if positive_peaks:
+            if positive_peaks and len(positive_peaks) > 0:
+                print(f"Found {len(positive_peaks)} positive peaks")
                 for peak in positive_peaks:
-                    peak['peak_type'] = 'positive'
-                    peak['significance'] = (peak['peak_value'] - median) / std
-                    peak['original_value'] = peak['peak_value']  # Store original difference value
-                    all_transients.append(peak)
+                    # Create new row with all required columns
+                    row = {
+                        'x_peak': peak['x_peak'],
+                        'y_peak': peak['y_peak'], 
+                        'peak_value': peak['peak_value'],
+                        'peak_type': 'positive',
+                        'significance': (peak['peak_value'] - median) / std,
+                        'original_value': peak['peak_value']
+                    }
+                    all_rows.append(row)
 
             # Process negative transients
-            if negative_peaks:
+            if negative_peaks and len(negative_peaks) > 0:
+                print(f"Found {len(negative_peaks)} negative peaks")
                 for peak in negative_peaks:
                     # Convert back to original coordinates and values
                     original_value = -peak['peak_value']  # Convert back from inverted
-                    peak['peak_type'] = 'negative'
-                    peak['significance'] = -(original_value - median) / std  # Negative significance
-                    peak['original_value'] = original_value
-                    peak['peak_value'] = original_value  # Correct the peak value
-                    all_transients.append(peak)
+                    row = {
+                        'x_peak': peak['x_peak'],
+                        'y_peak': peak['y_peak'],
+                        'peak_value': original_value,  # Use corrected value
+                        'peak_type': 'negative',
+                        'significance': -(original_value - median) / std,  # Negative significance
+                        'original_value': original_value
+                    }
+                    all_rows.append(row)
 
-            if all_transients:
-                # Create combined table
-                from astropy.table import vstack
-                self.transient_table = vstack([Table([t]) for t in all_transients])
+            if all_rows:
+                # Create table from rows
+                self.transient_table = Table(all_rows)
                 
                 # Sort by absolute significance (strongest detections first)
                 self.transient_table['abs_significance'] = np.abs(self.transient_table['significance'])
@@ -685,6 +696,8 @@ class TransientFinder:
 
         except Exception as e:
             print(f"Error detecting transients: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def plot_results(self, figsize=None, show=True):
