@@ -444,21 +444,53 @@ def airmass(
     try:
         ra = _header.get("RA") or _header.get("OBJRA") or _header.get("CRVAL1")
         dec = _header.get("DEC") or _header.get("OBJDEC") or _header.get("CRVAL2")
-        # date_keywords = ['DATE-OBS', 'DATE', 'DATE_OBS', 'DATEOBS', 'MJD-OBS']
-        obstime_str = _header.get("DATE", "DATE-OBS")
+        
+        # Check for various date keywords in order of preference
+        date_keywords = ['DATE-OBS', 'DATE', 'DATE_OBS', 'DATEOBS', 'MJD-OBS']
+        obstime_str = None
+        
+        for keyword in date_keywords:
+            if keyword in _header and _header[keyword] is not None:
+                obstime_str = _header[keyword]
+                break
 
         if any(v is None for v in [ra, dec, obstime_str]):
             missing = []
             if ra is None:
-                missing.append("RA")
+                missing.append("RA/OBJRA/CRVAL1")
             if dec is None:
-                missing.append("DEC")
+                missing.append("DEC/OBJDEC/CRVAL2")
             if obstime_str is None:
-                missing.append("DATE")
+                missing.append("DATE-OBS/DATE")
             raise KeyError(f"Missing required header keywords: {', '.join(missing)}")
 
         coord = SkyCoord(ra=ra, dec=dec, unit=u.deg, frame="icrs")
-        obstime = Time(obstime_str)
+        
+        # Try to parse the observation time with different formats
+        try:
+            # First, try direct parsing
+            obstime = Time(obstime_str)
+    
+        except Exception as time_error:
+            # If that fails, try different parsing strategies
+            try:
+                # Handle common FITS date formats
+                if isinstance(obstime_str, str):
+                    # Remove any timezone info and try to parse
+                    clean_date = obstime_str.replace('Z', '').replace('T', ' ')
+                    # Try ISO format
+                    obstime = Time(clean_date, format='iso')
+                else:
+                    # If it's not a string, convert it
+                    obstime = Time(str(obstime_str))
+            except Exception:
+                # Last resort: try as MJD if it's a number
+                try:
+                    mjd_value = float(obstime_str)
+                    obstime = Time(mjd_value, format='mjd')
+                except (ValueError, TypeError):
+                    raise ValueError(f"Could not parse observation time '{obstime_str}' in any recognized format")
+        
         location = EarthLocation(
             lat=obs_data["latitude"] * u.deg,
             lon=obs_data["longitude"] * u.deg,
