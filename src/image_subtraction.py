@@ -508,30 +508,29 @@ class TransientFinder:
                     # Method 2: Try using - operator if overloaded
                     diff_result = sci_image - ref_image
                 except:
-                    try:
-                        # Method 3: Try accessing the image data and doing manual subtraction with PSF matching
-                        print("Using manual PSF-matched subtraction...")
+                    # Method 3: Try accessing the image data and doing manual subtraction with PSF matching
+                    print("Using manual PSF-matched subtraction...")
+                    
+                    # Get the actual image data from SingleImage objects
+                    if hasattr(sci_image, 'pixeldata'):
+                        sci_data = sci_image.pixeldata
+                    elif hasattr(sci_image, 'data'):
+                        sci_data = sci_image.data
+                    else:
+                        sci_data = sci_data_native
                         
-                        # Get the actual image data from SingleImage objects
-                        if hasattr(sci_image, 'pixeldata'):
-                            sci_data = sci_image.pixeldata
-                        elif hasattr(sci_image, 'data'):
-                            sci_data = sci_image.data
-                        else:
-                            sci_data = sci_data_native
-                            
-                        if hasattr(ref_image, 'pixeldata'):
-                            ref_data = ref_image.pixeldata
-                        elif hasattr(ref_image, 'data'):
-                            ref_data = ref_image.data
-                        else:
-                            ref_data = ref_data_native
-                        
-                        # Simple difference for now (could be enhanced with PSF matching)
-                        diff_result = sci_data - ref_data
-                        self.diff_data = diff_result
-                        print(f"Manual ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
-                        return self._save_difference_image()
+                    if hasattr(ref_image, 'pixeldata'):
+                        ref_data = ref_image.pixeldata
+                    elif hasattr(ref_image, 'data'):
+                        ref_data = ref_image.data
+                    else:
+                        ref_data = ref_data_native
+                    
+                    # Simple difference for now (could be enhanced with PSF matching)
+                    diff_result = sci_data - ref_data
+                    self.diff_data = diff_result
+                    print(f"Manual ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
+                    return self._save_difference_image()
             
             # Extract the difference data from the result
             if hasattr(diff_result, 'pixeldata'):
