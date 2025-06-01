@@ -1887,6 +1887,8 @@ if science_file is not None:
                                             )
                                             final_table["airmass"] = air
 
+                                            st.session_state["final_phot_table"] = final_table
+
                                             st.subheader("Final Photometry Catalog")
                                             st.dataframe(final_table.head(10))
 
@@ -1984,29 +1986,35 @@ if science_file is not None:
                 ra_center = None
                 dec_center = None
 
-                if "CRVAL1" in header_to_process and "CRVAL2" in header_to_process:
-                    ra_center = header_to_process["CRVAL1"]
-                    dec_center = header_to_process["CRVAL2"]
-                elif "RA" in header_to_process and "DEC" in header_to_process:
-                    ra_center = header_to_process["RA"]
-                    dec_center = header_to_process["DEC"]
-                elif "OBJRA" in header_to_process and "OBJDEC" in header_to_process:
-                    ra_center = header_to_process["OBJRA"]
-                    dec_center = header_to_process["OBJDEC"]
+                coord_keys = [("CRVAL1", "CRVAL2"),
+                              ("RA", "DEC"),
+                              ("OBJRA", "OBJDEC")]
+
+                for ra_key, dec_key in coord_keys:
+                    if ra_key in header_to_process and dec_key in header_to_process:
+                        ra_center = header_to_process[ra_key]
+                        dec_center = header_to_process[dec_key]
+                        break
 
                 if ra_center is not None and dec_center is not None:
-                    if (
-                        "final_phot_table" in st.session_state
-                        and st.session_state["final_phot_table"] is not None
-                        and not st.session_state["final_phot_table"].empty
-                    ):
+                    # Check if we have a valid final photometry table
+                    final_phot_table = st.session_state.get("final_phot_table")
+                    
+                    if (final_phot_table is not None and 
+                        not final_phot_table.empty and 
+                        len(final_phot_table) > 0):
+                        
                         st.subheader("Aladin Catalog Viewer")
-
-                        display_catalog_in_aladin(
-                            final_table=final_table,
-                            ra_center=ra_center,
-                            dec_center=dec_center,
-                        )
+                        
+                        try:
+                            display_catalog_in_aladin(
+                                final_table=final_phot_table,
+                                ra_center=ra_center,
+                                dec_center=dec_center,
+                            )
+                        except Exception as e:
+                            st.error(f"Error displaying Aladin viewer: {str(e)}")
+                            st.info("Catalog data is available but cannot be displayed in interactive viewer.")
 
                     st.link_button(
                         "ESA Sky Viewer",
@@ -2014,13 +2022,14 @@ if science_file is not None:
                         help="Open ESA Sky with the same target coordinates",
                     )
 
-                    provide_download_buttons(output_dir)
-                    cleanup_temp_files()
-                    zip_rpp_results_on_exit(science_file, output_dir)
-
+                    # Only provide download buttons if processing was completed
+                    if final_phot_table is not None:
+                        provide_download_buttons(output_dir)
+                        cleanup_temp_files()
+                        zip_rpp_results_on_exit(science_file, output_dir)
                 else:
                     st.warning(
-                        "Could not determine coordinates from image header. Cannot display ESASky."
+                        "Could not determine coordinates from image header. Cannot display ESASky or interactive viewer."
                     )
 else:
     st.text(
