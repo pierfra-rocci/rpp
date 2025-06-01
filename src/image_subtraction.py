@@ -635,15 +635,19 @@ class TransientFinder:
                 for peak in negative_peaks:
                     # Convert back to original coordinates and values
                     original_value = -peak['peak_value']  # Convert back from inverted
-                    row = {
-                        'x_peak': peak['x_peak'],
-                        'y_peak': peak['y_peak'],
-                        'peak_value': original_value,  # Use corrected value
-                        'peak_type': 'negative',
-                        'significance': -(original_value - median) / std,  # Negative significance
-                        'original_value': original_value
-                    }
-                    all_rows.append(row)
+                    significance = -(original_value - median) / std  # Negative significance
+                    
+                    # Only include negative transients with significance > 100σ (in absolute value)
+                    if abs(significance) > 100:
+                        row = {
+                            'x_peak': peak['x_peak'],
+                            'y_peak': peak['y_peak'],
+                            'peak_value': original_value,  # Use corrected value
+                            'peak_type': 'negative',
+                            'significance': significance,
+                            'original_value': original_value
+                        }
+                        all_rows.append(row)
 
             if all_rows:
                 # Create table from rows
