@@ -458,39 +458,55 @@ class TransientFinder:
 
     def _extract_difference_data(self, D, mask):
         """Extract difference data from ProperImage results."""
-        if isinstance(D, str):
-            print(f"Loading difference image from ProperImage output file: {D}")
-            try:
+        try:
+            # Handle ProperImage objects - they have .pixeldata attribute
+            if hasattr(D, 'pixeldata'):
+                print("D is a ProperImage object, extracting pixeldata")
+                diff_data = D.pixeldata
+            elif hasattr(D, 'data'):
+                print("D has data attribute")
+                diff_data = D.data
+            elif isinstance(D, str):
+                print(f"Loading difference image from ProperImage output file: {D}")
                 with fits.open(D) as hdul:
                     diff_data = hdul[0].data
                 # Clean up the temporary file created by ProperImage
                 if os.path.exists(D):
                     os.remove(D)
-            except Exception as e:
-                print(f"Failed to load difference image file {D}: {e}")
-                raise e
-        else:
-            # D is a numpy array or similar object
-            if hasattr(D, 'data'):
-                # D is likely a FITS HDU or similar object
-                diff_data = D.data
             elif hasattr(D, 'real'):
                 # D is a complex array, take real part
+                print("D is complex array, taking real part")
                 diff_data = D.real
             else:
                 # D is already a numpy array
+                print("Converting D to numpy array")
                 diff_data = np.asarray(D)
             
-            # Apply mask if available and it's not a string
-            if mask is not None and not isinstance(mask, str):
-                if hasattr(mask, 'data'):
+            # Handle mask similarly
+            mask_data = None
+            if mask is not None:
+                if hasattr(mask, 'pixeldata'):
+                    mask_data = mask.pixeldata
+                elif hasattr(mask, 'data'):
                     mask_data = mask.data
-                else:
+                elif not isinstance(mask, str):
                     mask_data = np.asarray(mask)
-                diff_data = np.ma.array(diff_data, mask=mask_data).filled(np.nan)
+                
+                # Apply mask if we have valid mask data
+                if mask_data is not None:
+                    diff_data = np.ma.array(diff_data, mask=mask_data).filled(np.nan)
 
-        print(f"Difference image extracted. Shape: {diff_data.shape}")
-        return diff_data
+            print(f"Difference image extracted. Shape: {diff_data.shape}")
+            return diff_data
+            
+        except Exception as e:
+            print(f"Error extracting difference data: {e}")
+            print("Attempting fallback extraction...")
+            # Fallback: try to get any array-like data
+            if hasattr(D, '__array__'):
+                return np.array(D)
+            else:
+                raise e
 
     def _perform_proper_subtraction(self):
         """Perform ProperImage subtraction with improved file management."""
@@ -522,15 +538,19 @@ class TransientFinder:
                     
                     # Debug: print the raw result to understand what ProperImage returns
                     print(f"ProperImage raw result type: {type(result)}")
-                    if isinstance(result, (tuple, list)):
-                        print(f"ProperImage result length: {len(result)}")
-                        for i, item in enumerate(result):
-                            print(f"  Item {i}: type={type(item)}, has_data={hasattr(item, 'data')}")
+                    print(f"ProperImage result attributes: {dir(result) if hasattr(result, '__dict__') else 'No attributes'}")
                     
                     # Handle different return formats from ProperImage more carefully
                     D, P, scorr, mask = None, None, None, None
                     
                     if isinstance(result, (tuple, list)):
+                        print(f"ProperImage result length: {len(result)}")
+                        for i, item in enumerate(result):
+                            item_type = type(item)
+                            has_pixeldata = hasattr(item, 'pixeldata')
+                            has_data = hasattr(item, 'data')
+                            print(f"  Item {i}: type={item_type}, has_pixeldata={has_pixeldata}, has_data={has_data}")
+                        
                         # Unpack available items
                         if len(result) >= 1:
                             D = result[0]
@@ -546,7 +566,11 @@ class TransientFinder:
                     
                     # Debug: print what we extracted
                     print(f"Extracted D type: {type(D)}")
-                    if hasattr(D, 'shape'):
+                    print(f"D attributes: {dir(D) if hasattr(D, '__dict__') else 'No attributes'}")
+                    
+                    if hasattr(D, 'pixeldata'):
+                        print(f"D.pixeldata shape: {D.pixeldata.shape}")
+                    elif hasattr(D, 'shape'):
                         print(f"D shape: {D.shape}")
                     elif isinstance(D, str):
                         print(f"D is file path: {D}")
