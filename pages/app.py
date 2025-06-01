@@ -312,49 +312,12 @@ def display_catalog_in_aladin(
             <head>
                 <meta charset="utf-8">
                 <title>Aladin Lite</title>
-                <style>
-                    #aladin-lite-div {{
-                        width: 100%;
-                        height: 550px;
-                        border: 1px solid #ccc;
-                    }}
-                    .popup-content {{
-                        font-family: Arial, sans-serif;
-                        font-size: 12px;
-                        line-height: 1.4;
-                        max-width: 300px;
-                    }}
-                    .popup-title {{
-                        font-weight: bold;
-                        color: #2c5aa0;
-                        margin-bottom: 5px;
-                        border-bottom: 1px solid #ddd;
-                        padding-bottom: 3px;
-                    }}
-                    .popup-section {{
-                        margin: 5px 0;
-                    }}
-                    .popup-label {{
-                        font-weight: bold;
-                        color: #555;
-                    }}
-                </style>
             </head>
             <body>
-                <div id="aladin-lite-div"></div>
-                <script type="text/javascript" src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js"></script>
+                <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
+                <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
                 <script type="text/javascript">
-                    let aladin;
-                    
-                    function initAladin() {{
-                        try {{
-                            if (typeof A === 'undefined') {{
-                                console.error('Aladin Lite library not loaded');
-                                document.getElementById('aladin-lite-div').innerHTML = 
-                                    '<p style="color:red; text-align:center; padding:20px;">Failed to load Aladin Lite library</p>';
-                                return;
-                            }}
-                            
+                    document.addEventListener("DOMContentLoaded", function(event) {{
                             aladin = A.aladin('#aladin-lite-div', {{
                                 target: '{ra_center} {dec_center}',
                                 fov: {fov},
@@ -370,132 +333,49 @@ def display_catalog_in_aladin(
 
                             let cat = A.catalog({{
                                 name: 'Photometry Results',
-                                sourceSize: 14,
+                                sourceSize: 12,
                                 shape: 'circle',
-                                color: '#00ff88'
+                                color: '#00ff88',
+                                onClick: 'showPopup'
                             }});
                             aladin.addCatalog(cat);
-
+                            
                             let sourcesData = JSON.parse(atob("{sources_json_b64}"));
                             let aladinSources = [];
 
-                            sourcesData.forEach(function(source, index) {{
-                                // Create source name
-                                let sourceName = source.name || ('Source ' + (source.source_number || (index + 1)));
-                                
-                                // Build popup content as a simple text description
-                                let popupLines = [];
-                                
-                                // Add source information
-                                popupLines.push('Source: ' + sourceName);
-                                
-                                if(source.source_number) {{
-                                    popupLines.push('Number: ' + source.source_number);
+                            sourcesData.forEach(function(source) {{
+                                let popupContent = '<div style="padding:5px;">';
+                                if(source.name) {{
+                                    popupContent += '<b>' + source.name + '</b><br/>';
                                 }}
-                                
-                                // Coordinates
-                                if(source.ra !== undefined && source.dec !== undefined) {{
-                                    let raStr = typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra;
-                                    let decStr = typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec;
-                                    popupLines.push('RA: ' + raStr + '°');
-                                    popupLines.push('Dec: ' + decStr + '°');
-                                }}
-                                
-                                // Magnitude
-                                if(source.mag !== undefined && source.mag !== null) {{
-                                    let magStr = typeof source.mag === 'number' ? source.mag.toFixed(2) : source.mag;
-                                    let magLine = 'Magnitude: ' + magStr;
-                                    if(source.mag_source) {{
-                                        magLine += ' (' + source.mag_source + ')';
-                                    }}
-                                    popupLines.push(magLine);
-                                }}
-                                
-                                // FWHM
-                                if(source.fwhm !== undefined && source.fwhm !== null) {{
-                                    let fwhmStr = typeof source.fwhm === 'number' ? source.fwhm.toFixed(2) : source.fwhm;
-                                    popupLines.push('FWHM: ' + fwhmStr + ' px');
-                                }}
-                                
-                                // Flux
-                                if(source.flux_fit !== undefined && source.flux_fit !== null) {{
-                                    let fluxStr = typeof source.flux_fit === 'number' ? source.flux_fit.toFixed(1) : source.flux_fit;
-                                    popupLines.push('Flux: ' + fluxStr);
-                                }}
-                                
-                                // Catalog matches
-                                if(source.catalog && source.catalog !== '') {{
-                                    popupLines.push('Catalogs: ' + source.catalog);
-                                }}
-                                
-                                // Join all information with line breaks
-                                let popupText = popupLines.join('\\n');
+                                popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '<br/>';
+                                popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '<br/>';
 
-                                // Create the Aladin source - try different API variations
-                                let aladinSource;
-                                try {{
-                                    // Method 1: Simple object with data
-                                    aladinSource = A.source(source.ra, source.dec, {{
-                                        name: sourceName,
-                                        popupTitle: sourceName,
-                                        popupDesc: popupText
-                                    }});
-                                }} catch (e1) {{
-                                    console.log('Method 1 failed, trying method 2:', e1);
-                                    try {{
-                                        // Method 2: With data object
-                                        aladinSource = A.source(source.ra, source.dec, {{
-                                            data: {{
-                                                name: sourceName,
-                                                description: popupText
-                                            }}
-                                        }});
-                                    }} catch (e2) {{
-                                        console.log('Method 2 failed, trying method 3:', e2);
-                                        try {{
-                                            // Method 3: Simple version
-                                            aladinSource = A.source(source.ra, source.dec, sourceName);
-                                            if (aladinSource && aladinSource.setPopupTitle) {{
-                                                aladinSource.setPopupTitle(sourceName);
-                                            }}
-                                            if (aladinSource && aladinSource.setPopupDesc) {{
-                                                aladinSource.setPopupDesc(popupText);
-                                            }}
-                                        }} catch (e3) {{
-                                            console.log('Method 3 failed, using basic source:', e3);
-                                            // Method 4: Most basic
-                                            aladinSource = A.source(source.ra, source.dec);
-                                        }}
-                                    }}
+                                if(source.mag) {{
+                                    popupContent += 'Mag: ' + (typeof source.mag === 'number' ? source.mag.toFixed(2) : source.mag) + '<br/>';
                                 }}
-                                
-                                if (aladinSource) {{
-                                    aladinSources.push(aladinSource);
+                                if(source.catalog) {{
+                                    popupContent += 'Catalogs: ' + source.catalog + '<br/>';
                                 }}
+                                popupContent += '</div>';
+
+                                let aladinSource = A.source(
+                                    source.ra,
+                                    source.dec,
+                                    {{ description: popupContent }}
+                                );
+                                aladinSources.push(aladinSource);
                             }});
 
                             if (aladinSources.length > 0) {{
                                 cat.addSources(aladinSources);
-                                console.log('Added ' + aladinSources.length + ' sources to catalog');
-                            }} else {{
-                                console.warn('No sources to add to catalog');
                             }}
 
                         }} catch (error) {{
-                            console.error("Error initializing Aladin Lite:", error);
-                            document.getElementById('aladin-lite-div').innerHTML = 
-                                '<p style="color:red; text-align:center; padding:20px;">Error loading Aladin viewer: ' + error.message + '</p>';
+                            console.error("Error initializing Aladin Lite or adding sources:", error);
+                            document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin viewer. Check console.</p>';
                         }}
-                    }}
-                    
-                    // Wait for DOM and Aladin library to load
-                    if (document.readyState === 'loading') {{
-                        document.addEventListener('DOMContentLoaded', function() {{
-                            setTimeout(initAladin, 100);
-                        }});
-                    }} else {{
-                        setTimeout(initAladin, 100);
-                    }}
+                    }});
                 </script>
             </body>
             </html>
