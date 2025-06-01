@@ -828,6 +828,24 @@ class TransientFinder:
             traceback.print_exc()
             return None
 
+    def cleanup_temp_files(self):
+        """Clean up temporary and reference files, keeping only catalog and plot."""
+        files_to_remove = [
+            "reference_image.fits",
+            "aligned_reference.fits", 
+            "difference_image.fits"
+        ]
+        
+        print("Cleaning up temporary files...")
+        for filename in files_to_remove:
+            filepath = os.path.join(self.output_dir, filename)
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    print(f"Removed: {filename}")
+            except OSError as e:
+                print(f"Warning: Could not remove {filename}: {e}")
+
 
 def main():
     """
@@ -854,6 +872,7 @@ def main():
                         default='proper', help='Image subtraction method')
     parser.add_argument('--no-plot', action='store_true', help='Skip plotting')
     parser.add_argument('--config', help='Path to JSON configuration file')
+    parser.add_argument('--keep-temp', action='store_true', help='Keep temporary files (reference, difference images)')
 
     args = parser.parse_args()
 
@@ -880,6 +899,13 @@ def main():
     # Plot results unless --no-plot is specified
     if not args.no_plot:
         finder.plot_results(show=True)
+
+    # Clean up temporary files unless --keep-temp is specified
+    if not args.keep_temp:
+        finder.cleanup_temp_files()
+        print("Cleanup complete. Kept: transients.csv and transient_detection_plot.png")
+    else:
+        print("Temporary files kept as requested.")
 
     print("Transient detection complete.")
     return 0
