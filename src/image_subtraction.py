@@ -773,26 +773,17 @@ class TransientFinder:
                     if peak_type == 'positive':
                         color = 'lime'
                         edge_color = 'darkgreen'
-                        label = 'Positive (new/bright)' if not positive_plotted else ""
                         positive_plotted = True
                     else:
                         color = 'red'
                         edge_color = 'darkred'
-                        label = 'Negative (dim/gone)' if not negative_plotted else ""
                         negative_plotted = True
                     
-                    # Draw circle marker
+                    # Draw circle marker only (no text labels)
                     circle = plt.Circle((x, y), radius=self.config.APERTURE_RADIUS, 
                                       fill=False, color=color, linewidth=2, 
-                                      edgecolor=edge_color, label=label)
+                                      edgecolor=edge_color)
                     axes[2].add_patch(circle)
-                    
-                    # Add text with significance - make it more visible
-                    axes[2].text(x+15, y+15, f"{idx+1}\n({significance:.1f}σ)", 
-                                color='white', fontsize=9, fontweight='bold',
-                                ha='left', va='bottom',
-                                bbox=dict(boxstyle="round,pad=0.3", 
-                                         facecolor=color, alpha=0.8, edgecolor=edge_color))
                 
                 # Create custom legend
                 legend_elements = []
