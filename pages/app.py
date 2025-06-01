@@ -1056,8 +1056,17 @@ if st.sidebar.button("💾 Save Configuration"):
     except Exception as e:
         st.sidebar.warning(f"Could not connect to backend: {e}")
 
+# Add logout button at the top right if user is logged in
+if st.session_state.logged_in:
+    st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
+    if st.sidebar.button("Logout"):
+        st.session_state.logged_in = False
+        st.session_state.username = None
+        st.success("Logged out successfully.")
+        st.switch_page("pages/login.py")
+
 # Add archived files browser to sidebar
-with st.sidebar.expander("📁 Archived Files", expanded=False):
+with st.expander("📁 Archived Analysis", expanded=False):
     username = st.session_state.get("username", "anonymous")
     output_dir = ensure_output_directory(f"{username}_rpp_results")
     
@@ -1197,15 +1206,6 @@ with st.sidebar.expander("📁 Archived Files", expanded=False):
             st.error(f"Error accessing files: {str(e)}")
     else:
         st.info("No results directory yet")
-
-# Add logout button at the top right if user is logged in
-if st.session_state.logged_in:
-    st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
-    if st.sidebar.button("Logout"):
-        st.session_state.logged_in = False
-        st.session_state.username = None
-        st.success("Logged out successfully.")
-        st.switch_page("pages/login.py")
 
 science_file = st.file_uploader(
     "Choose a FITS file for analysis", type=["fits", "fit", "fts", "fits.gz"],
