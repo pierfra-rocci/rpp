@@ -568,26 +568,28 @@ class TransientFinder:
         Parameters
         ----------
         threshold : float
-            Detection threshold in sigma units above background.
+            Detection threshold in sigma units above/below background.
         npixels : int
             Minimum number of connected pixels for detection.
 
         Returns
         -------
         astropy.table.Table
-            Table of detected transient sources.
+            Table of detected transient sources (both positive and negative).
         """
         if self.diff_data is None:
             print("Difference image not created. Please run perform_subtraction() first.")
             return None
 
         try:
-            print(f"Detecting positive transients with threshold={threshold}σ...")
+            print(f"Detecting transients with threshold=±{threshold}σ...")
             # Calculate background statistics with sigma clipping
             _, median, std = sigma_clipped_stats(self.diff_data,
                                                  sigma=self.config.SIGMA_CLIP)
 
-            # Find positive peaks (new sources) only
+            print(f"Background statistics: median={median:.3f}, std={std:.3f}")
+
+            # Find positive peaks (new/brightening sources)
             threshold_positive = median + (threshold * std)
             positive_peaks = find_peaks(
                 self.diff_data, 
@@ -597,13 +599,52 @@ class TransientFinder:
                 centroid_func=None
             )
 
+            # Find negative peaks (disappearing/dimming sources)
+            # Invert the image to find negative peaks as positive peaks
+            inverted_diff = -self.diff_data
+            threshold_negative = -median + (threshold * std)  # This becomes positive after inversion
+            negative_peaks = find_peaks(
+                inverted_diff, 
+                threshold_negative, 
+                box_size=self.config.BOX_SIZE,
+                npeaks=self.config.MAX_PEAKS, 
+                centroid_func=None
+            )
+
+            # Combine results
+            all_transients = []
+
+            # Process positive transients
             if positive_peaks:
-                positive_peaks['peak_type'] = 'positive'
-                positive_peaks['significance'] = (positive_peaks['peak_value'] - median) / std
-                self.transient_table = positive_peaks
+                for peak in positive_peaks:
+                    peak['peak_type'] = 'positive'
+                    peak['significance'] = (peak['peak_value'] - median) / std
+                    peak['original_value'] = peak['peak_value']  # Store original difference value
+                    all_transients.append(peak)
+
+            # Process negative transients
+            if negative_peaks:
+                for peak in negative_peaks:
+                    # Convert back to original coordinates and values
+                    original_value = -peak['peak_value']  # Convert back from inverted
+                    peak['peak_type'] = 'negative'
+                    peak['significance'] = -(original_value - median) / std  # Negative significance
+                    peak['original_value'] = original_value
+                    peak['peak_value'] = original_value  # Correct the peak value
+                    all_transients.append(peak)
+
+            if all_transients:
+                # Create combined table
+                from astropy.table import vstack
+                self.transient_table = vstack([Table([t]) for t in all_transients])
+                
+                # Sort by absolute significance (strongest detections first)
+                self.transient_table['abs_significance'] = np.abs(self.transient_table['significance'])
+                self.transient_table.sort('abs_significance', reverse=True)
+                
             else:
                 self.transient_table = Table()
-                print("No positive transient sources detected.")
+                print("No transient sources detected.")
                 return self.transient_table
 
             # Add RA, Dec coordinates for each source
@@ -618,12 +659,27 @@ class TransientFinder:
             self.transient_table['ra'] = ra_list
             self.transient_table['dec'] = dec_list
 
+            # Count positive and negative detections
+            n_positive = len([t for t in self.transient_table if t['peak_type'] == 'positive'])
+            n_negative = len([t for t in self.transient_table if t['peak_type'] == 'negative'])
+
             # Save transient catalog
             catalog_path = os.path.join(self.output_dir, "transients.csv")
-            self.transient_table.write(catalog_path, format='csv',
-                                       overwrite=True)
-            print(f"Found {len(self.transient_table)} positive transient candidates.")
+            self.transient_table.write(catalog_path, format='csv', overwrite=True)
+            
+            print(f"Found {len(self.transient_table)} transient candidates:")
+            print(f"  - {n_positive} positive (new/brightening sources)")
+            print(f"  - {n_negative} negative (disappearing/dimming sources)")
             print(f"Transient catalog saved to: {catalog_path}")
+
+            # Print summary of strongest detections
+            print("\nStrongest detections:")
+            for i, transient in enumerate(self.transient_table[:5]):  # Top 5
+                peak_type = transient['peak_type']
+                significance = transient['significance']
+                ra = transient['ra']
+                dec = transient['dec']
+                print(f"  {i+1}. {peak_type.upper()} at RA={ra:.6f}°, Dec={dec:.6f}° (σ={significance:.1f})")
 
             return self.transient_table
 
@@ -687,17 +743,37 @@ class TransientFinder:
                 for idx, transient in enumerate(self.transient_table):
                     x, y = transient['x_peak'], transient['y_peak']
                     peak_type = transient['peak_type']
-                    color = 'lime' if peak_type == 'positive' else 'red'
+                    significance = transient['significance']
+                    
+                    # Use different colors and markers for positive vs negative
+                    if peak_type == 'positive':
+                        color = 'lime'
+                        marker_style = 'o'  # Circle for positive
+                    else:
+                        color = 'red'
+                        marker_style = 's'  # Square for negative
+                    
                     circle = CircularAperture((x, y), r=self.config.APERTURE_RADIUS)
                     circle.plot(axes[2], color=color, lw=1.5)
-                    axes[2].text(x+12, y+12, f"{idx+1}", color=color,
-                                 fontsize=8, ha='left', va='bottom')
+                    
+                    # Add text with significance
+                    axes[2].text(x+12, y+12, f"{idx+1}\n({significance:.1f}σ)", 
+                                color=color, fontsize=7, ha='left', va='bottom',
+                                bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.7))
+
+                # Add legend
+                from matplotlib.lines import Line2D
+                legend_elements = [
+                    Line2D([0], [0], marker='o', color='w', markerfacecolor='lime', 
+                           markersize=8, label='Positive (new/bright)'),
+                    Line2D([0], [0], marker='s', color='w', markerfacecolor='red', 
+                           markersize=8, label='Negative (dim/gone)')
+                ]
+                axes[2].legend(handles=legend_elements, loc='upper right', fontsize=8)
 
             plt.tight_layout()
-            plot_path = os.path.join(self.output_dir,
-                                     "transient_detection_plot.png")
-            plt.savefig(plot_path, dpi=self.config.PLOT_DPI,
-                        bbox_inches='tight')
+            plot_path = os.path.join(self.output_dir, "transient_detection_plot.png")
+            plt.savefig(plot_path, dpi=self.config.PLOT_DPI, bbox_inches='tight')
 
             if show:
                 plt.show()
