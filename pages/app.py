@@ -2018,10 +2018,6 @@ if science_file is not None:
                     cleanup_temp_files()
                     zip_rpp_results_on_exit(science_file, output_dir)
 
-                    # Remove the old archived files browser from here
-                    # with st.expander("📁 Browse Archived Files", expanded=False):
-                    #     display_archived_files_browser(output_dir)
-
                 else:
                     st.warning(
                         "Could not determine coordinates from image header. Cannot display ESASky."
