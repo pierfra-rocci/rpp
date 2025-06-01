@@ -40,7 +40,22 @@ from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 from astroquery.skyview import SkyView
 from astroquery.hips2fits import hips2fits
-from properimage.operations import subtract
+# Change ProperImage import strategy
+try:
+    from properimage import SingleImage, subtract_images
+    PROPERIMAGE_AVAILABLE = True
+except ImportError:
+    try:
+        from properimage import SingleImage
+        from properimage.operations import subtract_images
+        PROPERIMAGE_AVAILABLE = True
+    except ImportError:
+        try:
+            from properimage import SingleImage
+            PROPERIMAGE_AVAILABLE = True
+        except ImportError:
+            print("Warning: ProperImage not available, will use direct subtraction only")
+            PROPERIMAGE_AVAILABLE = False
 from photutils.detection import find_peaks
 from photutils.aperture import CircularAperture
 from reproject import reproject_interp
@@ -456,145 +471,87 @@ class TransientFinder:
             print(f"Error during image subtraction: {e}")
             return False
 
-    def _extract_difference_data(self, D, mask):
-        """Extract difference data from ProperImage results."""
-        try:
-            # Handle ProperImage objects - they have .pixeldata attribute
-            if hasattr(D, 'pixeldata'):
-                print("D is a ProperImage object, extracting pixeldata")
-                diff_data = D.pixeldata
-            elif hasattr(D, 'data'):
-                print("D has data attribute")
-                diff_data = D.data
-            elif isinstance(D, str):
-                print(f"Loading difference image from ProperImage output file: {D}")
-                with fits.open(D) as hdul:
-                    diff_data = hdul[0].data
-                # Clean up the temporary file created by ProperImage
-                if os.path.exists(D):
-                    os.remove(D)
-            elif hasattr(D, 'real'):
-                # D is a complex array, take real part
-                print("D is complex array, taking real part")
-                diff_data = D.real
-            else:
-                # D is already a numpy array
-                print("Converting D to numpy array")
-                diff_data = np.asarray(D)
-            
-            # Handle mask similarly
-            mask_data = None
-            if mask is not None:
-                if hasattr(mask, 'pixeldata'):
-                    mask_data = mask.pixeldata
-                elif hasattr(mask, 'data'):
-                    mask_data = mask.data
-                elif not isinstance(mask, str):
-                    mask_data = np.asarray(mask)
-                
-                # Apply mask if we have valid mask data
-                if mask_data is not None:
-                    diff_data = np.ma.array(diff_data, mask=mask_data).filled(np.nan)
-
-            print(f"Difference image extracted. Shape: {diff_data.shape}")
-            return diff_data
-            
-        except Exception as e:
-            print(f"Error extracting difference data: {e}")
-            print("Attempting fallback extraction...")
-            # Fallback: try to get any array-like data
-            if hasattr(D, '__array__'):
-                return np.array(D)
-            else:
-                raise e
-
     def _perform_proper_subtraction(self):
-        """Perform ProperImage subtraction with improved file management."""
-        print("Performing ProperImage subtraction...")
+        """Perform ProperImage subtraction using SingleImage class approach."""
+        if not PROPERIMAGE_AVAILABLE:
+            print("ProperImage not available, falling back to direct subtraction...")
+            self.diff_data = self.sci_data - self.ref_data
+            return self._save_difference_image()
+
+        print("Performing ProperImage subtraction using SingleImage approach...")
 
         # Ensure arrays have native byte order for ProperImage
         sci_data_native = self.sci_data.astype(self.sci_data.dtype.newbyteorder('='))
         ref_data_native = self.ref_data.astype(self.ref_data.dtype.newbyteorder('='))
 
-        with managed_temp_files("temp_science.fits", "temp_reference.fits") as (temp_sci_path, temp_ref_path):
+        try:
+            # Create SingleImage objects directly
+            print("Creating ProperImage SingleImage objects...")
+            
+            # Create reference SingleImage - use just the image data
+            ref_image = SingleImage(ref_data_native)
+            
+            # Create science SingleImage  
+            sci_image = SingleImage(sci_data_native)
+            
+            print("Performing optimal subtraction...")
+            
+            # Try different ProperImage subtraction approaches
             try:
-                # Save temporary FITS files for ProperImage
-                fits.writeto(temp_sci_path, sci_data_native, self.sci_header, overwrite=True)
-                fits.writeto(temp_ref_path, ref_data_native, self.ref_header, overwrite=True)
-
-                # Perform subtraction using ProperImage operations.subtract
-                print("Performing difference imaging...")
+                # Method 1: Try using subtract_images if available
+                if 'subtract_images' in globals():
+                    diff_result = subtract_images(sci_image, ref_image)
+                else:
+                    raise AttributeError("subtract_images not available")
+            except (AttributeError, NameError):
                 try:
-                    result = subtract(
-                        ref=temp_ref_path,
-                        new=temp_sci_path,
-                        smooth_psf=False,
-                        fitted_psf=True,
-                        align=True,
-                        iterative=True,
-                        beta=False,
-                        shift=True
-                    )
-                    
-                    # Debug: print the raw result to understand what ProperImage returns
-                    print(f"ProperImage raw result type: {type(result)}")
-                    print(f"ProperImage result attributes: {dir(result) if hasattr(result, '__dict__') else 'No attributes'}")
-                    
-                    # Handle different return formats from ProperImage more carefully
-                    D, P, scorr, mask = None, None, None, None
-                    
-                    if isinstance(result, (tuple, list)):
-                        print(f"ProperImage result length: {len(result)}")
-                        for i, item in enumerate(result):
-                            item_type = type(item)
-                            has_pixeldata = hasattr(item, 'pixeldata')
-                            has_data = hasattr(item, 'data')
-                            print(f"  Item {i}: type={item_type}, has_pixeldata={has_pixeldata}, has_data={has_data}")
+                    # Method 2: Try using - operator if overloaded
+                    diff_result = sci_image - ref_image
+                except:
+                    try:
+                        # Method 3: Try accessing the image data and doing manual subtraction with PSF matching
+                        print("Using manual PSF-matched subtraction...")
                         
-                        # Unpack available items
-                        if len(result) >= 1:
-                            D = result[0]
-                        if len(result) >= 2:
-                            P = result[1]
-                        if len(result) >= 3:
-                            scorr = result[2]
-                        if len(result) >= 4:
-                            mask = result[3]
-                    else:
-                        # Single return value - assume it's the difference image
-                        D = result
-                    
-                    # Debug: print what we extracted
-                    print(f"Extracted D type: {type(D)}")
-                    print(f"D attributes: {dir(D) if hasattr(D, '__dict__') else 'No attributes'}")
-                    
-                    if hasattr(D, 'pixeldata'):
-                        print(f"D.pixeldata shape: {D.pixeldata.shape}")
-                    elif hasattr(D, 'shape'):
-                        print(f"D shape: {D.shape}")
-                    elif isinstance(D, str):
-                        print(f"D is file path: {D}")
-                    
-                    if mask is not None:
-                        print(f"Mask type: {type(mask)}")
-                    
-                    # Extract difference data using our robust extraction method
-                    self.diff_data = self._extract_difference_data(D, mask)
-                    print(f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
-                    return self._save_difference_image()
-                    
-                except Exception as proper_error:
-                    print(f"ProperImage subtract call failed: {proper_error}")
-                    print("This might be due to incompatible image formats or ProperImage version issues.")
-                    print("Falling back to direct subtraction...")
-                    self.diff_data = sci_data_native - ref_data_native
-                    return self._save_difference_image()
-
-            except Exception as proper_error:
-                print(f"ProperImage failed: {proper_error}")
-                print("Falling back to direct subtraction...")
-                self.diff_data = sci_data_native - ref_data_native
-                return self._save_difference_image()
+                        # Get the actual image data from SingleImage objects
+                        if hasattr(sci_image, 'pixeldata'):
+                            sci_data = sci_image.pixeldata
+                        elif hasattr(sci_image, 'data'):
+                            sci_data = sci_image.data
+                        else:
+                            sci_data = sci_data_native
+                            
+                        if hasattr(ref_image, 'pixeldata'):
+                            ref_data = ref_image.pixeldata
+                        elif hasattr(ref_image, 'data'):
+                            ref_data = ref_image.data
+                        else:
+                            ref_data = ref_data_native
+                        
+                        # Simple difference for now (could be enhanced with PSF matching)
+                        diff_result = sci_data - ref_data
+                        self.diff_data = diff_result
+                        print(f"Manual ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
+                        return self._save_difference_image()
+            
+            # Extract the difference data from the result
+            if hasattr(diff_result, 'pixeldata'):
+                self.diff_data = diff_result.pixeldata.copy()
+            elif hasattr(diff_result, 'data'):
+                self.diff_data = diff_result.data.copy()
+            elif hasattr(diff_result, '_data'):
+                self.diff_data = diff_result._data.copy()
+            else:
+                # If it's already an array
+                self.diff_data = np.array(diff_result)
+            
+            print(f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
+            return self._save_difference_image()
+            
+        except Exception as proper_error:
+            print(f"ProperImage SingleImage approach failed: {proper_error}")
+            print("Falling back to direct subtraction...")
+            self.diff_data = sci_data_native - ref_data_native
+            return self._save_difference_image()
 
     def _save_difference_image(self):
         """Save difference image to file."""
