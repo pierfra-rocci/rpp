@@ -708,7 +708,7 @@ class TransientFinder:
 
         try:
             # Create figure with three subplots
-            _, axes = plt.subplots(1, 3, figsize=figsize)
+            fig, axes = plt.subplots(1, 3, figsize=figsize)
 
             # Define z-scale normalization for better visualization
             zscale = ZScaleInterval()
@@ -716,60 +716,91 @@ class TransientFinder:
             # Plot science image
             vmin, vmax = zscale.get_limits(self.sci_data)
             norm_sci = ImageNormalize(vmin=vmin, vmax=vmax)
-            axes[0].imshow(self.sci_data, origin='lower', cmap='gray',
-                           norm=norm_sci)
+            axes[0].imshow(self.sci_data, origin='lower', cmap='gray', norm=norm_sci)
             axes[0].set_title('Science Image')
+            axes[0].set_xlabel('X (pixels)')
+            axes[0].set_ylabel('Y (pixels)')
 
             # Plot reference image
             vmin, vmax = zscale.get_limits(self.ref_data)
             norm_ref = ImageNormalize(vmin=vmin, vmax=vmax)
-            axes[1].imshow(self.ref_data, origin='lower', cmap='gray',
-                           norm=norm_ref)
+            axes[1].imshow(self.ref_data, origin='lower', cmap='gray', norm=norm_ref)
             axes[1].set_title('Reference Image')
+            axes[1].set_xlabel('X (pixels)')
+            axes[1].set_ylabel('Y (pixels)')
 
             # Plot difference image
             vmin, vmax = zscale.get_limits(self.diff_data)
             limit = max(abs(vmin), abs(vmax))
             norm_diff = ImageNormalize(vmin=-limit, vmax=limit)
-            diff_im = axes[2].imshow(self.diff_data, origin='lower',
-                                     cmap='coolwarm', norm=norm_diff)
+            diff_im = axes[2].imshow(self.diff_data, origin='lower', cmap='coolwarm', norm=norm_diff)
             axes[2].set_title('Difference Image')
+            axes[2].set_xlabel('X (pixels)')
+            axes[2].set_ylabel('Y (pixels)')
 
             # Add colorbar for difference image
             plt.colorbar(diff_im, ax=axes[2], label='Flux Difference')
 
             # Mark detected transients if available
             if self.transient_table is not None and len(self.transient_table) > 0:
+                print(f"Plotting {len(self.transient_table)} detected transients...")
+                
+                # Separate positive and negative for legend
+                positive_plotted = False
+                negative_plotted = False
+                
                 for idx, transient in enumerate(self.transient_table):
                     x, y = transient['x_peak'], transient['y_peak']
                     peak_type = transient['peak_type']
                     significance = transient['significance']
                     
+                    print(f"Plotting transient {idx+1}: {peak_type} at ({x:.1f}, {y:.1f}), σ={significance:.1f}")
+                    
                     # Use different colors and markers for positive vs negative
                     if peak_type == 'positive':
                         color = 'lime'
-                        marker_style = 'o'  # Circle for positive
+                        edge_color = 'darkgreen'
+                        label = 'Positive (new/bright)' if not positive_plotted else ""
+                        positive_plotted = True
                     else:
                         color = 'red'
-                        marker_style = 's'  # Square for negative
+                        edge_color = 'darkred'
+                        label = 'Negative (dim/gone)' if not negative_plotted else ""
+                        negative_plotted = True
                     
-                    circle = CircularAperture((x, y), r=self.config.APERTURE_RADIUS)
-                    circle.plot(axes[2], color=color, lw=1.5)
+                    # Draw circle marker
+                    circle = plt.Circle((x, y), radius=self.config.APERTURE_RADIUS, 
+                                      fill=False, color=color, linewidth=2, 
+                                      edgecolor=edge_color, label=label)
+                    axes[2].add_patch(circle)
                     
-                    # Add text with significance
-                    axes[2].text(x+12, y+12, f"{idx+1}\n({significance:.1f}σ)", 
-                                color=color, fontsize=7, ha='left', va='bottom',
-                                bbox=dict(boxstyle="round,pad=0.2", facecolor='white', alpha=0.7))
-
-                # Add legend
-                from matplotlib.lines import Line2D
-                legend_elements = [
-                    Line2D([0], [0], marker='o', color='w', markerfacecolor='lime', 
-                           markersize=8, label='Positive (new/bright)'),
-                    Line2D([0], [0], marker='s', color='w', markerfacecolor='red', 
-                           markersize=8, label='Negative (dim/gone)')
-                ]
-                axes[2].legend(handles=legend_elements, loc='upper right', fontsize=8)
+                    # Add text with significance - make it more visible
+                    axes[2].text(x+15, y+15, f"{idx+1}\n({significance:.1f}σ)", 
+                                color='white', fontsize=9, fontweight='bold',
+                                ha='left', va='bottom',
+                                bbox=dict(boxstyle="round,pad=0.3", 
+                                         facecolor=color, alpha=0.8, edgecolor=edge_color))
+                
+                # Create custom legend
+                legend_elements = []
+                if positive_plotted:
+                    legend_elements.append(
+                        plt.Line2D([0], [0], marker='o', color='w', 
+                                  markerfacecolor='lime', markeredgecolor='darkgreen',
+                                  markersize=10, linewidth=0, label='Positive (new/bright)')
+                    )
+                if negative_plotted:
+                    legend_elements.append(
+                        plt.Line2D([0], [0], marker='o', color='w', 
+                                  markerfacecolor='red', markeredgecolor='darkred',
+                                  markersize=10, linewidth=0, label='Negative (dim/gone)')
+                    )
+                
+                if legend_elements:
+                    axes[2].legend(handles=legend_elements, loc='upper right', 
+                                  fontsize=10, framealpha=0.9, fancybox=True, shadow=True)
+            else:
+                print("No transients to plot.")
 
             plt.tight_layout()
             plot_path = os.path.join(self.output_dir, "transient_detection_plot.png")
@@ -785,6 +816,8 @@ class TransientFinder:
 
         except Exception as e:
             print(f"Error plotting results: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
 
