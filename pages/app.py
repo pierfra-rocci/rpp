@@ -2003,7 +2003,6 @@ if science_file is not None:
                         st.subheader("Aladin Catalog Viewer")
 
                         display_catalog_in_aladin(
-                            science_data,
                             final_table=final_table,
                             ra_center=ra_center,
                             dec_center=dec_center,
