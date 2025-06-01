@@ -134,8 +134,7 @@ def load_fits_data(file):
 
 
 def display_catalog_in_aladin(
-    image: np.array,
-    final_table: pd.DataFrame,
+    final_table: pd.DataFrame,  # Remove unused 'image' parameter
     ra_center: float,
     dec_center: float,
     fov: float = 1.5,
@@ -305,10 +304,15 @@ def display_catalog_in_aladin(
 
     with st.spinner("Loading Aladin Lite viewer..."):
         try:
-            sources_json_b64 = base64.b64encode(
-                json.dumps(catalog_sources).encode("utf-8")
-            ).decode("utf-8")
+            try:
+                sources_json_b64 = base64.b64encode(
+                    json.dumps(catalog_sources).encode("utf-8")
+                ).decode("utf-8")
+            except Exception as e:
+                st.error(f"Failed to encode catalog data: {str(e)}")
+                return
 
+            # Fix JavaScript error handling structure
             html_content = f"""
             <!DOCTYPE html>
             <html>
@@ -321,7 +325,8 @@ def display_catalog_in_aladin(
                 <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
                 <script type="text/javascript">
                     document.addEventListener("DOMContentLoaded", function(event) {{
-                            aladin = A.aladin('#aladin-lite-div', {{
+                        try {{
+                            let aladin = A.aladin('#aladin-lite-div', {{
                                 target: '{ra_center} {dec_center}',
                                 fov: {fov},
                                 survey: '{survey}',
@@ -347,9 +352,14 @@ def display_catalog_in_aladin(
                             let aladinSources = [];
 
                             sourcesData.forEach(function(source) {{
+                                // Add HTML escaping for source data
+                                let escapedName = (source.name || '').replace(/[<>&"']/g, function(m) {{
+                                    return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
+                                }});
+                                
                                 let popupContent = '<div style="padding:5px;">';
-                                if(source.name) {{
-                                    popupContent += '<b>' + source.name + '</b><br/>';
+                                if(escapedName) {{
+                                    popupContent += '<b>' + escapedName + '</b><br/>';
                                 }}
                                 popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '<br/>';
                                 popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '<br/>';
@@ -358,7 +368,10 @@ def display_catalog_in_aladin(
                                     popupContent += 'Mag: ' + (typeof source.mag === 'number' ? source.mag.toFixed(2) : source.mag) + '<br/>';
                                 }}
                                 if(source.catalog) {{
-                                    popupContent += 'Catalogs: ' + source.catalog + '<br/>';
+                                    let escapedCatalog = source.catalog.replace(/[<>&"']/g, function(m) {{
+                                        return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
+                                    }});
+                                    popupContent += 'Catalogs: ' + escapedCatalog + '<br/>';
                                 }}
                                 popupContent += '</div>';
 
@@ -373,10 +386,9 @@ def display_catalog_in_aladin(
                             if (aladinSources.length > 0) {{
                                 cat.addSources(aladinSources);
                             }}
-
                         }} catch (error) {{
                             console.error("Error initializing Aladin Lite or adding sources:", error);
-                            document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin viewer. Check console.</p>';
+                            document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin viewer. Check console for details.</p>';
                         }}
                     }});
                 </script>
