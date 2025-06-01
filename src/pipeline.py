@@ -444,7 +444,8 @@ def airmass(
     try:
         ra = _header.get("RA") or _header.get("OBJRA") or _header.get("CRVAL1")
         dec = _header.get("DEC") or _header.get("OBJDEC") or _header.get("CRVAL2")
-        obstime_str = _header.get("DATE")
+        # date_keywords = ['DATE-OBS', 'DATE', 'DATE_OBS', 'DATEOBS', 'MJD-OBS']
+        obstime_str = _header.get("DATE", "DATE-OBS")
 
         if any(v is None for v in [ra, dec, obstime_str]):
             missing = []

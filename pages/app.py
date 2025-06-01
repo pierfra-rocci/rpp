@@ -87,7 +87,10 @@ def load_fits_data(file):
                     if hasattr(hdu, "data") and hdu.data is not None:
                         data = hdu.data
                         header = hdu.header
-                        st.info(f"Primary HDU has no data. Using data from HDU #{i}.")
+                        # Only log it, don't show in UI
+                        if st.session_state.get("log_buffer"):
+                            write_to_log(st.session_state["log_buffer"], 
+                                       f"Primary HDU has no data. Using data from HDU #{i}.")
                         break
 
             if data is None:
