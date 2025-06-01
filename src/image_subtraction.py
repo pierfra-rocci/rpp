@@ -8,7 +8,7 @@ image retrieved from online surveys (PanSTARRS, SDSS, or DSS2) to detect transie
 Usage:
     python image_subtraction.py <science_image.fits> [--survey SURVEY] [--filter FILTER]
                                 [--output OUTPUT_DIR] [--threshold SIGMA] [--method METHOD]
-                                [--no-plot]
+                                [--no-plot] [--config CONFIG_FILE]
 
 Classes:
     TransientFinder: Main class for image subtraction and transient detection.
@@ -47,11 +47,75 @@ from reproject import reproject_interp
 import time
 import requests
 import warnings
+import contextlib
+import tempfile
+import json
 
 # Suppress FITS header fix warnings
 warnings.filterwarnings('ignore', category=fits.verify.VerifyWarning)
 warnings.filterwarnings('ignore', message='.*datfix.*')
 warnings.filterwarnings('ignore', message='.*FITSFixedWarning.*')
+
+
+class Config:
+    """Configuration class for TransientFinder with default parameters."""
+    
+    # Survey and image retrieval settings
+    MAX_RETRIES = 2
+    RETRY_DELAY = 2
+    REQUEST_TIMEOUT = 60
+    MAX_FIELD_SIZE_PANSTARRS = 60.0  # arcmin
+    MAX_FIELD_SIZE_DSS2 = 60.0       # degrees
+    MIN_FIELD_SIZE = 0.1             # degrees
+    
+    # Detection parameters
+    SIGMA_CLIP = 3.0
+    BOX_SIZE = 5
+    MAX_PEAKS = 50
+    APERTURE_RADIUS = 10
+    
+    # File management
+    CLEANUP_TEMP_FILES = True
+    
+    # Plot settings
+    DEFAULT_FIGSIZE = (15, 5)
+    PLOT_DPI = 200
+    
+    @classmethod
+    def from_file(cls, config_path):
+        """Load configuration from JSON file."""
+        try:
+            with open(config_path, 'r') as f:
+                config_dict = json.load(f)
+            
+            config = cls()
+            for key, value in config_dict.items():
+                if hasattr(config, key.upper()):
+                    setattr(config, key.upper(), value)
+            return config
+        except Exception as e:
+            print(f"Warning: Could not load config file {config_path}: {e}")
+            print("Using default configuration.")
+            return cls()
+
+
+@contextlib.contextmanager
+def managed_temp_files(*filenames):
+    """Context manager for temporary files with automatic cleanup."""
+    temp_paths = []
+    try:
+        for filename in filenames:
+            temp_dir = tempfile.gettempdir()
+            temp_path = os.path.join(temp_dir, filename)
+            temp_paths.append(temp_path)
+        yield temp_paths
+    finally:
+        for temp_path in temp_paths:
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            except OSError:
+                pass
 
 
 class TransientFinder:
@@ -64,6 +128,8 @@ class TransientFinder:
         Path to the science FITS file.
     output_dir : str
         Directory to save results.
+    config : Config
+        Configuration object with parameters.
     sci_data : np.ndarray
         Science image data.
     sci_header : astropy.io.fits.Header
@@ -101,7 +167,7 @@ class TransientFinder:
         Plot the science, reference, and difference images with detected transients.
     """
 
-    def __init__(self, science_fits_path, output_dir=None):
+    def __init__(self, science_fits_path, output_dir=None, config=None):
         """
         Initialize the TransientFinder with the science image path.
 
@@ -111,8 +177,11 @@ class TransientFinder:
             Path to the science FITS file.
         output_dir : str, optional
             Directory to save results. If None, uses current directory.
+        config : Config, optional
+            Configuration object. If None, uses default configuration.
         """
         self.science_fits_path = science_fits_path
+        self.config = config or Config()
 
         # Set up output directory
         if output_dir is None:
@@ -199,132 +268,118 @@ class TransientFinder:
 
         field_size_arcmin = self.field_size.to_value(u.arcmin)
 
-        # Warn if field size is too large for PanSTARRS
-        if survey.lower() == "panstarrs" and field_size_arcmin > 60.0:
-            print(f"Warning: Field size ({field_size_arcmin:.1f} arcmin) may exceed PanSTARRS practical limit.")
-            print("Consider using DSS2 for very large fields.")
+        # Check field size limits
+        if survey.lower() == "panstarrs" and field_size_arcmin > self.config.MAX_FIELD_SIZE_PANSTARRS:
+            print(f"Warning: Field size ({field_size_arcmin:.1f} arcmin) exceeds PanSTARRS limit.")
+            print("Switching to DSS2...")
+            survey = "DSS2"
+            filter_band = "red"
 
-        max_retries = 2
-        retry_delay = 2
+        # Try primary survey first, then fallback
+        surveys_to_try = [(survey, filter_band)]
+        if survey.lower() == "panstarrs":
+            surveys_to_try.append(("DSS2", "red"))
+        
+        for current_survey, current_filter in surveys_to_try:
+            if self._try_get_reference(current_survey, current_filter):
+                return True
+        
+        print("Failed to retrieve reference image from all available surveys.")
+        return False
 
-        for attempt in range(max_retries):
+    def _try_get_reference(self, survey, filter_band):
+        """Try to get reference image from a specific survey."""
+        for attempt in range(self.config.MAX_RETRIES):
             try:
                 if survey.lower() == "panstarrs":
-                    # Use HiPS2FITS for PanSTARRS
-                    hips_mapping = {
-                        'g': "CDS/P/PanSTARRS/DR1/g",
-                        'r': "CDS/P/PanSTARRS/DR1/r",
-                        'i': "CDS/P/PanSTARRS/DR1/i"
-                    }
-                    if filter_band.lower() not in hips_mapping:
-                        print(f"Warning: Filter '{filter_band}' not available for PanSTARRS. Using 'r' band.")
-                        filter_band = 'r'
-                    hips_id = hips_mapping[filter_band.lower()]
-                    print(f"Attempt {attempt + 1}/{max_retries} to retrieve PanSTARRS {filter_band}-band image...")
-
-                    try:
-                        result = hips2fits.query_with_wcs(
-                            hips=hips_id,
-                            wcs=self.sci_wcs
-                        )
-                        if isinstance(result, str):
-                            response = requests.get(result, timeout=60)
-                            response.raise_for_status()
-                            from io import BytesIO
-                            fits_data = BytesIO(response.content)
-                            with fits.open(fits_data) as hdul:
-                                self.ref_data = hdul[0].data
-                                self.ref_header = hdul[0].header
-                        else:
-                            with fits.open(result) as hdul:
-                                self.ref_data = hdul[0].data
-                                self.ref_header = hdul[0].header
-
-                        self.ref_wcs = self.sci_wcs
-                        break  # Success
-
-                    except Exception as e:
-                        print(f"Error retrieving PanSTARRS image: {e}")
-                        if attempt < max_retries - 1:
-                            print(f"Retrying in {retry_delay} seconds...")
-                            time.sleep(retry_delay)
-                            continue
-                        else:
-                            print("Max retries reached for PanSTARRS. Falling back to DSS2...")
-                            survey = "DSS2 Red"
-                            filter_band = "red"
-                            continue
-
+                    return self._get_panstarrs_image(filter_band)
                 else:
-                    # Use SkyView for DSS2 and others
-                    if survey.lower() == "dss2":
-                        dss2_mapping = {
-                            'blue': "DSS2 Blue",
-                            'b': "DSS2 Blue",
-                            'red': "DSS2 Red",
-                            'r': "DSS2 Red"
-                        }
-                        if filter_band.lower() not in dss2_mapping:
-                            print(f"Warning: Filter '{filter_band}' not available for DSS2. Using Red band.")
-                            survey_name = "DSS2 Red"
-                        else:
-                            survey_name = dss2_mapping[filter_band.lower()]
-                    else:
-                        survey_name = survey
-
-                    print(f"Using SkyView for {survey_name}...")
-
-                    # Ensure field size has proper units
-                    if hasattr(self.field_size, 'unit'):
-                        field_size_deg = self.field_size.to_value(u.deg)
-                    else:
-                        field_size_deg = float(self.field_size)
-
-                    # Limit field size to reasonable values for SkyView
-                    field_size_deg = min(field_size_deg, 1.0)  # Max 1 degree for DSS2
-                    field_size_deg = max(field_size_deg, 0.1)  # Min 0.1 degree
-
-                    print(f"Requesting field size: {field_size_deg:.3f} degrees")
-
-                    imgs = SkyView.get_images(
-                        position=self.center_coord,
-                        survey=[survey_name],
-                        coordinates='J2000',
-                        height=field_size_deg * u.deg,
-                        width=field_size_deg * u.deg,
-                        pixels=[self.nx, self.ny]
-                    )
-                    if not imgs or not imgs[0]:
-                        raise ValueError("No reference image returned from SkyView.")
-                    self.ref_data = imgs[0][0].data
-                    self.ref_header = imgs[0][0].header
-                    self.ref_wcs = WCS(self.ref_header)
-                    break  # Success
-
+                    return self._get_skyview_image(survey, filter_band)
             except Exception as e:
-                print(f"Error on attempt {attempt + 1}: {e}")
-                if attempt < max_retries - 1:
-                    print(f"Retrying in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
-                else:
-                    print(f"Failed to retrieve reference image after {max_retries} attempts.")
-                    return False
+                print(f"Attempt {attempt + 1}/{self.config.MAX_RETRIES} failed: {e}")
+                if attempt < self.config.MAX_RETRIES - 1:
+                    time.sleep(self.config.RETRY_DELAY)
+        return False
 
-        try:
-            if self.ref_data is None or self.ref_data.size == 0:
-                print("Retrieved reference image is empty or invalid.")
-                return False
+    def _get_panstarrs_image(self, filter_band):
+        """Get reference image from PanSTARRS using HiPS2FITS."""
+        hips_mapping = {
+            'g': "CDS/P/PanSTARRS/DR1/g",
+            'r': "CDS/P/PanSTARRS/DR1/r",
+            'i': "CDS/P/PanSTARRS/DR1/i"
+        }
+        
+        if filter_band.lower() not in hips_mapping:
+            print(f"Warning: Filter '{filter_band}' not available for PanSTARRS. Using 'r' band.")
+            filter_band = 'r'
+        
+        hips_id = hips_mapping[filter_band.lower()]
+        print(f"Retrieving PanSTARRS {filter_band}-band image...")
 
-            ref_fits_path = os.path.join(self.output_dir, "reference_image.fits")
-            fits.writeto(ref_fits_path, self.ref_data, self.ref_header, overwrite=True)
-            print(f"Reference image saved to: {ref_fits_path}")
-            print(f"Reference image shape: {self.ref_data.shape}")
+        result = hips2fits.query_with_wcs(hips=hips_id, wcs=self.sci_wcs)
+        
+        if isinstance(result, str):
+            response = requests.get(result, timeout=self.config.REQUEST_TIMEOUT)
+            response.raise_for_status()
+            from io import BytesIO
+            fits_data = BytesIO(response.content)
+            with fits.open(fits_data) as hdul:
+                self.ref_data = hdul[0].data
+                self.ref_header = hdul[0].header
+        else:
+            with fits.open(result) as hdul:
+                self.ref_data = hdul[0].data
+                self.ref_header = hdul[0].header
 
-            return True
+        self.ref_wcs = self.sci_wcs
+        return self._save_reference_image()
 
-        except Exception as e:
-            print(f"Error saving reference image: {e}")
+    def _get_skyview_image(self, survey, filter_band):
+        """Get reference image from SkyView."""
+        if survey.lower() == "dss2":
+            dss2_mapping = {
+                'blue': "DSS2 Blue", 'b': "DSS2 Blue",
+                'red': "DSS2 Red", 'r': "DSS2 Red"
+            }
+            survey_name = dss2_mapping.get(filter_band.lower(), "DSS2 Red")
+        else:
+            survey_name = survey
+
+        # Ensure field size has proper units and limits
+        field_size_deg = self.field_size.to_value(u.deg)
+        field_size_deg = min(field_size_deg, self.config.MAX_FIELD_SIZE_DSS2)
+        field_size_deg = max(field_size_deg, self.config.MIN_FIELD_SIZE)
+
+        print(f"Using SkyView for {survey_name} (field size: {field_size_deg:.3f}°)...")
+
+        imgs = SkyView.get_images(
+            position=self.center_coord,
+            survey=[survey_name],
+            coordinates='J2000',
+            height=field_size_deg * u.deg,
+            width=field_size_deg * u.deg,
+            pixels=[self.nx, self.ny]
+        )
+        
+        if not imgs or not imgs[0]:
+            raise ValueError("No reference image returned from SkyView.")
+        
+        self.ref_data = imgs[0][0].data
+        self.ref_header = imgs[0][0].header
+        self.ref_wcs = WCS(self.ref_header)
+        return self._save_reference_image()
+
+    def _save_reference_image(self):
+        """Save reference image and validate."""
+        if self.ref_data is None or self.ref_data.size == 0:
+            print("Retrieved reference image is empty or invalid.")
             return False
+
+        ref_fits_path = os.path.join(self.output_dir, "reference_image.fits")
+        fits.writeto(ref_fits_path, self.ref_data, self.ref_header, overwrite=True)
+        print(f"Reference image saved to: {ref_fits_path}")
+        print(f"Reference image shape: {self.ref_data.shape}")
+        return True
 
     def align_images(self):
         """
@@ -391,100 +446,80 @@ class TransientFinder:
 
         try:
             if method.lower() == "proper":
-                print("Performing ProperImage subtraction...")
-
-                # Ensure arrays have native byte order for ProperImage
-                sci_data_native = self.sci_data.astype(self.sci_data.dtype.newbyteorder('='))
-                ref_data_native = self.ref_data.astype(self.ref_data.dtype.newbyteorder('='))
-
-                try:
-                    # Save temporary FITS files for ProperImage
-                    temp_sci_path = os.path.join(self.output_dir, "temp_science.fits")
-                    temp_ref_path = os.path.join(self.output_dir, "temp_reference.fits")
-
-                    fits.writeto(temp_sci_path, sci_data_native, self.sci_header, overwrite=True)
-                    fits.writeto(temp_ref_path, ref_data_native, self.ref_header, overwrite=True)
-
-                    # Perform subtraction using ProperImage operations.subtract
-                    print("Performing difference imaging...")
-                    D, P, scorr, mask = subtract(
-                        ref=temp_ref_path,
-                        new=temp_sci_path,
-                        smooth_psf=False,
-                        fitted_psf=True,
-                        align=True,
-                        iterative=True,
-                        beta=False,
-                        shift=True
-                    )
-
-                    # Debug: print result types and shapes
-                    print(f"ProperImage D type: {type(D)}, shape: {getattr(D, 'shape', None)}")
-                    print(f"ProperImage P type: {type(P)}, shape: {getattr(P, 'shape', None)}")
-                    print(f"ProperImage scorr type: {type(scorr)}, shape: {getattr(scorr, 'shape', None)}")
-                    print(f"ProperImage mask type: {type(mask)}, shape: {getattr(mask, 'shape', None)}")
-
-                    # Handle D as the difference image
-                    if isinstance(D, str):
-                        print(f"ProperImage returned file path for difference image: {D}")
-                        try:
-                            with fits.open(D) as hdul:
-                                self.diff_data = hdul[0].data
-                            print("Successfully loaded difference image from ProperImage output file")
-                        except Exception as load_error:
-                            print(f"Failed to load ProperImage output file: {load_error}")
-                            raise load_error
-                    else:
-                        # D is likely a numpy array
-                        if hasattr(D, 'real'):
-                            self.diff_data = D.real
-                        else:
-                            self.diff_data = D
-
-                        # Apply mask if available
-                        if mask is not None:
-                            self.diff_data = np.ma.array(self.diff_data, mask=mask).filled(np.nan)
-
-                    print(f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
-
-                    # Clean up temporary files
-                    try:
-                        os.remove(temp_sci_path)
-                        os.remove(temp_ref_path)
-                    except OSError:
-                        pass
-
-                except Exception as proper_error:
-                    print(f"ProperImage failed: {proper_error}")
-                    print("Falling back to direct subtraction...")
-                    # Fall back to direct subtraction
-                    self.diff_data = sci_data_native - ref_data_native
-
-                    # Clean up temporary files if they exist
-                    for temp_filename in ['temp_science.fits', 'temp_reference.fits']:
-                        try:
-                            temp_path = os.path.join(self.output_dir, temp_filename)
-                            if os.path.exists(temp_path):
-                                os.remove(temp_path)
-                        except OSError:
-                            pass
+                return self._perform_proper_subtraction()
             else:
                 print("Performing direct subtraction...")
-                # For direct subtraction, images should already be aligned
                 self.diff_data = self.sci_data - self.ref_data
-
-            # Save difference image
-            diff_fits_path = os.path.join(self.output_dir, "difference_image.fits")
-            diff_header = self.sci_header.copy()
-            diff_header['HISTORY'] = 'Image differencing performed with TransientFinder'
-            fits.writeto(diff_fits_path, self.diff_data, diff_header, overwrite=True)
-            print(f"Difference image saved to: {diff_fits_path}")
-
-            return True
+                return self._save_difference_image()
 
         except Exception as e:
             print(f"Error during image subtraction: {e}")
             return False
+
+    def _perform_proper_subtraction(self):
+        """Perform ProperImage subtraction with improved file management."""
+        print("Performing ProperImage subtraction...")
+
+        # Ensure arrays have native byte order for ProperImage
+        sci_data_native = self.sci_data.astype(self.sci_data.dtype.newbyteorder('='))
+        ref_data_native = self.ref_data.astype(self.ref_data.dtype.newbyteorder('='))
+
+        with managed_temp_files("temp_science.fits", "temp_reference.fits") as (temp_sci_path, temp_ref_path):
+            try:
+                # Save temporary FITS files for ProperImage
+                fits.writeto(temp_sci_path, sci_data_native, self.sci_header,
+                             overwrite=True)
+                fits.writeto(temp_ref_path, ref_data_native, self.ref_header,
+                             overwrite=True)
+
+                # Perform subtraction using ProperImage operations.subtract
+                print("Performing difference imaging...")
+                D, P, scorr, mask = subtract(
+                    ref=temp_ref_path,
+                    new=temp_sci_path,
+                    smooth_psf=False,
+                    fitted_psf=True,
+                    align=True,
+                    iterative=True,
+                    beta=False,
+                    shift=True
+                )
+
+                # Simplified handling of ProperImage results
+                self.diff_data = self._extract_difference_data(D, mask)
+                return self._save_difference_image()
+
+            except Exception as proper_error:
+                print(f"ProperImage failed: {proper_error}")
+                print("Falling back to direct subtraction...")
+                self.diff_data = sci_data_native - ref_data_native
+                return self._save_difference_image()
+
+    def _extract_difference_data(self, D, mask):
+        """Extract difference data from ProperImage results."""
+        if isinstance(D, str):
+            print(f"Loading difference image from ProperImage output file: {D}")
+            with fits.open(D) as hdul:
+                diff_data = hdul[0].data
+        else:
+            # D is a numpy array
+            diff_data = D.real if hasattr(D, 'real') else D
+            
+            # Apply mask if available
+            if mask is not None:
+                diff_data = np.ma.array(diff_data, mask=mask).filled(np.nan)
+
+        print(f"Difference image extracted. Shape: {diff_data.shape}")
+        return diff_data
+
+    def _save_difference_image(self):
+        """Save difference image to file."""
+        diff_fits_path = os.path.join(self.output_dir, "difference_image.fits")
+        diff_header = self.sci_header.copy()
+        diff_header['HISTORY'] = 'Image differencing performed with TransientFinder'
+        fits.writeto(diff_fits_path, self.diff_data, diff_header, overwrite=True)
+        print(f"Difference image saved to: {diff_fits_path}")
+        return True
 
     def detect_transients(self, threshold=5.0, npixels=5):
         """
@@ -509,12 +544,18 @@ class TransientFinder:
         try:
             print(f"Detecting positive transients with threshold={threshold}σ...")
             # Calculate background statistics with sigma clipping
-            _, median, std = sigma_clipped_stats(self.diff_data, sigma=3.0)
+            _, median, std = sigma_clipped_stats(self.diff_data,
+                                                 sigma=self.config.SIGMA_CLIP)
 
             # Find positive peaks (new sources) only
             threshold_positive = median + (threshold * std)
-            positive_peaks = find_peaks(self.diff_data, threshold_positive, box_size=5,
-                                        npeaks=50, centroid_func=None)
+            positive_peaks = find_peaks(
+                self.diff_data, 
+                threshold_positive, 
+                box_size=self.config.BOX_SIZE,
+                npeaks=self.config.MAX_PEAKS, 
+                centroid_func=None
+            )
 
             if positive_peaks:
                 positive_peaks['peak_type'] = 'positive'
@@ -539,7 +580,8 @@ class TransientFinder:
 
             # Save transient catalog
             catalog_path = os.path.join(self.output_dir, "transients.csv")
-            self.transient_table.write(catalog_path, format='csv', overwrite=True)
+            self.transient_table.write(catalog_path, format='csv',
+                                       overwrite=True)
             print(f"Found {len(self.transient_table)} positive transient candidates.")
             print(f"Transient catalog saved to: {catalog_path}")
 
@@ -549,14 +591,14 @@ class TransientFinder:
             print(f"Error detecting transients: {e}")
             return None
 
-    def plot_results(self, figsize=(15, 5), show=True):
+    def plot_results(self, figsize=None, show=True):
         """
         Plot the science, reference, and difference images with detected transients.
 
         Parameters
         ----------
-        figsize : tuple
-            Figure size in inches.
+        figsize : tuple, optional
+            Figure size in inches. If None, uses config default.
         show : bool
             Whether to show the plot (or just save it).
 
@@ -565,6 +607,9 @@ class TransientFinder:
         str
             Path to the saved plot image.
         """
+        if figsize is None:
+            figsize = self.config.DEFAULT_FIGSIZE
+
         try:
             # Create figure with three subplots
             _, axes = plt.subplots(1, 3, figsize=figsize)
@@ -575,20 +620,23 @@ class TransientFinder:
             # Plot science image
             vmin, vmax = zscale.get_limits(self.sci_data)
             norm_sci = ImageNormalize(vmin=vmin, vmax=vmax)
-            axes[0].imshow(self.sci_data, origin='lower', cmap='gray', norm=norm_sci)
+            axes[0].imshow(self.sci_data, origin='lower', cmap='gray',
+                           norm=norm_sci)
             axes[0].set_title('Science Image')
 
             # Plot reference image
             vmin, vmax = zscale.get_limits(self.ref_data)
             norm_ref = ImageNormalize(vmin=vmin, vmax=vmax)
-            axes[1].imshow(self.ref_data, origin='lower', cmap='gray', norm=norm_ref)
+            axes[1].imshow(self.ref_data, origin='lower', cmap='gray',
+                           norm=norm_ref)
             axes[1].set_title('Reference Image')
 
             # Plot difference image
             vmin, vmax = zscale.get_limits(self.diff_data)
             limit = max(abs(vmin), abs(vmax))
             norm_diff = ImageNormalize(vmin=-limit, vmax=limit)
-            diff_im = axes[2].imshow(self.diff_data, origin='lower', cmap='coolwarm', norm=norm_diff)
+            diff_im = axes[2].imshow(self.diff_data, origin='lower',
+                                     cmap='coolwarm', norm=norm_diff)
             axes[2].set_title('Difference Image')
 
             # Add colorbar for difference image
@@ -600,14 +648,16 @@ class TransientFinder:
                     x, y = transient['x_peak'], transient['y_peak']
                     peak_type = transient['peak_type']
                     color = 'lime' if peak_type == 'positive' else 'red'
-                    circle = CircularAperture((x, y), r=10)
+                    circle = CircularAperture((x, y), r=self.config.APERTURE_RADIUS)
                     circle.plot(axes[2], color=color, lw=1.5)
-                    axes[2].text(x+12, y+12, f"{idx+1}", color=color, fontsize=8,
-                                 ha='left', va='bottom')
+                    axes[2].text(x+12, y+12, f"{idx+1}", color=color,
+                                 fontsize=8, ha='left', va='bottom')
 
             plt.tight_layout()
-            plot_path = os.path.join(self.output_dir, "transient_detection_plot.png")
-            plt.savefig(plot_path, dpi=200, bbox_inches='tight')
+            plot_path = os.path.join(self.output_dir,
+                                     "transient_detection_plot.png")
+            plt.savefig(plot_path, dpi=self.config.PLOT_DPI,
+                        bbox_inches='tight')
 
             if show:
                 plt.show()
@@ -643,14 +693,19 @@ def main():
     parser.add_argument('--output', help='Output directory for results')
     parser.add_argument('--threshold', type=float, default=5.0,
                         help='Detection threshold in sigma units')
-    parser.add_argument('--method', choices=['proper', 'direct'], default='proper',
-                        help='Image subtraction method')
+    parser.add_argument('--method', choices=['proper', 'direct'],
+                        default='proper', help='Image subtraction method')
     parser.add_argument('--no-plot', action='store_true', help='Skip plotting')
+    parser.add_argument('--config', help='Path to JSON configuration file')
 
     args = parser.parse_args()
 
+    # Load configuration
+    config = Config.from_file(args.config) if args.config else Config()
+
     # Create TransientFinder with science image
-    finder = TransientFinder(args.science_image, output_dir=args.output)
+    finder = TransientFinder(args.science_image, output_dir=args.output,
+                             config=config)
 
     # Get reference image from specified survey
     if not finder.get_reference_image(survey=args.survey, filter_band=args.filter_band):
