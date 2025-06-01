@@ -456,6 +456,42 @@ class TransientFinder:
             print(f"Error during image subtraction: {e}")
             return False
 
+    def _extract_difference_data(self, D, mask):
+        """Extract difference data from ProperImage results."""
+        if isinstance(D, str):
+            print(f"Loading difference image from ProperImage output file: {D}")
+            try:
+                with fits.open(D) as hdul:
+                    diff_data = hdul[0].data
+                # Clean up the temporary file created by ProperImage
+                if os.path.exists(D):
+                    os.remove(D)
+            except Exception as e:
+                print(f"Failed to load difference image file {D}: {e}")
+                raise e
+        else:
+            # D is a numpy array or similar object
+            if hasattr(D, 'data'):
+                # D is likely a FITS HDU or similar object
+                diff_data = D.data
+            elif hasattr(D, 'real'):
+                # D is a complex array, take real part
+                diff_data = D.real
+            else:
+                # D is already a numpy array
+                diff_data = np.asarray(D)
+            
+            # Apply mask if available and it's not a string
+            if mask is not None and not isinstance(mask, str):
+                if hasattr(mask, 'data'):
+                    mask_data = mask.data
+                else:
+                    mask_data = np.asarray(mask)
+                diff_data = np.ma.array(diff_data, mask=mask_data).filled(np.nan)
+
+        print(f"Difference image extracted. Shape: {diff_data.shape}")
+        return diff_data
+
     def _perform_proper_subtraction(self):
         """Perform ProperImage subtraction with improved file management."""
         print("Performing ProperImage subtraction...")
@@ -467,50 +503,74 @@ class TransientFinder:
         with managed_temp_files("temp_science.fits", "temp_reference.fits") as (temp_sci_path, temp_ref_path):
             try:
                 # Save temporary FITS files for ProperImage
-                fits.writeto(temp_sci_path, sci_data_native, self.sci_header,
-                             overwrite=True)
-                fits.writeto(temp_ref_path, ref_data_native, self.ref_header,
-                             overwrite=True)
+                fits.writeto(temp_sci_path, sci_data_native, self.sci_header, overwrite=True)
+                fits.writeto(temp_ref_path, ref_data_native, self.ref_header, overwrite=True)
 
                 # Perform subtraction using ProperImage operations.subtract
                 print("Performing difference imaging...")
-                D, P, scorr, mask = subtract(
-                    ref=temp_ref_path,
-                    new=temp_sci_path,
-                    smooth_psf=False,
-                    fitted_psf=True,
-                    align=True,
-                    iterative=True,
-                    beta=False,
-                    shift=True
-                )
-
-                # Simplified handling of ProperImage results
-                self.diff_data = self._extract_difference_data(D, mask)
-                return self._save_difference_image()
+                try:
+                    result = subtract(
+                        ref=temp_ref_path,
+                        new=temp_sci_path,
+                        smooth_psf=False,
+                        fitted_psf=True,
+                        align=True,
+                        iterative=True,
+                        beta=False,
+                        shift=True
+                    )
+                    
+                    # Debug: print the raw result to understand what ProperImage returns
+                    print(f"ProperImage raw result type: {type(result)}")
+                    if isinstance(result, (tuple, list)):
+                        print(f"ProperImage result length: {len(result)}")
+                        for i, item in enumerate(result):
+                            print(f"  Item {i}: type={type(item)}, has_data={hasattr(item, 'data')}")
+                    
+                    # Handle different return formats from ProperImage more carefully
+                    D, P, scorr, mask = None, None, None, None
+                    
+                    if isinstance(result, (tuple, list)):
+                        # Unpack available items
+                        if len(result) >= 1:
+                            D = result[0]
+                        if len(result) >= 2:
+                            P = result[1]
+                        if len(result) >= 3:
+                            scorr = result[2]
+                        if len(result) >= 4:
+                            mask = result[3]
+                    else:
+                        # Single return value - assume it's the difference image
+                        D = result
+                    
+                    # Debug: print what we extracted
+                    print(f"Extracted D type: {type(D)}")
+                    if hasattr(D, 'shape'):
+                        print(f"D shape: {D.shape}")
+                    elif isinstance(D, str):
+                        print(f"D is file path: {D}")
+                    
+                    if mask is not None:
+                        print(f"Mask type: {type(mask)}")
+                    
+                    # Extract difference data using our robust extraction method
+                    self.diff_data = self._extract_difference_data(D, mask)
+                    print(f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
+                    return self._save_difference_image()
+                    
+                except Exception as proper_error:
+                    print(f"ProperImage subtract call failed: {proper_error}")
+                    print("This might be due to incompatible image formats or ProperImage version issues.")
+                    print("Falling back to direct subtraction...")
+                    self.diff_data = sci_data_native - ref_data_native
+                    return self._save_difference_image()
 
             except Exception as proper_error:
                 print(f"ProperImage failed: {proper_error}")
                 print("Falling back to direct subtraction...")
                 self.diff_data = sci_data_native - ref_data_native
                 return self._save_difference_image()
-
-    def _extract_difference_data(self, D, mask):
-        """Extract difference data from ProperImage results."""
-        if isinstance(D, str):
-            print(f"Loading difference image from ProperImage output file: {D}")
-            with fits.open(D) as hdul:
-                diff_data = hdul[0].data
-        else:
-            # D is a numpy array
-            diff_data = D.real if hasattr(D, 'real') else D
-            
-            # Apply mask if available
-            if mask is not None:
-                diff_data = np.ma.array(diff_data, mask=mask).filled(np.nan)
-
-        print(f"Difference image extracted. Shape: {diff_data.shape}")
-        return diff_data
 
     def _save_difference_image(self):
         """Save difference image to file."""
