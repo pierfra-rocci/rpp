@@ -973,10 +973,10 @@ def update_observatory_from_fits_header(header):
                 updated = True
                 break
     
-    # Check for site latitude
-    if 'SITELAN' in header and header['SITELAN'] is not None:
+    # Check for site latitude - Fixed key name from SITELAN to SITELAT
+    if 'SITELAT' in header and header['SITELAT'] is not None:
         try:
-            latitude = float(header['SITELAN'])
+            latitude = float(header['SITELAT'])
             if -90 <= latitude <= 90:  # Valid latitude range
                 st.session_state.observatory_data["latitude"] = latitude
                 st.session_state["observatory_latitude"] = latitude
