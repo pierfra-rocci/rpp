@@ -947,8 +947,70 @@ def initialize_session_state():
         st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
 
 
+def update_observatory_from_fits_header(header):
+    """
+    Update observatory data in session state from FITS header information.
+    
+    Parameters
+    ----------
+    header : astropy.io.fits.Header
+        FITS header object to extract observatory information from
+        
+    Returns
+    -------
+    bool
+        True if any observatory data was updated, False otherwise
+    """
+    updated = False
+    
+    # Check for observatory name
+    for key in ['TELESCOP', 'OBSERVER']:
+        if key in header and header[key]:
+            observatory_name = str(header[key]).strip()
+            if observatory_name and observatory_name not in ["", "UNKNOWN", "None"]:
+                st.session_state.observatory_data["name"] = observatory_name
+                st.session_state["observatory_name"] = observatory_name
+                updated = True
+                break
+    
+    # Check for site latitude
+    if 'SITELAN' in header and header['SITELAN'] is not None:
+        try:
+            latitude = float(header['SITELAN'])
+            if -90 <= latitude <= 90:  # Valid latitude range
+                st.session_state.observatory_data["latitude"] = latitude
+                st.session_state["observatory_latitude"] = latitude
+                updated = True
+        except (ValueError, TypeError):
+            pass
+    
+    # Check for site longitude
+    if 'SITELONG' in header and header['SITELONG'] is not None:
+        try:
+            longitude = float(header['SITELONG'])
+            if -180 <= longitude <= 180:  # Valid longitude range
+                st.session_state.observatory_data["longitude"] = longitude
+                st.session_state["observatory_longitude"] = longitude
+                updated = True
+        except (ValueError, TypeError):
+            pass
+    
+    # Check for site elevation
+    if 'SITEELEV' in header and header['SITEELEV'] is not None:
+        try:
+            elevation = float(header['SITEELEV'])
+            if elevation >= -500:  # Reasonable minimum (below sea level)
+                st.session_state.observatory_data["elevation"] = elevation
+                st.session_state["observatory_elevation"] = elevation
+                updated = True
+        except (ValueError, TypeError):
+            pass
+    
+    return updated
+
+
 ###################################################################
-# Main Streamlit app
+# Main Streamlit App
 ###################################################################
 
 
@@ -1165,6 +1227,7 @@ science_file = st.file_uploader(
 )
 science_file_path = None
 
+# Runtime logic to update the sessions state parameters
 st.session_state["calibrate_cosmic_rays"] = st.session_state.analysis_parameters["calibrate_cosmic_rays"]
 
 # Update observatory_data dictionary with current session state values
@@ -1193,7 +1256,8 @@ if science_file is not None:
     os.makedirs(user_tmp_dir, exist_ok=True)
 
     # Now use this directory for the temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir=user_tmp_dir) as tmp_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix,
+                                     dir=user_tmp_dir) as tmp_file:
         tmp_file.write(science_file.getvalue())
         science_file_path = tmp_file.name
 
@@ -1215,6 +1279,14 @@ if science_file is not None:
             st.session_state.log_buffer,
             f"Loaded FITS file: {science_file.name}"
         )
+        
+        # Update observatory data from FITS header if available
+        if update_observatory_from_fits_header(science_header):
+            st.info("Observatory information updated from FITS header")
+            write_to_log(
+                st.session_state.log_buffer,
+                f"Observatory data updated from FITS header: {st.session_state.observatory_data}"
+            )
 
     # Apply cosmic ray removal if enabled
     if st.session_state.get("calibrate_cosmic_rays", False):
