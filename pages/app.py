@@ -623,11 +623,11 @@ def provide_download_buttons(folder_path):
 
 def display_archived_files_browser(output_dir):
     """
-    Display a file browser for archived files in the user's results directory.
+    Display a file browser for archived ZIP files in the user's results directory.
     
-    This function creates a secure file browser that only allows access to files
-    within the specified output directory. Users can view and download individual
-    files or select multiple files for download.
+    This function creates a secure file browser that only allows access to ZIP files
+    within the specified output directory. Also automatically cleans up old files
+    (except .json) that are older than 1 month.
     
     Parameters
     ----------
@@ -644,34 +644,64 @@ def display_archived_files_browser(output_dir):
         return
     
     try:
-        all_files = []
+        # First, automatically clean old files (excluding .json files)
+        cutoff_date = datetime.now() - pd.Timedelta(days=30)
+        deleted_count = 0
+        
         for item in os.listdir(output_dir):
             item_path = os.path.join(output_dir, item)
             if os.path.isfile(item_path):
-                # Get file stats
-                stat = os.stat(item_path)
-                file_size = stat.st_size
-                mod_time = datetime.fromtimestamp(stat.st_mtime)
-                
-                all_files.append({
-                    'name': item,
-                    'size': file_size,
-                    'modified': mod_time,
-                    'path': item_path
-                })
+                # Skip .json files from cleanup
+                if item.lower().endswith('.json'):
+                    continue
+                    
+                try:
+                    mod_time = datetime.fromtimestamp(os.path.getmtime(item_path))
+                    if mod_time < cutoff_date:
+                        os.remove(item_path)
+                        deleted_count += 1
+                except Exception:
+                    # Silently continue if file can't be deleted
+                    pass
         
-        if not all_files:
-            st.info("No archived files found in results directory.")
+        # Collect only ZIP files
+        zip_files = []
+        for item in os.listdir(output_dir):
+            item_path = os.path.join(output_dir, item)
+            if os.path.isfile(item_path) and item.lower().endswith('.zip'):
+                # Get file stats
+                try:
+                    stat = os.stat(item_path)
+                    file_size = stat.st_size
+                    mod_time = datetime.fromtimestamp(stat.st_mtime)
+                    
+                    zip_files.append({
+                        'name': item,
+                        'size': file_size,
+                        'modified': mod_time,
+                        'path': item_path
+                    })
+                except Exception:
+                    # Skip files that can't be accessed
+                    continue
+        
+        if not zip_files:
+            st.info("No ZIP archives found in results directory.")
+            if deleted_count > 0:
+                st.info(f"Automatically cleaned {deleted_count} old files.")
             return
         
         # Sort files by modification time (newest first)
-        all_files.sort(key=lambda x: x['modified'], reverse=True)
+        zip_files.sort(key=lambda x: x['modified'], reverse=True)
         
-        st.subheader(f"📁 Archived Files ({len(all_files)} files)")
+        st.subheader(f"📦 Available ZIP Archives ({len(zip_files)} files)")
+        
+        if deleted_count > 0:
+            st.info(f"Automatically cleaned {deleted_count} old files (older than 30 days).")
         
         # Create a DataFrame for better display
         display_data = []
-        for file_info in all_files:
+        for file_info in zip_files:
             size_str = f"{file_info['size']:,} bytes"
             if file_info['size'] > 1024:
                 size_str = f"{file_info['size']/1024:.1f} KB"
@@ -679,132 +709,49 @@ def display_archived_files_browser(output_dir):
                 size_str = f"{file_info['size']/(1024*1024):.1f} MB"
             
             display_data.append({
-                'File Name': file_info['name'],
+                'Archive Name': file_info['name'],
                 'Size': size_str,
-                'Modified': file_info['modified'].strftime('%Y-%m-%d %H:%M:%S'),
-                'Type': os.path.splitext(file_info['name'])[1] or 'No extension'
+                'Created': file_info['modified'].strftime('%Y-%m-%d %H:%M:%S')
             })
         
         files_df = pd.DataFrame(display_data)
         st.dataframe(files_df, use_container_width=True)
         
-        # File selection for individual downloads
-        st.subheader("📥 Download Individual Files")
+        # Download section for ZIP files
+        st.subheader("📥 Download ZIP Archives")
         
-        # Group files by type for easier selection
-        file_types = {}
-        for file_info in all_files:
-            ext = os.path.splitext(file_info['name'])[1].lower()
-            if ext not in file_types:
-                file_types[ext] = []
-            file_types[ext].append(file_info)
-        
-        # Create tabs for different file types
-        if len(file_types) > 1:
-            type_tabs = st.tabs([f"{ext or 'No ext'} ({len(files)})" for ext, files in file_types.items()])
+        for file_info in zip_files:
+            col1, col2, col3 = st.columns([3, 1, 1])
             
-            for tab, (ext, files) in zip(type_tabs, file_types.items()):
-                with tab:
-                    for file_info in files:
-                        col1, col2, col3 = st.columns([3, 1, 1])
-                        
-                        with col1:
-                            st.text(file_info['name'])
-                        
-                        with col2:
-                            size_str = f"{file_info['size']:,} bytes"
-                            if file_info['size'] > 1024:
-                                size_str = f"{file_info['size']/1024:.1f} KB"
-                            if file_info['size'] > 1024*1024:
-                                size_str = f"{file_info['size']/(1024*1024):.1f} MB"
-                            st.text(size_str)
-                        
-                        with col3:
-                            # Create download button for individual file
-                            try:
-                                with open(file_info['path'], 'rb') as f:
-                                    file_data = f.read()
-                                
-                                # Determine MIME type based on extension
-                                mime_type = "application/octet-stream"
-                                if ext == '.zip':
-                                    mime_type = "application/zip"
-                                
-                                st.download_button(
-                                    label="📥",
-                                    data=file_data,
-                                    file_name=file_info['name'],
-                                    mime=mime_type,
-                                    key=f"download_{file_info['name']}",
-                                    help=f"Download {file_info['name']}",
-                                    on_click="ignore"
-                                )
-                            except Exception as e:
-                                st.error(f"Error reading file {file_info['name']}: {str(e)}")
-        else:
-            # Single file type, display directly
-            for file_info in all_files:
-                col1, col2, col3 = st.columns([3, 1, 1])
-                
-                with col1:
-                    st.text(file_info['name'])
-                
-                with col2:
-                    size_str = f"{file_info['size']:,} bytes"
-                    if file_info['size'] > 1024:
-                        size_str = f"{file_info['size']/1024:.1f} KB"
-                    if file_info['size'] > 1024*1024:
-                        size_str = f"{file_info['size']/(1024*1024):.1f} MB"
-                    st.text(size_str)
-                
-                with col3:
-                    try:
-                        with open(file_info['path'], 'rb') as f:
-                            file_data = f.read()
-                        
-                        ext = os.path.splitext(file_info['name'])[1].lower()
-                        mime_type = "application/octet-stream"
-                        if ext == '.zip':
-                            mime_type = "application/zip"
-                        
-                        st.download_button(
-                            label="📥",
-                            data=file_data,
-                            file_name=file_info['name'],
-                            mime=mime_type,
-                            key=f"download_{file_info['name']}",
-                            help=f"Download {file_info['name']}",
-                            on_click="ignore"
-                        )
-                    except Exception as e:
-                        st.error(f"Error reading file {file_info['name']}: {str(e)}")
-        
-        # Directory cleanup option
-        st.subheader("🗑️ File Management")
-        
-        if st.button("🧹 Clean Old Files",
-                     help="Remove files older than 30 days"):
-            try:
-                cutoff_date = datetime.now() - pd.Timedelta(days=30)
-                deleted_count = 0
-                
-                for file_info in all_files:
-                    if file_info['modified'] < cutoff_date:
-                        try:
-                            os.remove(file_info['path'])
-                            deleted_count += 1
-                        except Exception as e:
-                            st.warning(f"Could not delete {file_info['name']}: {str(e)}")
-                
-                if deleted_count > 0:
-                    st.success(f"Deleted {deleted_count} old files.")
-                    st.experimental_rerun()
-                else:
-                    st.info("No old files found to delete.")
+            with col1:
+                st.text(file_info['name'])
+            
+            with col2:
+                size_str = f"{file_info['size']:,} bytes"
+                if file_info['size'] > 1024*1024:
+                    size_str = f"{file_info['size']/(1024*1024):.1f} MB"
+                elif file_info['size'] > 1024:
+                    size_str = f"{file_info['size']/1024:.1f} KB"
+                st.text(size_str)
+            
+            with col3:
+                # Create download button for ZIP file
+                try:
+                    with open(file_info['path'], 'rb') as f:
+                        file_data = f.read()
                     
-            except Exception as e:
-                st.error(f"Error during cleanup: {str(e)}")
-                
+                    st.download_button(
+                        label="📥",
+                        data=file_data,
+                        file_name=file_info['name'],
+                        mime="application/zip",
+                        key=f"download_zip_{file_info['name']}",
+                        help=f"Download {file_info['name']}",
+                        on_click="ignore"
+                    )
+                except Exception as e:
+                    st.error(f"Error reading file {file_info['name']}: {str(e)}")
+                    
     except Exception as e:
         st.error(f"Error accessing results directory: {str(e)}")
 
@@ -2020,7 +1967,7 @@ if science_file is not None:
                                                 "x_err",
                                                 "y_err"
                                             ]:
-                                                if col_name in final_table.columns:
+                                                                                               if col_name in final_table.columns:
                                                     cols_to_drop.append(col_name)
 
                                             if cols_to_drop:
