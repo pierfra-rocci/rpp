@@ -1246,6 +1246,8 @@ def detection_and_photometry(
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
         return None, None, daofind, bkg
+    
+    positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
 
     # Check Astrometry option before refinement
     if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
@@ -1267,8 +1269,6 @@ def detection_and_photometry(
             w = refined_wcs
     else:
         st.info("Refine Astrometry is disabled. Skipping astrometry refinement.")
-
-    positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
     
     # Create multiple circular apertures with different radii
     aperture_radii = [1.5, 2.0, 2.5, 3.0]
