@@ -1246,7 +1246,7 @@ def detection_and_photometry(
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
         return None, None, daofind, bkg
-    
+
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
 
     # Check Astrometry option before refinement
@@ -1259,17 +1259,17 @@ def detection_and_photometry(
             pixel_scale=pixel_scale,
             filter_band=filter_band
         )
-        
+
         # Validate WCS after refinement
         if refined_wcs:
             # Test a few source positions to ensure coordinates make sense
-            test_coords = positions[:min(5, len(positions))]  # Test first 5 sources
+            test_coords = positions[:min(5, len(positions))]
             if not validate_wcs_orientation(_science_header, _science_header, test_coords):
                 st.warning("WCS refinement may have introduced coordinate issues")
             w = refined_wcs
     else:
         st.info("Refine Astrometry is disabled. Skipping astrometry refinement.")
-    
+
     # Create multiple circular apertures with different radii
     aperture_radii = [1.5, 2.0, 2.5, 3.0]
     apertures = [CircularAperture(positions, r=radius * fwhm_estimate) 
@@ -1311,13 +1311,13 @@ def detection_and_photometry(
             radius_suffix = f"_r{aperture_radii[i]:.1f}"
             
             # Rename aperture columns
-            if f"aperture_sum" in phot_result.colnames:
+            if "aperture_sum" in phot_result.colnames:
                 phot_result.rename_column("aperture_sum", f"aperture_sum{radius_suffix}")
-            if f"aperture_sum_err" in phot_result.colnames:
+            if "aperture_sum_err" in phot_result.colnames:
                 phot_result.rename_column("aperture_sum_err", f"aperture_sum_err{radius_suffix}")
             
             # Rename annulus columns and calculate background per pixel
-            if f"aperture_sum" in bkg_result.colnames:
+            if "aperture_sum" in bkg_result.colnames:
                 annulus_area = annulus.area
                 bkg_per_pixel = bkg_result["aperture_sum"] / annulus_area
                 aperture_area = aperture.area
