@@ -1020,6 +1020,119 @@ def perform_psf_photometry(
     return phot_epsf_result, epsf
 
 
+def refine_astrometry_with_stdpipe(
+    image_data: np.ndarray,
+    science_header: dict,
+    wcs: WCS,
+    fwhm_estimate: float,
+    pixel_scale: float,
+    filter_band: str
+) -> Optional[WCS]:
+    """
+    Perform astrometry refinement using stdpipe and GAIA DR3 catalog.
+    
+    Parameters
+    ----------
+    image_data : numpy.ndarray
+        The 2D image array
+    science_header : dict
+        FITS header with WCS information
+    wcs : astropy.wcs.WCS
+        Initial WCS object
+    fwhm_estimate : float
+        FWHM estimate in pixels
+    pixel_scale : float
+        Pixel scale in arcseconds per pixel
+    filter_band : str
+        Gaia magnitude band to use for catalog matching
+        
+    Returns
+    -------
+    astropy.wcs.WCS or None
+        Refined WCS object if successful, None otherwise
+    """
+    try:
+        st.write("Doing astrometry refinement using Stdpipe and Astropy...")
+        
+        # Get objects using stdpipe
+        obj = photometry.get_objects_sep(
+            image_data,
+            header=science_header,
+            thresh=3.0,
+            sn=5,
+            aper=1.5 * fwhm_estimate,
+            mask=None,
+            use_mask_large=True,
+            get_segmentation=False,
+            subtract_bg=True
+        )
+        
+        # Get frame center
+        ra0, dec0, sr0 = astrometry.get_frame_center(
+            header=science_header,
+            wcs=wcs,
+            width=image_data.shape[1],
+            height=image_data.shape[0]
+        )
+        
+        # Map filter band to GAIA band names
+        gaia_band_mapping = {
+            "phot_bp_mean_mag": "BPmag",
+            "phot_rp_mean_mag": "RPmag",
+            "phot_g_mean_mag": "Gmag"
+        }
+        
+        gb = gaia_band_mapping.get(filter_band, "Gmag")
+        
+        # Get catalog from GAIA
+        cat = catalogs.get_cat_vizier(
+            ra0, dec0, sr0, "gaiaedr3",
+            filters={gb: "<20"}
+        )
+        
+        # Perform astrometry refinement
+        wcs_result = pipeline.refine_astrometry(
+            obj,
+            cat,
+            1.5 * fwhm_estimate * pixel_scale / 3600,
+            wcs=wcs,
+            order=2,
+            cat_col_mag=gb,
+            cat_col_mag_err=None,
+            n_iter=3,
+            min_matches=5,
+            use_photometry=True,
+            verbose=True,
+        )
+        
+        # Extract WCS from result
+        if isinstance(wcs_result, tuple):
+            refined_wcs = wcs_result[0]
+        else:
+            refined_wcs = wcs_result
+            
+        if refined_wcs:
+            st.info("Refined WCS successfully.")
+            
+            # Clear old WCS keywords and update with new ones
+            astrometry.clear_wcs(
+                science_header,
+                remove_comments=True,
+                remove_underscored=True,
+                remove_history=True,
+            )
+            science_header.update(refined_wcs.to_header(relax=True))
+            
+            return refined_wcs
+        else:
+            st.warning("WCS refinement failed.")
+            return None
+            
+    except Exception as e:
+        st.warning(f"Skipping WCS refinement: {str(e)}")
+        return None
+
+
 def detection_and_photometry(
     image_data,
     _science_header,
@@ -1127,18 +1240,6 @@ def detection_and_photometry(
         peakmax=peak_max,
     )
 
-    obj = photometry.get_objects_sep(
-            image_data,
-            header=_science_header,
-            thresh=3.0,
-            sn=5,
-            aper=1.5 * fwhm_estimate,
-            mask=mask,
-            use_mask_large=True,
-            get_segmentation=False,
-            subtract_bg=True
-        )
-
     sources = daofind(image_sub,
                       mask=mask)
 
@@ -1146,60 +1247,22 @@ def detection_and_photometry(
         st.warning("No sources found!")
         return None, None, daofind, bkg
 
-    # Check Astrometry+ option before refinement
-    if hasattr(st, "session_state") and st.session_state.get("astrometry_check",
-                                                             False):
-        st.write("Doing astrometry refinement using Stdpipe and Astropy...")
-
-        ra0, dec0, sr0 = astrometry.get_frame_center(header=_science_header,
-                                                     wcs=w,
-                                                     width=image_data.shape[1],
-                                                     height=image_data.shape[0]
-                                                     )
-
-        if filter_band == "phot_bp_mean_mag":
-            gb = "BPmag"
-        if filter_band == "phot_rp_mean_mag":
-            gb = "RPmag"
-        cat = catalogs.get_cat_vizier(ra0, dec0, sr0, "gaiaedr3",
-                                      filters={gb: "<20"})
-        cat_col_mag = gb
-
-        try:
-            wcs_result = pipeline.refine_astrometry(
-                obj,
-                cat,
-                1.5 * fwhm_estimate * pixel_scale / 3600,
-                wcs=w,
-                order=2,
-                cat_col_mag=cat_col_mag,
-                cat_col_mag_err=None,
-                n_iter=3,
-                min_matches=5,
-                use_photometry=True,
-                verbose=True,
-            )
-
-            if isinstance(wcs_result, tuple):
-                wcs = wcs_result[0]
-            else:
-                wcs = wcs_result
-
-            if wcs:
-                st.info("Refined WCS successfully.")
-                astrometry.clear_wcs(
-                    _science_header,
-                    remove_comments=True,
-                    remove_underscored=True,
-                    remove_history=True,
-                )
-                _science_header.update(wcs.to_header(relax=True))
-            else:
-                st.warning("WCS refinement failed.")
-        except Exception as e:
-            st.warning(f"Skipping WCS refinement: {str(e)}")
+    # Check Astrometry option before refinement
+    if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
+        refined_wcs = refine_astrometry_with_stdpipe(
+            image_data=image_data,
+            science_header=_science_header,
+            wcs=w,
+            fwhm_estimate=fwhm_estimate,
+            pixel_scale=pixel_scale,
+            filter_band=filter_band
+        )
+        
+        # Update the WCS object if refinement was successful
+        if refined_wcs:
+            w = refined_wcs
     else:
-        st.info("Astrometry+ is disabled. Skipping astrometry refinement.")
+        st.info("Refine Astrometry is disabled. Skipping astrometry refinement.")
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
     
