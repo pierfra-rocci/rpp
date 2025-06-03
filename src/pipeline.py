@@ -1641,7 +1641,7 @@ def cross_match_with_gaia(
             # Different query strategies based on filter band
             if (filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"] and
                     gaia_table is not None and len(gaia_table) > 0):
-                
+
                 # Create a comma-separated list of source_ids (limit to 1000)
                 max_sources = min(len(gaia_table), 1000)
                 source_ids = list(gaia_table['source_id'][:max_sources])
@@ -1681,14 +1681,19 @@ def cross_match_with_gaia(
 
     try:
         mag_filter = (gaia_table[filter_band] < filter_max_mag)
-
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
         color_index_filter = (gaia_table["bp_rp"] > -1) & (gaia_table["bp_rp"] < 2)
         astrometric_filter = gaia_table["ruwe"] < 1.6
-        combined_filter = (mag_filter &
-                           var_filter &
-                           color_index_filter &
-                           astrometric_filter)
+
+        if synth_table is None:
+            combined_filter = (mag_filter &
+                        var_filter &
+                        color_index_filter &
+                        astrometric_filter)
+        else:
+            combined_filter = (mag_filter &
+                        var_filter &
+                        astrometric_filter)
 
         gaia_table_filtered = gaia_table[combined_filter]
 
