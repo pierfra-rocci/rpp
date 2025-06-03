@@ -1258,8 +1258,12 @@ def detection_and_photometry(
             filter_band=filter_band
         )
         
-        # Update the WCS object if refinement was successful
+        # Validate WCS after refinement
         if refined_wcs:
+            # Test a few source positions to ensure coordinates make sense
+            test_coords = positions[:min(5, len(positions))]  # Test first 5 sources
+            if not validate_wcs_orientation(_science_header, _science_header, test_coords):
+                st.warning("WCS refinement may have introduced coordinate issues")
             w = refined_wcs
     else:
         st.info("Refine Astrometry is disabled. Skipping astrometry refinement.")
@@ -2159,11 +2163,11 @@ def enhance_catalog(
                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                     if match:
                         original_idx = valid_indices[i]
-                        final_table.loc[original_idx, "astro_colibri_name"] = astrostars[
+                        final_table.loc[original_idx, "astrocolibri_name"] = astrostars[
                             "discoverer_internal_name"
                         ][match_idx]
-                        final_table.loc[original_idx, "astro_colibri_type"] = astrostars["type"][match_idx]
-                        final_table.loc[original_idx, "astro_colibri_classification"] = astrostars[
+                        final_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx]
+                        final_table.loc[original_idx, "astrocolibri_classification"] = astrostars[
                             "classification"][match_idx]
                 
                 st.success("Astro-Colibri matched objects in field.")
