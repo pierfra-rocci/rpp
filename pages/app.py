@@ -1005,7 +1005,7 @@ def update_observatory_from_fits_header(header):
                 updated = True
         except (ValueError, TypeError):
             pass
-    
+
     return updated
 
 
