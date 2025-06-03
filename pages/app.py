@@ -1413,15 +1413,12 @@ if science_file is not None:
     log_buffer = st.session_state["log_buffer"]
     write_to_log(log_buffer, f"Loaded Image: {science_file.name}")
 
-    # if science_header is None:
-    #     science_header = {}
-
     if science_data is not None:
         st.header("Image", anchor="science-image")
         try:
             # Create a side-by-side plot using matplotlib subplots
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2 * FIGURE_SIZES["medium"][0], FIGURE_SIZES["medium"][1]))
-            # ZScale Visualization
+
             ax1.set_title("ZScale Visualization")
             try:
                 norm = ImageNormalize(science_data, interval=ZScaleInterval())
