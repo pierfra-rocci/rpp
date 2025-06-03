@@ -47,6 +47,116 @@ if getattr(sys, "frozen", False):
 warnings.filterwarnings("ignore")
 
 
+def fix_header(header):
+    """
+    Fix common issues in FITS headers based on stdweb processing approach.
+    
+    Parameters
+    ----------
+    header : astropy.io.fits.Header
+        FITS header object to fix
+        
+    Returns
+    -------
+    astropy.io.fits.Header
+        Fixed header object
+    """
+    try:
+        # Create a copy to avoid modifying the original
+        fixed_header = header.copy()
+        
+        # Fix common WCS issues
+        # Ensure CTYPE keywords are properly formatted
+        if 'CTYPE1' in fixed_header:
+            ctype1 = str(fixed_header['CTYPE1']).strip()
+            if ctype1 and not ctype1.endswith('---'):
+                if 'RA' in ctype1.upper():
+                    fixed_header['CTYPE1'] = 'RA---TAN'
+                elif 'GLON' in ctype1.upper():
+                    fixed_header['CTYPE1'] = 'GLON-TAN'
+        
+        if 'CTYPE2' in fixed_header:
+            ctype2 = str(fixed_header['CTYPE2']).strip()
+            if ctype2 and not ctype2.endswith('---'):
+                if 'DEC' in ctype2.upper():
+                    fixed_header['CTYPE2'] = 'DEC--TAN'
+                elif 'GLAT' in ctype2.upper():
+                    fixed_header['CTYPE2'] = 'GLAT-TAN'
+        
+        # Fix missing or invalid CRPIX values
+        if 'NAXIS1' in fixed_header and 'CRPIX1' not in fixed_header:
+            fixed_header['CRPIX1'] = fixed_header['NAXIS1'] / 2.0
+        if 'NAXIS2' in fixed_header and 'CRPIX2' not in fixed_header:
+            fixed_header['CRPIX2'] = fixed_header['NAXIS2'] / 2.0
+            
+        # Fix zero or missing CD matrix elements
+        cd_keys = ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']
+        for key in cd_keys:
+            if key in fixed_header and (fixed_header[key] == 0 or not np.isfinite(fixed_header[key])):
+                if '1_1' in key or '2_2' in key:
+                    # Diagonal elements - use pixel scale if available
+                    if 'PIXSCALE' in fixed_header:
+                        fixed_header[key] = fixed_header['PIXSCALE'] / 3600.0  # Convert arcsec to degrees
+                    elif 'CDELT1' in fixed_header and '1_1' in key:
+                        fixed_header[key] = fixed_header['CDELT1']
+                    elif 'CDELT2' in fixed_header and '2_2' in key:
+                        fixed_header[key] = fixed_header['CDELT2']
+                    else:
+                        fixed_header[key] = 1.0e-4  # Default ~0.36 arcsec/pixel
+                else:
+                    # Off-diagonal elements
+                    fixed_header[key] = 0.0
+        
+        # Convert CDELT to CD matrix if CD matrix is missing but CDELT exists
+        if ('CDELT1' in fixed_header and 'CDELT2' in fixed_header and 
+            'CD1_1' not in fixed_header and 'CD2_2' not in fixed_header):
+            fixed_header['CD1_1'] = fixed_header['CDELT1']
+            fixed_header['CD1_2'] = 0.0
+            fixed_header['CD2_1'] = 0.0
+            fixed_header['CD2_2'] = fixed_header['CDELT2']
+        
+        # Fix EQUINOX/EPOCH issues
+        if 'EQUINOX' not in fixed_header and 'EPOCH' in fixed_header:
+            fixed_header['EQUINOX'] = fixed_header['EPOCH']
+        elif 'EQUINOX' not in fixed_header and 'EPOCH' not in fixed_header:
+            fixed_header['EQUINOX'] = 2000.0
+            
+        # Fix RADESYS if missing
+        if 'RADESYS' not in fixed_header:
+            if fixed_header.get('EQUINOX', 2000.0) == 2000.0:
+                fixed_header['RADESYS'] = 'ICRS'
+            else:
+                fixed_header['RADESYS'] = 'FK5'
+        
+        # Ensure coordinate reference values exist
+        if 'CRVAL1' not in fixed_header:
+            # Try to get from other RA keywords
+            for ra_key in ['RA', 'OBJRA', 'RA_OBJ', 'TELRA']:
+                if ra_key in fixed_header:
+                    fixed_header['CRVAL1'] = fixed_header[ra_key]
+                    break
+                    
+        if 'CRVAL2' not in fixed_header:
+            # Try to get from other DEC keywords
+            for dec_key in ['DEC', 'OBJDEC', 'DEC_OBJ', 'TELDEC']:
+                if dec_key in fixed_header:
+                    fixed_header['CRVAL2'] = fixed_header[dec_key]
+                    break
+        
+        # Remove problematic keywords that can cause WCS issues
+        problematic_keys = ['PV1_1', 'PV1_2', 'PV2_1', 'PV2_2']
+        for key in problematic_keys:
+            if key in fixed_header and fixed_header[key] == 0:
+                del fixed_header[key]
+        
+        return fixed_header
+        
+    except Exception as e:
+        # If fixing fails, return original header
+        st.warning(f"Header fixing failed: {str(e)}")
+        return header
+
+
 @st.cache_data
 def load_fits_data(file):
     """
@@ -121,6 +231,48 @@ def load_fits_data(file):
                 while len(sliced_data.shape) > 2:
                     sliced_data = sliced_data[0]
                 data = sliced_data
+
+            # Apply header fixes before returning
+            try:
+                original_header = header.copy()
+                fixed_header = fix_header(header)
+                
+                # Check if any fixes were applied
+                fixes_applied = []
+                
+                # Check for specific fixes
+                if 'CTYPE1' in fixed_header and 'CTYPE1' in original_header:
+                    if str(fixed_header['CTYPE1']) != str(original_header['CTYPE1']):
+                        fixes_applied.append(f"CTYPE1: {original_header['CTYPE1']} → {fixed_header['CTYPE1']}")
+                
+                if 'CTYPE2' in fixed_header and 'CTYPE2' in original_header:
+                    if str(fixed_header['CTYPE2']) != str(original_header['CTYPE2']):
+                        fixes_applied.append(f"CTYPE2: {original_header['CTYPE2']} → {fixed_header['CTYPE2']}")
+                
+                # Check for added keywords
+                for key in ['CRPIX1', 'CRPIX2', 'EQUINOX', 'RADESYS']:
+                    if key in fixed_header and key not in original_header:
+                        fixes_applied.append(f"Added {key}: {fixed_header[key]}")
+                
+                # Check for CD matrix fixes
+                for key in ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']:
+                    if key in fixed_header and key in original_header:
+                        if abs(fixed_header[key] - original_header.get(key, 0)) > 1e-10:
+                            fixes_applied.append(f"Fixed {key}")
+                
+                if fixes_applied:
+                    st.info(f"Applied header fixes: {', '.join(fixes_applied)}")
+                    if st.session_state.get("log_buffer"):
+                        write_to_log(st.session_state["log_buffer"], 
+                                   f"Header fixes applied: {'; '.join(fixes_applied)}")
+                
+                header = fixed_header
+                
+            except Exception as fix_error:
+                st.warning(f"Header fixing encountered an issue: {str(fix_error)}")
+                if st.session_state.get("log_buffer"):
+                    write_to_log(st.session_state["log_buffer"], 
+                               f"Header fixing failed: {str(fix_error)}", level="WARNING")
 
             return data, header
 
