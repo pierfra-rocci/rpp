@@ -919,6 +919,34 @@ def initialize_session_state():
     if "files_loaded" not in st.session_state:
         st.session_state.files_loaded = {"science_file": None}
 
+    # --- Sync session state with loaded config ---
+    if "observatory_data" in st.session_state:
+        obs = st.session_state["observatory_data"]
+        st.session_state["observatory_name"] = obs.get("name", "")
+        st.session_state["observatory_latitude"] = obs.get("latitude", 0.0)
+        st.session_state["observatory_longitude"] = obs.get("longitude", 0.0)
+        st.session_state["observatory_elevation"] = obs.get("elevation", 0.0)
+
+    if "analysis_parameters" in st.session_state:
+        ap = st.session_state["analysis_parameters"]
+        for key in [
+            "seeing", "threshold_sigma", "detection_mask",
+            "astrometry_check", "calibrate_cosmic_rays",
+            "cr_gain", "cr_readnoise", "cr_sigclip",
+            "filter_band", "filter_max_mag"
+        ]:
+            if key in ap:
+                st.session_state[key] = ap[key]
+
+    if "filter_parameters" in st.session_state:
+        gaia = st.session_state["filter_parameters"]
+        st.session_state["filter_band"] = gaia.get("filter_band", "phot_g_mean_mag")
+        st.session_state["filter_max_mag"] = gaia.get("filter_max_mag", 20.0)
+
+    if "colibri_api_key" in st.session_state:
+        st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
+
+
 ###################################################################
 # Main Streamlit app
 ###################################################################
@@ -961,33 +989,6 @@ if not st.session_state.logged_in:
 # Add application version to the sidebar
 st.title("🔭 RAPAS Photometry Pipeline")
 st.sidebar.markdown(f"**App Version:** _{version}_")
-
-# --- Sync session state with loaded config before creating widgets ---
-if "observatory_data" in st.session_state:
-    obs = st.session_state["observatory_data"]
-    st.session_state["observatory_name"] = obs.get("name", "")
-    st.session_state["observatory_latitude"] = obs.get("latitude", 0.0)
-    st.session_state["observatory_longitude"] = obs.get("longitude", 0.0)
-    st.session_state["observatory_elevation"] = obs.get("elevation", 0.0)
-
-if "analysis_parameters" in st.session_state:
-    ap = st.session_state["analysis_parameters"]
-    for key in [
-        "seeing", "threshold_sigma", "detection_mask",
-        "astrometry_check", "calibrate_cosmic_rays",
-        "cr_gain", "cr_readnoise", "cr_sigclip",
-        "filter_band", "filter_max_mag"
-    ]:
-        if key in ap:
-            st.session_state[key] = ap[key]
-
-if "filter_parameters" in st.session_state:
-    gaia = st.session_state["filter_parameters"]
-    st.session_state["filter_band"] = gaia.get("filter_band", "phot_g_mean_mag")
-    st.session_state["filter_max_mag"] = gaia.get("filter_max_mag", 20.0)
-
-if "colibri_api_key" in st.session_state:
-    st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
 
 with st.sidebar.expander("🔭 Observatory Data", expanded=False):
     st.session_state.observatory_name = st.text_input(
@@ -1173,20 +1174,6 @@ st.session_state.observatory_data = {
     "longitude": st.session_state.observatory_longitude,
     "elevation": st.session_state.observatory_elevation,
 }
-
-# These lines are duplicating values already in analysis_parameters
-st.session_state["seeing"] = st.session_state.analysis_parameters["seeing"]
-st.session_state["threshold_sigma"] = st.session_state.analysis_parameters["threshold_sigma"]
-st.session_state["detection_mask"] = st.session_state.analysis_parameters["detection_mask"]
-
-# # You can remove it completely or keep it if you want to ensure consistency:
-# st.session_state["analysis_parameters"].update(
-#     {
-#         "seeing": st.session_state.analysis_parameters["seeing"],
-#         "threshold_sigma": st.session_state.analysis_parameters["threshold_sigma"],
-#         "detection_mask": st.session_state.analysis_parameters["detection_mask"],
-#     }
-# )
 
 catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 username = st.session_state.get("username", "anonymous")
