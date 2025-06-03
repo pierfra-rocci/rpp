@@ -58,23 +58,6 @@ trap cleanup EXIT
 if ! siril-cli -s "$ssfPath" > "$sirilLog" 2>&1; then
   echo "Errore: Siril non ha risolto l'immagine. Log di Siril:"
   cat "$sirilLog"
-  
-  # Check for specific error patterns
-  if grep -q "No valid WCS found" "$sirilLog"; then
-    echo ""
-    echo "SUGGERIMENTO: Il file FITS non contiene le informazioni WCS necessarie."
-    echo "Potrebbe essere necessario:"
-    echo "1. Verificare che l'immagine sia stata acquisita con informazioni di telescopio corrette"
-    echo "2. Utilizzare un software di plate solving esterno (come astrometry.net)"
-    echo "3. Aggiungere manualmente le informazioni di coordinate approssimative"
-  elif grep -q "Plate solving failed" "$sirilLog"; then
-    echo ""
-    echo "SUGGERIMENTO: Il plate solving è fallito. Possibili cause:"
-    echo "1. Stelle insufficienti o poco visibili nell'immagine"
-    echo "2. Campo di vista non riconosciuto dal catalogo stelle"
-    echo "3. Immagine troppo rumorosa o con artefatti"
-  fi
-  
   exit 2
 fi
 
