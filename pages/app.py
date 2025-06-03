@@ -2010,9 +2010,9 @@ if science_file is not None:
                     # Check if we have a valid final photometry table
                     final_phot_table = st.session_state.get("final_phot_table")
                     
-                    if (final_phot_table is not None and 
-                        not final_phot_table.empty and 
-                        len(final_phot_table) > 0):
+                    if (final_phot_table is not None and
+                        not final_phot_table.empty and
+                            len(final_phot_table) > 0):
                         
                         st.subheader("Aladin Catalog Viewer")
                         
