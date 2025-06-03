@@ -1763,18 +1763,18 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             
             if instrumental_col in _matched_table.columns:
                 _matched_table[aperture_mag_col] = (
-                    _matched_table[instrumental_col] + zero_point_value + 0.1 * air
+                    _matched_table[instrumental_col] + zero_point_value + 0.09 * air
                 )
 
         # Keep the legacy "calib_mag" column using the 1.5*FWHM aperture for backward compatibility
         if "instrumental_mag_r1.5" in _phot_table.columns:
             _phot_table["calib_mag"] = (
-                _phot_table["instrumental_mag_r1.5"] + zero_point_value + 0.1 * air
+                _phot_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
             )
         
         if "instrumental_mag_r1.5" in _matched_table.columns:
             _matched_table["calib_mag"] = (
-                _matched_table["instrumental_mag_r1.5"] + zero_point_value + 0.1 * air
+                _matched_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
             )
 
         st.session_state["final_phot_table"] = _phot_table
