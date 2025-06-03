@@ -1729,7 +1729,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             zero_point_std = float('nan')
 
         _matched_table["calib_mag"] = (
-            _matched_table["instrumental_mag"] + zero_point_value + 0.1 * air
+            _matched_table["instrumental_mag"] + zero_point_value + 0.09 * air
         )
 
         if not isinstance(_phot_table, pd.DataFrame):
@@ -1752,7 +1752,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             
             if instrumental_col in _phot_table.columns:
                 _phot_table[aperture_mag_col] = (
-                    _phot_table[instrumental_col] + zero_point_value + 0.1 * air
+                    _phot_table[instrumental_col] + zero_point_value + 0.09 * air
                 )
 
         # Also apply to matched table for all aperture radii
