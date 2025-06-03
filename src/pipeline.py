@@ -432,6 +432,25 @@ def airmass(
     the observation was taken during night, twilight or day.
     """
 
+    # Check if airmass already exists in header
+    airmass_keywords = ['AIRMASS', 'SECZ', 'AIRMASS_START', 'AIRMASS_END']
+    for keyword in airmass_keywords:
+        if keyword in _header and _header[keyword] is not None:
+            try:
+                existing_airmass = float(_header[keyword])
+                # Validate the existing airmass value
+                if 1.0 <= existing_airmass <= 30.0:
+                    st.write(f"Using existing airmass from header: {existing_airmass:.2f}")
+                    if return_details:
+                        return existing_airmass, {"airmass_source": f"header_{keyword}"}
+                    return existing_airmass
+                else:
+                    st.warning(f"Invalid airmass value in header ({existing_airmass}), calculating from coordinates")
+                    break
+            except (ValueError, TypeError):
+                st.warning(f"Could not parse airmass value from header keyword {keyword}")
+                continue
+
     def get_observation_type(sun_alt):
         if sun_alt < -18:
             return "night"
@@ -471,7 +490,7 @@ def airmass(
             # First, try direct parsing
             obstime = Time(obstime_str)
     
-        except Exception as time_error:
+        except Exception:
             # If that fails, try different parsing strategies
             try:
                 # Handle common FITS date formats
