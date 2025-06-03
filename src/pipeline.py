@@ -1661,7 +1661,7 @@ def cross_match_with_gaia(
                 if synth_table is not None and len(synth_table) > 0:
                     st.info(f"Retrieved {len(synth_table)} synthetic photometry entries")
                     gaia_table = join(gaia_table, synth_table, keys='source_id',
-                                      join_type='left')
+                                      join_type='right')
 
         except Exception as cone_error:
             st.warning(f"Gaia query failed: {cone_error}")
