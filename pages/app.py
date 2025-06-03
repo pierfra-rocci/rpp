@@ -607,7 +607,7 @@ def provide_download_buttons(folder_path):
         st.caption(f"Archive contains {len(files)} files")
         # Create download button for the zip file
         if st.download_button(
-            label="📦 Download All Results (ZIP)",
+            label="📦 Download Results (ZIP)",
             data=zip_buffer,
             file_name=zip_filename,
             mime="application/zip",
