@@ -579,8 +579,6 @@ def provide_download_buttons(folder_path):
     try:
         base_filename = st.session_state.get("base_filename", "")
 
-        # Filter files to only include those starting with the base filename prefix
-        # and exclude files ending with '.zip'
         files = [
             f
             for f in os.listdir(folder_path)
@@ -644,7 +642,7 @@ def display_archived_files_browser(output_dir):
         return
     
     try:
-        # First, automatically clean old files (excluding .json files)
+        # Automatically clean old files (excluding .json files)
         cutoff_date = datetime.now() - pd.Timedelta(days=30)
         deleted_count = 0
         
@@ -686,56 +684,46 @@ def display_archived_files_browser(output_dir):
                     continue
         
         if not zip_files:
-            st.info("No ZIP archives found in results directory.")
+            st.info("No ZIP archives found.")
             if deleted_count > 0:
-                st.info(f"Automatically cleaned {deleted_count} old files.")
+                st.caption(f"Auto-cleaned {deleted_count} old files.")
             return
         
         # Sort files by modification time (newest first)
         zip_files.sort(key=lambda x: x['modified'], reverse=True)
         
-        st.subheader(f"📦 Available ZIP Archives ({len(zip_files)} files)")
+        st.write(f"**📦 {len(zip_files)} ZIP Archive(s)**")
         
         if deleted_count > 0:
-            st.info(f"Automatically cleaned {deleted_count} old files (older than 30 days).")
+            st.caption(f"Auto-cleaned {deleted_count} old files.")
         
-        # Create a DataFrame for better display
-        display_data = []
+        # Compact display with download buttons
         for file_info in zip_files:
-            size_str = f"{file_info['size']:,} bytes"
-            if file_info['size'] > 1024:
-                size_str = f"{file_info['size']/1024:.1f} KB"
-            if file_info['size'] > 1024*1024:
-                size_str = f"{file_info['size']/(1024*1024):.1f} MB"
+            # Format file size
+            size = file_info['size']
+            if size > 1024*1024:
+                size_str = f"{size/(1024*1024):.1f}MB"
+            elif size > 1024:
+                size_str = f"{size/1024:.1f}KB"
+            else:
+                size_str = f"{size}B"
             
-            display_data.append({
-                'Archive Name': file_info['name'],
-                'Size': size_str,
-                'Created': file_info['modified'].strftime('%Y-%m-%d %H:%M:%S')
-            })
-        
-        files_df = pd.DataFrame(display_data)
-        st.dataframe(files_df, use_container_width=True)
-        
-        # Download section for ZIP files
-        st.subheader("📥 Download ZIP Archives")
-        
-        for file_info in zip_files:
-            col1, col2, col3 = st.columns([3, 1, 1])
+            # Format date
+            date_str = file_info['modified'].strftime('%m/%d %H:%M')
+            
+            # Truncate filename if too long
+            display_name = file_info['name']
+            if len(display_name) > 30:
+                display_name = display_name[:27] + "..."
+            
+            # Create compact row with download button
+            col1, col2 = st.columns([3, 1])
             
             with col1:
-                st.text(file_info['name'])
+                st.text(f"{display_name}")
+                st.caption(f"{size_str} • {date_str}")
             
             with col2:
-                size_str = f"{file_info['size']:,} bytes"
-                if file_info['size'] > 1024*1024:
-                    size_str = f"{file_info['size']/(1024*1024):.1f} MB"
-                elif file_info['size'] > 1024:
-                    size_str = f"{file_info['size']/1024:.1f} KB"
-                st.text(size_str)
-            
-            with col3:
-                # Create download button for ZIP file
                 try:
                     with open(file_info['path'], 'rb') as f:
                         file_data = f.read()
@@ -747,10 +735,10 @@ def display_archived_files_browser(output_dir):
                         mime="application/zip",
                         key=f"download_zip_{file_info['name']}",
                         help=f"Download {file_info['name']}",
-                        on_click="ignore"
+                        use_container_width=True
                     )
                 except Exception as e:
-                    st.error(f"Error reading file {file_info['name']}: {str(e)}")
+                    st.error(f"Error: {str(e)[:15]}...")
                     
     except Exception as e:
         st.error(f"Error accessing results directory: {str(e)}")
@@ -1165,146 +1153,10 @@ if st.session_state.logged_in:
         st.switch_page("pages/login.py")
 
 # Add archived files browser to sidebar
-with st.expander("📁 Archived Images", expanded=False):
+with st.sidebar.expander("📁 Archived Results", expanded=False):
     username = st.session_state.get("username", "anonymous")
     output_dir = ensure_output_directory(f"{username}_rpp_results")
-    
-    if os.path.exists(output_dir):
-        try:
-            all_files = []
-            for item in os.listdir(output_dir):
-                item_path = os.path.join(output_dir, item)
-                if os.path.isfile(item_path):
-                    # Get file stats
-                    stat = os.stat(item_path)
-                    file_size = stat.st_size
-                    mod_time = datetime.fromtimestamp(stat.st_mtime)
-                    
-                    all_files.append({
-                        'name': item,
-                        'size': file_size,
-                        'modified': mod_time,
-                        'path': item_path
-                    })
-            
-            if all_files:
-                # Sort files by modification time (newest first)
-                all_files.sort(key=lambda x: x['modified'], reverse=True)
-                
-                st.write(f"**{len(all_files)} files found**")
-                
-                # Show only the 5 most recent files in sidebar
-                recent_files = all_files[:5]
-                
-                for file_info in recent_files:
-                    with st.container():
-                        # File name (truncated if too long)
-                        display_name = file_info['name']
-                        if len(display_name) > 25:
-                            display_name = display_name[:22] + "..."
-                        
-                        st.text(display_name)
-                        
-                        # Size and download button in columns
-                        col1, col2 = st.columns([1, 1])
-                        
-                        with col1:
-                            if file_info['size'] > 1024*1024:
-                                size_str = f"{file_info['size']/(1024*1024):.1f}MB"
-                            elif file_info['size'] > 1024:
-                                size_str = f"{file_info['size']/1024:.1f}KB"
-                            else:
-                                size_str = f"{file_info['size']}B"
-                            st.caption(size_str)
-                        
-                        with col2:
-                            try:
-                                with open(file_info['path'], 'rb') as f:
-                                    file_data = f.read()
-                                
-                                ext = os.path.splitext(file_info['name'])[1].lower()
-                                mime_type = "application/octet-stream"
-                                if ext == '.zip':
-                                    mime_type = "application/zip"
-                                elif ext == '.csv':
-                                    mime_type = "text/csv"
-                                elif ext == '.txt':
-                                    mime_type = "text/plain"
-                                elif ext == '.png':
-                                    mime_type = "image/png"
-                                elif ext == '.fits':
-                                    mime_type = "application/fits"
-                                
-                                st.download_button(
-                                    label="📥",
-                                    data=file_data,
-                                    file_name=file_info['name'],
-                                    mime=mime_type,
-                                    key=f"sidebar_download_{file_info['name']}",
-                                    help=f"Download {file_info['name']}",
-                                    on_click="ignore"
-                                )
-                            except Exception as e:
-                                st.error(f"Error: {str(e)[:20]}")
-                        
-                        st.divider()
-                
-                if len(all_files) > 5:
-                    st.caption(f"... and {len(all_files) - 5} more files")
-                
-                # Bulk download option
-                if st.button("📦 Download All as ZIP", use_container_width=True):
-                    try:
-                        # Create timestamp for zip filename
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        zip_filename = f"{username}_results_{timestamp}.zip"
-                        
-                        # Create in-memory zip
-                        zip_buffer = BytesIO()
-                        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                            for file_info in all_files:
-                                zip_file.write(file_info['path'], arcname=file_info['name'])
-                        
-                        zip_buffer.seek(0);
-                        
-                        st.download_button(
-                            label=f"📦 {zip_filename}",
-                            data=zip_buffer,
-                            file_name=zip_filename,
-                            mime="application/zip",
-                            key="sidebar_bulk_download",
-                            use_container_width=True
-                        )
-                    except Exception as e:
-                        st.error(f"Error creating archive: {str(e)}")
-                
-                # Cleanup option
-                if st.button("🧹 Clean Old Files (30+ days)", use_container_width=True):
-                    try:
-                        cutoff_date = datetime.now() - pd.Timedelta(days=30)
-                        deleted_count = 0
-                        
-                        for file_info in all_files:
-                            if file_info['modified'] < cutoff_date:
-                                try:
-                                    os.remove(file_info['path'])
-                                    deleted_count += 1
-                                except Exception:
-                                    pass
-                        
-                        if deleted_count > 0:
-                            st.success(f"Deleted {deleted_count} old files")
-                            st.rerun()
-                        else:
-                            st.info("No old files to delete")
-                    except Exception as e:
-                        st.error(f"Cleanup error: {str(e)}")
-            else:
-                st.info("No archived files found")
-        except Exception as e:
-            st.error(f"Error accessing files: {str(e)}")
-    else:
-        st.info("No results directory yet")
+    display_archived_files_browser(output_dir)
 
 science_file = st.file_uploader(
     "Choose a FITS file for analysis", type=["fits", "fit", "fts", "fits.gz"],
