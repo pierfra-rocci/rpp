@@ -1578,7 +1578,7 @@ def cross_match_with_gaia(
 
             # Different query strategies based on filter band
             if (filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"] and
-                gaia_table is not None and len(gaia_table) > 0):
+                    gaia_table is not None and len(gaia_table) > 0):
                 
                 # Create a comma-separated list of source_ids (limit to 1000)
                 max_sources = min(len(gaia_table), 1000)
@@ -1661,6 +1661,9 @@ def cross_match_with_gaia(
         matched_table = matched_table_qtable.to_pandas()
         matched_table["gaia_index"] = matched_indices_gaia
         matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
+
+        # Add the filter_band column from the filtered Gaia table
+        matched_table[filter_band] = gaia_table_filtered[filter_band][matched_indices_gaia]
 
         valid_gaia_mags = np.isfinite(matched_table[filter_band])
         matched_table = matched_table[valid_gaia_mags]
