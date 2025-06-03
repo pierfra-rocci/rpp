@@ -999,7 +999,7 @@ def update_observatory_from_fits_header(header):
     if 'SITEELEV' in header and header['SITEELEV'] is not None:
         try:
             elevation = float(header['SITEELEV'])
-            if elevation >= -500:  # Reasonable minimum (below sea level)
+            if elevation >= -400:  # Reasonable minimum (below sea level)
                 st.session_state.observatory_data["elevation"] = elevation
                 st.session_state["observatory_elevation"] = elevation
                 updated = True
