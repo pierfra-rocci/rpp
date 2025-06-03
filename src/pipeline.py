@@ -882,8 +882,8 @@ def perform_psf_photometry(
         valid_ycentroid = np.isfinite(ycentroid)
         
         # Combine validity checks
-        valid_all = (valid_flux & valid_roundness & valid_sharpness & 
-                    valid_xcentroid & valid_ycentroid)
+        valid_all = (valid_flux & valid_roundness & valid_sharpness &
+                     valid_xcentroid & valid_ycentroid)
         
         if not np.any(valid_all):
             raise ValueError("No sources with all valid parameters found")
