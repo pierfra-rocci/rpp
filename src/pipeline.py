@@ -1685,15 +1685,10 @@ def cross_match_with_gaia(
         color_index_filter = (gaia_table["bp_rp"] > -1) & (gaia_table["bp_rp"] < 2)
         astrometric_filter = gaia_table["ruwe"] < 1.6
 
-        if synth_table is None:
-            combined_filter = (mag_filter &
-                        var_filter &
-                        color_index_filter &
-                        astrometric_filter)
-        else:
-            combined_filter = (mag_filter &
-                        var_filter &
-                        astrometric_filter)
+        combined_filter = (mag_filter &
+                           var_filter &
+                           color_index_filter &
+                           astrometric_filter)
 
         gaia_table_filtered = gaia_table[combined_filter]
 
