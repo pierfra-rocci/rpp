@@ -1967,7 +1967,7 @@ if science_file is not None:
                                                 "x_err",
                                                 "y_err"
                                             ]:
-                                                                                               if col_name in final_table.columns:
+                                                if col_name in final_table.columns:
                                                     cols_to_drop.append(col_name)
 
                                             if cols_to_drop:
