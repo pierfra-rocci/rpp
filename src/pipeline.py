@@ -1616,7 +1616,7 @@ def cross_match_with_gaia(
 
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
         color_index_filter = (gaia_table["bp_rp"] > -0.5) & (gaia_table["bp_rp"] < 2)
-        astrometric_filter = gaia_table["ruwe"] < 1.5
+        astrometric_filter = gaia_table["ruwe"] < 1.6
         combined_filter = (mag_filter &
                            var_filter &
                            color_index_filter &
