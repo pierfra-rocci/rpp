@@ -2001,7 +2001,7 @@ def enhance_catalog(
                     )
                 except (ValueError, TypeError):
                     base_date = datetime.now()
-           
+
             else:
                 base_date = datetime.now()
 
