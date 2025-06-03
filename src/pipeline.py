@@ -1239,10 +1239,10 @@ def detection_and_photometry(
         w, wcs_error = safe_wcs_create(_science_header)
         if w is None:
             st.error(f"Error creating WCS: {wcs_error}")
-            return None, None, daofind, None
+            return None, None, daofind, None, None
     except Exception as e:
         st.error(f"Error creating WCS: {e}")
-        return None, None, daofind, None
+        return None, None, daofind, None, None
 
     pixel_scale = _science_header.get(
         "PIXSCALE",
@@ -1252,7 +1252,7 @@ def detection_and_photometry(
     bkg, bkg_error = estimate_background(image_data, box_size=128, filter_size=7)
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
-        return None, None, daofind, None
+        return None, None, daofind, None, None
 
     mask = make_border_mask(image_data, border=detection_mask)
     image_sub = image_data - bkg.background
@@ -1289,7 +1289,7 @@ def detection_and_photometry(
 
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
-        return None, None, daofind, bkg
+        return None, None, daofind, bkg, None
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
 
@@ -1514,10 +1514,10 @@ def detection_and_photometry(
             )
 
         st.write(f"Found {len(phot_table)} sources and performed photometry.")
-        return phot_table, epsf_table, daofind, bkg
+        return phot_table, epsf_table, daofind, bkg, wcs_obj
     except Exception as e:
         st.error(f"Error performing aperture photometry: {e}")
-        return None, None, daofind, bkg
+        return None, None, daofind, bkg, wcs_obj
 
 
 def cross_match_with_gaia(
@@ -1527,6 +1527,7 @@ def cross_match_with_gaia(
     mean_fwhm_pixel,
     filter_band,
     filter_max_mag,
+    refined_wcs=None
 ):
     """
     Cross-match detected sources with the GAIA DR3 star catalog.
@@ -1575,7 +1576,13 @@ def cross_match_with_gaia(
         return None
 
     try:
-        w = WCS(_science_header)
+        # Use refined WCS if available, otherwise fallback to header WCS
+        if refined_wcs is not None:
+            w = refined_wcs
+            st.info("Using refined WCS for Gaia cross-matching")
+        else:
+            w = WCS(_science_header)
+            st.info("Using header WCS for Gaia cross-matching")
     except Exception as e:
         st.error(f"Error creating WCS: {e}")
         return None
@@ -1665,6 +1672,8 @@ def cross_match_with_gaia(
     except Exception as e:
         st.error(f"Error querying Gaia: {e}")
         return None
+
+    st.write(gaia_table)
 
     if gaia_table is None or len(gaia_table) == 0:
         st.warning("No Gaia sources found within search radius.")

@@ -1658,12 +1658,12 @@ if science_file is not None:
                             filter_band,
                         )
                         
-                        # Handle the return values - should be a tuple of 4 elements
-                        if isinstance(result, tuple) and len(result) == 4:
-                            phot_table_qtable, epsf_table, daofind, bkg = result
+                        # Handle the return values - should be a tuple of 5 elements
+                        if isinstance(result, tuple) and len(result) == 5:
+                            phot_table_qtable, epsf_table, daofind, bkg, w = result
                         else:
                             st.error(f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}")
-                            phot_table_qtable = epsf_table = daofind = bkg = None
+                            phot_table_qtable = epsf_table = daofind = bkg = w = None
 
                         if phot_table_qtable is not None:
                             phot_table_df = phot_table_qtable.to_pandas().copy(
@@ -1682,6 +1682,7 @@ if science_file is not None:
                                 mean_fwhm_pixel,
                                 filter_band,
                                 filter_max_mag,
+                                refined_wcs=w
                             )
 
                         if matched_table is not None:
