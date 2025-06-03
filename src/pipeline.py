@@ -1139,8 +1139,7 @@ def detection_and_photometry(
     mean_fwhm_pixel,
     threshold_sigma,
     detection_mask,
-    filter_band,
-    gb="Gmag",
+    filter_band
 ):
     """
     Perform a complete photometry workflow on an astronomical image.
@@ -1285,8 +1284,19 @@ def detection_and_photometry(
 
     try:
         wcs_obj = None
-        if "CTYPE1" in _science_header:
+        if w is not None:
             try:
+                # Use the refined WCS object instead of recreating from header
+                wcs_obj = w
+                if wcs_obj.pixel_n_dim > 2:
+                    wcs_obj = wcs_obj.celestial
+                    st.info("Reduced WCS to 2D celestial coordinates for photometry")
+            except Exception as e:
+                st.warning(f"Error creating WCS object: {e}")
+                wcs_obj = None
+        elif "CTYPE1" in _science_header:
+            try:
+                # Fallback to header WCS if no refined WCS available
                 wcs_obj = WCS(_science_header)
                 if wcs_obj.pixel_n_dim > 2:
                     wcs_obj = wcs_obj.celestial
