@@ -440,7 +440,7 @@ def airmass(
                 existing_airmass = float(_header[keyword])
                 # Validate the existing airmass value
                 if 1.0 <= existing_airmass <= 30.0:
-                    st.write(f"Using existing airmass from header: {existing_airmass:.2f}")
+                    st.write("Using existing airmass from header...")
                     if return_details:
                         return existing_airmass, {"airmass_source": f"header_{keyword}"}
                     return existing_airmass
