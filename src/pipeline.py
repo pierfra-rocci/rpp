@@ -854,7 +854,6 @@ def perform_psf_photometry(
     # Filter photo_table to select only the best stars for PSF model
     try:
         st.write("Filtering stars for PSF model construction...")
-        # st.write(photo_table.colnames)
         # Get flux statistics
         flux_median = np.median(photo_table["flux"])
         flux_std = np.std(photo_table["flux"])
@@ -863,7 +862,7 @@ def perform_psf_photometry(
         flux_min = flux_median - 3*flux_std
         flux_max = flux_median + 3*flux_std
         
-        # Shape-based filtering criteria
+        # Shape-based filtering criteria - Fix the boolean array issue
         roundness_criteria = np.abs(photo_table["roundness1"]) < 0.25
         sharpness_criteria = np.abs(photo_table["sharpness"]) < 0.6
         flux_criteria = (photo_table["flux"] >= flux_min) & (photo_table["flux"] <= flux_max)
@@ -878,8 +877,20 @@ def perform_psf_photometry(
             (photo_table["ycentroid"] < img.shape[0] - edge_buffer)
         )
         
-        # Combine all filtering criteria
-        good_stars_mask = roundness_criteria & sharpness_criteria & flux_criteria & edge_criteria
+        # Handle NaN values explicitly before combining criteria
+        valid_roundness = np.isfinite(photo_table["roundness1"])
+        valid_sharpness = np.isfinite(photo_table["sharpness"])
+        valid_flux = np.isfinite(photo_table["flux"])
+        valid_positions = (
+            np.isfinite(photo_table["xcentroid"]) & 
+            np.isfinite(photo_table["ycentroid"])
+        )
+        
+        # Combine all filtering criteria with explicit NaN handling
+        good_stars_mask = (
+            valid_roundness & valid_sharpness & valid_flux & valid_positions &
+            roundness_criteria & sharpness_criteria & flux_criteria & edge_criteria
+        )
         
         # Apply filters
         filtered_photo_table = photo_table[good_stars_mask]
@@ -892,12 +903,19 @@ def perform_psf_photometry(
         if len(filtered_photo_table) < 10:
             st.warning(f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria...")
             
-            # Relax criteria if too few stars
-            roundness_criteria = np.abs(photo_table["roundness1"]) < 0.4
-            sharpness_criteria = np.abs(photo_table["sharpness"]) < 1.0
-            flux_criteria = (photo_table["flux"] >= flux_median - 2*flux_std) & (photo_table["flux"] <= flux_median + 2*flux_std)
+            # Relax criteria if too few stars - with proper NaN handling
+            roundness_criteria_relaxed = np.abs(photo_table["roundness1"]) < 0.4
+            sharpness_criteria_relaxed = np.abs(photo_table["sharpness"]) < 1.0
+            flux_criteria_relaxed = (
+                (photo_table["flux"] >= flux_median - 2*flux_std) & 
+                (photo_table["flux"] <= flux_median + 2*flux_std)
+            )
             
-            good_stars_mask = roundness_criteria & sharpness_criteria & flux_criteria & edge_criteria
+            good_stars_mask = (
+                valid_roundness & valid_sharpness & valid_flux & valid_positions &
+                roundness_criteria_relaxed & sharpness_criteria_relaxed & 
+                flux_criteria_relaxed & edge_criteria
+            )
             filtered_photo_table = photo_table[good_stars_mask]
             
             st.write(f"After relaxing criteria: {len(filtered_photo_table)} stars")
