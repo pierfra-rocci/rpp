@@ -151,14 +151,6 @@ def safe_wcs_create(header):
                      "CRPIX1", "CRPIX2"]
     missing_keys = [key for key in required_keys if key not in header]
 
-    try:
-        header.remove("XPIXELSZ")
-        header.remove("YPIXELSZ")
-        header.remove("CDELTM1")
-        header.remove("CDELTM2")
-    except KeyError:
-        pass
-
     if missing_keys:
         return None, f"Missing required WCS keywords: {', '.join(missing_keys)}"
 

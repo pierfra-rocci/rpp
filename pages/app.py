@@ -1319,6 +1319,7 @@ if science_file is not None:
         if use_astrometry:
             with st.spinner("Running plate solve (this may take a while)..."):
                 result = solve_with_siril(science_file_path)
+                st.write(result)
                 if result is None:
                     st.error("Plate solving failed. No WCS solution was returned.")
                     wcs_obj, science_header = None, None
@@ -1331,10 +1332,7 @@ if science_file is not None:
 
                 if wcs_obj is not None:
                     st.success("plate solving successful!")
-                    write_to_log(
-                        log_buffer,
-                        "Solved",
-                    )
+                    write_to_log(log_buffer, "Solved",)
 
                     wcs_header_filename = (
                         f"{st.session_state['base_filename']}_wcs_header"
@@ -1348,7 +1346,7 @@ if science_file is not None:
                     st.error("Plate solving failed")
                     write_to_log(
                         log_buffer,
-                        "Failed to solve plat",
+                        "Failed",
                         level="ERROR",
                     )
     else:
@@ -1414,12 +1412,11 @@ if science_file is not None:
     log_buffer = st.session_state["log_buffer"]
     write_to_log(log_buffer, f"Loaded Image: {science_file.name}")
 
-    if science_header is None:
-        science_header = {}
-
-    st.header("Image", anchor="science-image")
+    # if science_header is None:
+    #     science_header = {}
 
     if science_data is not None:
+        st.header("Image", anchor="science-image")
         try:
             # Create a side-by-side plot using matplotlib subplots
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2 * FIGURE_SIZES["medium"][0], FIGURE_SIZES["medium"][1]))
