@@ -1058,45 +1058,70 @@ with st.sidebar.expander("🔭 Observatory Data", expanded=False):
         value=st.session_state.observatory_name,
         help="Name of the observatory (e.g., TJMS).",
     )
-    st.session_state.observatory_latitude = st.number_input(
+    
+    # Latitude input with locale handling
+    latitude_input = st.text_input(
         "Latitude (degrees)",
-        value=st.session_state.observatory_latitude,
-        format="%.6f",
-        help="Observatory latitude in decimal degrees (North positive).",
+        value=str(st.session_state.observatory_latitude),
+        help="Observatory latitude in decimal degrees (North positive). Accepts both comma and dot as decimal separator."
     )
-    st.session_state.observatory_longitude = st.number_input(
+    try:
+        latitude = float(latitude_input.replace(",", "."))
+        if -90 <= latitude <= 90:
+            st.session_state.observatory_latitude = latitude
+        else:
+            st.error("Latitude must be between -90 and 90 degrees")
+    except ValueError:
+        if latitude_input.strip():  # Only show error if input is not empty
+            st.error("Please enter a valid number for latitude.")
+    
+    # Longitude input with locale handling
+    longitude_input = st.text_input(
         "Longitude (degrees)",
-        value=st.session_state.observatory_longitude,
-        format="%.6f",
-        help="Observatory longitude in decimal degrees (East positive).",
+        value=str(st.session_state.observatory_longitude),
+        help="Observatory longitude in decimal degrees (East positive). Accepts both comma and dot as decimal separator."
     )
-    st.session_state.observatory_elevation = st.number_input(
+    try:
+        longitude = float(longitude_input.replace(",", "."))
+        if -180 <= longitude <= 180:
+            st.session_state.observatory_longitude = longitude
+        else:
+            st.error("Longitude must be between -180 and 180 degrees")
+    except ValueError:
+        if longitude_input.strip():
+            st.error("Please enter a valid number for longitude.")
+    
+    # Elevation input with locale handling
+    elevation_input = st.text_input(
         "Elevation (meters)",
-        value=st.session_state.observatory_elevation,
-        format="%.1f",
-        help="Observatory elevation above sea level in meters.",
+        value=str(st.session_state.observatory_elevation),
+        help="Observatory elevation above sea level in meters. Accepts both comma and dot as decimal separator."
     )
+    try:
+        elevation = float(elevation_input.replace(",", "."))
+        st.session_state.observatory_elevation = elevation
+    except ValueError:
+        if elevation_input.strip():
+            st.error("Please enter a valid number for elevation.")
 
 with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
-    st.session_state.analysis_parameters["seeing"] = st.number_input(
+    st.session_state.analysis_parameters["seeing"] = st.slider(
         "Estimated Seeing (FWHM, arcsec)",
         min_value=1.0,
         max_value=6.0,
         value=st.session_state.analysis_parameters["seeing"],
-        step=0.1,
-        format="%.1f",
+        step=0.5,
         help=(
             "Initial guess for the Full Width at Half Maximum of stars in "
             "arcseconds. Will be refined."
         ),
     )
-    st.session_state.analysis_parameters["threshold_sigma"] = st.number_input(
+    st.session_state.analysis_parameters["threshold_sigma"] = st.slider(
         "Detection Threshold (sigma)",
         min_value=0.5,
         max_value=4.5,
         value=st.session_state.analysis_parameters["threshold_sigma"],
         step=0.5,
-        format="%.1f",
         help=(
             "Source detection threshold in units of background "
             "standard deviation."
@@ -1119,13 +1144,12 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         index=GAIA_BANDS.index(st.session_state.analysis_parameters["filter_band"]),
         help="Filter Magnitude band used for photometric calibration.",
     )
-    st.session_state.analysis_parameters["filter_max_mag"] = st.number_input(
+    st.session_state.analysis_parameters["filter_max_mag"] = st.slider(
         "Max Calibration Mag",
         min_value=15.0,
         max_value=21.0,
         value=st.session_state.analysis_parameters["filter_max_mag"],
         step=0.5,
-        format="%.1f",
         help="Faintest magnitude to use for calibration stars.",
     )
     st.session_state.analysis_parameters["astrometry_check"] = st.toggle(
@@ -1142,20 +1166,29 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         help="Detect and remove cosmic rays using the L.A.Cosmic algorithm.",
     )
     if st.session_state.analysis_parameters["calibrate_cosmic_rays"]:
-        st.session_state.analysis_parameters["cr_gain"] = st.number_input(
+        st.session_state.analysis_parameters["cr_gain"] = st.slider(
             "CRR Gain (e-/ADU)",
+            min_value=0.1,
+            max_value=10.0,
             value=st.session_state.analysis_parameters["cr_gain"],
-            min_value=0.1
+            step=0.5,
+            help="Camera gain in electrons per ADU."
         )
-        st.session_state.analysis_parameters["cr_readnoise"] = st.number_input(
+        st.session_state.analysis_parameters["cr_readnoise"] = st.slider(
             "CRR Read Noise (e-)",
+            min_value=1.0,
+            max_value=20.0,
             value=st.session_state.analysis_parameters["cr_readnoise"],
-            min_value=1.0
+            step=0.5,
+            help="Camera read noise in electrons."
         )
-        st.session_state.analysis_parameters["cr_sigclip"] = st.number_input(
+        st.session_state.analysis_parameters["cr_sigclip"] = st.slider(
             "CRR Sigma Clip",
+            min_value=4.0,
+            max_value=10.0,
             value=st.session_state.analysis_parameters["cr_sigclip"],
-            min_value=4.0
+            step=0.5,
+            help="Sigma clipping threshold for cosmic ray detection."
         )
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):

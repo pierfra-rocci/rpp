@@ -1579,7 +1579,7 @@ def cross_match_with_gaia(
         # Use refined WCS if available, otherwise fallback to header WCS
         if refined_wcs is not None:
             w = refined_wcs
-            st.info("Using refined WCS for Gaia cross-matching")
+            st.info("Using refined WCS for Gaia cross-matching, if possible.")
         else:
             w = WCS(_science_header)
             st.info("Using header WCS for Gaia cross-matching")
