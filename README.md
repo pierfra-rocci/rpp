@@ -1,241 +1,261 @@
 # RAPAS Photometry Pipeline (RPP)
 
-[![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://streamlit.io/gallery)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-An astronomical image processing and photometry tool designed specifically for [RAPAS](https://rapas.imcce.fr/) project data.
-
-![RPP Screenshot](doc/_static/logo.png)
-
-## Table of Contents
-- [RAPAS Photometry Pipeline (RPP)](#rapas-photometry-pipeline-rpp)
-  - [Table of Contents](#table-of-contents)
-  - [Features](#features)
-  - [Installation](#installation)
-    - [Requirements](#requirements)
-    - [Quick Start](#quick-start)
-  - [Usage](#usage)
-  - [Workflow](#workflow)
-  - [Authentication \& Backend](#authentication--backend)
-  - [Documentation](#documentation)
-  - [Example Output](#example-output)
-  - [Key Updates](#key-updates)
-  - [Contributing](#contributing)
-  - [Reporting Issues](#reporting-issues)
-  - [License](#license)
-  - [Acknowledgements](#acknowledgements)
+A comprehensive web-based astronomical photometry pipeline built with Streamlit, designed for automated stellar photometry and catalog cross-matching.
 
 ## Features
 
-- **Authentication**: Secure login, registration, and password reset with session state management.
-- **User Configuration**: Save and load user-specific analysis parameters, observatory settings, and API keys.
-- **Pre-processing Options**: Toggle "Astrometry++" (stdpipe refinement) and "Remove Cosmic Rays" (L.A.Cosmic algorithm) before analysis.
-- **Interactive Analysis**: All parameters (seeing, detection threshold, border mask, filter band/mag range, etc.) are adjustable via sidebar widgets.
-- **Catalog Cross-matching**: Automatic cross-match with Gaia DR3, SIMBAD, SkyBoT, AAVSO VSX, and Milliquas catalogs. Astro-Colibri API integration for transient events.
-- **Results Download**: All output files for a session can be downloaded as a ZIP archive. Detailed logs are generated for each analysis.
-- **Session State**: All parameters and results are managed via Streamlit session state for persistence and reproducibility.
-- **FWHM Distribution Plot**: Automatically generates and saves a histogram of star FWHM values (`[filename]_fwhm.png`) for quality assessment of image seeing and focus.
-- **Interactive Visualization**: View results in embedded Aladin Lite viewer and ESA Sky integration.
-- **Magnitude Distribution**: Visualize magnitude distributions with automatic histogram creation for both aperture and PSF photometry.
+### Core Photometry Capabilities
+- **Automated Source Detection**: Uses DAOStarFinder for robust stellar source detection
+- **Multi-Aperture Photometry**: Performs aperture photometry with multiple radii (1.5×, 2.0×, 2.5×, 3.0× FWHM)
+- **PSF Photometry**: Builds empirical PSF models using EPSFBuilder for precise photometry
+- **Background Estimation**: 2D background modeling using SExtractor algorithm
+- **FWHM Estimation**: Automatic stellar FWHM determination through Gaussian fitting
 
+### Astrometric Solutions
+- **Plate Solving**: Integration with SIRIL for automatic astrometric calibration
+- **WCS Refinement**: Optional astrometry refinement using stdpipe and Gaia DR3
+- **Header Validation**: Automatic FITS header fixing and WCS validation
+- **Coordinate Systems**: Support for multiple coordinate reference systems
+
+### Photometric Calibration
+- **Gaia DR3 Integration**: Automatic cross-matching with Gaia DR3 catalog
+- **Zero Point Calculation**: Robust photometric calibration with outlier rejection
+- **Atmospheric Extinction**: Automatic airmass calculation and extinction correction
+- **Multiple Filter Bands**: Support for Gaia G, BP, RP bands and synthetic photometry
+
+### Advanced Processing
+- **Cosmic Ray Removal**: L.A.Cosmic algorithm implementation using astroscrappy
+- **Data Quality Filtering**: Multiple quality filters for reliable photometry
+- **Multi-Format Support**: Handles various FITS formats including multi-extension files
+- **Image Enhancement**: ZScale visualization and histogram equalization
+
+### Catalog Cross-Matching
+- **SIMBAD Integration**: Object identification and classification
+- **SkyBoT**: Solar system object detection
+- **AAVSO VSX**: Variable star cross-matching
+- **Astro-Colibri**: Transient event database queries
+- **VizieR Catalogs**: Quasar and specialized catalog access
+
+### Interactive Visualization
+- **Aladin Lite Integration**: Interactive sky viewer with catalog overlays
+- **Statistical Plots**: Magnitude distributions and error analysis
+- **ESA Sky Links**: Direct links to external sky surveys
+- **Real-time Progress**: Live processing updates and status monitoring
+
+### User Management & Configuration
+- **Multi-User Support**: Individual user accounts with isolated workspaces
+- **Configuration Persistence**: Save and restore analysis parameters
+- **Observatory Profiles**: Custom observatory location settings
+- **API Key Management**: Secure storage of external service credentials
+
+### Data Management
+- **Automated Archiving**: ZIP archive creation for result downloads
+- **File Organization**: Structured output with timestamps and metadata
+- **Log Generation**: Comprehensive processing logs
+- **Cleanup Automation**: Automatic cleanup of temporary and old files
 
 ## Installation
 
-### Requirements
+### Prerequisites
+- Python 3.8 or higher
+- SIRIL (for plate solving functionality)
+- Modern web browser (for Streamlit interface)
 
-- Python 3.11 or later
-- Key dependencies:
-  - astropy
-  - photutils
-  - astroquery
-  - astroscrappy
-  - matplotlib
-  - numpy
-  - pandas
-  - streamlit
-  - stdpipe
-  - Flask (for backend)
-  - SIRIL 1.2.6 ou + (for plate solving)
+### Required Python Packages
+```bash
+pip install streamlit astropy photutils astroquery numpy pandas matplotlib
+pip install astroscrappy stdpipe requests flask flask-cors werkzeug
+```
 
-### Quick Start
+### Optional Dependencies
+```bash
+pip install importlib-metadata  # For frozen/packaged applications
+```
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/pierfra-rocci/rpp.git
-   cd rpp
-   ```
-
-2. Create and activate a virtual environment (recommended):
-   ```bash
-   # Using venv (built into Python)
-   python -m venv .venv
-   
-   # On Windows
-   .venv\Scripts\activate
-   
-   # On macOS/Linux
-   source .venv/bin/activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Start the backend server (use `backend_prod.py` for production):
-   ```bash
-   # For development with auto-reload
-   python backend.py
-   # For production
-   # python backend_prod.py 
-   ```
-
-5. In a new terminal, start the frontend Streamlit app:
-   ```bash
-   streamlit run frontend.py
-   ```
-
-   This will redirect you to the login page. Register or log in to access the main app.
+### External Tools
+- **SIRIL**: Required for plate solving functionality
+  - Install from [https://siril.org/](https://siril.org/)
+  - Ensure `siril-cli` is available in system PATH
 
 ## Usage
 
-1. **Login/Register**
-   - On first use, click the "Register" button and create an account with username, password, and email.
-   - For returning users, enter your credentials and click "Login".
-   - If you forget your password, use the "Recover Password" section to reset it via email.
-
-2. **Upload your FITS files**
-   - Click "Browse files" in the sidebar to upload your science FITS image.
-   - The app supports various FITS formats including compressed files (.fits.gz).
-
-3. **Configure parameters**
-   - **Pre-processing Options**: Enable/disable "Astrometry+" and "Remove Cosmic Rays" as needed.
-   - **Observatory Location**: Set your observatory's name, latitude, longitude, and elevation.
-   - **Analysis Parameters**: Adjust seeing estimate, detection threshold, and border mask size.
-   - **Photometry Parameters**: Select the filter band and maximum magnitude limit.
-   - **API Keys**: Enter your Astro-Colibri UID key for transient event queries.
-
-4. **Run the analysis pipeline**
-   - Click "Photometric Calibration" to process the uploaded image.
-   - The app will perform source detection, background estimation, photometry, and catalog cross-matching.
-   - View interactive plots including the image visualization, FWHM distribution, and zero-point calibration.
-   - Explore matched objects in the Aladin Lite viewer and via ESA Sky.
-   - Examine magnitude distribution histograms comparing aperture and PSF photometry results.
-   - **New:** Inspect the FWHM distribution plot to evaluate image quality and star sharpness.
-
-5. **Export and analyze results**
-   - Download all results as a single ZIP archive using the "Download All Results" button.
-   - Save your configuration for future sessions using the "Save" button in the sidebar.
-   - All files are saved in the `<user>_rpp_results` directory for later access.
-
-6. **Logout**
-   - Click "Logout" in the sidebar when finished to secure your session.
-
-## Workflow
-
-1. **Start the backend**: `python backend.py` (required for authentication and config saving).
-2. **Start the frontend**: `streamlit run frontend.py` (always redirects to login page).
-3. **Authenticate**: Register or log in. User/session parameters are loaded from the backend if available.
-4. **Upload and analyze**: Upload your science FITS file (and optional calibration frames), set parameters, and run the photometry pipeline.
-5. **Results**: All outputs (catalogs, plots, logs, config) are saved in `rpp_results` and can be downloaded as a ZIP archive. Cross-matching with Gaia, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, and Astro-Colibri is supported.
-6. **Save configuration**: Save your analysis parameters and observatory info to the backend and as a JSON file for reproducibility.
-
-## Authentication & Backend
-
-- User authentication: login, registration, and password recovery are handled via the Streamlit frontend, with user data stored in `users.db` (SQLite).
-- User-specific configuration: analysis parameters, observatory info, and catalog settings are saved and restored per user.
-- The frontend is built with [Streamlit](https://streamlit.io/), providing interactive widgets for all analysis parameters, observatory location, and catalog settings.
-- The frontend communicates with the backend via HTTPS (default: `https://localhost:5000`).
-- Utility scripts: `tools.py` (misc helpers).
-
-## Documentation
-
-Documentation is available in the `doc/` directory:
-
-- [Installation Guide](doc/installation.rst)
-- [User Guide](doc/user_guide.rst)
-
-To build the documentation:
+### Starting the Application
 ```bash
-cd doc
-make html
+# Start the backend server
+python backend.py
+
+# Start the frontend (in a separate terminal)
+streamlit run frontend.py
 ```
 
-Then open `doc/_build/html/index.html` in your browser.
+### Basic Workflow
+1. **Login/Registration**: Create account or login with existing credentials
+2. **Upload FITS File**: Select astronomical image for processing
+3. **Configure Parameters**: Set observatory location and analysis parameters
+4. **Run Analysis**: Execute automated photometry pipeline
+5. **Review Results**: Examine catalogs, plots, and cross-matches
+6. **Download Data**: Export results as ZIP archives
 
-## Example Output
+### Configuration Options
 
-The application generates several output files in the `<user>_rpp_results` directory:
+#### Observatory Settings
+- **Name**: Observatory identifier
+- **Latitude/Longitude**: Geographic coordinates (decimal degrees)
+- **Elevation**: Height above sea level (meters)
 
-- `[filename]_phot.csv` - Photometry catalog with calibrated magnitudes
-- `[filename]_header.txt` - FITS header information
-- `[filename].log` - Processing log with parameter details and analysis steps
-- `[filename]_image.png` - Preview image of the science image
-- `[filename]_psf.fits` - PSF model file
-- `[filename]_wcs_header.txt` - WCS solution from plate solving
-- `[filename]_zero_point_plot.png` - Visualization of zero-point calibration
-- `[filename]_results.zip` - Downloadable archive of all output files for the session
-- `[filename]_bkg.fits` - Background model FITS file
-- `[filename]_histogram_mag.png` - Magnitude distribution histogram comparing aperture and PSF photometry
-- `[filename]_fwhm.png` - FWHM distribution histogram for image quality assessment
+#### Analysis Parameters
+- **Seeing (FWHM)**: Initial stellar seeing estimate (1.0-6.0 arcsec)
+- **Detection Threshold**: Source detection sigma threshold (0.5-4.5)
+- **Border Mask**: Edge exclusion zone (pixels)
+- **Filter Band**: Gaia photometric band for calibration
+- **Maximum Magnitude**: Faint limit for calibration stars
 
-## Key Updates
+#### Processing Options
+- **Refine Astrometry**: Use stdpipe for WCS improvement
+- **Remove Cosmic Rays**: Apply L.A.Cosmic algorithm
+- **Cosmic Ray Parameters**: Gain, read noise, sigma clipping settings
 
-- The minimum magnitude parameter has been removed. Now only a maximum magnitude ("Max Calibration Mag") is used for source filtering in the photometric calibration workflow.
-- A magnitude distribution histogram is provided comparing aperture and PSF photometry results.
-- The output includes a FWHM distribution histogram for image quality assessment.
-- All results for a session can be downloaded as a single ZIP archive from the interface.
-- Interactive Aladin Lite viewer is embedded for examining identified sources.
-- ESA Sky integration for additional sky visualization options.
-- The workflow and sidebar options have been streamlined for clarity and ease of use.
+## Technical Architecture
 
-## Contributing
+### Backend Components
+- **Flask Server**: RESTful API for user management and configuration
+- **Database**: User credentials and settings storage
+- **File Management**: Secure file handling and workspace isolation
 
-Contributions are welcome! Here's how you can contribute:
+### Frontend Components
+- **Streamlit Interface**: Interactive web application
+- **Session Management**: Stateful user sessions and data persistence
+- **Real-time Updates**: Live progress monitoring and error handling
 
-1. **Fork the repository** - Create your own copy of the project
-2. **Create a branch** - `git checkout -b feature/amazing-feature`
-3. **Make your changes** - Implement your feature or bug fix
-4. **Run tests** - Ensure your changes don't break existing functionality
-5. **Commit your changes** - `git commit -m 'Add some amazing feature'`
-6. **Push to your branch** - `git push origin feature/amazing-feature`
-7. **Open a Pull Request** - Submit your changes for review
+### Processing Pipeline
+1. **Image Loading**: FITS file parsing with multi-extension support
+2. **Header Processing**: WCS validation and coordinate extraction
+3. **Preprocessing**: Optional cosmic ray removal and background estimation
+4. **Source Detection**: DAOStarFinder with configurable parameters
+5. **Photometry**: Multi-aperture and PSF photometry
+6. **Astrometry**: Optional plate solving and WCS refinement
+7. **Calibration**: Gaia cross-matching and zero point calculation
+8. **Enhancement**: Multi-catalog cross-matching and object identification
+9. **Output**: Structured results with logs and visualizations
 
-Please make sure your code follows the project's coding style and includes appropriate documentation.
+### Data Flow
+```
+FITS Image → Header Analysis → Preprocessing → Source Detection
+     ↓
+Photometry ← Astrometry ← Background Estimation ← Quality Filtering
+     ↓
+Gaia Cross-match → Zero Point → Calibrated Magnitudes
+     ↓
+Multi-Catalog Cross-match → Final Catalog → Results Export
+```
 
-## Reporting Issues
+## File Structure
+```
+rpp/
+├── src/
+│   ├── __version__.py         # Version information
+│   ├── tools.py              # Utility functions
+│   ├── pipeline.py           # Core processing pipeline
+│   ├── plate_solve.ps1       # Windows plate solving script
+│   └── plate_solve.sh        # Linux/macOS plate solving script
+├── pages/
+│   ├── app.py               # Main application interface
+│   └── login.py             # User authentication
+├── backend.py               # Flask server
+├── frontend.py             # Streamlit entry point
+├── README.md               # This file
+└── LICENSE                 # MIT License
+```
 
-Found a bug or have a feature request? Please submit an issue through the GitHub issue tracker:
+## Output Files
 
-1. Go to the [Issues page](https://github.com/pierfra-rocci/pfr/issues)
-2. Click "New Issue"
-3. Provide a clear title and detailed description
+### Generated Results
+- **Photometry Catalog**: CSV file with source measurements
+- **Processing Log**: Detailed execution log
+- **Plots**: Magnitude distributions and error analysis
+- **Headers**: FITS header dumps and WCS solutions
+- **Archives**: ZIP files containing all results
+
+### Catalog Columns
+- **Coordinates**: RA, Dec (decimal degrees)
+- **Photometry**: Multi-aperture and PSF magnitudes
+- **Uncertainties**: Photometric errors and SNR
+- **Astrometry**: Pixel coordinates and WCS information
+- **Cross-matches**: SIMBAD, Gaia, variable star identifications
+- **Metadata**: Zero point, airmass, processing parameters
+
+## API Integration
+
+### Supported Services
+- **Gaia DR3**: ESA's stellar catalog
+- **SIMBAD**: CDS astronomical database
+- **VizieR**: CDS catalog service
+- **SkyBoT**: IMCCE solar system service
+- **AAVSO VSX**: Variable star database
+- **Astro-Colibri**: Transient event platform
+
+### Rate Limiting
+- Automatic query throttling to respect service limits
+- Batch processing for multiple object queries
+- Error handling and retry mechanisms
+
+## Performance Considerations
+
+### Optimization Features
+- **Caching**: Streamlit caching for expensive operations
+- **Memory Management**: Efficient handling of large FITS files
+- **Parallel Processing**: Multi-threaded operations where applicable
+- **Resource Cleanup**: Automatic temporary file management
+
+### Scalability
+- **Multi-User**: Isolated user workspaces
+- **Concurrent Sessions**: Support for multiple simultaneous users
+- **Storage Management**: Automatic cleanup of old results
+
+## Error Handling
+
+### Robust Processing
+- **Input Validation**: Comprehensive parameter checking
+- **Graceful Degradation**: Fallback options for failed operations
+- **Detailed Logging**: Complete processing audit trails
+- **User Feedback**: Clear error messages and recovery suggestions
+
+### Common Issues
+- **WCS Problems**: Automatic header fixing and plate solving fallback
+- **Network Timeouts**: Retry mechanisms for catalog queries
+- **Memory Limitations**: Efficient image processing algorithms
+- **File Permissions**: Secure temporary file handling
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 The MIT License allows you to use, modify, and distribute this software, provided you include the original copyright notice and disclaimer.
 
 ## Acknowledgements
 
-- This tool relies on numerous open-source astronomy packages including:
-  - [Astropy](https://www.astropy.org/) for core astronomical functionality
-  - [Photutils](https://photutils.readthedocs.io/) for photometry algorithms
-  - [Astroquery](https://astroquery.readthedocs.io/) for accessing astronomical databases
-  - [Streamlit](https://streamlit.io/) for the web interface
-  - [stdpipe](https://github.com/karpov-sv/stdpipe) for astrometric calibration
-  - [astroscrappy](https://github.com/astropy/astroscrappy) for cosmic ray removal
-- Thanks to the [RAPAS](https://rapas.imcce.fr/) team for support and feedback
-- Thanks to the [Astro-Colibri](https://astro-colibri.science/#/) for API access to transient event data
-- Thanks to [SIRIL](https://siril.org/) for the plate-solving functionality used in this project
-- Thanks to the various catalog services that power this tool:
-  - [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3)
-  - [SIMBAD](http://simbad.u-strasbg.fr/simbad/)
-  - [VizieR](https://vizier.u-strasbg.fr/)
-  - [SkyBoT](https://ssp.imcce.fr/webservices/skybot/)
-  - [AAVSO VSX](https://www.aavso.org/vsx/)
+### Core Dependencies
+- [Astropy](https://www.astropy.org/) - Core astronomical functionality
+- [Photutils](https://photutils.readthedocs.io/) - Photometry algorithms
+- [Astroquery](https://astroquery.readthedocs.io/) - Astronomical database access
+- [Streamlit](https://streamlit.io/) - Web interface framework
+- [stdpipe](https://github.com/karpov-sv/stdpipe) - Astrometric calibration
+- [astroscrappy](https://github.com/astropy/astroscrappy) - Cosmic ray removal
 
----
-Created with ❤️ by Pier-Francesco Rocci and helped by GitHub Copilot
+### External Services
+- [RAPAS](https://rapas.imcce.fr/) - Project support and feedback
+- [Astro-Colibri](https://astro-colibri.science/) - Transient event data API
+- [SIRIL](https://siril.org/) - Plate solving functionality
+- [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) - Stellar catalog
+- [SIMBAD](http://simbad.u-strasbg.fr/simbad/) - Astronomical database
+- [VizieR](https://vizier.u-strasbg.fr/) - Catalog service
+- [SkyBoT](https://ssp.imcce.fr/webservices/skybot/) - Solar system objects
+- [AAVSO VSX](https://www.aavso.org/vsx/) - Variable star catalog
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests to improve the pipeline.
+
+## Support
+
+For questions, issues, or feature requests, please contact the development team or create an issue in the project repository.
