@@ -1058,86 +1058,50 @@ with st.sidebar.expander("🔭 Observatory Data", expanded=False):
         value=st.session_state.observatory_name,
         help="Name of the observatory (e.g., TJMS).",
     )
-    
-    # Latitude input with locale handling
-    latitude_input = st.text_input(
+    st.session_state.observatory_latitude = st.number_input(
         "Latitude (degrees)",
-        value=str(st.session_state.observatory_latitude),
-        help="Observatory latitude in decimal degrees (North positive). Accepts both comma and dot as decimal separator."
+        value=st.session_state.observatory_latitude,
+        format="%.6f",
+        help="Observatory latitude in decimal degrees (North positive).",
     )
-    try:
-        latitude = float(latitude_input.replace(",", "."))
-        if -90 <= latitude <= 90:
-            st.session_state.observatory_latitude = latitude
-        else:
-            st.error("Latitude must be between -90 and 90 degrees")
-    except ValueError:
-        if latitude_input.strip():  # Only show error if input is not empty
-            st.error("Please enter a valid number for latitude.")
-    
-    # Longitude input with locale handling
-    longitude_input = st.text_input(
+    st.session_state.observatory_longitude = st.number_input(
         "Longitude (degrees)",
-        value=str(st.session_state.observatory_longitude),
-        help="Observatory longitude in decimal degrees (East positive). Accepts both comma and dot as decimal separator."
+        value=st.session_state.observatory_longitude,
+        format="%.6f",
+        help="Observatory longitude in decimal degrees (East positive).",
     )
-    try:
-        longitude = float(longitude_input.replace(",", "."))
-        if -180 <= longitude <= 180:
-            st.session_state.observatory_longitude = longitude
-        else:
-            st.error("Longitude must be between -180 and 180 degrees")
-    except ValueError:
-        if longitude_input.strip():
-            st.error("Please enter a valid number for longitude.")
-    
-    # Elevation input with locale handling
-    elevation_input = st.text_input(
+    st.session_state.observatory_elevation = st.number_input(
         "Elevation (meters)",
-        value=str(st.session_state.observatory_elevation),
-        help="Observatory elevation above sea level in meters. Accepts both comma and dot as decimal separator."
+        value=st.session_state.observatory_elevation,
+        format="%.1f",
+        help="Observatory elevation above sea level in meters.",
     )
-    try:
-        elevation = float(elevation_input.replace(",", "."))
-        st.session_state.observatory_elevation = elevation
-    except ValueError:
-        if elevation_input.strip():
-            st.error("Please enter a valid number for elevation.")
 
 with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
-    # Seeing input with locale handling
-    seeing_input = st.text_input(
+    st.session_state.analysis_parameters["seeing"] = st.number_input(
         "Estimated Seeing (FWHM, arcsec)",
-        value=str(st.session_state.analysis_parameters["seeing"]),
-        help="Initial guess for the Full Width at Half Maximum of stars in arcseconds. Will be refined. Accepts both comma and dot as decimal separator."
+        min_value=1.0,
+        max_value=6.0,
+        value=st.session_state.analysis_parameters["seeing"],
+        step=0.1,
+        format="%.1f",
+        help=(
+            "Initial guess for the Full Width at Half Maximum of stars in "
+            "arcseconds. Will be refined."
+        ),
     )
-    try:
-        seeing = float(seeing_input.replace(",", "."))
-        if 1.0 <= seeing <= 6.0:
-            st.session_state.analysis_parameters["seeing"] = seeing
-        else:
-            st.error("Seeing must be between 1.0 and 6.0 arcseconds")
-    except ValueError:
-        if seeing_input.strip():
-            st.error("Please enter a valid number for seeing.")
-    
-    # Threshold sigma input with locale handling
-    threshold_input = st.text_input(
+    st.session_state.analysis_parameters["threshold_sigma"] = st.number_input(
         "Detection Threshold (sigma)",
-        value=str(st.session_state.analysis_parameters["threshold_sigma"]),
-        help="Source detection threshold in units of background standard deviation. Accepts both comma and dot as decimal separator."
+        min_value=0.5,
+        max_value=4.5,
+        value=st.session_state.analysis_parameters["threshold_sigma"],
+        step=0.5,
+        format="%.1f",
+        help=(
+            "Source detection threshold in units of background "
+            "standard deviation."
+        ),
     )
-    try:
-        threshold_sigma = float(threshold_input.replace(",", "."))
-        if 0.5 <= threshold_sigma <= 4.5:
-            st.session_state.analysis_parameters["threshold_sigma"] = threshold_sigma
-        else:
-            st.error("Detection threshold must be between 0.5 and 4.5 sigma")
-    except ValueError:
-        if threshold_input.strip():
-            st.error("Please enter a valid number for detection threshold.")
-    
-    # Detection mask input - keeping as number_input since it's integer
     st.session_state.analysis_parameters["detection_mask"] = st.number_input(
         "Border Mask Size (pixels)",
         min_value=0,
@@ -1155,23 +1119,15 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         index=GAIA_BANDS.index(st.session_state.analysis_parameters["filter_band"]),
         help="Filter Magnitude band used for photometric calibration.",
     )
-    
-    # Max calibration magnitude input with locale handling
-    filter_max_mag_input = st.text_input(
+    st.session_state.analysis_parameters["filter_max_mag"] = st.number_input(
         "Max Calibration Mag",
-        value=str(st.session_state.analysis_parameters["filter_max_mag"]),
-        help="Faintest magnitude to use for calibration stars. Accepts both comma and dot as decimal separator."
+        min_value=15.0,
+        max_value=21.0,
+        value=st.session_state.analysis_parameters["filter_max_mag"],
+        step=0.5,
+        format="%.1f",
+        help="Faintest magnitude to use for calibration stars.",
     )
-    try:
-        filter_max_mag = float(filter_max_mag_input.replace(",", "."))
-        if 15.0 <= filter_max_mag <= 21.0:
-            st.session_state.analysis_parameters["filter_max_mag"] = filter_max_mag
-        else:
-            st.error("Max calibration magnitude must be between 15.0 and 21.0")
-    except ValueError:
-        if filter_max_mag_input.strip():
-            st.error("Please enter a valid number for max calibration magnitude.")
-    
     st.session_state.analysis_parameters["astrometry_check"] = st.toggle(
         "Refine Astrometry",
         value=st.session_state.analysis_parameters["astrometry_check"],
@@ -1186,54 +1142,21 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         help="Detect and remove cosmic rays using the L.A.Cosmic algorithm.",
     )
     if st.session_state.analysis_parameters["calibrate_cosmic_rays"]:
-        # CRR Gain input with locale handling
-        cr_gain_input = st.text_input(
+        st.session_state.analysis_parameters["cr_gain"] = st.number_input(
             "CRR Gain (e-/ADU)",
-            value=str(st.session_state.analysis_parameters["cr_gain"]),
-            help="Camera gain in electrons per ADU. Accepts both comma and dot as decimal separator."
+            value=st.session_state.analysis_parameters["cr_gain"],
+            min_value=0.1
         )
-        try:
-            cr_gain = float(cr_gain_input.replace(",", "."))
-            if cr_gain >= 0.1:
-                st.session_state.analysis_parameters["cr_gain"] = cr_gain
-            else:
-                st.error("CRR Gain must be ≥ 0.1")
-        except ValueError:
-            if cr_gain_input.strip():
-                st.error("Please enter a valid number for CRR Gain.")
-        
-        # CRR Read Noise input with locale handling
-        cr_readnoise_input = st.text_input(
+        st.session_state.analysis_parameters["cr_readnoise"] = st.number_input(
             "CRR Read Noise (e-)",
-            value=str(st.session_state.analysis_parameters["cr_readnoise"]),
-            help="Camera read noise in electrons. Accepts both comma and dot as decimal separator."
+            value=st.session_state.analysis_parameters["cr_readnoise"],
+            min_value=1.0
         )
-        try:
-            cr_readnoise = float(cr_readnoise_input.replace(",", "."))
-            if cr_readnoise >= 1.0:
-                st.session_state.analysis_parameters["cr_readnoise"] = cr_readnoise
-            else:
-                st.error("CRR Read Noise must be ≥ 1.0")
-        except ValueError:
-            if cr_readnoise_input.strip():
-                st.error("Please enter a valid number for CRR Read Noise.")
-        
-        # CRR Sigma Clip input with locale handling
-        cr_sigclip_input = st.text_input(
+        st.session_state.analysis_parameters["cr_sigclip"] = st.number_input(
             "CRR Sigma Clip",
-            value=str(st.session_state.analysis_parameters["cr_sigclip"]),
-            help="Sigma clipping threshold for cosmic ray detection. Accepts both comma and dot as decimal separator."
+            value=st.session_state.analysis_parameters["cr_sigclip"],
+            min_value=4.0
         )
-        try:
-            cr_sigclip = float(cr_sigclip_input.replace(",", "."))
-            if cr_sigclip >= 4.0:
-                st.session_state.analysis_parameters["cr_sigclip"] = cr_sigclip
-            else:
-                st.error("CRR Sigma Clip must be ≥ 4.0")
-        except ValueError:
-            if cr_sigclip_input.strip():
-                st.error("Please enter a valid number for CRR Sigma Clip.")
-
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):
     st.session_state.colibri_api_key = st.text_input(
