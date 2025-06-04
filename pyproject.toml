@@ -7,7 +7,7 @@ name = "pfr"
 version = "0.3.0"
 description = "Photometry Factory for RAPAS"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "PFR Team"}
