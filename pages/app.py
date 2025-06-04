@@ -1314,7 +1314,7 @@ if science_file is not None:
         )
         
         # Update observatory data from FITS header if available
-        update_observatory_from_fits_header(science_header)
+        result = update_observatory_from_fits_header(science_header)
         st.info("Observatory information updated from FITS header")
         write_to_log(
             st.session_state.log_buffer,
