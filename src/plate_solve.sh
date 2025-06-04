@@ -42,7 +42,7 @@ save "$solvedname"
 close
 EOF
 
-# Debug: mostra i primi byte del file
+# Debug:
 echo -n "Primi byte del file .ssf: "
 xxd -p -l 8 "$ssfPath" | sed 's/../& /g'
 
