@@ -1850,10 +1850,10 @@ def cross_match_with_gaia(
             st.info("Using refined WCS for Gaia cross-matching, if possible.")
         else:
             w = WCS(_science_header)
-            )
 
         st.write(f"Found {len(phot_table)} sources and performed photometry.")
         return phot_table, epsf_table, daofind, bkg, wcs_obj
+    
     except Exception as e:
         st.error(f"Error performing aperture photometry: {e}")
         return None, None, daofind, bkg, wcs_obj
