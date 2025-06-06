@@ -260,22 +260,20 @@ def solve_with_astrometrynet(file_path):
             # Prepare astrometry.net command
             output_prefix = os.path.join(temp_dir, "solution")
             
-            cmd = [
-                "solve-field",
-                "--no-plots",
-                "--no-verify",
-                "--overwrite",
-                "--downsample", "2",
-                "--cpulimit", "300",  # 5 minute timeout
-                "--x-column", "1",
-                "--y-column", "2",
-                "--sort-column", "3",  # Use flux for sorting if available
-                "--width", str(image_data.shape[1]),
-                "--height", str(image_data.shape[0]),
-                "--out", output_prefix,
-                source_file
-            ]
-            
+            cmd = ["solve-field",
+                   "--no-plots",
+                   "--no-verify",
+                   "--overwrite",
+                   "--downsample", "2",
+                   "--cpulimit", "120",  # 2 minute timeout
+                   "--xylist", source_file,
+                   "--x-column", "1",
+                   "--y-column", "2",
+                   "--width", str(image_data.shape[1]),
+                   "--height", str(image_data.shape[0]),
+                   "--out", output_prefix
+                   ]
+
             # Add pixel scale constraints if available
             if pixel_scale_estimate and pixel_scale_estimate > 0:
                 scale_low = pixel_scale_estimate * 0.8
