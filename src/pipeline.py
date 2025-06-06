@@ -70,7 +70,7 @@ def solve_with_astrometrynet(file_path, api_key=None):
     - The image should contain enough stars for plate solving (typically >10)
     
     The function will detect objects in the image automatically and use the
-    brightest 500 sources for plate solving to optimize performance.
+    brightest sources for plate solving to optimize performance.
     """
     try:
         if not os.path.exists(file_path):
@@ -78,7 +78,7 @@ def solve_with_astrometrynet(file_path, api_key=None):
             return None, None
             
         # Load the FITS file
-        st.write("Loading FITS file for plate solving...")
+        st.write("Loading FITS file for local plate solving...")
         with fits.open(file_path) as hdul:
             image_data = hdul[0].data
             header = hdul[0].header.copy()
@@ -95,90 +95,143 @@ def solve_with_astrometrynet(file_path, api_key=None):
         except Exception:
             st.info("No valid WCS found in header. Proceeding with blind solve...")
             
-        # Detect objects for plate solving
-        st.write("Detecting objects for plate solving...")
+        # Detect objects for plate solving using stdpipe
+        st.write("Detecting objects for plate solving using stdpipe...")
         
-        # Estimate background for object detection
-        bkg, bkg_error = estimate_background(image_data)
-        if bkg is None:
-            st.error(f"Failed to estimate background: {bkg_error}")
-            return None, None
+        try:
+            # Use stdpipe's object detection which is optimized for astrometry
+            obj = photometry.get_objects_sep(
+                image_data,
+                header=header,
+                thresh=3.0,  # Detection threshold
+                sn=5,        # Minimum S/N ratio
+                aper=1.5,    # Aperture radius for flux measurement
+                mask=None,
+                use_mask_large=True,
+                get_segmentation=False,
+                subtract_bg=True
+            )
             
-        # Subtract background
-        image_sub = image_data - bkg.background
-        
-        # Detect objects using photutils
-        from photutils.detection import DAOStarFinder
-        
-        # Estimate FWHM for detection
-        fwhm_estimate = 3.5  # Default estimate
-        threshold = 4 * np.std(image_sub)
-        
-        daofind = DAOStarFinder(fwhm=fwhm_estimate, threshold=threshold)
-        sources = daofind(image_sub)
-        
-        if sources is None or len(sources) < 10:
-            st.warning("Too few sources detected for reliable plate solving. Try adjusting detection parameters.")
-            return None, None
+            if obj is None or len(obj) < 10:
+                st.warning("Too few sources detected for reliable plate solving. Try adjusting detection parameters.")
+                return None, None
+                
+            st.write(f"Detected {len(obj)} sources using stdpipe")
             
-        st.write(f"Detected {len(sources)} sources for plate solving")
-        
-        # Use only the brightest sources to speed up solving
-        sources.sort('flux')
-        sources.reverse()  # Brightest first
-        
-        # Limit to 500 brightest sources for efficiency
-        n_sources = min(500, len(sources))
-        obj_list = sources[:n_sources]
-        
-        # Convert to format expected by stdpipe
-        obj = Table()
-        obj['x'] = obj_list['xcentroid']
-        obj['y'] = obj_list['ycentroid']
-        obj['flux'] = obj_list['flux']
-        
-        # Calculate signal-to-noise ratio
-        if 'flux' in obj_list.colnames and np.any(obj_list['flux'] > 0):
-            # Estimate noise from background RMS
-            noise_estimate = np.median(bkg.background_rms)
-            obj['sn'] = obj['flux'] / noise_estimate
-        else:
-            obj['sn'] = np.ones(len(obj)) * 10  # Default S/N
+            # Filter for best sources for plate solving
+            if len(obj) > 500:
+                # Sort by flux and take brightest sources
+                obj.sort('flux')
+                obj.reverse()
+                obj = obj[:500]
+                st.write(f"Using brightest {len(obj)} sources for plate solving")
+                
+        except Exception as e:
+            st.warning(f"stdpipe object detection failed: {e}. Falling back to photutils...")
             
-        st.write(f"Using {len(obj)} brightest sources for plate solving")
+            # Fallback to photutils detection
+            bkg, bkg_error = estimate_background(image_data)
+            if bkg is None:
+                st.error(f"Failed to estimate background: {bkg_error}")
+                return None, None
+                
+            image_sub = image_data - bkg.background
+            
+            fwhm_estimate = 3.5  # Default estimate
+            threshold = 4 * np.std(image_sub)
+            
+            daofind = DAOStarFinder(fwhm=fwhm_estimate, threshold=threshold)
+            sources = daofind(image_sub)
+            
+            if sources is None or len(sources) < 10:
+                st.warning("Too few sources detected for reliable plate solving.")
+                return None, None
+                
+            st.write(f"Detected {len(sources)} sources using photutils fallback")
+            
+            # Convert to stdpipe format
+            sources.sort('flux')
+            sources.reverse()
+            n_sources = min(500, len(sources))
+            obj_list = sources[:n_sources]
+            
+            obj = Table()
+            obj['x'] = obj_list['xcentroid']
+            obj['y'] = obj_list['ycentroid']
+            obj['flux'] = obj_list['flux']
+            
+            # Calculate signal-to-noise ratio
+            if np.any(obj_list['flux'] > 0):
+                noise_estimate = np.median(bkg.background_rms)
+                obj['sn'] = obj['flux'] / noise_estimate
+            else:
+                obj['sn'] = np.ones(len(obj)) * 10
         
-        # Try to get initial guess parameters from header
+        # Extract initial guess parameters from header
         ra0 = header.get('RA') or header.get('OBJRA') or header.get('CRVAL1')
         dec0 = header.get('DEC') or header.get('OBJDEC') or header.get('CRVAL2')
         
-        # Estimate pixel scale if available
-        pixscale_low = 0.3  # arcsec/pixel
-        pixscale_upp = 10.0  # arcsec/pixel
+        # Estimate pixel scale with better defaults
+        pixscale_low = 0.1   # arcsec/pixel (very fine)
+        pixscale_upp = 20.0  # arcsec/pixel (very coarse)
         
         # Try to get better pixel scale estimate from header
         if 'PIXSCALE' in header:
             pixel_scale = header['PIXSCALE']
-            pixscale_low = pixel_scale * 0.5
-            pixscale_upp = pixel_scale * 2.0
+            pixscale_low = pixel_scale * 0.3
+            pixscale_upp = pixel_scale * 3.0
         elif 'CDELT1' in header:
             pixel_scale = abs(header['CDELT1']) * 3600  # Convert degrees to arcsec
-            pixscale_low = pixel_scale * 0.5
-            pixscale_upp = pixel_scale * 2.0
+            pixscale_low = pixel_scale * 0.3
+            pixscale_upp = pixel_scale * 3.0
+        elif 'SECPIX1' in header:
+            pixel_scale = header['SECPIX1']
+            pixscale_low = pixel_scale * 0.3
+            pixscale_upp = pixel_scale * 3.0
             
         # Set search radius if center coordinates available
-        radius = 1.0 if (ra0 is not None and dec0 is not None) else None
+        radius = 2.0 if (ra0 is not None and dec0 is not None) else None
         
-        st.write("Starting local Astrometry.Net plate solving...")
-        st.write(f"Center guess: RA={ra0}, DEC={dec0}" if ra0 and dec0 else "No center guess available")
+        st.write("Starting local Astrometry.Net plate solving via stdpipe...")
+        st.write(f"Center guess: RA={ra0:.4f}, DEC={dec0:.4f}" if ra0 and dec0 else "No center guess available")
         st.write(f"Pixel scale range: {pixscale_low:.2f} - {pixscale_upp:.2f} arcsec/pixel")
+        
+        # Prepare additional parameters for solve-field
+        extra_params = {}
+        
+        # Add downsample factor for large images to speed up solving
+        if image_data.shape[0] > 2000 or image_data.shape[1] > 2000:
+            extra_params['downsample'] = 2
+            st.write("Large image detected, using downsampling factor of 2")
+        
+        # Set CPU limit for faster solving
+        extra_params['cpulimit'] = 300  # 5 minutes max
+        
+        # Use quad size limits appropriate for the number of sources
+        if len(obj) > 100:
+            extra_params['quad-size-min'] = 0.1
+            extra_params['quad-size-max'] = 1.0
+        
+        # Check for custom solve-field executable path in session state
+        solve_field_exe = st.session_state.get('solve_field_path', None)
+        
+        # Check for custom config file path
+        config_path = st.session_state.get('astrometry_config', None)
+        
+        # Set working directory for debugging if requested
+        workdir = st.session_state.get('astrometry_workdir', None)
+        if workdir and os.path.exists(workdir):
+            st.info(f"Using working directory: {workdir}")
         
         # Perform blind matching using local Astrometry.Net installation
         try:
+            st.write("Calling stdpipe.astrometry.blind_match_objects...")
+            
             wcs_solution = astrometry.blind_match_objects(
                 obj,
                 order=2,  # SIP polynomial order
                 update=False,  # Don't update object table
-                sn=5,  # Minimum S/N for sources to use
+                sn=10,  # Minimum S/N for sources to use (higher for better reliability)
                 get_header=False,  # Return WCS object, not header
                 width=image_data.shape[1],
                 height=image_data.shape[0],
@@ -188,15 +241,25 @@ def solve_with_astrometrynet(file_path, api_key=None):
                 scale_lower=pixscale_low,
                 scale_upper=pixscale_upp,
                 scale_units='arcsecperpix',
+                config=config_path,  # Custom config file if provided
+                extra=extra_params,  # Additional solve-field parameters
+                _workdir=workdir,    # Working directory for debugging
+                _exe=solve_field_exe,  # Custom executable path if provided
                 verbose=True
             )
             
             if wcs_solution is None:
                 st.error("Local Astrometry.Net plate solving failed. No solution found.")
-                st.info("Make sure you have:")
-                st.info("1. Astrometry.Net installed locally with solve-field binary in PATH")
-                st.info("2. Appropriate index files for your field scale")
-                st.info("3. Index files placed in the correct directory")
+                st.info("Troubleshooting suggestions:")
+                st.info("1. Verify Astrometry.Net installation: `solve-field --help`")
+                st.info("2. Check index files are installed for your field scale")
+                st.info("3. Ensure index files are in the correct directory")
+                st.info("4. Try relaxing scale constraints or increasing search radius")
+                
+                # Show additional debug info if working directory is set
+                if workdir and os.path.exists(workdir):
+                    st.info(f"Check files in working directory: {workdir}")
+                
                 return None, None
                 
             if not wcs_solution.is_celestial:
@@ -205,27 +268,46 @@ def solve_with_astrometrynet(file_path, api_key=None):
                 
             st.success("Local plate solving succeeded!")
             
+            # Validate the solution by checking pixel scale
+            try:
+                solved_pixscale = astrometry.get_pixscale(wcs=wcs_solution) * 3600  # Convert to arcsec
+                st.write(f"Solved pixel scale: {solved_pixscale:.3f} arcsec/pixel")
+                
+                # Check if pixel scale is reasonable
+                if not (0.1 <= solved_pixscale <= 50.0):
+                    st.warning(f"Unusual pixel scale: {solved_pixscale:.3f} arcsec/pixel")
+                    
+            except Exception as e:
+                st.warning(f"Could not validate pixel scale: {e}")
+            
             # Update header with new WCS
             # Clear any existing WCS keywords first
-            astrometry.clear_wcs(header, remove_comments=True,
-                                 remove_underscored=True, remove_history=True)
+            header_clean = astrometry.clear_wcs(
+                header, 
+                remove_comments=True,
+                remove_underscored=True, 
+                remove_history=True,
+                copy=True  # Don't modify original
+            )
             
             # Add new WCS keywords
             wcs_header = wcs_solution.to_header(relax=True)
-            header.update(wcs_header)
+            header_clean.update(wcs_header)
             
-            # Add some metadata about the solution
-            header['COMMENT'] = 'WCS solved using local Astrometry.Net via stdpipe'
-            header['PLTSOLVR'] = ('Astrometry.Net (local)', 'Plate solving software')
-            header['PLTNSRC'] = (len(obj), 'Number of sources used for plate solving')
+            # Add metadata about the solution
+            header_clean['COMMENT'] = 'WCS solved using local Astrometry.Net via stdpipe'
+            header_clean['PLTSOLVR'] = ('Astrometry.Net (local)', 'Plate solving software')
+            header_clean['PLTNSRC'] = (len(obj), 'Number of sources used for plate solving')
+            header_clean['PLTPXSCL'] = (solved_pixscale if 'solved_pixscale' in locals() else 0.0, 'Solved pixel scale (arcsec/pix)')
             
-            return wcs_solution, header
+            return wcs_solution, header_clean
             
         except Exception as e:
             st.error(f"Local Astrometry.Net plate solving failed: {str(e)}")
             
-            # Provide helpful troubleshooting info for local installation
+            # Provide specific troubleshooting based on error type
             error_str = str(e).lower()
+            
             if "solve-field" in error_str or "command not found" in error_str or "executable" in error_str:
                 st.error("""
                 solve-field executable not found. Please ensure:
@@ -233,6 +315,7 @@ def solve_with_astrometrynet(file_path, api_key=None):
                 2. solve-field binary is in your system PATH
                 3. On Windows: Add the Astrometry.Net bin directory to PATH
                 4. On Linux/Mac: Install via package manager or from source
+                5. Try setting custom executable path in session state
                 """)
             elif "index" in error_str or "no match" in error_str:
                 st.error("""
@@ -241,14 +324,24 @@ def solve_with_astrometrynet(file_path, api_key=None):
                 2. Too few detected sources
                 3. Poor source detection parameters
                 4. Field scale outside the range of available index files
-                
-                Try downloading index files appropriate for your pixel scale.
+                5. Try wider pixel scale range or different detection threshold
                 """)
+            elif "timeout" in error_str or "cpu" in error_str:
+                st.error("""
+                Plate solving timed out. Try:
+                1. Reducing the number of sources used
+                2. Increasing CPU limit in extra parameters
+                3. Using downsample factor for large images
+                4. Providing better initial guess coordinates
+                """)
+            else:
+                st.error(f"Unexpected error: {error_str}")
+                st.info("Check Astrometry.Net logs for more details")
             
             return None, None
             
     except Exception as e:
-        st.error(f"Error in plate solving: {str(e)}")
+        st.error(f"Error in plate solving setup: {str(e)}")
         return None, None
 
 
