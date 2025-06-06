@@ -112,7 +112,7 @@ def solve_with_astrometrynet(file_path):
                 header=header,
                 thresh=3.0,  # Detection threshold
                 sn=5,        # Minimum S/N ratio
-                aper=1.5,    # Aperture radius for flux measurement
+                aper=5,    # Aperture radius for flux measurement
                 mask=None,
                 use_mask_large=True,
                 get_segmentation=False,
