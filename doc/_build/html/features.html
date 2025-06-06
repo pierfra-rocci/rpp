@@ -1,0 +1,248 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Features &mdash; RAPAS Photometry Pipeline (RPP) v1.0.0 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Advanced Features" href="advanced_features.html" />
+    <link rel="prev" title="User Guide" href="user_guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980b9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            RAPAS Photometry Pipeline (RPP)
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#user-authentication-configuration">User Authentication &amp; Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#image-processing">Image Processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#source-detection">Source Detection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#photometry">Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#astrometry">Astrometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#calibration">Calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#catalog-integration">Catalog Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#visualization">Visualization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#output-and-results">Output and Results</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980b9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">RAPAS Photometry Pipeline (RPP)</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Features</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/features.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="features">
+<h1>Features<a class="headerlink" href="#features" title="Link to this heading"></a></h1>
+<section id="user-authentication-configuration">
+<h2>User Authentication &amp; Configuration<a class="headerlink" href="#user-authentication-configuration" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Secure Login</strong>: User registration and login system via a Flask backend.</p></li>
+<li><p><strong>Password Management</strong>: Password hashing and secure recovery via email (requires SMTP configuration).</p></li>
+<li><p><strong>User Configuration</strong>: Saves and loads user-specific settings (observatory, analysis parameters, API keys) via the backend database.</p></li>
+</ul>
+</section>
+<section id="image-processing">
+<h2>Image Processing<a class="headerlink" href="#image-processing" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>FITS File Support</strong></dt><dd><p>PFR supports standard FITS file formats (.fits, .fit, .fts, .fits.gz). It handles multi-extension files, data cubes (extracting the first plane), and properly extracts header information.</p>
+</dd>
+<dt><strong>Cosmic Ray Removal</strong></dt><dd><p>Optional detection and removal of cosmic rays using the <cite>astroscrappy</cite> package (L.A.Cosmic algorithm). Configurable parameters (gain, readnoise, thresholds).</p>
+</dd>
+<dt><strong>Background Estimation</strong></dt><dd><p>Sophisticated 2D background modeling using <cite>photutils.Background2D</cite> with sigma-clipping and the SExtractor background algorithm. Visualizations and FITS output of the background model and RMS map.</p>
+</dd>
+</dl>
+</section>
+<section id="source-detection">
+<h2>Source Detection<a class="headerlink" href="#source-detection" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>DAOStarFinder Implementation</strong></dt><dd><p>Uses the DAOPhot algorithm (<cite>photutils.detection.DAOStarFinder</cite>) to detect point sources based on sharpness and roundness.</p>
+</dd>
+<dt><strong>FWHM Estimation</strong></dt><dd><p>Automatically estimates the Full Width at Half Maximum (FWHM) of stars by fitting 1D Gaussian models to marginal sums of detected sources. Includes histogram visualization.</p>
+</dd>
+<dt><strong>PSF Modeling</strong></dt><dd><p>Builds an empirical Point Spread Function (PSF) model from bright, isolated stars using <cite>photutils.psf.EPSFBuilder</cite>. Saves the model as a FITS file.</p>
+</dd>
+</dl>
+</section>
+<section id="photometry">
+<h2>Photometry<a class="headerlink" href="#photometry" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Aperture Photometry</strong></dt><dd><p>Measures source brightness using circular apertures (<cite>photutils.aperture.CircularAperture</cite>) scaled to the estimated FWHM. Calculates instrumental magnitudes and Signal-to-Noise Ratio (SNR).</p>
+</dd>
+<dt><strong>PSF Photometry</strong></dt><dd><p>Performs PSF photometry using the empirically built PSF model via <cite>photutils.psf.IterativePSFPhotometry</cite>. Calculates fitted fluxes and instrumental magnitudes.</p>
+</dd>
+<dt><strong>Error Estimation</strong></dt><dd><p>Propagates background RMS noise into aperture photometry errors. PSF photometry provides fitted flux errors.</p>
+</dd>
+</dl>
+</section>
+<section id="astrometry">
+<h2>Astrometry<a class="headerlink" href="#astrometry" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>WCS Handling</strong></dt><dd><p>Extracts and validates World Coordinate System (WCS) information from FITS headers using <cite>astropy.wcs</cite>. Handles multi-dimensional WCS by reducing to celestial coordinates.</p>
+</dd>
+<dt><strong>Plate Solving</strong></dt><dd><ul class="simple">
+<li><p><strong>Siril Integration</strong>: Option to use an external Siril script (<cite>plate_solve.ps1</cite>/<cite>.sh</cite>) for robust plate solving if WCS is missing or invalid.</p></li>
+<li><p><strong>Astrometry.net</strong>: (Mentioned in docs, but Siril/Stdpipe seem primary now) Potential integration for web-based solving.</p></li>
+</ul>
+</dd>
+<dt><strong>Astrometry Refinement (Astrometry+)</strong></dt><dd><p>Optional WCS refinement using <cite>stdpipe</cite> library, cross-matching detected sources with GAIA DR3 to improve WCS accuracy.</p>
+</dd>
+<dt><strong>Coordinate Transformations</strong></dt><dd><p>Converts between pixel coordinates and celestial coordinates (RA/Dec) using the validated WCS.</p>
+</dd>
+</dl>
+</section>
+<section id="calibration">
+<h2>Calibration<a class="headerlink" href="#calibration" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Zero Point Calculation</strong></dt><dd><p>Determines photometric zero point by cross-matching detected sources with the GAIA DR3 catalog using sigma-clipping for robustness. Includes visualization plot.</p>
+</dd>
+<dt><strong>Airmass Calculation</strong></dt><dd><p>Calculates airmass based on FITS header time/coordinates and configured observatory location using <cite>astropy.coordinates</cite>.</p>
+</dd>
+<dt><strong>Magnitude Systems</strong></dt><dd><p>Calculates instrumental magnitudes and converts them to a calibrated magnitude system tied to GAIA DR3 (currently G-band, BP, RP selectable), applying a basic airmass correction (0.1 * airmass).</p>
+</dd>
+</dl>
+</section>
+<section id="catalog-integration">
+<h2>Catalog Integration<a class="headerlink" href="#catalog-integration" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>GAIA DR3</strong></dt><dd><p>Accesses the GAIA Data Release 3 catalog via <cite>astroquery.gaia</cite> for astrometric refinement and photometric calibration. Filters calibration stars based on magnitude, variability flags, color index, and RUWE.</p>
+</dd>
+<dt><strong>Astro-Colibri</strong></dt><dd><p>Cross-matches field with the Astro-Colibri database via API (requires UID key) to identify known transients or events.</p>
+</dd>
+<dt><strong>SIMBAD</strong></dt><dd><p>Cross-matches with SIMBAD database via <cite>astroquery.simbad</cite> for object identification and classification.</p>
+</dd>
+<dt><strong>SkyBoT</strong></dt><dd><p>Queries the SkyBoT service (IMCCE) via web request to identify known solar system objects in the field of view based on observation time and location.</p>
+</dd>
+<dt><strong>AAVSO VSX</strong></dt><dd><p>Queries the AAVSO Variable Star Index (via VizieR <cite>B/vsx/vsx</cite>) to check for known variable stars.</p>
+</dd>
+<dt><strong>Milliquas (VizieR VII/294)</strong></dt><dd><p>Queries the Million Quasars Catalog (via VizieR <cite>VII/294</cite>) for quasar identification.</p>
+</dd>
+</dl>
+</section>
+<section id="visualization">
+<h2>Visualization<a class="headerlink" href="#visualization" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Image Display</strong></dt><dd><p>Displays the FITS image using <cite>matplotlib</cite> with options for scaling (ZScale, Percentile).</p>
+</dd>
+<dt><strong>Interactive Plots</strong></dt><dd><ul class="simple">
+<li><p>Background and RMS maps.</p></li>
+<li><p>FWHM distribution histogram.</p></li>
+<li><p>PSF model visualization.</p></li>
+<li><p>Zero point calibration plot (Gaia vs. Calibrated Mags) with binned statistics.</p></li>
+</ul>
+</dd>
+<dt><strong>Aladin Integration</strong></dt><dd><p>Embeds an interactive Aladin Lite sky viewer showing the field of view (DSS) with detected sources overlaid. Popups provide source details (coordinates, magnitude, catalog matches).</p>
+</dd>
+<dt><strong>Data Tables</strong></dt><dd><p>Uses <cite>streamlit</cite> and <cite>pandas</cite> DataFrames for interactive display of:
+*   GAIA calibration star matches.
+*   Summary of external catalog matches.
+*   Full final photometry catalog with sorting and filtering.</p>
+</dd>
+</dl>
+</section>
+<section id="output-and-results">
+<h2>Output and Results<a class="headerlink" href="#output-and-results" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Catalog Generation</strong></dt><dd><p>Creates a final CSV catalog containing source positions (pixel and sky), aperture photometry results (flux, error, instrumental mag, calibrated mag, SNR), PSF photometry results (if successful), and cross-match information from all queried catalogs.</p>
+</dd>
+<dt><strong>Metadata Logging</strong></dt><dd><ul class="simple">
+<li><p><strong>Log File</strong>: Records processing steps, parameters, warnings, and errors to a <cite>.log</cite> file.</p></li>
+<li><p><strong>Header File</strong>: Saves the original FITS header to a <cite>.txt</cite> file.</p></li>
+</ul>
+</dd>
+<dt><strong>Result Downloads</strong></dt><dd><p>Provides a single “Download All Results (ZIP)” button to download a compressed archive containing the CSV catalog, log file, header file, background FITS, PSF FITS, and all generated PNG plots for the processed image. Files are organized in the <cite>rpp_results</cite> directory.</p>
+</dd>
+</dl>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="user_guide.html" class="btn btn-neutral float-left" title="User Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="advanced_features.html" class="btn btn-neutral float-right" title="Advanced Features" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024-2025, Pier-Francesco Rocci.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

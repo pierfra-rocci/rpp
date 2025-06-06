@@ -1,0 +1,388 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Features &mdash; RAPAS Photometry Pipeline (RPP) v1.0.0 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="prev" title="Features" href="features.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980b9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            RAPAS Photometry Pipeline (RPP)
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Advanced Features</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#psf-photometry">PSF Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#working-with-time-series-data">Working with Time-Series Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#differential-photometry">Differential Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-pipeline-integration">Custom Pipeline Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-visualization">Advanced Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980b9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">RAPAS Photometry Pipeline (RPP)</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Advanced Features</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/advanced_features.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="advanced-features">
+<h1>Advanced Features<a class="headerlink" href="#advanced-features" title="Link to this heading"></a></h1>
+<p>This section covers advanced features and specialized use cases for Photometry Factory for RAPAS.</p>
+<section id="psf-photometry">
+<h2>PSF Photometry<a class="headerlink" href="#psf-photometry" title="Link to this heading"></a></h2>
+<p>While aperture photometry works well for isolated stars, PSF (Point Spread Function) photometry, performed automatically by PFR using <cite>photutils</cite>, offers advantages for:</p>
+<ul class="simple">
+<li><p>Crowded fields where stars overlap.</p></li>
+<li><p>Faint sources where aperture photometry is noise-limited.</p></li>
+<li><p>Achieving potentially higher precision by modeling the star’s profile.</p></li>
+</ul>
+<p>The application performs these steps:</p>
+<ol class="arabic simple">
+<li><p><strong>PSF Model Construction</strong>: Builds an empirical PSF model (<cite>EPSF</cite>) from bright, isolated stars detected in the image using <cite>photutils.psf.EPSFBuilder</cite>. The model is saved as <cite>*_psf.fits</cite>.</p></li>
+<li><p><strong>PSF Fitting</strong>: This model is then fitted to all detected sources using <cite>photutils.psf.IterativePSFPhotometry</cite> to measure their flux.</p></li>
+</ol>
+<p>Results from both aperture and PSF photometry are included in the final catalog (<cite>aperture_calib_mag</cite>, <cite>psf_calib_mag</cite> if calculated) for comparison.</p>
+<p>To optimize PSF photometry:</p>
+<ul class="simple">
+<li><p>Ensure your <strong>Seeing</strong> estimate in the sidebar is reasonably accurate, as it influences the initial detection and PSF extraction box size.</p></li>
+<li><p>Review the PSF model visualization in the results panel for quality (e.g., check for asymmetry or contamination).</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example: Inspect the saved PSF model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.visualization</span><span class="w"> </span><span class="kn">import</span> <span class="n">simple_norm</span>
+
+<span class="c1"># Load the PSF model (adjust filename as needed)</span>
+<span class="n">psf_filename</span> <span class="o">=</span> <span class="s1">&#39;rpp_results/your_image_base_name_psf.fits&#39;</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">psf_data</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">psf_filename</span><span class="p">)</span>
+
+    <span class="c1"># Plot it</span>
+    <span class="n">norm</span> <span class="o">=</span> <span class="n">simple_norm</span><span class="p">(</span><span class="n">psf_data</span><span class="p">,</span> <span class="s1">&#39;log&#39;</span><span class="p">,</span> <span class="n">percent</span><span class="o">=</span><span class="mf">99.</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">psf_data</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;lower&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;Normalized Intensity (log scale)&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Empirical PSF Model&#39;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PSF file not found: </span><span class="si">{</span><span class="n">psf_filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error loading or plotting PSF: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="working-with-time-series-data">
+<h2>Working with Time-Series Data<a class="headerlink" href="#working-with-time-series-data" title="Link to this heading"></a></h2>
+<p>For variable stars, asteroids, or other time-variable objects, you can process multiple images taken over time and combine the results:</p>
+<ol class="arabic simple">
+<li><p>Process each image individually through the PFR application, ensuring consistent analysis parameters.</p></li>
+<li><p>Download the results ZIP archive for each processed image.</p></li>
+<li><p>Extract the <cite>*_catalog.csv</cite> and <cite>*_header.txt</cite> files for each observation.</p></li>
+<li><p>Use a script (like the one in <cite>examples.rst</cite>) to:
+*   Read each catalog.
+*   Extract the observation time (e.g., <cite>DATE-OBS</cite> from the header file).
+*   Identify your target star(s) in each catalog (e.g., by matching coordinates).
+*   Extract the magnitude (<cite>aperture_calib_mag</cite> or <cite>psf_calib_mag</cite>) and its error.
+*   Combine the time-magnitude pairs to create and plot a light curve.</p></li>
+</ol>
+</section>
+<section id="differential-photometry">
+<h2>Differential Photometry<a class="headerlink" href="#differential-photometry" title="Link to this heading"></a></h2>
+<p>For high-precision relative photometry, especially useful for detecting small variations:</p>
+<ol class="arabic simple">
+<li><p>Process your image with PFR to get a calibrated catalog (<cite>*_catalog.csv</cite>).</p></li>
+<li><p>Identify your target star in the catalog.</p></li>
+<li><p>Select several (e.g., 3-10) suitable comparison stars:
+*   They should be close in brightness to your target.
+*   They should be nearby on the detector to minimize spatial variations.
+*   They should be confirmed as non-variable (check <cite>catalog_matches</cite> or <cite>aavso_Name</cite> columns; avoid stars flagged by AAVSO or SIMBAD as variable).
+*   They should have good SNR and low magnitude errors.</p></li>
+<li><p>Calculate the differential magnitude using a script.</p></li>
+</ol>
+<p>Example workflow snippet:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="c1"># Load the calibrated catalog</span>
+<span class="n">catalog_file</span> <span class="o">=</span> <span class="s1">&#39;rpp_results/your_image_base_name_catalog.csv&#39;</span>
+<span class="n">catalog</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">catalog_file</span><span class="p">)</span>
+
+<span class="c1"># --- Identify Target and Potential Comparison Stars ---</span>
+<span class="c1"># Example: Target identified by its index in the DataFrame</span>
+<span class="n">target_idx</span> <span class="o">=</span> <span class="mi">42</span> <span class="c1"># Replace with your target star index or find via coordinates</span>
+
+<span class="k">if</span> <span class="n">target_idx</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Target index </span><span class="si">{</span><span class="n">target_idx</span><span class="si">}</span><span class="s2"> not found in catalog.&quot;</span><span class="p">)</span>
+    <span class="n">exit</span><span class="p">()</span>
+
+<span class="n">target_mag</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">target_idx</span><span class="p">,</span> <span class="s1">&#39;aperture_calib_mag&#39;</span><span class="p">]</span> <span class="c1"># Or psf_calib_mag</span>
+
+<span class="c1"># Find potential comparison stars:</span>
+<span class="c1"># - Within 1 magnitude of the target</span>
+<span class="c1"># - Not the target itself</span>
+<span class="c1"># - Not known variables (checking AAVSO name as example)</span>
+<span class="c1"># - Having valid magnitude values</span>
+<span class="n">potential_comps</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span>
+    <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">catalog</span><span class="p">[</span><span class="s1">&#39;aperture_calib_mag&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">target_mag</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">&amp;</span>
+    <span class="p">(</span><span class="n">catalog</span><span class="o">.</span><span class="n">index</span> <span class="o">!=</span> <span class="n">target_idx</span><span class="p">)</span> <span class="o">&amp;</span>
+    <span class="p">(</span><span class="n">catalog</span><span class="p">[</span><span class="s1">&#39;aavso_Name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">())</span> <span class="o">&amp;</span> <span class="c1"># Example: Exclude known AAVSO variables</span>
+    <span class="p">(</span><span class="n">catalog</span><span class="p">[</span><span class="s1">&#39;aperture_calib_mag&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span>
+<span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="c1"># Optional: Add proximity filter (calculate distance from target)</span>
+<span class="c1"># potential_comps[&#39;distance_pix&#39;] = np.sqrt(</span>
+<span class="c1">#    (potential_comps[&#39;xcenter&#39;] - catalog.loc[target_idx, &#39;xcenter&#39;])**2 +</span>
+<span class="c1">#    (potential_comps[&#39;ycenter&#39;] - catalog.loc[target_idx, &#39;ycenter&#39;])**2</span>
+<span class="c1"># )</span>
+<span class="c1"># potential_comps = potential_comps[potential_comps[&#39;distance_pix&#39;] &lt; 500] # Example: within 500 pixels</span>
+
+<span class="c1"># Select top N comparison stars with lowest magnitude error</span>
+<span class="c1"># Estimate magnitude error from flux error (if available)</span>
+<span class="k">if</span> <span class="s1">&#39;aperture_sum&#39;</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="s1">&#39;aperture_sum_err&#39;</span> <span class="ow">in</span> <span class="n">catalog</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+     <span class="n">flux</span> <span class="o">=</span> <span class="n">potential_comps</span><span class="p">[</span><span class="s1">&#39;aperture_sum&#39;</span><span class="p">]</span>
+     <span class="n">flux_err</span> <span class="o">=</span> <span class="n">potential_comps</span><span class="p">[</span><span class="s1">&#39;aperture_sum_err&#39;</span><span class="p">]</span>
+     <span class="c1"># Avoid division by zero or invalid values</span>
+     <span class="n">valid_err</span> <span class="o">=</span> <span class="p">(</span><span class="n">flux</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">flux_err</span><span class="o">.</span><span class="n">notna</span><span class="p">())</span>
+     <span class="n">potential_comps</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">valid_err</span><span class="p">,</span> <span class="s1">&#39;mag_err_est&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0857</span> <span class="o">*</span> <span class="p">(</span><span class="n">flux_err</span><span class="p">[</span><span class="n">valid_err</span><span class="p">]</span> <span class="o">/</span> <span class="n">flux</span><span class="p">[</span><span class="n">valid_err</span><span class="p">])</span>
+     <span class="n">potential_comps</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">valid_err</span><span class="p">,</span> <span class="s1">&#39;mag_err_est&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">potential_comps</span><span class="p">[</span><span class="s1">&#39;mag_err_est&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span> <span class="c1"># Cannot sort by error</span>
+
+<span class="c1"># Sort by estimated error and select the best N (e.g., 5)</span>
+<span class="n">comp_stars</span> <span class="o">=</span> <span class="n">potential_comps</span><span class="o">.</span><span class="n">nsmallest</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;mag_err_est&#39;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">comp_stars</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Not enough suitable comparison stars found.&quot;</span><span class="p">)</span>
+    <span class="n">exit</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">comp_stars</span><span class="p">)</span><span class="si">}</span><span class="s2"> comparison stars.&quot;</span><span class="p">)</span>
+
+<span class="c1"># --- Calculate Differential Magnitude ---</span>
+<span class="c1"># Calculate the average instrumental magnitude of the comparison stars</span>
+<span class="c1"># It&#39;s often better to average fluxes, then convert back to magnitude</span>
+<span class="n">comp_instrumental_mags</span> <span class="o">=</span> <span class="n">comp_stars</span><span class="p">[</span><span class="s1">&#39;instrumental_mag&#39;</span><span class="p">]</span> <span class="c1"># Use instrumental mag before ZP/airmass</span>
+<span class="n">comp_flux_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">0.4</span> <span class="o">*</span> <span class="n">comp_instrumental_mags</span><span class="p">))</span>
+<span class="n">mean_comp_instrumental_mag</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">comp_flux_sum</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">comp_stars</span><span class="p">))</span>
+
+<span class="c1"># Differential magnitude (Target Instrumental Mag - Mean Comparison Instrumental Mag)</span>
+<span class="n">target_instrumental_mag</span> <span class="o">=</span> <span class="n">catalog</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">target_idx</span><span class="p">,</span> <span class="s1">&#39;instrumental_mag&#39;</span><span class="p">]</span>
+<span class="n">diff_mag</span> <span class="o">=</span> <span class="n">target_instrumental_mag</span> <span class="o">-</span> <span class="n">mean_comp_instrumental_mag</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Target Instrumental Mag: </span><span class="si">{</span><span class="n">target_instrumental_mag</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean Comparison Instrumental Mag: </span><span class="si">{</span><span class="n">mean_comp_instrumental_mag</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Differential Magnitude: </span><span class="si">{</span><span class="n">diff_mag</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># This differential magnitude is less sensitive to transparency variations</span>
+<span class="c1"># and airmass changes than the direct calibrated magnitude.</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-pipeline-integration">
+<h2>Custom Pipeline Integration<a class="headerlink" href="#custom-pipeline-integration" title="Link to this heading"></a></h2>
+<p>While PFR provides an integrated web UI, its outputs can be used as inputs for larger, custom analysis pipelines:</p>
+<ol class="arabic simple">
+<li><p><strong>Process Images</strong>: Use the PFR web application to process your FITS images individually or in batches.</p></li>
+<li><p><strong>Collect Outputs</strong>: Download the results ZIP archives containing the calibrated catalogs (<cite>*_catalog.csv</cite>), logs, and other metadata.</p></li>
+<li><p><strong>Ingest Catalogs</strong>: Write custom Python scripts (using <cite>pandas</cite>, <cite>astropy</cite>, etc.) to read these CSV catalogs.</p></li>
+<li><p><strong>Perform Further Analysis</strong>: Implement specialized analysis not covered by PFR, such as:
+*   Detailed light curve modeling (e.g., using <cite>gatspy</cite>, <cite>lightkurve</cite>).
+*   Asteroid astrometry refinement and orbit determination.
+*   Stacking results from multiple observations.
+*   Generating publication-quality plots.
+*   Cross-matching with specialized or private catalogs.</p></li>
+</ol>
+<p>Example integration concept:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="c1"># Directory where PFR results ZIPs were extracted</span>
+<span class="n">pfr_output_dir</span> <span class="o">=</span> <span class="s1">&#39;path/to/extracted/pfr_results&#39;</span>
+
+<span class="n">all_catalogs</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">catalog_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pfr_output_dir</span><span class="p">,</span> <span class="s1">&#39;*_catalog.csv&#39;</span><span class="p">))</span>
+
+<span class="k">for</span> <span class="n">cat_file</span> <span class="ow">in</span> <span class="n">catalog_files</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">cat_file</span><span class="p">)</span>
+        <span class="c1"># Add identifier based on filename</span>
+        <span class="n">df</span><span class="p">[</span><span class="s1">&#39;source_image_base&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">cat_file</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;_catalog.csv&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="c1"># Extract observation time from corresponding header file (add logic here)</span>
+        <span class="c1"># df[&#39;obs_jd&#39;] = ...</span>
+        <span class="n">all_catalogs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error reading </span><span class="si">{</span><span class="n">cat_file</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">all_catalogs</span><span class="p">:</span>
+    <span class="c1"># Combine all catalogs into a single master DataFrame</span>
+    <span class="n">master_catalog</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">all_catalogs</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Combined </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">master_catalog</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_catalogs</span><span class="p">)</span><span class="si">}</span><span class="s2"> catalogs.&quot;</span><span class="p">)</span>
+
+    <span class="c1"># --- Perform custom analysis on master_catalog ---</span>
+    <span class="c1"># Example: Find all detections of a specific object across images</span>
+    <span class="c1"># target_coords = (123.456, 45.678)</span>
+    <span class="c1"># matched_target = master_catalog[</span>
+    <span class="c1">#    (np.abs(master_catalog[&#39;ra&#39;] - target_coords[0]) &lt; tolerance) &amp;</span>
+    <span class="c1">#    (np.abs(master_catalog[&#39;dec&#39;] - target_coords[1]) &lt; tolerance)</span>
+    <span class="c1"># ]</span>
+    <span class="c1"># print(matched_target[[&#39;source_image_base&#39;, &#39;aperture_calib_mag&#39;]])</span>
+    <span class="c1">#</span>
+    <span class="c1"># Example: Save the combined catalog</span>
+    <span class="c1"># master_catalog.to_csv(&#39;combined_pfr_catalog.csv&#39;, index=False)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No catalogs found or loaded.&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="advanced-visualization">
+<h2>Advanced Visualization<a class="headerlink" href="#advanced-visualization" title="Link to this heading"></a></h2>
+<p>PFR output catalogs (<cite>*_catalog.csv</cite>) can be visualized using advanced Python libraries like <cite>matplotlib</cite>, <cite>seaborn</cite>, or <cite>plotly</cite> for deeper insights.</p>
+<p>Example using <cite>matplotlib</cite> for a density scatter plot:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian_kde</span>
+
+<span class="c1"># Load catalog</span>
+<span class="n">catalog_file</span> <span class="o">=</span> <span class="s1">&#39;rpp_results/your_image_base_name_catalog.csv&#39;</span>
+<span class="n">catalog</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">catalog_file</span><span class="p">)</span>
+
+<span class="c1"># Filter out invalid magnitudes if necessary</span>
+<span class="n">catalog</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="n">catalog</span><span class="p">[</span><span class="s1">&#39;aperture_calib_mag&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span>
+
+<span class="k">if</span> <span class="n">catalog</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No valid data for plotting.&quot;</span><span class="p">)</span>
+    <span class="n">exit</span><span class="p">()</span>
+
+<span class="c1"># Create density scatter plot of magnitude vs. position (X)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="s1">&#39;xcenter&#39;</span><span class="p">]</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">catalog</span><span class="p">[</span><span class="s1">&#39;aperture_calib_mag&#39;</span><span class="p">]</span> <span class="c1"># Use calibrated magnitude</span>
+
+<span class="c1"># Calculate point density</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">xy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">])</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">gaussian_kde</span><span class="p">(</span><span class="n">xy</span><span class="p">)(</span><span class="n">xy</span><span class="p">)</span>
+    <span class="c1"># Sort points by density, so dense points don&#39;t overplot sparse ones</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">z</span><span class="o">.</span><span class="n">argsort</span><span class="p">()</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="n">z</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+<span class="k">except</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">LinAlgError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Could not calculate density (singular matrix). Plotting without density.&quot;</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Fallback: plot without density coloring</span>
+
+<span class="c1"># Set up plot</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+
+<span class="c1"># Scatter plot</span>
+<span class="n">scatter</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="n">z</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;X Position (pixels)&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Calibrated Magnitude&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Magnitude vs. X Position (Density Colored)&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">invert_yaxis</span><span class="p">()</span> <span class="c1"># Magnitudes: fainter is larger number</span>
+
+<span class="k">if</span> <span class="n">z</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">cbar</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">scatter</span><span class="p">)</span>
+    <span class="n">cbar</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="s1">&#39;Point Density&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;magnitude_vs_x_density.png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Density plot saved to magnitude_vs_x_density.png&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="features.html" class="btn btn-neutral float-left" title="Features" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024-2025, Pier-Francesco Rocci.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,419 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage Guide &mdash; RAPAS Photometry Pipeline (RPP) v1.0.0 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="User Guide" href="user_guide.html" />
+    <link rel="prev" title="Installation Guide" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980b9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            RAPAS Photometry Pipeline (RPP)
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#basic-workflow">Basic Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#observatory-configuration">Observatory Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#analysis-parameters">Analysis Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#image-processing-pipeline">Image Processing Pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#catalog-cross-matching">Catalog Cross-matching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#results-and-outputs">Results and Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-management">Configuration Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#file-management">File Management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#error-handling-and-troubleshooting">Error Handling and Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980b9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">RAPAS Photometry Pipeline (RPP)</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Usage Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/usage.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="usage-guide">
+<h1>Usage Guide<a class="headerlink" href="#usage-guide" title="Link to this heading"></a></h1>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h2>
+<p>RAPAS Photometry Pipeline (RPP) provides a web-based interface that guides you through the process of analyzing astronomical images with comprehensive photometric analysis and catalog cross-matching.</p>
+<ol class="arabic">
+<li><p>Start the backend server (in a separate terminal):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>backend.py
+</pre></div>
+</div>
+</li>
+<li><p>Launch the frontend application:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>streamlit<span class="w"> </span>run<span class="w"> </span>frontend.py
+</pre></div>
+</div>
+</li>
+<li><p>Open your web browser to the displayed URL (typically <a class="reference external" href="http://localhost:8501">http://localhost:8501</a>)</p></li>
+<li><p>Log in using your credentials or register a new account.</p></li>
+</ol>
+</section>
+<section id="basic-workflow">
+<h2>Basic Workflow<a class="headerlink" href="#basic-workflow" title="Link to this heading"></a></h2>
+<p>The typical workflow in RPP consists of:</p>
+<ol class="arabic simple">
+<li><p><strong>Authentication</strong>: Log in with your username and password or register a new account.</p></li>
+<li><p><strong>File Upload</strong>: Upload FITS science images (supports .fits, .fit, .fts, .fits.gz formats).</p></li>
+<li><p><strong>Configuration</strong>: Set observatory details, analysis parameters, processing options, and API keys in the sidebar.</p></li>
+<li><p><strong>Image Processing</strong>: Run the comprehensive photometry pipeline including:
+- Automatic FITS header validation and fixing
+- Optional cosmic ray removal using L.A.Cosmic algorithm
+- 2D background estimation with SExtractor algorithm
+- Source detection using DAOStarFinder
+- FWHM estimation through Gaussian fitting
+- Multi-aperture photometry (1.5×, 2.0×, 2.5×, 3.0× FWHM radii)
+- Empirical PSF model construction and PSF photometry
+- Optional astrometric refinement using stdpipe and Gaia DR3
+- Photometric calibration against Gaia DR3 with zero-point calculation
+- Atmospheric extinction correction based on airmass</p></li>
+<li><p><strong>Catalog Enhancement</strong>: Automatic cross-matching with multiple astronomical databases</p></li>
+<li><p><strong>Visualization</strong>: Interactive results display with Aladin Lite integration</p></li>
+<li><p><strong>Results Export</strong>: Download comprehensive results as ZIP archives</p></li>
+</ol>
+</section>
+<section id="observatory-configuration">
+<h2>Observatory Configuration<a class="headerlink" href="#observatory-configuration" title="Link to this heading"></a></h2>
+<p>Observatory settings are used for accurate airmass calculations and can be configured in several ways:</p>
+<dl class="simple">
+<dt><strong>Manual Entry</strong>:</dt><dd><ul class="simple">
+<li><p>Observatory name, latitude, longitude, and elevation</p></li>
+<li><p>Supports both comma and dot decimal separators for international users</p></li>
+<li><p>Coordinate validation ensures proper ranges (±90° for latitude, ±180° for longitude)</p></li>
+</ul>
+</dd>
+<dt><strong>Automatic Extraction</strong>:</dt><dd><ul class="simple">
+<li><p>Observatory data is automatically extracted from FITS headers when available</p></li>
+<li><p>Searches for standard keywords: TELESCOP, SITELAT, SITELONG, SITEELEV</p></li>
+<li><p>Updates session configuration with header values</p></li>
+</ul>
+</dd>
+<dt><strong>Persistent Storage</strong>:</dt><dd><ul class="simple">
+<li><p>Observatory settings are saved per user account</p></li>
+<li><p>Configuration persists across sessions</p></li>
+<li><p>Can be updated and saved at any time</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="analysis-parameters">
+<h2>Analysis Parameters<a class="headerlink" href="#analysis-parameters" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Source Detection</strong>:</dt><dd><ul class="simple">
+<li><p><strong>Seeing (FWHM)</strong>: Initial atmospheric seeing estimate in arcseconds (1.0-6.0)</p></li>
+<li><p><strong>Detection Threshold</strong>: Source detection sigma threshold (0.5-4.5)</p></li>
+<li><p><strong>Border Mask</strong>: Edge exclusion zone in pixels (0-200)</p></li>
+</ul>
+</dd>
+<dt><strong>Photometric Calibration</strong>:</dt><dd><ul class="simple">
+<li><p><strong>Filter Band</strong>: Gaia photometric band for calibration (G, BP, RP, synthetic bands)</p></li>
+<li><p><strong>Maximum Magnitude</strong>: Faint limit for calibration stars (15.0-21.0)</p></li>
+</ul>
+</dd>
+<dt><strong>Processing Options</strong>:</dt><dd><ul class="simple">
+<li><p><strong>Refine Astrometry</strong>: Enable WCS improvement using stdpipe and Gaia DR3</p></li>
+<li><p><strong>Remove Cosmic Rays</strong>: Enable L.A.Cosmic cosmic ray removal with configurable parameters:
+- Gain (e-/ADU): Camera gain setting (0.1-10.0)
+- Read Noise (e-): Camera read noise (1.0-20.0)
+- Sigma Clip: Detection threshold (4.0-10.0)</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="image-processing-pipeline">
+<h2>Image Processing Pipeline<a class="headerlink" href="#image-processing-pipeline" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>1. Image Loading and Validation</strong>:</dt><dd><ul class="simple">
+<li><p>Robust FITS file parsing with multi-extension support</p></li>
+<li><p>Automatic handling of data cubes and RGB images</p></li>
+<li><p>FITS header validation and automatic fixing of common issues</p></li>
+<li><p>Pixel scale extraction and coordinate system validation</p></li>
+</ul>
+</dd>
+<dt><strong>2. Pre-processing</strong> (optional):</dt><dd><ul class="simple">
+<li><p>Cosmic ray detection and removal using astroscrappy</p></li>
+<li><p>Configurable parameters for different detector types</p></li>
+<li><p>Visual feedback on cosmic ray detection results</p></li>
+</ul>
+</dd>
+<dt><strong>3. Background Estimation</strong>:</dt><dd><ul class="simple">
+<li><p>2D background modeling using photutils.Background2D</p></li>
+<li><p>SExtractor background algorithm with sigma clipping</p></li>
+<li><p>Automatic box size adjustment for small images</p></li>
+<li><p>Background visualization and FITS output</p></li>
+</ul>
+</dd>
+<dt><strong>4. Source Detection</strong>:</dt><dd><ul class="simple">
+<li><p>DAOStarFinder implementation with optimized parameters</p></li>
+<li><p>Border masking to exclude edge effects</p></li>
+<li><p>Quality filtering based on source shape parameters</p></li>
+<li><p>FWHM estimation using marginal Gaussian fitting</p></li>
+</ul>
+</dd>
+<dt><strong>5. Astrometric Solution</strong>:</dt><dd><ul class="simple">
+<li><p>Automatic plate solving using SIRIL for missing WCS</p></li>
+<li><p>Optional WCS refinement using stdpipe and Gaia DR3</p></li>
+<li><p>Coordinate system validation and transformation testing</p></li>
+<li><p>Support for various coordinate reference frames</p></li>
+</ul>
+</dd>
+<dt><strong>6. Photometry</strong>:</dt><dd><ul class="simple">
+<li><p>Multi-aperture photometry with four different radii</p></li>
+<li><p>Empirical PSF model construction using bright, isolated stars</p></li>
+<li><p>PSF photometry using IterativePSFPhotometry</p></li>
+<li><p>Error estimation including background and Poisson noise</p></li>
+<li><p>Signal-to-noise ratio calculation for all measurements</p></li>
+</ul>
+</dd>
+<dt><strong>7. Calibration</strong>:</dt><dd><ul class="simple">
+<li><p>Cross-matching with Gaia DR3 catalog</p></li>
+<li><p>Quality filtering (variability, color, astrometric quality)</p></li>
+<li><p>Robust zero-point calculation with sigma clipping</p></li>
+<li><p>Atmospheric extinction correction using calculated airmass</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="catalog-cross-matching">
+<h2>Catalog Cross-matching<a class="headerlink" href="#catalog-cross-matching" title="Link to this heading"></a></h2>
+<p>RPP automatically cross-matches detected sources with multiple astronomical catalogs:</p>
+<dl class="simple">
+<dt><strong>Gaia DR3</strong>:</dt><dd><ul class="simple">
+<li><p>Primary photometric calibration source</p></li>
+<li><p>Quality filtering for reliable calibration stars</p></li>
+<li><p>Astrometric and photometric data extraction</p></li>
+</ul>
+</dd>
+<dt><strong>SIMBAD</strong>:</dt><dd><ul class="simple">
+<li><p>Object identification and classification</p></li>
+<li><p>Cross-match within field of view</p></li>
+<li><p>Object type and identifier retrieval</p></li>
+</ul>
+</dd>
+<dt><strong>SkyBoT</strong> (Solar System Bodies):</dt><dd><ul class="simple">
+<li><p>Moving object detection and identification</p></li>
+<li><p>Ephemeris-based position calculation</p></li>
+<li><p>Solar system object classification</p></li>
+</ul>
+</dd>
+<dt><strong>AAVSO VSX</strong> (Variable Star Index):</dt><dd><ul class="simple">
+<li><p>Variable star identification</p></li>
+<li><p>Variability type and period information</p></li>
+<li><p>Cross-match with known variable stars</p></li>
+</ul>
+</dd>
+<dt><strong>Astro-Colibri</strong>:</dt><dd><ul class="simple">
+<li><p>Transient event detection and classification</p></li>
+<li><p>Requires user API key registration</p></li>
+<li><p>Recent astronomical event correlation</p></li>
+</ul>
+</dd>
+<dt><strong>VizieR Milliquas</strong>:</dt><dd><ul class="simple">
+<li><p>Quasar and QSO identification</p></li>
+<li><p>Large-scale structure object detection</p></li>
+<li><p>Redshift and classification information</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="results-and-outputs">
+<h2>Results and Outputs<a class="headerlink" href="#results-and-outputs" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Interactive Visualization</strong>:</dt><dd><ul class="simple">
+<li><p>Aladin Lite integration for interactive sky viewing</p></li>
+<li><p>Source overlay with detailed popup information</p></li>
+<li><p>Multiple sky survey options (DSS, 2MASS, etc.)</p></li>
+<li><p>ESA Sky integration for external viewing</p></li>
+</ul>
+</dd>
+<dt><strong>Data Products</strong>:</dt><dd><ul class="simple">
+<li><p><strong>Photometry Catalog</strong>: Complete source measurements in CSV format</p></li>
+<li><p><strong>Processing Logs</strong>: Detailed execution history with timestamps</p></li>
+<li><p><strong>Visualizations</strong>: Magnitude distributions, error plots, image displays</p></li>
+<li><p><strong>FITS Products</strong>: Background models, PSF models, WCS-solved headers</p></li>
+<li><p><strong>Archive Files</strong>: Complete ZIP packages for easy distribution</p></li>
+</ul>
+</dd>
+<dt><strong>Catalog Structure</strong>:</dt><dd><ul class="simple">
+<li><p>Multi-aperture photometry results (1.5×, 2.0×, 2.5×, 3.0× FWHM)</p></li>
+<li><p>PSF photometry measurements and errors</p></li>
+<li><p>Astrometric coordinates and uncertainties</p></li>
+<li><p>Cross-match results from all queried catalogs</p></li>
+<li><p>Quality flags and measurement metadata</p></li>
+<li><p>Zero-point and atmospheric correction information</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="configuration-management">
+<h2>Configuration Management<a class="headerlink" href="#configuration-management" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>User-Specific Settings</strong>:</dt><dd><ul class="simple">
+<li><p>Observatory configuration per user account</p></li>
+<li><p>Analysis parameter preferences</p></li>
+<li><p>API key storage (encrypted)</p></li>
+<li><p>Processing history and archived results</p></li>
+</ul>
+</dd>
+<dt><strong>Session Persistence</strong>:</dt><dd><ul class="simple">
+<li><p>Configuration automatically saved and loaded</p></li>
+<li><p>Settings persist across browser sessions</p></li>
+<li><p>Manual save/load functionality available</p></li>
+</ul>
+</dd>
+<dt><strong>Multi-User Support</strong>:</dt><dd><ul class="simple">
+<li><p>Isolated user workspaces</p></li>
+<li><p>Secure authentication and authorization</p></li>
+<li><p>Individual result directories and configurations</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="file-management">
+<h2>File Management<a class="headerlink" href="#file-management" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Input Support</strong>:</dt><dd><ul class="simple">
+<li><p>Standard FITS formats (.fits, .fit, .fts)</p></li>
+<li><p>Compressed FITS (.fits.gz)</p></li>
+<li><p>Multi-extension FITS files</p></li>
+<li><p>Data cubes (extracts first 2D plane)</p></li>
+</ul>
+</dd>
+<dt><strong>Output Organization</strong>:</dt><dd><ul class="simple">
+<li><p>User-specific result directories</p></li>
+<li><p>Timestamped file naming</p></li>
+<li><p>Automatic cleanup of old temporary files</p></li>
+<li><p>ZIP archive creation for complete result sets</p></li>
+</ul>
+</dd>
+<dt><strong>Archive Management</strong>:</dt><dd><ul class="simple">
+<li><p>Automatic 30-day retention for result files</p></li>
+<li><p>Archived ZIP file browser in sidebar</p></li>
+<li><p>Selective download of previous results</p></li>
+<li><p>Configuration files preserved indefinitely</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="error-handling-and-troubleshooting">
+<h2>Error Handling and Troubleshooting<a class="headerlink" href="#error-handling-and-troubleshooting" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Robust Processing</strong>:</dt><dd><ul class="simple">
+<li><p>Graceful degradation when external services are unavailable</p></li>
+<li><p>Automatic retry mechanisms for network requests</p></li>
+<li><p>Comprehensive error logging and user feedback</p></li>
+<li><p>Fallback options for critical processing steps</p></li>
+</ul>
+</dd>
+<dt><strong>Common Issues</strong>:</dt><dd><ul class="simple">
+<li><p>Missing WCS: Automatic plate solving with SIRIL</p></li>
+<li><p>Network timeouts: Retry mechanisms and user notification</p></li>
+<li><p>Invalid coordinates: Manual entry options and validation</p></li>
+<li><p>Catalog service unavailability: Continued processing with available services</p></li>
+</ul>
+</dd>
+<dt><strong>Diagnostic Information</strong>:</dt><dd><ul class="simple">
+<li><p>Detailed processing logs with timestamps and log levels</p></li>
+<li><p>Error messages with context and suggested solutions</p></li>
+<li><p>Processing parameter documentation and help text</p></li>
+<li><p>Version information and system requirements</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="user_guide.html" class="btn btn-neutral float-right" title="User Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024-2025, Pier-Francesco Rocci.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

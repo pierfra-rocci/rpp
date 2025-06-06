@@ -1,0 +1,258 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Troubleshooting &mdash; RAPAS Photometry Pipeline (RPP) v1.0.0 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Changelog" href="changelog.html" />
+    <link rel="prev" title="Examples" href="examples.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980b9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            RAPAS Photometry Pipeline (RPP)
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation-setup-issues">Installation &amp; Setup Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#login-registration-issues">Login &amp; Registration Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#image-loading-processing-issues">Image Loading &amp; Processing Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#catalog-query-issues-simbad-skybot-etc">Catalog Query Issues (SIMBAD, SkyBoT, etc.)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980b9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">RAPAS Photometry Pipeline (RPP)</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Troubleshooting</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/troubleshooting.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="troubleshooting">
+<h1>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h1>
+<p>This section addresses common issues and provides solutions for Photometry Factory for RAPAS.</p>
+<section id="installation-setup-issues">
+<h2>Installation &amp; Setup Issues<a class="headerlink" href="#installation-setup-issues" title="Link to this heading"></a></h2>
+<p><strong>Error: ImportError: No module named ‘…’</strong> (e.g., <cite>astropy</cite>, <cite>photutils</cite>, <cite>flask</cite>, <cite>astroscrappy</cite>)</p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Required Python packages are not installed or not found in the current environment.</p></li>
+<li><p><strong>Solution</strong>:
+1.  Ensure your virtual environment is activated (<cite>source pfr-env/bin/activate</cite> or <cite>pfr-envScriptsactivate</cite>).
+2.  Run <cite>pip install -r requirements.txt</cite> from the application’s root directory.</p></li>
+</ul>
+<p><strong>Error: Could not connect to backend at http://localhost:5000</strong> (on Login page)</p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: The Flask backend server (<cite>backend_dev.py</cite>) is not running or is inaccessible.</p></li>
+<li><p><strong>Solution</strong>:
+1.  Open a separate terminal in the application’s root directory.
+2.  Activate the virtual environment.
+3.  Run <cite>python backend_dev.py</cite>.
+4.  Check the terminal output for errors. Ensure no other process is using port 5000.</p></li>
+</ul>
+<p><strong>Error: DLL load failed while importing…</strong> (Windows)</p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Missing C++ runtime libraries required by some Python packages (e.g., <cite>numpy</cite>, <cite>scipy</cite>).</p></li>
+<li><p><strong>Solution</strong>: Install the latest Microsoft Visual C++ Redistributable packages for Visual Studio from the official Microsoft website.</p></li>
+</ul>
+<p><strong>Streamlit Version Issues</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Errors related to Streamlit functions or behavior might indicate an incompatible version.</p></li>
+<li><p><strong>Solution</strong>: Check the <cite>requirements.txt</cite> file for the recommended Streamlit version and install it specifically: <cite>pip install streamlit==&lt;version&gt;</cite>.</p></li>
+</ul>
+</section>
+<section id="login-registration-issues">
+<h2>Login &amp; Registration Issues<a class="headerlink" href="#login-registration-issues" title="Link to this heading"></a></h2>
+<p><strong>Error: “Username or email is already taken.”</strong> (Registration)</p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: The chosen username or email address already exists in the database.</p></li>
+<li><p><strong>Solution</strong>: Choose a different username and/or email address.</p></li>
+</ul>
+<p><strong>Error: “Invalid username or password.”</strong> (Login)</p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Incorrect username or password entered.</p></li>
+<li><p><strong>Solution</strong>: Verify your credentials. Use the password recovery option if you forgot your password.</p></li>
+</ul>
+<p><strong>Password Recovery Fails / No Email Received</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Email sending is not configured correctly on the backend.</p></li>
+<li><p><strong>Solution</strong>:
+1.  Ensure the backend server (<cite>backend_dev.py</cite>) is running.
+2.  Verify that the SMTP environment variables (<cite>SMTP_SERVER</cite>, <cite>SMTP_PORT</cite>, <cite>SMTP_USER</cite>, <cite>SMTP_PASS</cite>) are correctly set in the environment where the backend is running.
+3.  Check the backend terminal output for email sending errors.
+4.  Check your email spam folder.
+5.  Ensure your email provider allows sending via SMTP (e.g., Gmail might require an “App Password”).</p></li>
+</ul>
+</section>
+<section id="image-loading-processing-issues">
+<h2>Image Loading &amp; Processing Issues<a class="headerlink" href="#image-loading-processing-issues" title="Link to this heading"></a></h2>
+<p><strong>Error: Could not read FITS file / No image data found</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: The file is corrupted, not a valid FITS file, or uses an unsupported format/compression.</p></li>
+<li><p><strong>Solution</strong>:
+*   Verify the file opens correctly in other FITS viewers (e.g., SAOImage DS9, Astap).
+*   Ensure the file has a standard extension (.fits, .fit, .fts, .fits.gz).
+*   If it’s a multi-extension FITS, ensure image data exists in at least one HDU.</p></li>
+</ul>
+<p><strong>Error: Missing required WCS keywords / WCS creation error</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: The FITS header lacks the necessary keywords (like CTYPE, CRVAL, CRPIX) for <cite>astropy.wcs</cite> to build a coordinate system.</p></li>
+<li><p><strong>Solution</strong>:
+*   Enable plate solving using Siril (requires Siril installation and the <cite>plate_solve.ps1</cite>/<cite>.sh</cite> script). Ensure Siril is correctly installed and accessible. Check the <cite>plate_solve</cite> script for correct paths if needed.
+*   Alternatively, use external software to add WCS information to the FITS header before uploading.</p></li>
+</ul>
+<p><strong>Astrometry+ / WCS Refinement Fails</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: The <cite>stdpipe</cite> refinement process could not find enough matches between detected sources and the GAIA catalog, or the initial WCS was too inaccurate.</p></li>
+<li><p><strong>Solution</strong>:
+*   Ensure the initial WCS (from header or Siril) is roughly correct (within a few arcminutes).
+*   Check internet connectivity (required for GAIA query).
+*   Try adjusting the “Seeing” parameter, as it affects detection.
+*   If the field is very sparse or very crowded, refinement might struggle. Consider disabling Astrometry+.</p></li>
+</ul>
+<p><strong>Cosmic Ray Removal Issues</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Too many or too few cosmic rays detected; artifacts introduced.</p></li>
+<li><p><strong>Solution</strong>:
+*   Adjust the CRR parameters in the sidebar expander (“Gain”, “Read Noise”, “Detection Threshold”). Lowering the threshold detects more CRs, raising it detects fewer.
+*   Ensure Gain and Read Noise values roughly match your detector’s characteristics.
+*   Visually inspect the cleaned image; disable CRR if it causes issues.</p></li>
+</ul>
+<p><strong>Error Estimating Background / Background estimation error</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: <cite>photutils.Background2D</cite> failed, possibly due to image size, extreme saturation, or unusual image structure.</p></li>
+<li><p><strong>Solution</strong>:
+*   Ensure the image is not completely saturated or empty.
+*   The tool automatically adjusts box size for small images, but very small images (&lt; ~40 pixels wide) might still fail.</p></li>
+</ul>
+<p><strong>No Sources Found / Few Sources Found</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Detection parameters might be unsuitable for the image.</p></li>
+<li><p><strong>Solution</strong>:
+*   Lower the “Detection Threshold (σ)” in the sidebar to detect fainter sources.
+*   Ensure the “Seeing (arcsec)” estimate is reasonable; an incorrect FWHM estimate for detection can hinder results.
+*   Check if the “Border Mask” is too large.
+*   Verify the image isn’t blank or excessively noisy.</p></li>
+</ul>
+<p><strong>Zero Point Calculation Fails / No Gaia Matches</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Could not match detected sources to the GAIA catalog or calculate a reliable zero point.</p></li>
+<li><p><strong>Solution</strong>:
+*   Verify WCS accuracy. If WCS is significantly off, matching will fail. Try enabling Astrometry+ or using Siril solving.
+*   Check internet connection for GAIA query.
+*   Adjust GAIA “Filter Max Magnitude” – if set too bright (low number), might exclude usable calibration stars.
+*   Ensure the selected “Filter Band” is appropriate for the image filter (if known).
+*   The field might genuinely lack suitable GAIA stars in the specified magnitude range.</p></li>
+</ul>
+</section>
+<section id="catalog-query-issues-simbad-skybot-etc">
+<h2>Catalog Query Issues (SIMBAD, SkyBoT, etc.)<a class="headerlink" href="#catalog-query-issues-simbad-skybot-etc" title="Link to this heading"></a></h2>
+<p><strong>Warning: “Query failed: Network error / Timeout”</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Temporary network issue or the external catalog service is down or slow.</p></li>
+<li><p><strong>Solution</strong>: Wait and try processing the image again later. Check your internet connection.</p></li>
+</ul>
+<p><strong>Warning: “No sources found…” for a specific catalog</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: The catalog genuinely contains no known objects matching the criteria within your image field.</p></li>
+<li><p><strong>Solution</strong>: This is expected for many fields. The message is informational.</p></li>
+</ul>
+<p><strong>Astro-Colibri: No matches or Error</strong></p>
+<ul class="simple">
+<li><p><strong>Problem</strong>: Invalid or missing API key, network issue, or no recent events in the field.</p></li>
+<li><p><strong>Solution</strong>:
+*   Ensure you have entered the correct Astro-Colibri UID key in the sidebar.
+*   Check internet connection.
+*   Check the Astro-Colibri website for service status.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="changelog.html" class="btn btn-neutral float-right" title="Changelog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024-2025, Pier-Francesco Rocci.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

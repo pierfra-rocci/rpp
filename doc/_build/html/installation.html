@@ -1,0 +1,388 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Installation Guide &mdash; RAPAS Photometry Pipeline (RPP) v1.0.0 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Usage Guide" href="usage.html" />
+    <link rel="prev" title="RAPAS Photometry Pipeline (RPP)" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980b9" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            RAPAS Photometry Pipeline (RPP)
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#system-requirements">System Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation-steps">Installation Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-the-application">Running the Application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#api-keys-and-external-services">API Keys and External Services</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting-installation">Troubleshooting Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#performance-optimization">Performance Optimization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#updating-the-application">Updating the Application</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980b9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">RAPAS Photometry Pipeline (RPP)</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Installation Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/installation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="installation-guide">
+<h1>Installation Guide<a class="headerlink" href="#installation-guide" title="Link to this heading"></a></h1>
+<section id="system-requirements">
+<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Python Requirements</strong>:</dt><dd><ul class="simple">
+<li><p>Python 3.8 or higher</p></li>
+<li><p>pip package manager</p></li>
+<li><p>Virtual environment (recommended)</p></li>
+</ul>
+</dd>
+<dt><strong>External Dependencies</strong>:</dt><dd><ul class="simple">
+<li><p>SIRIL astronomical image processing software</p></li>
+<li><p>Modern web browser (Chrome, Firefox, Safari, Edge)</p></li>
+<li><p>Internet connection for catalog queries</p></li>
+</ul>
+</dd>
+<dt><strong>Operating System Support</strong>:</dt><dd><ul class="simple">
+<li><p>Windows 10/11 (with PowerShell)</p></li>
+<li><p>macOS 10.15 or later</p></li>
+<li><p>Linux (Ubuntu 18.04+ or equivalent)</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="installation-steps">
+<h2>Installation Steps<a class="headerlink" href="#installation-steps" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p><strong>Clone or Download the Repository</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/your-repo/rpp.git
+<span class="nb">cd</span><span class="w"> </span>rpp
+</pre></div>
+</div>
+<p>Or download and extract the ZIP archive.</p>
+</li>
+<li><p><strong>Create Virtual Environment</strong> (recommended):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>rpp-env
+
+<span class="c1"># On Windows:</span>
+rpp-env<span class="se">\S</span>cripts<span class="se">\a</span>ctivate
+
+<span class="c1"># On macOS/Linux:</span>
+<span class="nb">source</span><span class="w"> </span>rpp-env/bin/activate
+</pre></div>
+</div>
+</li>
+<li><p><strong>Install Python Dependencies</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</pre></div>
+</div>
+<p><strong>Core Dependencies</strong>:
+- streamlit &gt;= 1.28.0 (web interface)
+- astropy &gt;= 5.0 (astronomical computations)
+- photutils &gt;= 1.5.0 (photometry algorithms)
+- astroquery &gt;= 0.4.6 (catalog access)
+- numpy &gt;= 1.21.0 (numerical computations)
+- pandas &gt;= 1.3.0 (data manipulation)
+- matplotlib &gt;= 3.5.0 (plotting)
+- flask &gt;= 2.0.0 (backend server)
+- flask-cors (cross-origin resource sharing)
+- werkzeug (WSGI utilities)</p>
+<p><strong>Optional Dependencies</strong>:
+- astroscrappy (cosmic ray removal)
+- stdpipe (astrometry refinement)
+- requests (HTTP client)</p>
+</li>
+<li><p><strong>Install SIRIL</strong> (required for plate solving):</p>
+<p><strong>Windows</strong>:
+- Download from <a class="reference external" href="https://siril.org/download/">https://siril.org/download/</a>
+- Install using the provided installer
+- Ensure <cite>siril-cli</cite> is available in system PATH</p>
+<p><strong>macOS</strong>:
+- Install via Homebrew: <cite>brew install siril</cite>
+- Or download from <a class="reference external" href="https://siril.org/download/">https://siril.org/download/</a></p>
+<p><strong>Linux</strong>:
+- Ubuntu/Debian: <cite>sudo apt install siril</cite>
+- Fedora: <cite>sudo dnf install siril</cite>
+- Or compile from source: <a class="reference external" href="https://siril.org/download/">https://siril.org/download/</a></p>
+</li>
+<li><p><strong>Verify SIRIL Installation</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>siril-cli<span class="w"> </span>--version
+</pre></div>
+</div>
+<p>If this command fails, ensure SIRIL is properly installed and in your system PATH.</p>
+</li>
+<li><p><strong>Initialize User Database</strong>:
+The backend will automatically create <cite>users.db</cite> on first run. No manual initialization required.</p></li>
+</ol>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p><strong>Environment Variables</strong> (optional):</p>
+<p>For email-based password recovery, set these environment variables:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Email server configuration</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_SERVER</span><span class="o">=</span>smtp.gmail.com
+<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_PORT</span><span class="o">=</span><span class="m">587</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_USER</span><span class="o">=</span>your-email@gmail.com
+<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_PASS</span><span class="o">=</span>your-app-password
+</pre></div>
+</div>
+<p><strong>File Structure</strong>:</p>
+<p>After installation, your directory should contain:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>rpp/
+├── src/
+│   ├── __version__.py      # Version information
+│   ├── tools.py           # Utility functions
+│   ├── pipeline.py        # Core processing pipeline
+│   ├── plate_solve.ps1    # Windows plate solving script
+│   └── plate_solve.sh     # Linux/macOS plate solving script
+├── pages/
+│   ├── app.py            # Main application interface
+│   └── login.py          # User authentication
+├── doc/                  # Documentation (Sphinx)
+├── backend.py           # Flask server
+├── frontend.py         # Streamlit entry point
+├── requirements.txt    # Python dependencies
+└── README.md          # Project overview
+</pre></div>
+</div>
+</section>
+<section id="running-the-application">
+<h2>Running the Application<a class="headerlink" href="#running-the-application" title="Link to this heading"></a></h2>
+<p><strong>1. Start the Backend Server</strong>:</p>
+<blockquote>
+<div><p>Open a terminal and run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>backend.py
+</pre></div>
+</div>
+<p>The server will start on <a class="reference external" href="http://localhost:5000">http://localhost:5000</a> by default.</p>
+</div></blockquote>
+<p><strong>2. Start the Frontend Application</strong>:</p>
+<blockquote>
+<div><p>In a separate terminal, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>streamlit<span class="w"> </span>run<span class="w"> </span>frontend.py
+</pre></div>
+</div>
+<p>The application will open in your default browser at <a class="reference external" href="http://localhost:8501">http://localhost:8501</a>.</p>
+</div></blockquote>
+<dl class="simple">
+<dt><strong>3. First-Time Setup</strong>:</dt><dd><ul class="simple">
+<li><p>Register a new user account</p></li>
+<li><p>Configure observatory settings</p></li>
+<li><p>Set analysis parameters</p></li>
+<li><p>Enter API keys (optional)</p></li>
+<li><p>Save configuration for future sessions</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="api-keys-and-external-services">
+<h2>API Keys and External Services<a class="headerlink" href="#api-keys-and-external-services" title="Link to this heading"></a></h2>
+<p>Some features require API keys from external services:</p>
+<dl class="simple">
+<dt><strong>Astro-Colibri</strong> (optional):</dt><dd><ul class="simple">
+<li><p>Register at <a class="reference external" href="https://astro-colibri.science/">https://astro-colibri.science/</a></p></li>
+<li><p>Obtain your UID key</p></li>
+<li><p>Enter in the application’s API Keys section</p></li>
+<li><p>Enables transient event cross-matching</p></li>
+</ul>
+</dd>
+<dt><strong>Gaia Archive</strong> (automatic):</dt><dd><ul class="simple">
+<li><p>No registration required</p></li>
+<li><p>Accessed via astroquery.gaia</p></li>
+<li><p>Used for photometric calibration</p></li>
+</ul>
+</dd>
+<dt><strong>SIMBAD/VizieR</strong> (automatic):</dt><dd><ul class="simple">
+<li><p>No registration required</p></li>
+<li><p>Accessed via astroquery</p></li>
+<li><p>Used for object identification</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="troubleshooting-installation">
+<h2>Troubleshooting Installation<a class="headerlink" href="#troubleshooting-installation" title="Link to this heading"></a></h2>
+<p><strong>Common Issues</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>ImportError for Python packages</strong>:
+- Ensure virtual environment is activated
+- Reinstall requirements: <cite>pip install -r requirements.txt –force-reinstall</cite>
+- Check Python version compatibility</p></li>
+<li><p><strong>SIRIL not found</strong>:
+- Verify SIRIL installation: <cite>siril-cli –version</cite>
+- Check system PATH includes SIRIL directory
+- Restart terminal after SIRIL installation</p></li>
+<li><p><strong>Permission errors</strong>:
+- Use virtual environment to avoid system-wide installations
+- On Linux/macOS: Check file permissions for script execution
+- On Windows: Run as administrator if needed</p></li>
+<li><p><strong>Network connectivity issues</strong>:
+- Check internet connection for catalog queries
+- Verify firewall settings allow HTTP/HTTPS traffic
+- Some institutional networks may block astronomical databases</p></li>
+<li><p><strong>Browser compatibility</strong>:
+- Use modern browsers (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
+- Enable JavaScript and allow local connections
+- Clear browser cache if interface doesn’t load properly</p></li>
+</ol>
+<p><strong>Platform-Specific Notes</strong>:</p>
+<dl class="simple">
+<dt><strong>Windows</strong>:</dt><dd><ul class="simple">
+<li><p>PowerShell execution policy may need adjustment</p></li>
+<li><p>Windows Defender may quarantine downloaded files</p></li>
+<li><p>Use Command Prompt or PowerShell for terminal commands</p></li>
+</ul>
+</dd>
+<dt><strong>macOS</strong>:</dt><dd><ul class="simple">
+<li><p>May need to allow unsigned applications in Security preferences</p></li>
+<li><p>Homebrew installation recommended for dependencies</p></li>
+<li><p>Command Line Tools for Xcode required for some packages</p></li>
+</ul>
+</dd>
+<dt><strong>Linux</strong>:</dt><dd><ul class="simple">
+<li><p>Package manager installation preferred for system dependencies</p></li>
+<li><p>May need development headers for compilation</p></li>
+<li><p>Check distribution-specific package names</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="performance-optimization">
+<h2>Performance Optimization<a class="headerlink" href="#performance-optimization" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>System Resources</strong>:</dt><dd><ul class="simple">
+<li><p>Minimum 4GB RAM recommended</p></li>
+<li><p>SSD storage preferred for temporary file handling</p></li>
+<li><p>Multi-core processor beneficial for image processing</p></li>
+</ul>
+</dd>
+<dt><strong>Configuration Tuning</strong>:</dt><dd><ul class="simple">
+<li><p>Adjust detection parameters for your typical image sizes</p></li>
+<li><p>Configure appropriate timeout values for slow networks</p></li>
+<li><p>Set reasonable maximum catalog query limits</p></li>
+</ul>
+</dd>
+<dt><strong>Data Management</strong>:</dt><dd><ul class="simple">
+<li><p>Regular cleanup of old result directories</p></li>
+<li><p>Monitor disk space usage for large datasets</p></li>
+<li><p>Consider archival strategies for important results</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="updating-the-application">
+<h2>Updating the Application<a class="headerlink" href="#updating-the-application" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Update Process</strong>:</dt><dd><ol class="arabic simple">
+<li><p>Backup your configuration files and important results</p></li>
+<li><p>Pull latest changes from repository or download new version</p></li>
+<li><p>Update Python dependencies: <cite>pip install -r requirements.txt –upgrade</cite></p></li>
+<li><p>Restart both backend and frontend services</p></li>
+<li><p>Test with a simple image to verify functionality</p></li>
+</ol>
+</dd>
+<dt><strong>Version Compatibility</strong>:</dt><dd><ul class="simple">
+<li><p>Configuration files are generally forward-compatible</p></li>
+<li><p>User databases automatically migrate when needed</p></li>
+<li><p>Previous result archives remain accessible</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="RAPAS Photometry Pipeline (RPP)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="usage.html" class="btn btn-neutral float-right" title="Usage Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024-2025, Pier-Francesco Rocci.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
