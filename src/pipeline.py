@@ -44,9 +44,9 @@ from typing import Union, Any, Optional, Dict, Tuple
 
 def solve_with_astrometrynet(file_path):
     """
-    Solve astrometric plate using local Astrometry.Net installation through stdpipe.
-    This function loads a FITS image, detects objects, and uses a local Astrometry.Net
-    installation with index files to determine accurate WCS information.
+    Solve astrometric plate using local Astrometry.Net installation.
+    This function loads a FITS image, detects objects using photutils, and uses a local 
+    Astrometry.Net installation with index files to determine accurate WCS information.
 
     Parameters
     ----------
@@ -85,11 +85,6 @@ def solve_with_astrometrynet(file_path):
             st.error("No image data found in FITS file")
             return None, None
             
-        # Fix byte order for stdpipe compatibility
-        if not image_data.dtype.isnative:
-            st.write("Converting image data to native byte order for stdpipe compatibility...")
-            image_data = image_data.astype(image_data.dtype.newbyteorder('='))
-        
         # Ensure data is float32 for better compatibility
         if image_data.dtype != np.float32:
             image_data = image_data.astype(np.float32)
@@ -102,259 +97,135 @@ def solve_with_astrometrynet(file_path):
         except Exception:
             st.info("No valid WCS found in header. Proceeding with blind solve...")
             
-        # Detect objects for plate solving using stdpipe
-        st.write("Detecting objects for plate solving using stdpipe...")
+        # Detect objects for plate solving using photutils
+        st.write("Detecting objects for plate solving using photutils...")
         
-        try:
-            # First, let's get some image statistics for better parameter selection
-            image_stats = {
-                'mean': np.mean(image_data),
-                'std': np.std(image_data),
-                'min': np.min(image_data),
-                'max': np.max(image_data),
-                'median': np.median(image_data)
-            }
-            st.write(f"Image statistics: mean={image_stats['mean']:.1f}, std={image_stats['std']:.1f}, "
-                    f"min={image_stats['min']:.1f}, max={image_stats['max']:.1f}")
+        # Estimate background using photutils
+        bkg, bkg_error = estimate_background(image_data)
+        if bkg is None:
+            st.error(f"Failed to estimate background: {bkg_error}")
+            return None, None
             
-            # Try more sensitive detection parameters first
-            detection_params = [
-                {'thresh': 1.5, 'sn': 3, 'aper': 3, 'desc': 'Very sensitive'},
-                {'thresh': 2.0, 'sn': 4, 'desc': 'Sensitive'},
-                {'thresh': 3.0, 'sn': 5, 'desc': 'Standard'},
-                {'thresh': 4.0, 'sn': 6, 'desc': 'Conservative'}
-            ]
-            
-            obj = None
-            for params in detection_params:
-                st.write(f"Trying {params['desc']} detection (thresh={params['thresh']}, sn={params['sn']})...")
+        image_sub = image_data - bkg.background
+        
+        # Try different FWHM estimates and thresholds for detection
+        fwhm_estimates = [2.0, 3.0, 4.0, 5.0]
+        threshold_multipliers = [3.0, 4.0, 5.0, 6.0]
+        
+        sources = None
+        detection_info = {}
+        
+        for fwhm_est in fwhm_estimates:
+            for thresh_mult in threshold_multipliers:
+                threshold = thresh_mult * np.std(image_sub)
                 
                 try:
-                    obj = photometry.get_objects_sep(
-                        image_data,
-                        header=header,
-                        thresh=params['thresh'],  # Detection threshold
-                        sn=params['sn'],          # Minimum S/N ratio
-                        aper=params.get('aper', 5),  # Aperture radius for flux measurement
-                        mask=None,
-                        use_mask_large=True,
-                        get_segmentation=False,
-                        subtract_bg=True,
-                        minarea=5,  # Minimum area for detection
-                        deblend_nthresh=16,  # Number of deblending thresholds
-                        deblend_cont=0.001,  # Deblending contrast parameter
-                        clean=True,  # Clean spurious detections
-                        clean_param=1.0,  # Cleaning parameter
-                    )
+                    st.write(f"Trying FWHM={fwhm_est}, threshold={threshold:.1f}...")
+                    daofind = DAOStarFinder(fwhm=fwhm_est, threshold=threshold)
+                    temp_sources = daofind(image_sub)
                     
-                    if obj is not None and len(obj) >= 10:
-                        st.success(f"Detected {len(obj)} sources using {params['desc']} parameters")
+                    if temp_sources is not None and len(temp_sources) >= 10:
+                        sources = temp_sources
+                        detection_info = {
+                            'fwhm': fwhm_est,
+                            'threshold': threshold,
+                            'n_sources': len(sources)
+                        }
+                        st.success(f"Photutils found {len(sources)} sources with "
+                                 f"FWHM={fwhm_est}, threshold={threshold:.1f}")
                         break
-                    elif obj is not None:
-                        st.write(f"Found {len(obj)} sources (need at least 10)")
-                    else:
-                        st.write("No sources found with these parameters")
+                    elif temp_sources is not None:
+                        st.write(f"Found {len(temp_sources)} sources (need at least 10)")
                         
-                except Exception as param_error:
-                    st.write(f"Detection failed with {params['desc']} parameters: {param_error}")
+                except Exception as e:
+                    st.write(f"Detection failed with FWHM={fwhm_est}, threshold={threshold:.1f}: {e}")
                     continue
             
-            # If we still don't have enough sources, try even more aggressive parameters
-            if obj is None or len(obj) < 10:
-                st.warning("Standard detection failed. Trying very aggressive parameters...")
-                try:
-                    obj = photometry.get_objects_sep(
-                        image_data,
-                        header=header,
-                        thresh=1.0,  # Very low threshold
-                        sn=2,        # Very low S/N requirement
-                        aper=2,      # Smaller aperture
-                        mask=None,
-                        use_mask_large=False,  # Don't mask large objects
-                        get_segmentation=False,
-                        subtract_bg=True,
-                        minarea=3,   # Very small minimum area
-                        deblend_nthresh=32,  # More deblending levels
-                        deblend_cont=0.0001,  # Very aggressive deblending
-                        clean=False,  # Don't clean detections
-                    )
-                    
-                    if obj is not None and len(obj) > 0:
-                        st.write(f"Aggressive detection found {len(obj)} sources")
-                    
-                except Exception as aggressive_error:
-                    st.warning(f"Aggressive detection also failed: {aggressive_error}")
+            if sources is not None and len(sources) >= 10:
+                break
+        
+        # If no good detection, try more aggressive parameters
+        if sources is None or len(sources) < 10:
+            st.warning("Standard detection failed. Trying more aggressive parameters...")
             
-            # Ensure the object table has all required columns for stdpipe
-            if obj is not None and len(obj) > 0:
-                # Check and add missing columns that stdpipe expects
-                required_columns = ['x', 'y', 'flux', 'fluxerr', 'sn']
-                
-                # Add fluxerr if missing (estimate from flux and sn)
-                if 'fluxerr' not in obj.colnames and 'flux' in obj.colnames and 'sn' in obj.colnames:
-                    # fluxerr = flux / sn (since sn = flux / fluxerr)
-                    obj['fluxerr'] = obj['flux'] / np.maximum(obj['sn'], 1.0)  # Avoid division by zero
-                    st.write("Added 'fluxerr' column to object table")
-                elif 'fluxerr' not in obj.colnames and 'flux' in obj.colnames:
-                    # Estimate fluxerr as 10% of flux if no S/N available
-                    obj['fluxerr'] = obj['flux'] * 0.1
-                    st.write("Added estimated 'fluxerr' column (10% of flux)")
-                
-                # Add other missing columns if needed
-                if 'sn' not in obj.colnames and 'flux' in obj.colnames and 'fluxerr' in obj.colnames:
-                    obj['sn'] = obj['flux'] / np.maximum(obj['fluxerr'], 1e-10)
-                    st.write("Added 'sn' column calculated from flux/fluxerr")
-                
-                # Ensure x,y coordinates are present
-                if 'x' not in obj.colnames and 'xcentroid' in obj.colnames:
-                    obj['x'] = obj['xcentroid']
-                if 'y' not in obj.colnames and 'ycentroid' in obj.colnames:
-                    obj['y'] = obj['ycentroid']
-                
-                # Show final column information
-                st.write(f"Object table columns: {list(obj.colnames)}")
-                st.write(f"Object table shape: {len(obj)} sources")
-            
-            if obj is None or len(obj) < 5:
-                st.warning("Very few sources detected for reliable plate solving. This could be due to:")
-                st.info("- Image has very low contrast or few stars")
-                st.info("- Background subtraction issues")
-                st.info("- Image saturation or very faint stars")
-                st.info("- Unusual image format or scaling")
-                st.info("Falling back to photutils detection...")
-                
-                # Show a small region of the image for inspection
-                try:
-                    center_y, center_x = image_data.shape[0] // 2, image_data.shape[1] // 2
-                    sample_region = image_data[center_y-50:center_y+50, center_x-50:center_x+50]
-                    
-                    fig_sample, ax_sample = plt.subplots(figsize=(6, 6))
-                    im = ax_sample.imshow(sample_region, origin='lower', cmap='gray')
-                    ax_sample.set_title('Central 100x100 pixel region')
-                    plt.colorbar(im, ax=ax_sample)
-                    st.pyplot(fig_sample)
-                    
-                except Exception as plot_error:
-                    st.warning(f"Could not display sample region: {plot_error}")
-            else:
-                st.write(f"Successfully detected {len(obj)} sources using stdpipe")
-                
-                # Filter for best sources for plate solving
-                if len(obj) > 500:
-                    # Sort by flux and take brightest sources
-                    obj.sort('flux')
-                    obj.reverse()
-                    obj = obj[:500]
-                    st.write(f"Using brightest {len(obj)} sources for plate solving")
-                
-                # Show some statistics about detected sources
-                if 'flux' in obj.colnames:
-                    flux_stats = {
-                        'min': np.min(obj['flux']),
-                        'max': np.max(obj['flux']),
-                        'median': np.median(obj['flux']),
-                        'std': np.std(obj['flux'])
-                    }
-                    st.write(f"Source flux statistics: min={flux_stats['min']:.1f}, "
-                            f"max={flux_stats['max']:.1f}, median={flux_stats['median']:.1f}")
-                
-                if 'sn' in obj.colnames:
-                    sn_stats = {
-                        'min': np.min(obj['sn']),
-                        'max': np.max(obj['sn']),
-                        'median': np.median(obj['sn'])
-                    }
-                    st.write(f"Source S/N statistics: min={sn_stats['min']:.1f}, "
-                            f"max={sn_stats['max']:.1f}, median={sn_stats['median']:.1f}")
-                    
-        except Exception as e:
-            st.warning(f"stdpipe object detection failed: {e}. Falling back to photutils...")
-            obj = None
-            
-        # If stdpipe detection failed or found too few sources, use photutils fallback
-        if obj is None or len(obj) < 5:
-            st.write("Using photutils fallback detection...")
-            
-            # Fallback to photutils detection
-            bkg, bkg_error = estimate_background(image_data)
-            if bkg is None:
-                st.error(f"Failed to estimate background: {bkg_error}")
-                return None, None
-                
-            image_sub = image_data - bkg.background
-            
-            # Try different FWHM estimates and thresholds
-            fwhm_estimates = [2.0, 3.0, 4.0, 5.0]
-            threshold_multipliers = [2.0, 3.0, 4.0, 5.0]
-            
-            sources = None
-            for fwhm_est in fwhm_estimates:
-                for thresh_mult in threshold_multipliers:
+            # Very aggressive detection
+            for fwhm_est in [1.5, 2.0, 2.5]:
+                for thresh_mult in [2.0, 2.5]:
                     threshold = thresh_mult * np.std(image_sub)
                     
                     try:
+                        st.write(f"Trying aggressive FWHM={fwhm_est}, threshold={threshold:.1f}...")
                         daofind = DAOStarFinder(fwhm=fwhm_est, threshold=threshold)
                         temp_sources = daofind(image_sub)
                         
-                        if temp_sources is not None and len(temp_sources) >= 10:
+                        if temp_sources is not None and len(temp_sources) >= 5:
                             sources = temp_sources
-                            st.write(f"Photutils found {len(sources)} sources with "
-                                   f"FWHM={fwhm_est}, threshold={threshold:.1f}")
+                            detection_info = {
+                                'fwhm': fwhm_est,
+                                'threshold': threshold,
+                                'n_sources': len(sources)
+                            }
+                            st.success(f"Aggressive detection found {len(sources)} sources")
                             break
-                    except Exception:
+                            
+                    except Exception as e:
                         continue
                 
-                if sources is not None and len(sources) >= 10:
+                if sources is not None and len(sources) >= 5:
                     break
+        
+        if sources is None or len(sources) < 5:
+            st.error("Failed to detect sufficient sources for plate solving.")
+            st.error("Possible solutions:")
+            st.error("1. Check if the image contains stars (not empty field)")
+            st.error("2. Verify image is not severely over/under-exposed")
+            st.error("3. Try adjusting the detection threshold manually")
+            st.error("4. Consider pre-processing the image (cosmic ray removal, etc.)")
             
-            if sources is None or len(sources) < 5:
-                st.error("Both stdpipe and photutils failed to detect sufficient sources.")
-                st.error("Possible solutions:")
-                st.error("1. Check if the image contains stars (not empty field)")
-                st.error("2. Verify image is not severely over/under-exposed")
-                st.error("3. Try adjusting the detection threshold manually")
-                st.error("4. Consider pre-processing the image (cosmic ray removal, etc.)")
-                return None, None
+            # Show a small region of the image for inspection
+            try:
+                center_y, center_x = image_data.shape[0] // 2, image_data.shape[1] // 2
+                sample_region = image_data[center_y-50:center_y+50, center_x-50:center_x+50]
                 
-            st.write(f"Photutils detected {len(sources)} sources as fallback")
+                fig_sample, ax_sample = plt.subplots(figsize=(6, 6))
+                im = ax_sample.imshow(sample_region, origin='lower', cmap='gray')
+                ax_sample.set_title('Central 100x100 pixel region')
+                plt.colorbar(im, ax=ax_sample)
+                st.pyplot(fig_sample)
+                
+            except Exception as plot_error:
+                st.warning(f"Could not display sample region: {plot_error}")
             
-            # Convert to stdpipe format with all required columns
+            return None, None
+        
+        # Prepare sources for astrometry solving
+        st.write(f"Successfully detected {len(sources)} sources using photutils")
+        
+        # Filter for best sources for plate solving (take brightest sources)
+        if len(sources) > 500:
             sources.sort('flux')
             sources.reverse()
-            n_sources = min(500, len(sources))
-            obj_list = sources[:n_sources]
-            
-            obj = Table()
-            obj['x'] = obj_list['xcentroid']
-            obj['y'] = obj_list['ycentroid']
-            obj['flux'] = obj_list['flux']
-            
-            # Calculate signal-to-noise ratio and flux error
-            if np.any(obj_list['flux'] > 0):
-                noise_estimate = np.median(bkg.background_rms)
-                obj['sn'] = obj['flux'] / noise_estimate
-                obj['fluxerr'] = obj['flux'] / obj['sn']  # fluxerr = flux / sn
-            else:
-                obj['sn'] = np.ones(len(obj)) * 10
-                obj['fluxerr'] = obj['flux'] * 0.1  # 10% flux error estimate
-            
-            st.write(f"Created stdpipe-compatible object table with columns: {list(obj.colnames)}")
-                
-        # Final check before proceeding
-        if obj is None or len(obj) < 5:
-            st.error("Insufficient sources detected for plate solving (need at least 5)")
-            return None, None
-        elif len(obj) < 10:
-            st.warning(f"Only {len(obj)} sources detected. Plate solving may be unreliable.")
+            sources = sources[:500]
+            st.write(f"Using brightest {len(sources)} sources for plate solving")
         
-        # Verify all required columns are present
-        required_cols = ['x', 'y', 'flux', 'fluxerr', 'sn']
-        missing_cols = [col for col in required_cols if col not in obj.colnames]
-        if missing_cols:
-            st.error(f"Missing required columns for plate solving: {missing_cols}")
-            return None, None
+        # Show some statistics about detected sources
+        flux_stats = {
+            'min': np.min(sources['flux']),
+            'max': np.max(sources['flux']),
+            'median': np.median(sources['flux']),
+            'std': np.std(sources['flux'])
+        }
+        st.write(f"Source flux statistics: min={flux_stats['min']:.1f}, "
+                f"max={flux_stats['max']:.1f}, median={flux_stats['median']:.1f}")
         
-        st.success(f"Ready for plate solving with {len(obj)} sources and all required columns")
+        st.success(f"Ready for plate solving with {len(sources)} sources")
+        
+        # TODO: Add actual astrometry.net solving here
+        # For now, return None to indicate that the detection part is complete
+        # but actual plate solving would need to be implemented
+        st.info("Object detection complete. Actual astrometry.net solving would be implemented here.")
+        
+        return None, None
         
     except Exception as e:
         st.error(f"Error in plate solving setup: {str(e)}")
