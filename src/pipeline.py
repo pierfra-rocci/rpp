@@ -238,7 +238,7 @@ def solve_with_astrometrynet(file_path):
                 obj,
                 order=2,  # SIP polynomial order
                 update=False,  # Don't update object table
-                sn=10,  # Minimum S/N for sources to use (higher for better reliability)
+                sn=10,  # Minimum S/N for sources to use
                 get_header=False,  # Return WCS object, not header
                 width=image_data.shape[1],
                 height=image_data.shape[0],
