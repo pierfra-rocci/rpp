@@ -42,7 +42,7 @@ from src.tools import (FIGURE_SIZES, URL, safe_catalog_query,
 from typing import Union, Any, Optional, Dict, Tuple
 
 
-def solve_with_astrometrynet(file_path, api_key=None):
+def solve_with_astrometrynet(file_path):
     """
     Solve astrometric plate using local Astrometry.Net installation through stdpipe.
     This function loads a FITS image, detects objects, and uses a local Astrometry.Net
