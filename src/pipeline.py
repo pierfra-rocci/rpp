@@ -185,6 +185,36 @@ def solve_with_astrometrynet(file_path):
                 except Exception as aggressive_error:
                     st.warning(f"Aggressive detection also failed: {aggressive_error}")
             
+            # Ensure the object table has all required columns for stdpipe
+            if obj is not None and len(obj) > 0:
+                # Check and add missing columns that stdpipe expects
+                required_columns = ['x', 'y', 'flux', 'fluxerr', 'sn']
+                
+                # Add fluxerr if missing (estimate from flux and sn)
+                if 'fluxerr' not in obj.colnames and 'flux' in obj.colnames and 'sn' in obj.colnames:
+                    # fluxerr = flux / sn (since sn = flux / fluxerr)
+                    obj['fluxerr'] = obj['flux'] / np.maximum(obj['sn'], 1.0)  # Avoid division by zero
+                    st.write("Added 'fluxerr' column to object table")
+                elif 'fluxerr' not in obj.colnames and 'flux' in obj.colnames:
+                    # Estimate fluxerr as 10% of flux if no S/N available
+                    obj['fluxerr'] = obj['flux'] * 0.1
+                    st.write("Added estimated 'fluxerr' column (10% of flux)")
+                
+                # Add other missing columns if needed
+                if 'sn' not in obj.colnames and 'flux' in obj.colnames and 'fluxerr' in obj.colnames:
+                    obj['sn'] = obj['flux'] / np.maximum(obj['fluxerr'], 1e-10)
+                    st.write("Added 'sn' column calculated from flux/fluxerr")
+                
+                # Ensure x,y coordinates are present
+                if 'x' not in obj.colnames and 'xcentroid' in obj.colnames:
+                    obj['x'] = obj['xcentroid']
+                if 'y' not in obj.colnames and 'ycentroid' in obj.colnames:
+                    obj['y'] = obj['ycentroid']
+                
+                # Show final column information
+                st.write(f"Object table columns: {list(obj.colnames)}")
+                st.write(f"Object table shape: {len(obj)} sources")
+            
             if obj is None or len(obj) < 5:
                 st.warning("Very few sources detected for reliable plate solving. This could be due to:")
                 st.info("- Image has very low contrast or few stars")
@@ -288,7 +318,7 @@ def solve_with_astrometrynet(file_path):
                 
             st.write(f"Photutils detected {len(sources)} sources as fallback")
             
-            # Convert to stdpipe format
+            # Convert to stdpipe format with all required columns
             sources.sort('flux')
             sources.reverse()
             n_sources = min(500, len(sources))
@@ -299,12 +329,16 @@ def solve_with_astrometrynet(file_path):
             obj['y'] = obj_list['ycentroid']
             obj['flux'] = obj_list['flux']
             
-            # Calculate signal-to-noise ratio
+            # Calculate signal-to-noise ratio and flux error
             if np.any(obj_list['flux'] > 0):
                 noise_estimate = np.median(bkg.background_rms)
                 obj['sn'] = obj['flux'] / noise_estimate
+                obj['fluxerr'] = obj['flux'] / obj['sn']  # fluxerr = flux / sn
             else:
                 obj['sn'] = np.ones(len(obj)) * 10
+                obj['fluxerr'] = obj['flux'] * 0.1  # 10% flux error estimate
+            
+            st.write(f"Created stdpipe-compatible object table with columns: {list(obj.colnames)}")
                 
         # Final check before proceeding
         if obj is None or len(obj) < 5:
@@ -313,179 +347,15 @@ def solve_with_astrometrynet(file_path):
         elif len(obj) < 10:
             st.warning(f"Only {len(obj)} sources detected. Plate solving may be unreliable.")
         
-        # Extract initial guess parameters from header
-        ra0 = header.get('RA') or header.get('OBJRA') or header.get('CRVAL1')
-        dec0 = header.get('DEC') or header.get('OBJDEC') or header.get('CRVAL2')
-        
-        # Estimate pixel scale with better defaults
-        pixscale_low = 0.1   # arcsec/pixel (very fine)
-        pixscale_upp = 20.0  # arcsec/pixel (very coarse)
-        
-        # Try to get better pixel scale estimate from header
-        if 'PIXSCALE' in header:
-            pixel_scale = header['PIXSCALE']
-            pixscale_low = pixel_scale * 0.3
-            pixscale_upp = pixel_scale * 3.0
-        elif 'CDELT1' in header:
-            pixel_scale = abs(header['CDELT1']) * 3600  # Convert degrees to arcsec
-            pixscale_low = pixel_scale * 0.3
-            pixscale_upp = pixel_scale * 3.0
-        elif 'SECPIX1' in header:
-            pixel_scale = header['SECPIX1']
-            pixscale_low = pixel_scale * 0.3
-            pixscale_upp = pixel_scale * 3.0
-            
-        # Set search radius if center coordinates available
-        radius = 2.0 if (ra0 is not None and dec0 is not None) else None
-        
-        st.write("Starting local Astrometry.Net plate solving via stdpipe...")
-        st.write(f"Center guess: RA={ra0:.4f}, DEC={dec0:.4f}" if ra0 and dec0 else "No center guess available")
-        st.write(f"Pixel scale range: {pixscale_low:.2f} - {pixscale_upp:.2f} arcsec/pixel")
-        
-        # Prepare additional parameters for solve-field
-        extra_params = {}
-        
-        # Add downsample factor for large images to speed up solving
-        if image_data.shape[0] > 2000 or image_data.shape[1] > 2000:
-            extra_params['downsample'] = 2
-            st.write("Large image detected, using downsampling factor of 2")
-        
-        # Set CPU limit for faster solving
-        extra_params['cpulimit'] = 300  # 5 minutes max
-        
-        # Use quad size limits appropriate for the number of sources
-        if len(obj) > 100:
-            extra_params['quad-size-min'] = 0.1
-            extra_params['quad-size-max'] = 1.0
-        
-        # Check for custom solve-field executable path in session state
-        solve_field_exe = st.session_state.get('solve_field_path', None)
-        
-        # Check for custom config file path
-        config_path = st.session_state.get('astrometry_config', None)
-        
-        # Set working directory for debugging if requested
-        workdir = st.session_state.get('astrometry_workdir', None)
-        if workdir and os.path.exists(workdir):
-            st.info(f"Using working directory: {workdir}")
-        
-        # Perform blind matching using local Astrometry.Net installation
-        try:
-            st.write("Calling stdpipe.astrometry.blind_match_objects...")
-            
-            wcs_solution = astrometry.blind_match_objects(
-                obj,
-                order=2,  # SIP polynomial order
-                update=False,  # Don't update object table
-                sn=10,  # Minimum S/N for sources to use
-                get_header=False,  # Return WCS object, not header
-                width=image_data.shape[1],
-                height=image_data.shape[0],
-                center_ra=ra0,
-                center_dec=dec0,
-                radius=radius,
-                scale_lower=pixscale_low,
-                scale_upper=pixscale_upp,
-                scale_units='arcsecperpix',
-                config=config_path,  # Custom config file if provided
-                extra=extra_params,  # Additional solve-field parameters
-                _workdir=workdir,    # Working directory for debugging
-                _exe=solve_field_exe,  # Custom executable path if provided
-                verbose=True
-            )
-            
-            if wcs_solution is None:
-                st.error("Local Astrometry.Net plate solving failed. No solution found.")
-                st.info("Troubleshooting suggestions:")
-                st.info("1. Verify Astrometry.Net installation: `solve-field --help`")
-                st.info("2. Check index files are installed for your field scale")
-                st.info("3. Ensure index files are in the correct directory")
-                st.info("4. Try relaxing scale constraints or increasing search radius")
-                
-                # Show additional debug info if working directory is set
-                if workdir and os.path.exists(workdir):
-                    st.info(f"Check files in working directory: {workdir}")
-                
-                return None, None
-                
-            if not wcs_solution.is_celestial:
-                st.error("Plate solving returned invalid WCS solution")
-                return None, None
-                
-            st.success("Local plate solving succeeded!")
-            
-            # Validate the solution by checking pixel scale
-            try:
-                solved_pixscale = astrometry.get_pixscale(wcs=wcs_solution) * 3600  # Convert to arcsec
-                st.write(f"Solved pixel scale: {solved_pixscale:.3f} arcsec/pixel")
-                
-                # Check if pixel scale is reasonable
-                if not (0.1 <= solved_pixscale <= 50.0):
-                    st.warning(f"Unusual pixel scale: {solved_pixscale:.3f} arcsec/pixel")
-                    
-            except Exception as e:
-                st.warning(f"Could not validate pixel scale: {e}")
-            
-            # Update header with new WCS
-            # Clear any existing WCS keywords first
-            header_clean = astrometry.clear_wcs(
-                header, 
-                remove_comments=True,
-                remove_underscored=True, 
-                remove_history=True,
-                copy=True  # Don't modify original
-            )
-            
-            # Add new WCS keywords
-            wcs_header = wcs_solution.to_header(relax=True)
-            header_clean.update(wcs_header)
-            
-            # Add metadata about the solution
-            header_clean['COMMENT'] = 'WCS solved using local Astrometry.Net via stdpipe'
-            header_clean['PLTSOLVR'] = ('Astrometry.Net (local)', 'Plate solving software')
-            header_clean['PLTNSRC'] = (len(obj), 'Number of sources used for plate solving')
-            header_clean['PLTPXSCL'] = (solved_pixscale if 'solved_pixscale' in locals() else 0.0, 'Solved pixel scale (arcsec/pix)')
-            
-            return wcs_solution, header_clean
-            
-        except Exception as e:
-            st.error(f"Local Astrometry.Net plate solving failed: {str(e)}")
-            
-            # Provide specific troubleshooting based on error type
-            error_str = str(e).lower()
-            
-            if "solve-field" in error_str or "command not found" in error_str or "executable" in error_str:
-                st.error("""
-                solve-field executable not found. Please ensure:
-                1. Astrometry.Net is properly installed
-                2. solve-field binary is in your system PATH
-                3. On Windows: Add the Astrometry.Net bin directory to PATH
-                4. On Linux/Mac: Install via package manager or from source
-                5. Try setting custom executable path in session state
-                """)
-            elif "index" in error_str or "no match" in error_str:
-                st.error("""
-                No astrometric solution found. This could be due to:
-                1. Missing or incorrect index files for your field scale
-                2. Too few detected sources
-                3. Poor source detection parameters
-                4. Field scale outside the range of available index files
-                5. Try wider pixel scale range or different detection threshold
-                """)
-            elif "timeout" in error_str or "cpu" in error_str:
-                st.error("""
-                Plate solving timed out. Try:
-                1. Reducing the number of sources used
-                2. Increasing CPU limit in extra parameters
-                3. Using downsample factor for large images
-                4. Providing better initial guess coordinates
-                """)
-            else:
-                st.error(f"Unexpected error: {error_str}")
-                st.info("Check Astrometry.Net logs for more details")
-            
+        # Verify all required columns are present
+        required_cols = ['x', 'y', 'flux', 'fluxerr', 'sn']
+        missing_cols = [col for col in required_cols if col not in obj.colnames]
+        if missing_cols:
+            st.error(f"Missing required columns for plate solving: {missing_cols}")
             return None, None
-            
+        
+        st.success(f"Ready for plate solving with {len(obj)} sources and all required columns")
+        
     except Exception as e:
         st.error(f"Error in plate solving setup: {str(e)}")
         return None, None
@@ -631,7 +501,8 @@ def make_border_mask(
             top = bottom = vert
             left = right = horiz
         elif len(border) == 4:
-            top, bottom, left, right = border
+            top = bottom = border[0]
+            left = right = border[2]
         else:
             raise ValueError("border must be an int")
     else:
@@ -2063,7 +1934,7 @@ def cross_match_with_gaia(
         st.warning("No Gaia sources found within search radius.")
         return None
 
-    try:
+    try {
         mag_filter = (gaia_table[filter_band] < filter_max_mag)
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
         color_index_filter = (gaia_table["bp_rp"] > -1) & (gaia_table["bp_rp"] < 2)
@@ -2083,48 +1954,52 @@ def cross_match_with_gaia(
             return None
 
         st.write(f"Filtered Gaia catalog to {len(gaia_table_filtered)} sources.")
-    except Exception as e:
+    } catch (Exception e) {
         st.error(f"Error filtering Gaia catalog: {e}")
         return None
+    }
 
-    try:
+    try {
         gaia_skycoords = SkyCoord(
             ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"],
             unit="deg"
         )
-        idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
+        idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords);
 
         max_sep_constraint = 2 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
-        gaia_matches = d2d < max_sep_constraint
+        gaia_matches = d2d < max_sep_constraint;
 
-        matched_indices_gaia = idx[gaia_matches]
-        matched_indices_phot = np.where(gaia_matches)[0]
+        matched_indices_gaia = idx[gaia_matches];
+        matched_indices_phot = np.where(gaia_matches)[0];
 
-        if len(matched_indices_gaia) == 0:
-            st.warning("No Gaia matches found within the separation constraint.")
-            return None
+        if (len(matched_indices_gaia) == 0) {
+            st.warning("No Gaia matches found within the separation constraint.");
+            return None;
+        }
 
-        matched_table_qtable = _phot_table[matched_indices_phot]
+        matched_table_qtable = _phot_table[matched_indices_phot];
 
-        matched_table = matched_table_qtable.to_pandas()
-        matched_table["gaia_index"] = matched_indices_gaia
-        matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
+        matched_table = matched_table_qtable.to_pandas();
+        matched_table["gaia_index"] = matched_indices_gaia;
+        matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec;
 
-        # Add the filter_band column from the filtered Gaia table
-        matched_table[filter_band] = gaia_table_filtered[filter_band][matched_indices_gaia]
+        // Add the filter_band column from the filtered Gaia table
+        matched_table[filter_band] = gaia_table_filtered[filter_band][matched_indices_gaia];
 
-        valid_gaia_mags = np.isfinite(matched_table[filter_band])
-        matched_table = matched_table[valid_gaia_mags]
+        valid_gaia_mags = np.isfinite(matched_table[filter_band]);
+        matched_table = matched_table[valid_gaia_mags];
 
-        # Remove sources with SNR < 1 before zero point calculation
-        if "snr" in matched_table.columns:
-            matched_table = matched_table[matched_table["snr"] >= 1]
+        // Remove sources with SNR < 1 before zero point calculation
+        if ("snr" in matched_table.columns) {
+            matched_table = matched_table[matched_table["snr"] >= 1];
+        }
 
-        st.success(f"Found {len(matched_table)} Gaia matches after filtering.")
-        return matched_table
-    except Exception as e:
-        st.error(f"Error during cross-matching: {e}")
-        return None
+        st.success(f"Found {len(matched_table)} Gaia matches after filtering.");
+        return matched_table;
+    } catch (Exception e) {
+        st.error(f"Error during cross-matching: {e}");
+        return None;
+    }
 
 
 def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
@@ -2164,81 +2039,81 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         st.warning("No matched sources to calculate zero point.")
         return None, None, None
 
-    try:
-        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[filter_band])
+    try {
+        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[filter_band]);
 
-        zero_points = _matched_table[filter_band][valid] - _matched_table["instrumental_mag"][valid]
-        _matched_table["zero_point"] = zero_points
-        _matched_table["zero_point_error"] = np.std(zero_points)
+        zero_points = _matched_table[filter_band][valid] - _matched_table["instrumental_mag"][valid];
+        _matched_table["zero_point"] = zero_points;
+        _matched_table["zero_point_error"] = np.std(zero_points);
 
         clipped_zero_points = sigma_clip(zero_points, sigma=3,
-                                         cenfunc="mean", masked=False)
+                                         cenfunc="mean", masked=False);
 
-        zero_point_value = np.median(clipped_zero_points)
-        zero_point_std = np.std(clipped_zero_points)
+        zero_point_value = np.median(clipped_zero_points);
+        zero_point_std = np.std(clipped_zero_points);
 
         if np.ma.is_masked(zero_point_value) or np.isnan(zero_point_value):
-            zero_point_value = float('nan')
+            zero_point_value = float('nan');
         if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
-            zero_point_std = float('nan')
+            zero_point_std = float('nan');
 
         _matched_table["calib_mag"] = (
             _matched_table["instrumental_mag"] + zero_point_value + 0.09 * air
-        )
+        );
 
         if not isinstance(_phot_table, pd.DataFrame):
-            _phot_table = _phot_table.to_pandas()
+            _phot_table = _phot_table.to_pandas();
 
         # Apply calibration to all aperture radii
-        aperture_radii = [1.5, 2.0, 2.5, 3.0]
+        aperture_radii = [1.5, 2.0, 2.5, 3.0];
         
         # Remove old single-aperture columns if they exist
-        old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
+        old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"];
         for col in old_columns:
             if col in _phot_table.columns:
-                _phot_table.drop(columns=[col], inplace=True)
+                _phot_table.drop(columns=[col], inplace=True);
         
         # Add calibrated magnitudes for all aperture radii
         for radius in aperture_radii:
-            radius_suffix = f"_r{radius:.1f}"
-            instrumental_col = f"instrumental_mag{radius_suffix}"
-            aperture_mag_col = f"aperture_mag{radius_suffix}"
+            radius_suffix = f"_r{radius:.1f}";
+            instrumental_col = f"instrumental_mag{radius_suffix}";
+            aperture_mag_col = f"aperture_mag{radius_suffix}";
             
             if instrumental_col in _phot_table.columns:
                 _phot_table[aperture_mag_col] = (
                     _phot_table[instrumental_col] + zero_point_value + 0.09 * air
-                )
+                );
 
         # Also apply to matched table for all aperture radii
         for radius in aperture_radii:
-            radius_suffix = f"_r{radius:.1f}"
-            instrumental_col = f"instrumental_mag{radius_suffix}"
-            aperture_mag_col = f"aperture_mag{radius_suffix}"
+            radius_suffix = f"_r{radius:.1f}";
+            instrumental_col = f"instrumental_mag{radius_suffix}";
+            aperture_mag_col = f"aperture_mag{radius_suffix}";
             
             if instrumental_col in _matched_table.columns:
                 _matched_table[aperture_mag_col] = (
                     _matched_table[instrumental_col] + zero_point_value + 0.09 * air
-                )
+                );
 
         # Keep the legacy "calib_mag" column using the 1.5*FWHM aperture for backward compatibility
         if "instrumental_mag_r1.5" in _phot_table.columns:
             _phot_table["calib_mag"] = (
                 _phot_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
-            )
+            );
         
         if "instrumental_mag_r1.5" in _matched_table.columns:
             _matched_table["calib_mag"] = (
                 _matched_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
-            )
+            );
 
-        st.session_state["final_phot_table"] = _phot_table
+        st.session_state["final_phot_table"] = _phot_table;
 
-        fig, (ax, ax_resid) = plt.subplots(1, 2, figsize=(14, 6), dpi=100)
+        fig, (ax, ax_resid) = plt.subplots(1, 2, figsize=(14, 6), dpi=100);
 
         # Calculate residuals
         _matched_table["residual"] = (
             _matched_table[filter_band] - _matched_table["calib_mag"]
-        )
+        );
 
         # Left plot: Zero point calibration
         # Create bins for magnitude ranges
@@ -2260,10 +2135,10 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             alpha=0.5,
             label="Matched sources",
             color="blue",
-        )
+        );
 
         # Plot binned means with error bars showing standard deviation
-        valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds)
+        valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds);
         ax.errorbar(
             np.array(bin_centers)[valid_bins],
             bin_means[valid_bins],
@@ -2271,65 +2146,67 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             fmt="ro-",
             label="Mean ± StdDev (binned)",
             capsize=5,
-        )
+        );
 
         # Add a diagonal line for reference
         # Create ideal y=x reference line spanning the full range of magnitudes
         mag_range = [min(_matched_table[filter_band].min(), _matched_table["calib_mag"].min()),
-                     max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max())]
-        ideal_mag = np.linspace(mag_range[0], mag_range[1], 100)
-        ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
+                     max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max())];
+        ideal_mag = np.linspace(mag_range[0], mag_range[1], 100);
+        ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x");
 
-        ax.set_xlabel(f"Gaia {filter_band}")
-        ax.set_ylabel("Calib mag")
-        ax.set_title("Gaia magnitude vs Calibrated magnitude")
-        ax.legend()
-        ax.grid(True, alpha=0.5)
+        ax.set_xlabel(f"Gaia {filter_band}");
+        ax.set_ylabel("Calib mag");
+        ax.set_title("Gaia magnitude vs Calibrated magnitude");
+        ax.legend();
+        ax.grid(True, alpha=0.5);
 
         # Right plot: Residuals
-        mag_cat = _matched_table[filter_band]
-        mag_inst = _matched_table["instrumental_mag"]
-        zp_mean = zero_point_value
-        residuals = mag_cat - (mag_inst + zp_mean)
+        mag_cat = _matched_table[filter_band];
+        mag_inst = _matched_table["instrumental_mag"];
+        zp_mean = zero_point_value;
+        residuals = mag_cat - (mag_inst + zp_mean);
         if "aperture_mag_err" in _matched_table.columns:
-            aperture_mag_err = _matched_table["aperture_mag_err"].values
+            aperture_mag_err = _matched_table["aperture_mag_err"].values;
         else:
-            aperture_mag_err = np.zeros_like(residuals)
-        zp_err = zero_point_std if zero_point_std is not None else 0.0
-        yerr = np.sqrt(aperture_mag_err**2 + zp_err**2)
+            aperture_mag_err = np.zeros_like(residuals);
+        zp_err = zero_point_std if zero_point_std is not None else 0.0;
+        yerr = np.sqrt(aperture_mag_err**2 + zp_err**2);
 
         ax_resid.errorbar(mag_cat, residuals, yerr=yerr, fmt='o', markersize=5,
-                          alpha=0.7, label='Residuals')
-        ax_resid.axhline(0, color='gray', ls='--')
-        ax_resid.set_xlabel('Calibrated magnitude')
-        ax_resid.set_ylabel('Residual (catalog - calibrated)')
-        ax_resid.set_title('Photometric Residuals')
-        ax_resid.grid(True, alpha=0.5)
-        ax_resid.legend()
+                          alpha=0.7, label='Residuals');
+        ax_resid.axhline(0, color='gray', ls='--');
+        ax_resid.set_xlabel('Calibrated magnitude');
+        ax_resid.set_ylabel('Residual (catalog - calibrated)');
+        ax_resid.set_title('Photometric Residuals');
+        ax_resid.grid(True, alpha=0.5);
+        ax_resid.legend();
 
         # Adjust layout and display
-        fig.tight_layout()
-        st.pyplot(fig)
+        fig.tight_layout();
+        st.pyplot(fig);
 
         st.success(
             f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f}"
-        )
+        );
 
-        try:
-            base_name = st.session_state.get("base_filename", "photometry")
-            username = st.session_state.get("username", "anonymous")
-            output_dir = ensure_output_directory(f"{username}_rpp_results")
+        try {
+            base_name = st.session_state.get("base_filename", "photometry");
+            username = st.session_state.get("username", "anonymous");
+            output_dir = ensure_output_directory(f"{username}_rpp_results");
             zero_point_plot_path = os.path.join(
                 output_dir, f"{base_name}_zero_point_plot.png"
-            )
-            fig.savefig(zero_point_plot_path)
-        except Exception as e:
-            st.warning(f"Could not save plot to file: {e}")
+            );
+            fig.savefig(zero_point_plot_path);
+        } catch (Exception e) {
+            st.warning(f"Could not save plot to file: {e}");
+        }
 
-        return round(zero_point_value, 2), round(zero_point_std, 2), fig
-    except Exception as e:
-        st.error(f"Error calculating zero point: {e}")
-        return None, None, None
+        return round(zero_point_value, 2), round(zero_point_std, 2), fig;
+    } catch (Exception e) {
+        st.error(f"Error calculating zero point: {e}");
+        return None, None, None;
+    }
 
 
 def enhance_catalog(
@@ -2494,8 +2371,8 @@ def enhance_catalog(
             st.warning("No API key for ASTRO-COLIBRI provided or found")
             pass
 
-    try:
-        try:
+    try {
+        try {
             # Base URL of the API
             url = URL + "cone_search"
 
@@ -2512,12 +2389,13 @@ def enhance_catalog(
 
             # Set time range to ±7 days from observation date or current date
             if observation_date:
-                try:
+                try {
                     base_date = datetime.fromisoformat(
                         observation_date.replace("T", " ").split(".")[0]
                     )
-                except (ValueError, TypeError):
+                } catch (ValueError, TypeError) {
                     base_date = datetime.now()
+                }
 
             else:
                 base_date = datetime.now()
@@ -2543,20 +2421,20 @@ def enhance_catalog(
             response = requests.post(url, headers=headers, data=json.dumps(body))
 
             # Process the response
-            try:
+            try {
                 if response.status_code == 200:
                     events = response.json()["voevents"]
-                else:
+                } else {
                     st.warning(f"url: {url}")
                     st.warning(
                         f"Request failed with status code: {response.status_code}"
                     )
 
-            except json.JSONDecodeError:
-                st.error("Request did NOT succeed : ", response.status_code)
-                st.error("Error message : ", response.content.decode("UTF-8"))
+                } catch (json.JSONDecodeError) {
+                    st.error("Request did NOT succeed : ", response.status_code)
+                    st.error("Error message : ", response.content.decode("UTF-8"))
 
-        except Exception as e:
+        } catch (Exception e) {
             st.error(f"Error querying Astro-Colibri API: {str(e)}")
             # Continue with function instead of returning None
 
@@ -2583,189 +2461,194 @@ def enhance_catalog(
                     sources["type"].append(event["type"])
                     sources["classification"].append(event["classification"])
             astrostars = pd.DataFrame(sources)
-            st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.")
-            st.dataframe(astrostars)
+            st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.");
+            st.dataframe(astrostars);
 
             # Filter valid coordinates for astro-colibri matching
-            valid_final_coords = final_table[valid_coords_mask]
+            valid_final_coords = final_table[valid_coords_mask];
             
-            if len(valid_final_coords) > 0 and len(astrostars) > 0:
+            if len(valid_final_coords) > 0 && len(astrostars) > 0 {
                 source_coords = SkyCoord(
                     ra=valid_final_coords["ra"].values,
                     dec=valid_final_coords["dec"].values,
                     unit="deg",
-                )
+                );
 
                 astro_colibri_coords = SkyCoord(
                     ra=astrostars["ra"],
                     dec=astrostars["dec"],
                     unit=(u.deg, u.deg),
-                )
+                );
 
                 if not isinstance(search_radius_arcsec, (int, float)):
                     raise ValueError("Search radius must be a number")
 
-                idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
-                matches = d2d < (15 * u.arcsec)
+                idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords);
+                matches = d2d < (15 * u.arcsec);
 
                 # Map matches back to the original table indices
-                valid_indices = valid_final_coords.index
+                valid_indices = valid_final_coords.index;
                 
                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                     if match:
-                        original_idx = valid_indices[i]
+                        original_idx = valid_indices[i];
                         final_table.loc[original_idx, "astrocolibri_name"] = astrostars[
                             "discoverer_internal_name"
-                        ][match_idx]
-                        final_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx]
+                        ][match_idx];
+                        final_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx];
                         final_table.loc[original_idx, "astrocolibri_classification"] = astrostars[
-                            "classification"][match_idx]
+                            "classification"][match_idx];
                 
-                st.success("Astro-Colibri matched objects in field.")
-            else:
+                st.success("Astro-Colibri matched objects in field.");
+            } else {
                 st.info("No valid coordinates available for Astro-Colibri matching")
-        else:
-            st.write("No Astro-Colibri sources found in the field.")
+            }
+        } else {
+            st.write("No Astro-Colibri sources found in the field.");
+        }
+    } catch (Exception e) {
+        st.error(f"Error querying Astro-Colibri: {str(e)}");
+        st.write("No Astro-Colibri sources found.");
+    }
 
-    except Exception as e:
-        st.error(f"Error querying Astro-Colibri: {str(e)}")
-        st.write("No Astro-Colibri sources found.")
+    status_text.write("Querying SIMBAD for object identifications...");
 
-    status_text.write("Querying SIMBAD for object identifications...")
+    custom_simbad = Simbad();
+    custom_simbad.add_votable_fields("otype", "main_id", "ids", "B", "V");
 
-    custom_simbad = Simbad()
-    custom_simbad.add_votable_fields("otype", "main_id", "ids", "B", "V")
+    st.info("Querying SIMBAD");
 
-    st.info("Querying SIMBAD")
-
-    try:
-        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit="deg")
+    try {
+        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit="deg");
         simbad_result, error = safe_catalog_query(
             custom_simbad.query_region,
             "SIMBAD query failed",
             center_coord,
             radius=field_width_arcmin * u.arcmin,
-        )
+        );
         if error:
-            st.warning(error)
-        else:
-            if simbad_result is not None and len(simbad_result) > 0:
-                final_table["simbad_main_id"] = None
-                final_table["simbad_otype"] = None
-                final_table["simbad_ids"] = None
-                final_table["simbad_B"] = None
-                final_table["simbad_V"] = None
+            st.warning(error);
+        else {
+            if simbad_result is not None and len(simbad_result) > 0 {
+                final_table["simbad_main_id"] = None;
+                final_table["simbad_otype"] = None;
+                final_table["simbad_ids"] = None;
+                final_table["simbad_B"] = None;
+                final_table["simbad_V"] = None;
 
                 # Filter valid coordinates for SIMBAD matching
-                valid_final_coords = final_table[valid_coords_mask]
+                valid_final_coords = final_table[valid_coords_mask];
                 
-                if len(valid_final_coords) > 0:
+                if len(valid_final_coords) > 0 {
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"].values,
                         dec=valid_final_coords["dec"].values,
                         unit="deg",
-                    )
+                    );
 
                     if all(col in simbad_result.colnames for col in ["ra", "dec"]):
-                        try:
+                        try {
                             # Filter out NaN coordinates in SIMBAD result
                             simbad_valid_mask = (
                                 pd.notna(simbad_result["ra"]) & 
                                 pd.notna(simbad_result["dec"]) &
                                 np.isfinite(simbad_result["ra"]) &
                                 np.isfinite(simbad_result["dec"])
-                            )
+                            );
                             
                             if not simbad_valid_mask.any():
-                                st.warning("No SIMBAD sources with valid coordinates found")
-                            else:
-                                simbad_filtered = simbad_result[simbad_valid_mask]
+                                st.warning("No SIMBAD sources with valid coordinates found");
+                            } else {
+                                simbad_filtered = simbad_result[simbad_valid_mask];
                                 
                                 simbad_coords = SkyCoord(
                                     ra=simbad_filtered["ra"],
                                     dec=simbad_filtered["dec"],
                                     unit=(u.hourangle, u.deg),
-                                )
+                                );
 
-                                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
-                                matches = d2d <= (10 * u.arcsec)
+                                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords);
+                                matches = d2d <= (10 * u.arcsec);
 
                                 # Map matches back to the original table indices
-                                valid_indices = valid_final_coords.index
+                                valid_indices = valid_final_coords.index;
 
                                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                                     if match:
-                                        original_idx = valid_indices[i]
+                                        original_idx = valid_indices[i];
                                         final_table.loc[original_idx, "simbad_main_id"] = simbad_filtered[
                                             "main_id"
-                                        ][match_idx]
+                                        ][match_idx];
                                         final_table.loc[original_idx, "simbad_otype"] = simbad_filtered[
                                             "otype"
-                                        ][match_idx]
+                                        ][match_idx];
                                         final_table.loc[original_idx, "simbad_B"] = simbad_filtered["B"][
                                             match_idx
-                                        ]
+                                        ];
                                         final_table.loc[original_idx, "simbad_V"] = simbad_filtered["V"][
                                             match_idx
-                                        ]
+                                        ];
                                         if "ids" in simbad_filtered.colnames:
                                             final_table.loc[original_idx, "simbad_ids"] = simbad_filtered[
                                                 "ids"
-                                            ][match_idx]
+                                            ][match_idx];
 
-                                st.success(f"Found {sum(matches)} SIMBAD objects in field.")
-                        except Exception as e:
+                                st.success(f"Found {sum(matches)} SIMBAD objects in field.");
+                        } catch (Exception e) {
                             st.error(
                                 f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
-                            )
-                            st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
-                    else:
-                        available_cols = ", ".join(simbad_result.colnames)
+                            );
+                            st.write(f"Available SIMBAD columns: {simbad_result.colnames}");
+                    } else {
+                        available_cols = ", ".join(simbad_result.colnames);
                         st.error(
                             f"SIMBAD result missing required columns. Available columns: {available_cols}"
-                        )
-                else:
+                        );
+                } else {
                     st.info("No valid coordinates available for SIMBAD matching")
-            else:
-                st.write("No SIMBAD objects found in the field.")
-    except Exception as e:
-        st.error(f"SIMBAD query execution failed: {str(e)}")
+                }
+            } else {
+                st.write("No SIMBAD objects found in the field.");
+            }
+    } catch (Exception e) {
+        st.error(f"SIMBAD query execution failed: {str(e)}");
+    }
 
-    status_text.write("Querying SkyBoT for solar system objects...")
+    status_text.write("Querying SkyBoT for solar system objects...");
 
-    try:
+    try {
         if field_center_ra is not None and field_center_dec is not None:
             if "DATE-OBS" in header:
-                obs_date = header["DATE-OBS"]
+                obs_date = header["DATE-OBS"];
             elif "DATE" in header:
-                obs_date = header["DATE"]
+                obs_date = header["DATE"];
             else:
-                obs_date = Time.now().isot
+                obs_date = Time.now().isot;
 
-            obs_time = Time(obs_date).isot
+            obs_time = Time(obs_date).isot;
 
-            sr_value = min(field_width_arcmin / 60.0, 1.0)
+            sr_value = min(field_width_arcmin / 60.0, 1.0);
             skybot_url = (
                 f"http://vo.imcce.fr/webservices/skybot/skybotconesearch_query.php?"
                 f"RA={field_center_ra}&DEC={field_center_dec}&SR={sr_value}&"
                 f"EPOCH={quote(obs_time)}&mime=json"
-            )
+            );
 
-            st.info("Querying SkyBoT for solar system objects...")
+            st.info("Querying SkyBoT for solar system objects...");
 
-            try:
-                final_table["skybot_NAME"] = None
-                final_table["skybot_OBJECT_TYPE"] = None
-                final_table["skybot_MAGV"] = None
+            try {
+                final_table["skybot_NAME"] = None;
+                final_table["skybot_OBJECT_TYPE"] = None;
+                final_table["skybot_MAGV"] = None;
 
-                response = requests.get(skybot_url, timeout=15)
+                response = requests.get(skybot_url, timeout=15);
 
                 if response.status_code == 200:
-                    response_text = response.text.strip()
+                    response_text = response.text.strip();
 
                     if response_text.startswith("{") or response_text.startswith("["):
-                        try:
-                            skybot_result = response.json()
+                        try {
+                            skybot_result = response.json();
 
                             if "data" in skybot_result and skybot_result["data"]:
                                 skybot_coords = SkyCoord(
@@ -2778,68 +2661,71 @@ def enhance_catalog(
                                         for obj in skybot_result["data"]
                                     ],
                                     unit=u.deg,
-                                )
+                                );
 
                                 # Filter valid coordinates for SkyBoT matching
-                                valid_final_coords = final_table[valid_coords_mask]
+                                valid_final_coords = final_table[valid_coords_mask];
                                 
-                                if len(valid_final_coords) > 0:
+                                if len(valid_final_coords) > 0 {
                                     source_coords = SkyCoord(
                                         ra=valid_final_coords["ra"].values,
                                         dec=valid_final_coords["dec"].values,
                                         unit=u.deg,
-                                    )
+                                    );
 
                                     idx, d2d, _ = source_coords.match_to_catalog_sky(
                                         skybot_coords
-                                    )
-                                    matches = d2d <= (10 * u.arcsec)
+                                    );
+                                    matches = d2d <= (10 * u.arcsec);
 
                                     # Map matches back to the original table indices
-                                    valid_indices = valid_final_coords.index
+                                    valid_indices = valid_final_coords.index;
 
                                     for i, (match, match_idx) in enumerate(
                                         zip(matches, idx)
                                     ):
                                         if match:
-                                            original_idx = valid_indices[i]
-                                            obj = skybot_result["data"][match_idx]
-                                            final_table.loc[original_idx, "skybot_NAME"] = obj["NAME"]
+                                            original_idx = valid_indices[i];
+                                            obj = skybot_result["data"][match_idx];
+                                            final_table.loc[original_idx, "skybot_NAME"] = obj["NAME"];
                                             final_table.loc[original_idx, "skybot_OBJECT_TYPE"] = obj[
                                                 "OBJECT_TYPE"
-                                            ]
-                                            if "MAGV" in obj:
-                                                final_table.loc[original_idx, "skybot_MAGV"] = obj[
-                                                    "MAGV"
-                                                ]
+                                            ];
+                                            final_table.loc[original_idx, "skybot_MAGV"] = obj["MAGV"];
 
                                     st.success(
                                         f"Found {sum(matches)} solar system objects in field."
-                                    )
-                                else:
+                                    );
+                                } else {
                                     st.info("No valid coordinates available for SkyBoT matching")
-                            else:
-                                st.warning("No solar system objects found in the field.")
-                        except ValueError as e:
+                                }
+                            } else {
+                                st.warning("No solar system objects found in the field.");
+                            }
+                        } catch (ValueError e) {
                             st.warning(
                                 f"No solar system objects found (no valid JSON data returned). {str(e)}"
-                            )
-                    else:
-                        st.warning("No solar system objects found in the field.")
-                else:
+                            );
+                    } else {
+                        st.warning("No solar system objects found in the field.");
+                    }
+                } else {
                     st.warning(
                         f"SkyBoT query failed with status code {response.status_code}"
-                    )
+                    );
+                }
 
-            except requests.exceptions.RequestException as req_err:
-                st.warning(f"Request to SkyBoT failed: {req_err}")
-        else:
-            st.warning("Could not determine field center for SkyBoT query")
-    except Exception as e:
-        st.error(f"Error in SkyBoT processing: {str(e)}")
+            } catch (requests.exceptions.RequestException req_err) {
+                st.warning(f"Request to SkyBoT failed: {req_err}");
+        } else {
+            st.warning("Could not determine field center for SkyBoT query");
+        }
+    } catch (Exception e) {
+        st.error(f"Error in SkyBoT processing: {str(e)}");
+    }
 
-    st.info("Querying AAVSO VSX for variable stars...")
-    try:
+    st.info("Querying AAVSO VSX for variable stars...");
+    try {
         if field_center_ra is not None and field_center_dec is not None:
             Vizier.ROW_LIMIT = -1
             vizier_result = Vizier.query_region(
@@ -2857,136 +2743,141 @@ def enhance_catalog(
 
                 vsx_coords = SkyCoord(
                     ra=vsx_table["RAJ2000"], dec=vsx_table["DEJ2000"], unit=u.deg
-                )
+                );
                 
                 # Filter valid coordinates for AAVSO matching
-                valid_final_coords = final_table[valid_coords_mask]
+                valid_final_coords = final_table[valid_coords_mask];
                 
-                if len(valid_final_coords) > 0:
+                if len(valid_final_coords) > 0 {
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"].values,
                         dec=valid_final_coords["dec"].values,
                         unit=u.deg,
-                    )
+                    );
 
-                    idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
-                    matches = d2d <= (10 * u.arcsec)
+                    idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords);
+                    matches = d2d <= (10 * u.arcsec);
 
-                    final_table["aavso_Name"] = None
-                    final_table["aavso_Type"] = None
-                    final_table["aavso_Period"] = None
+                    final_table["aavso_Name"] = None;
+                    final_table["aavso_Type"] = None;
+                    final_table["aavso_Period"] = None;
 
                     # Map matches back to the original table indices
-                    valid_indices = valid_final_coords.index
+                    valid_indices = valid_final_coords.index;
 
                     for i, (match, match_idx) in enumerate(zip(matches, idx)):
                         if match:
-                            original_idx = valid_indices[i]
-                            final_table.loc[original_idx, "aavso_Name"] = vsx_table["Name"][match_idx]
-                            final_table.loc[original_idx, "aavso_Type"] = vsx_table["Type"][match_idx]
+                            original_idx = valid_indices[i];
+                            final_table.loc[original_idx, "aavso_Name"] = vsx_table["Name"][match_idx];
+                            final_table.loc[original_idx, "aavso_Type"] = vsx_table["Type"][match_idx];
                             if "Period" in vsx_table.colnames:
                                 final_table.loc[original_idx, "aavso_Period"] = vsx_table["Period"][
                                     match_idx
-                                ]
+                                ];
 
-                    st.success(f"Found {sum(matches)} variable stars in field.")
-                else:
+                    st.success(f"Found {sum(matches)} variable stars in field.");
+                } else {
                     st.info("No valid coordinates available for AAVSO matching")
-            else:
-                st.write("No variable stars found in the field.")
-    except Exception as e:
-        st.error(f"Error querying AAVSO VSX: {e}")
+                }
+            } else {
+                st.write("No variable stars found in the field.");
+            }
+    } catch (Exception e) {
+        st.error(f"Error querying AAVSO VSX: {e}");
+    }
 
-    st.info("Querying Milliquas Catalog for quasars...")
-    try:
+    st.info("Querying Milliquas Catalog for quasars...");
+    try {
         if field_center_ra is not None and field_center_dec is not None:
             # Set columns to retrieve from the quasar catalog
-            v = Vizier(columns=["RAJ2000", "DEJ2000", "Name", "z", "Rmag"])
-            v.ROW_LIMIT = -1  # No row limit
+            v = Vizier(columns=["RAJ2000", "DEJ2000", "Name", "z", "Rmag"]);
+            v.ROW_LIMIT = -1;  # No row limit
 
             # Query the VII/294 catalog around the field center
             result = v.query_region(
                 SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg, u.deg)),
                 width=field_width_arcmin * u.arcmin,
                 catalog="VII/294",
-            )
+            );
 
             if result and len(result) > 0:
-                qso_table = result[0]
+                qso_table = result[0];
 
                 # Convert to pandas DataFrame for easier matching
-                qso_df = qso_table.to_pandas()
+                qso_df = qso_table.to_pandas();
                 qso_coords = SkyCoord(
                     ra=qso_df["RAJ2000"], dec=qso_df["DEJ2000"], unit=u.deg
-                )
+                );
 
                 # Filter valid coordinates for QSO matching
-                valid_final_coords = final_table[valid_coords_mask]
+                valid_final_coords = final_table[valid_coords_mask];
                 
-                if len(valid_final_coords) > 0:
+                if len(valid_final_coords) > 0 {
                     # Create source coordinates for matching
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"], dec=valid_final_coords["dec"], unit=u.deg
-                    )
+                    );
 
                     # Perform cross-matching
-                    idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
-                    matches = d2d.arcsec <= 10
+                    idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords);
+                    matches = d2d.arcsec <= 10;
 
                     # Add matched quasar information to the final table
-                    final_table["qso_name"] = None
-                    final_table["qso_redshift"] = None
-                    final_table["qso_Rmag"] = None
+                    final_table["qso_name"] = None;
+                    final_table["qso_redshift"] = None;
+                    final_table["qso_Rmag"] = None;
 
                     # Initialize catalog_matches column if it doesn't exist
                     if "catalog_matches" not in final_table.columns:
-                        final_table["catalog_matches"] = ""
+                        final_table["catalog_matches"] = "";
 
                     # Map matches back to the original table indices
-                    valid_indices = valid_final_coords.index
-                    matched_sources = np.where(matches)[0]
-                    matched_qsos = idx[matches]
+                    valid_indices = valid_final_coords.index;
+                    matched_sources = np.where(matches)[0];
+                    matched_qsos = idx[matches];
 
                     for i, qso_idx in zip(matched_sources, matched_qsos):
-                        original_idx = valid_indices[i]
+                        original_idx = valid_indices[i];
                         final_table.loc[original_idx, "qso_name"] = qso_df.iloc[qso_idx][
                             "Name"
-                        ]
+                        ];
                         final_table.loc[original_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
                             "z"
-                        ]
+                        ];
                         final_table.loc[original_idx, "qso_Rmag"] = qso_df.iloc[qso_idx][
                             "Rmag"
-                        ]
+                        ];
 
                     # Update the catalog_matches column for matched quasars
-                    has_qso = final_table["qso_name"].notna()
-                    final_table.loc[has_qso, "catalog_matches"] += "QSO; "
+                    has_qso = final_table["qso_name"].notna();
+                    final_table.loc[has_qso, "catalog_matches"] += "QSO; ";
 
                     st.success(
                         f"Found {sum(has_qso)} quasars in field from Milliquas catalog."
-                    )
+                    );
                     write_to_log(
                         st.session_state.get("log_buffer"),
                         f"Found {sum(has_qso)} quasar matches in Milliquas catalog",
                         "INFO",
-                    )
-                else:
+                    );
+                } else {
                     st.info("No valid coordinates available for QSO matching")
-            else:
-                st.warning("No quasars found in field from Milliquas catalog.")
+                }
+            } else {
+                st.warning("No quasars found in field from Milliquas catalog.");
                 write_to_log(
                     st.session_state.get("log_buffer"),
                     "No quasars found in field from Milliquas catalog",
                     "INFO",
-                )
-    except Exception as e:
-        st.error(f"Error querying VizieR Milliquas: {str(e)}")
+                );
+    } catch (Exception e) {
+        st.error(f"Error querying VizieR Milliquas: {str(e)}");
         write_to_log(
             st.session_state.get("log_buffer"),
             f"Error in Milliquas catalog processing: {str(e)}",
             "ERROR",
-        )
+        );
+    }
 
     status_text.write("Cross-matching complete")
     final_table["catalog_matches"] = ""
@@ -3043,26 +2934,27 @@ def validate_wcs_orientation(original_header, solved_header, test_pixel_coords):
     """
     Validate that WCS transformation preserves expected orientation
     """
-    try:
-        orig_wcs = WCS(original_header)
-        solved_wcs = WCS(solved_header)
+    try {
+        orig_wcs = WCS(original_header);
+        solved_wcs = WCS(solved_header);
         
         # Test a few pixel positions
-        orig_sky = orig_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1])
-        solved_sky = solved_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1])
+        orig_sky = orig_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1]);
+        solved_sky = solved_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1]);
         
         # Check if coordinates are consistent (within reasonable tolerance)
-        ra_diff = np.abs(orig_sky[0] - solved_sky[0])
-        dec_diff = np.abs(orig_sky[1] - solved_sky[1])
+        ra_diff = np.abs(orig_sky[0] - solved_sky[0]);
+        dec_diff = np.abs(orig_sky[1] - solved_sky[1]);
         
         if np.any(ra_diff > 0.1) or np.any(dec_diff > 0.1):  # 0.1 degree tolerance
             st.warning("WCS orientation may have changed during plate solving")
-            return False
+            return False;
             
-        return True
-    except Exception as e:
-        st.warning(f"Could not validate WCS orientation: {e}")
-        return True  # Assume OK if validation fails
+        return True;
+    } catch (Exception e) {
+        st.warning(f"Could not validate WCS orientation: {e}");
+        return True;  # Assume OK if validation fails
+    }
 
 
 def validate_cross_match_results(phot_table, matched_table, header):
