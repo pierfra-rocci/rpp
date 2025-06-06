@@ -220,12 +220,227 @@ def solve_with_astrometrynet(file_path):
         
         st.success(f"Ready for plate solving with {len(sources)} sources")
         
-        # TODO: Add actual astrometry.net solving here
-        # For now, return None to indicate that the detection part is complete
-        # but actual plate solving would need to be implemented
-        st.info("Object detection complete. Actual astrometry.net solving would be implemented here.")
+        # Perform actual astrometry.net plate solving
+        st.write("Starting astrometry.net plate solving...")
         
-        return None, None
+        try:
+            # Create a temporary directory for astrometry.net files
+            import tempfile
+            temp_dir = tempfile.mkdtemp(prefix="astrometry_")
+            
+            # Create source list file for astrometry.net
+            source_file = os.path.join(temp_dir, "sources.txt")
+            with open(source_file, 'w') as f:
+                for source in sources:
+                    f.write(f"{source['xcentroid']:.3f} {source['ycentroid']:.3f}\n")
+            
+            st.write(f"Created source list with {len(sources)} sources")
+            
+            # Estimate pixel scale from header if available
+            pixel_scale_estimate = None
+            if header:
+                # Try to get pixel scale from various header keywords
+                for key in ['PIXSCALE', 'PIXSIZE', 'SECPIX', 'XPIXSZ']:
+                    if key in header:
+                        pixel_scale_estimate = float(header[key])
+                        break
+                
+                # If not found, try to calculate from CD matrix
+                if pixel_scale_estimate is None:
+                    try:
+                        cd11 = header.get('CD1_1', 0)
+                        cd12 = header.get('CD1_2', 0)
+                        cd21 = header.get('CD2_1', 0)
+                        cd22 = header.get('CD2_2', 0)
+                        if cd11 != 0 or cd12 != 0:
+                            pixel_scale_estimate = 3600 * np.sqrt(cd11**2 + cd12**2)
+                    except:
+                        pass
+            
+            # Prepare astrometry.net command
+            output_prefix = os.path.join(temp_dir, "solution")
+            
+            cmd = [
+                "solve-field",
+                "--no-plots",
+                "--no-verify",
+                "--overwrite",
+                "--downsample", "2",
+                "--cpulimit", "300",  # 5 minute timeout
+                "--x-column", "1",
+                "--y-column", "2",
+                "--sort-column", "3",  # Use flux for sorting if available
+                "--width", str(image_data.shape[1]),
+                "--height", str(image_data.shape[0]),
+                "--out", output_prefix,
+                source_file
+            ]
+            
+            # Add pixel scale constraints if available
+            if pixel_scale_estimate and pixel_scale_estimate > 0:
+                scale_low = pixel_scale_estimate * 0.8
+                scale_high = pixel_scale_estimate * 1.2
+                cmd.extend([
+                    "--scale-low", str(scale_low),
+                    "--scale-high", str(scale_high),
+                    "--scale-units", "arcsecperpix"
+                ])
+                st.write(f"Using pixel scale estimate: {pixel_scale_estimate:.2f} arcsec/pixel")
+            else:
+                # Use broad scale range if no estimate available
+                cmd.extend([
+                    "--scale-low", "0.1",
+                    "--scale-high", "10.0",
+                    "--scale-units", "arcsecperpix"
+                ])
+                st.write("No pixel scale estimate available, using broad range")
+            
+            # Add RA/DEC hint if available
+            if header and 'RA' in header and 'DEC' in header:
+                try:
+                    ra_hint = float(header['RA'])
+                    dec_hint = float(header['DEC']);
+                    if 0 <= ra_hint <= 360 and -90 <= dec_hint <= 90:
+                        cmd.extend([
+                            "--ra", str(ra_hint),
+                            "--dec", str(dec_hint),
+                            "--radius", "5.0"  # 5 degree search radius
+                        ])
+                        st.write(f"Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}")
+                except:
+                    st.write("Could not parse RA/DEC from header")
+            
+            st.write("Running astrometry.net solve-field...")
+            st.write(f"Command: {' '.join(cmd)}")
+            
+            # Run astrometry.net
+            try:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,  # 5 minute timeout
+                    cwd=temp_dir
+                )
+                
+                st.write(f"solve-field exit code: {result.returncode}")
+                
+                if result.stdout:
+                    st.text("STDOUT:")
+                    st.text(result.stdout)
+                
+                if result.stderr:
+                    st.text("STDERR:")
+                    st.text(result.stderr)
+                
+                # Check if solution was found
+                wcs_file = output_prefix + ".wcs"
+                if os.path.exists(wcs_file) and result.returncode == 0:
+                    st.success("Astrometry.net plate solving successful!")
+                    
+                    # Read the WCS solution
+                    try:
+                        with fits.open(wcs_file) as wcs_hdul:
+                            wcs_header = wcs_hdul[0].header
+                            
+                        # Create WCS object from solution
+                        solved_wcs = WCS(wcs_header)
+                        
+                        # Update original header with WCS solution
+                        updated_header = header.copy()
+                        
+                        # Add WCS keywords to header
+                        wcs_keywords = [
+                            'CTYPE1', 'CTYPE2', 'CRVAL1', 'CRVAL2', 
+                            'CRPIX1', 'CRPIX2', 'CD1_1', 'CD1_2', 
+                            'CD2_1', 'CD2_2', 'NAXIS1', 'NAXIS2'
+                        ]
+                        
+                        for keyword in wcs_keywords:
+                            if keyword in wcs_header:
+                                updated_header[keyword] = wcs_header[keyword]
+                        
+                        # Add astrometry.net specific keywords
+                        for keyword in wcs_header:
+                            if keyword.startswith('A_') or keyword.startswith('B_'):
+                                updated_header[keyword] = wcs_header[keyword]
+                        
+                        # Add solution metadata
+                        updated_header['COMMENT'] = 'WCS solution from astrometry.net'
+                        updated_header['AN_SOLVE'] = (True, 'Solved with astrometry.net')
+                        
+                        # Display solution information
+                        try:
+                            center_ra, center_dec = solved_wcs.pixel_to_world_values(
+                                image_data.shape[1]/2, image_data.shape[0]/2
+                            )
+                            pixel_scale = np.sqrt(solved_wcs.pixel_scale_matrix.det()) * 3600
+                            
+                            st.write(f"Solution center: RA={center_ra:.6f}°, DEC={center_dec:.6f}°")
+                            st.write(f"Pixel scale: {pixel_scale:.3f} arcsec/pixel")
+                            
+                            # Validate solution makes sense
+                            if 0 <= center_ra <= 360 and -90 <= center_dec <= 90:
+                                st.success("Solution coordinates are valid")
+                            else:
+                                st.warning("Solution coordinates seem invalid!")
+                                
+                        except Exception as coord_error:
+                            st.warning(f"Could not extract solution coordinates: {coord_error}")
+                        
+                        # Clean up temporary files
+                        try:
+                            import shutil
+                            shutil.rmtree(temp_dir)
+                        except:
+                            pass
+                        
+                        return solved_wcs, updated_header
+                        
+                    except Exception as wcs_error:
+                        st.error(f"Error reading WCS solution: {wcs_error}")
+                        return None, None
+                        
+                else:
+                    st.error("Astrometry.net plate solving failed!")
+                    st.error("Possible issues:")
+                    st.error("- Not enough stars detected")
+                    st.error("- Incorrect pixel scale estimate")
+                    st.error("- Field not in astrometry.net index files")
+                    st.error("- solve-field not found in PATH")
+                    
+                    # Show any available log files
+                    log_file = output_prefix + ".log"
+                    if os.path.exists(log_file):
+                        try:
+                            with open(log_file, 'r') as f:
+                                log_content = f.read()
+                            st.text("Astrometry.net log:")
+                            st.text(log_content)
+                        except:
+                            pass
+                    
+                    # Clean up temporary files
+                    try:
+                        import shutil
+                        shutil.rmtree(temp_dir)
+                    except:
+                        pass
+                        
+                    return None, None
+                    
+            except subprocess.TimeoutExpired:
+                st.error("Astrometry.net plate solving timed out after 5 minutes")
+                return None, None
+                
+            except FileNotFoundError:
+                st.error("solve-field command not found!")
+                st.error("Please install astrometry.net and ensure solve-field is in your PATH")
+                return None, None
+                
+        except Exception as solve_error:
+            st.error(f"Error during astrometry.net plate solving: {solve_error}")
+            return None, None
         
     except Exception as e:
         st.error(f"Error in plate solving setup: {str(e)}")
@@ -1665,6 +1880,7 @@ def cross_match_with_gaia(
     Parameters
     ----------
     _phot_table : astropy.table.Table
+       
         Table containing detected source positions (underscore prevents caching issues)
     _science_header : dict or astropy.io.fits.Header
         FITS header with WCS information (underscore prevents caching issues)
