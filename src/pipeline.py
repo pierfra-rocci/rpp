@@ -2365,8 +2365,8 @@ def enhance_catalog(
             st.warning("No API key for ASTRO-COLIBRI provided or found")
             pass
 
-    try {
-        try {
+    try:
+        try:
             # Base URL of the API
             url = URL + "cone_search"
 
@@ -2383,14 +2383,12 @@ def enhance_catalog(
 
             # Set time range to ±7 days from observation date or current date
             if observation_date:
-                try {
+                try:
                     base_date = datetime.fromisoformat(
                         observation_date.replace("T", " ").split(".")[0]
                     )
-                } catch (ValueError, TypeError) {
+                except (ValueError, TypeError):
                     base_date = datetime.now()
-                }
-
             else:
                 base_date = datetime.now()
 
@@ -2415,20 +2413,19 @@ def enhance_catalog(
             response = requests.post(url, headers=headers, data=json.dumps(body))
 
             # Process the response
-            try {
+            try:
                 if response.status_code == 200:
                     events = response.json()["voevents"]
-                } else {
+                else:
                     st.warning(f"url: {url}")
                     st.warning(
                         f"Request failed with status code: {response.status_code}"
                     )
+            except json.JSONDecodeError:
+                st.error("Request did NOT succeed : ", response.status_code)
+                st.error("Error message : ", response.content.decode("UTF-8"))
 
-                } catch (json.JSONDecodeError) {
-                    st.error("Request did NOT succeed : ", response.status_code)
-                    st.error("Error message : ", response.content.decode("UTF-8"))
-
-        } catch (Exception e) {
+        except Exception as e:
             st.error(f"Error querying Astro-Colibri API: {str(e)}")
             # Continue with function instead of returning None
 
@@ -2455,194 +2452,188 @@ def enhance_catalog(
                     sources["type"].append(event["type"])
                     sources["classification"].append(event["classification"])
             astrostars = pd.DataFrame(sources)
-            st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.");
-            st.dataframe(astrostars);
+            st.success(f"Found {len(astrostars)} Astro-Colibri sources in field.")
+            st.dataframe(astrostars)
 
             # Filter valid coordinates for astro-colibri matching
-            valid_final_coords = final_table[valid_coords_mask];
+            valid_final_coords = final_table[valid_coords_mask]
             
-            if len(valid_final_coords) > 0 && len(astrostars) > 0 {
+            if len(valid_final_coords) > 0 and len(astrostars) > 0:
                 source_coords = SkyCoord(
                     ra=valid_final_coords["ra"].values,
                     dec=valid_final_coords["dec"].values,
                     unit="deg",
-                );
+                )
 
                 astro_colibri_coords = SkyCoord(
                     ra=astrostars["ra"],
                     dec=astrostars["dec"],
                     unit=(u.deg, u.deg),
-                );
+                )
 
                 if not isinstance(search_radius_arcsec, (int, float)):
                     raise ValueError("Search radius must be a number")
 
-                idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords);
-                matches = d2d < (15 * u.arcsec);
+                idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
+                matches = d2d < (15 * u.arcsec)
 
                 # Map matches back to the original table indices
-                valid_indices = valid_final_coords.index;
+                valid_indices = valid_final_coords.index
                 
                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                     if match:
-                        original_idx = valid_indices[i];
+                        original_idx = valid_indices[i]
                         final_table.loc[original_idx, "astrocolibri_name"] = astrostars[
                             "discoverer_internal_name"
-                        ][match_idx];
-                        final_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx];
+                        ][match_idx]
+                        final_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx]
                         final_table.loc[original_idx, "astrocolibri_classification"] = astrostars[
-                            "classification"][match_idx];
+                            "classification"][match_idx]
                 
-                st.success("Astro-Colibri matched objects in field.");
-            } else {
+                st.success("Astro-Colibri matched objects in field.")
+            else:
                 st.info("No valid coordinates available for Astro-Colibri matching")
-            }
-        } else {
-            st.write("No Astro-Colibri sources found in the field.");
-        }
-    } catch (Exception e) {
-        st.error(f"Error querying Astro-Colibri: {str(e)}");
-        st.write("No Astro-Colibri sources found.");
-    }
+        else:
+            st.write("No Astro-Colibri sources found in the field.")
+    except Exception as e:
+        st.error(f"Error querying Astro-Colibri: {str(e)}")
+        st.write("No Astro-Colibri sources found.")
 
-    status_text.write("Querying SIMBAD for object identifications...");
+    status_text.write("Querying SIMBAD for object identifications...")
 
-    custom_simbad = Simbad();
-    custom_simbad.add_votable_fields("otype", "main_id", "ids", "B", "V");
+    custom_simbad = Simbad()
+    custom_simbad.add_votable_fields("otype", "main_id", "ids", "B", "V")
 
-    st.info("Querying SIMBAD");
+    st.info("Querying SIMBAD")
 
-    try {
-        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit="deg");
+    try:
+        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit="deg")
         simbad_result, error = safe_catalog_query(
             custom_simbad.query_region,
             "SIMBAD query failed",
             center_coord,
             radius=field_width_arcmin * u.arcmin,
-        );
+        )
         if error:
-            st.warning(error);
-        else {
-            if simbad_result is not None and len(simbad_result) > 0 {
-                final_table["simbad_main_id"] = None;
-                final_table["simbad_otype"] = None;
-                final_table["simbad_ids"] = None;
-                final_table["simbad_B"] = None;
-                final_table["simbad_V"] = None;
+            st.warning(error)
+        else:
+            if simbad_result is not None and len(simbad_result) > 0:
+                final_table["simbad_main_id"] = None
+                final_table["simbad_otype"] = None
+                final_table["simbad_ids"] = None
+                final_table["simbad_B"] = None
+                final_table["simbad_V"] = None
 
                 # Filter valid coordinates for SIMBAD matching
-                valid_final_coords = final_table[valid_coords_mask];
+                valid_final_coords = final_table[valid_coords_mask]
                 
-                if len(valid_final_coords) > 0 {
+                if len(valid_final_coords) > 0:
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"].values,
                         dec=valid_final_coords["dec"].values,
                         unit="deg",
-                    );
+                    )
 
                     if all(col in simbad_result.colnames for col in ["ra", "dec"]):
-                        try {
+                        try:
                             # Filter out NaN coordinates in SIMBAD result
                             simbad_valid_mask = (
                                 pd.notna(simbad_result["ra"]) & 
                                 pd.notna(simbad_result["dec"]) &
                                 np.isfinite(simbad_result["ra"]) &
                                 np.isfinite(simbad_result["dec"])
-                            );
+                            )
                             
                             if not simbad_valid_mask.any():
-                                st.warning("No SIMBAD sources with valid coordinates found");
-                            } else {
-                                simbad_filtered = simbad_result[simbad_valid_mask];
+                                st.warning("No SIMBAD sources with valid coordinates found")
+                            else:
+                                simbad_filtered = simbad_result[simbad_valid_mask]
                                 
                                 simbad_coords = SkyCoord(
                                     ra=simbad_filtered["ra"],
                                     dec=simbad_filtered["dec"],
                                     unit=(u.hourangle, u.deg),
-                                );
+                                )
 
-                                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords);
-                                matches = d2d <= (10 * u.arcsec);
+                                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
+                                matches = d2d <= (10 * u.arcsec)
 
                                 # Map matches back to the original table indices
-                                valid_indices = valid_final_coords.index;
+                                valid_indices = valid_final_coords.index
 
                                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                                     if match:
-                                        original_idx = valid_indices[i];
+                                        original_idx = valid_indices[i]
                                         final_table.loc[original_idx, "simbad_main_id"] = simbad_filtered[
                                             "main_id"
-                                        ][match_idx];
+                                        ][match_idx]
                                         final_table.loc[original_idx, "simbad_otype"] = simbad_filtered[
                                             "otype"
-                                        ][match_idx];
+                                        ][match_idx]
                                         final_table.loc[original_idx, "simbad_B"] = simbad_filtered["B"][
                                             match_idx
-                                        ];
+                                        ]
                                         final_table.loc[original_idx, "simbad_V"] = simbad_filtered["V"][
                                             match_idx
-                                        ];
+                                        ]
                                         if "ids" in simbad_filtered.colnames:
                                             final_table.loc[original_idx, "simbad_ids"] = simbad_filtered[
                                                 "ids"
-                                            ][match_idx];
+                                            ][match_idx]
 
-                                st.success(f"Found {sum(matches)} SIMBAD objects in field.");
-                        } catch (Exception e) {
+                                st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+                        except Exception as e:
                             st.error(
                                 f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
-                            );
-                            st.write(f"Available SIMBAD columns: {simbad_result.colnames}");
-                    } else {
-                        available_cols = ", ".join(simbad_result.colnames);
+                            )
+                            st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
+                    else:
+                        available_cols = ", ".join(simbad_result.colnames)
                         st.error(
                             f"SIMBAD result missing required columns. Available columns: {available_cols}"
-                        );
-                } else {
+                        )
+                else:
                     st.info("No valid coordinates available for SIMBAD matching")
-                }
-            } else {
-                st.write("No SIMBAD objects found in the field.");
-            }
-    } catch (Exception e) {
-        st.error(f"SIMBAD query execution failed: {str(e)}");
-    }
+            else:
+                st.write("No SIMBAD objects found in the field.")
+    except Exception as e:
+        st.error(f"SIMBAD query execution failed: {str(e)}")
 
-    status_text.write("Querying SkyBoT for solar system objects...");
+    status_text.write("Querying SkyBoT for solar system objects...")
 
-    try {
+    try:
         if field_center_ra is not None and field_center_dec is not None:
             if "DATE-OBS" in header:
-                obs_date = header["DATE-OBS"];
+                obs_date = header["DATE-OBS"]
             elif "DATE" in header:
-                obs_date = header["DATE"];
+                obs_date = header["DATE"]
             else:
-                obs_date = Time.now().isot;
+                obs_date = Time.now().isot
 
-            obs_time = Time(obs_date).isot;
+            obs_time = Time(obs_date).isot
 
-            sr_value = min(field_width_arcmin / 60.0, 1.0);
+            sr_value = min(field_width_arcmin / 60.0, 1.0)
             skybot_url = (
                 f"http://vo.imcce.fr/webservices/skybot/skybotconesearch_query.php?"
                 f"RA={field_center_ra}&DEC={field_center_dec}&SR={sr_value}&"
                 f"EPOCH={quote(obs_time)}&mime=json"
-            );
+            )
 
-            st.info("Querying SkyBoT for solar system objects...");
+            st.info("Querying SkyBoT for solar system objects...")
 
-            try {
-                final_table["skybot_NAME"] = None;
-                final_table["skybot_OBJECT_TYPE"] = None;
-                final_table["skybot_MAGV"] = None;
+            try:
+                final_table["skybot_NAME"] = None
+                final_table["skybot_OBJECT_TYPE"] = None
+                final_table["skybot_MAGV"] = None
 
-                response = requests.get(skybot_url, timeout=15);
+                response = requests.get(skybot_url, timeout=15)
 
                 if response.status_code == 200:
-                    response_text = response.text.strip();
+                    response_text = response.text.strip()
 
                     if response_text.startswith("{") or response_text.startswith("["):
-                        try {
-                            skybot_result = response.json();
+                        try:
+                            skybot_result = response.json()
 
                             if "data" in skybot_result and skybot_result["data"]:
                                 skybot_coords = SkyCoord(
@@ -2655,71 +2646,65 @@ def enhance_catalog(
                                         for obj in skybot_result["data"]
                                     ],
                                     unit=u.deg,
-                                );
+                                )
 
                                 # Filter valid coordinates for SkyBoT matching
-                                valid_final_coords = final_table[valid_coords_mask];
+                                valid_final_coords = final_table[valid_coords_mask]
                                 
-                                if len(valid_final_coords) > 0 {
+                                if len(valid_final_coords) > 0:
                                     source_coords = SkyCoord(
                                         ra=valid_final_coords["ra"].values,
                                         dec=valid_final_coords["dec"].values,
                                         unit=u.deg,
-                                    );
+                                    )
 
                                     idx, d2d, _ = source_coords.match_to_catalog_sky(
                                         skybot_coords
-                                    );
-                                    matches = d2d <= (10 * u.arcsec);
+                                    )
+                                    matches = d2d <= (10 * u.arcsec)
 
                                     # Map matches back to the original table indices
-                                    valid_indices = valid_final_coords.index;
+                                    valid_indices = valid_final_coords.index
 
                                     for i, (match, match_idx) in enumerate(
                                         zip(matches, idx)
                                     ):
                                         if match:
-                                            original_idx = valid_indices[i];
-                                            obj = skybot_result["data"][match_idx];
-                                            final_table.loc[original_idx, "skybot_NAME"] = obj["NAME"];
+                                            original_idx = valid_indices[i]
+                                            obj = skybot_result["data"][match_idx]
+                                            final_table.loc[original_idx, "skybot_NAME"] = obj["NAME"]
                                             final_table.loc[original_idx, "skybot_OBJECT_TYPE"] = obj[
                                                 "OBJECT_TYPE"
-                                            ];
-                                            final_table.loc[original_idx, "skybot_MAGV"] = obj["MAGV"];
+                                            ]
+                                            final_table.loc[original_idx, "skybot_MAGV"] = obj["MAGV"]
 
                                     st.success(
                                         f"Found {sum(matches)} solar system objects in field."
-                                    );
-                                } else {
+                                    )
+                                else:
                                     st.info("No valid coordinates available for SkyBoT matching")
-                                }
-                            } else {
-                                st.warning("No solar system objects found in the field.");
-                            }
-                        } catch (ValueError e) {
+                            else:
+                                st.warning("No solar system objects found in the field.")
+                        except ValueError as e:
                             st.warning(
                                 f"No solar system objects found (no valid JSON data returned). {str(e)}"
-                            );
-                    } else {
-                        st.warning("No solar system objects found in the field.");
-                    }
-                } else {
+                            )
+                    else:
+                        st.warning("No solar system objects found in the field.")
+                else:
                     st.warning(
                         f"SkyBoT query failed with status code {response.status_code}"
-                    );
-                }
+                    )
 
-            } catch (requests.exceptions.RequestException req_err) {
-                st.warning(f"Request to SkyBoT failed: {req_err}");
-        } else {
-            st.warning("Could not determine field center for SkyBoT query");
-        }
-    } catch (Exception e) {
-        st.error(f"Error in SkyBoT processing: {str(e)}");
-    }
+            except requests.exceptions.RequestException as req_err:
+                st.warning(f"Request to SkyBoT failed: {req_err}")
+        else:
+            st.warning("Could not determine field center for SkyBoT query")
+    except Exception as e:
+        st.error(f"Error in SkyBoT processing: {str(e)}")
 
-    st.info("Querying AAVSO VSX for variable stars...");
-    try {
+    st.info("Querying AAVSO VSX for variable stars...")
+    try:
         if field_center_ra is not None and field_center_dec is not None:
             Vizier.ROW_LIMIT = -1
             vizier_result = Vizier.query_region(
@@ -2737,218 +2722,161 @@ def enhance_catalog(
 
                 vsx_coords = SkyCoord(
                     ra=vsx_table["RAJ2000"], dec=vsx_table["DEJ2000"], unit=u.deg
-                );
+                )
                 
                 # Filter valid coordinates for AAVSO matching
-                valid_final_coords = final_table[valid_coords_mask];
+                valid_final_coords = final_table[valid_coords_mask]
                 
-                if len(valid_final_coords) > 0 {
+                if len(valid_final_coords) > 0:
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"].values,
                         dec=valid_final_coords["dec"].values,
                         unit=u.deg,
-                    );
+                    )
 
-                    idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords);
-                    matches = d2d <= (10 * u.arcsec);
+                    idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
+                    matches = d2d <= (10 * u.arcsec)
 
-                    final_table["aavso_Name"] = None;
-                    final_table["aavso_Type"] = None;
-                    final_table["aavso_Period"] = None;
+                    final_table["aavso_Name"] = None
+                    final_table["aavso_Type"] = None
+                    final_table["aavso_Period"] = None
 
                     # Map matches back to the original table indices
-                    valid_indices = valid_final_coords.index;
+                    valid_indices = valid_final_coords.index
 
                     for i, (match, match_idx) in enumerate(zip(matches, idx)):
                         if match:
-                            original_idx = valid_indices[i];
-                            final_table.loc[original_idx, "aavso_Name"] = vsx_table["Name"][match_idx];
-                            final_table.loc[original_idx, "aavso_Type"] = vsx_table["Type"][match_idx];
+                            original_idx = valid_indices[i]
+                            final_table.loc[original_idx, "aavso_Name"] = vsx_table["Name"][match_idx]
+                            final_table.loc[original_idx, "aavso_Type"] = vsx_table["Type"][match_idx]
                             if "Period" in vsx_table.colnames:
                                 final_table.loc[original_idx, "aavso_Period"] = vsx_table["Period"][
                                     match_idx
-                                ];
+                                ]
 
-                    st.success(f"Found {sum(matches)} variable stars in field.");
-                } else {
+                    st.success(f"Found {sum(matches)} variable stars in field.")
+                else:
                     st.info("No valid coordinates available for AAVSO matching")
-                }
-            } else {
-                st.write("No variable stars found in the field.");
-            }
-    } catch (Exception e) {
-        st.error(f"Error querying AAVSO VSX: {e}");
-    }
+            else:
+                st.write("No variable stars found in the field.")
+    except Exception as e:
+        st.error(f"Error querying AAVSO VSX: {e}")
 
-    st.info("Querying Milliquas Catalog for quasars...");
-    try {
+    st.info("Querying Milliquas Catalog for quasars...")
+    try:
         if field_center_ra is not None and field_center_dec is not None:
             # Set columns to retrieve from the quasar catalog
-            v = Vizier(columns=["RAJ2000", "DEJ2000", "Name", "z", "Rmag"]);
-            v.ROW_LIMIT = -1;  # No row limit
+            v = Vizier(columns=["RAJ2000", "DEJ2000", "Name", "z", "Rmag"])
+            v.ROW_LIMIT = -1  # No row limit
 
             # Query the VII/294 catalog around the field center
             result = v.query_region(
                 SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg, u.deg)),
                 width=field_width_arcmin * u.arcmin,
                 catalog="VII/294",
-            );
+            )
 
             if result and len(result) > 0:
-                qso_table = result[0];
+                qso_table = result[0]
 
                 # Convert to pandas DataFrame for easier matching
-                qso_df = qso_table.to_pandas();
+                qso_df = qso_table.to_pandas()
                 qso_coords = SkyCoord(
                     ra=qso_df["RAJ2000"], dec=qso_df["DEJ2000"], unit=u.deg
-                );
+                )
 
                 # Filter valid coordinates for QSO matching
-                valid_final_coords = final_table[valid_coords_mask];
+                valid_final_coords = final_table[valid_coords_mask]
                 
-                if len(valid_final_coords) > 0 {
+                if len(valid_final_coords) > 0:
                     # Create source coordinates for matching
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"], dec=valid_final_coords["dec"], unit=u.deg
-                    );
+                    )
 
                     # Perform cross-matching
-                    idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords);
-                    matches = d2d.arcsec <= 10;
+                    idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
+                    matches = d2d.arcsec <= 10
 
                     # Add matched quasar information to the final table
-                    final_table["qso_name"] = None;
-                    final_table["qso_redshift"] = None;
-                    final_table["qso_Rmag"] = None;
+                    final_table["qso_name"] = None
+                    final_table["qso_redshift"] = None
+                    final_table["qso_Rmag"] = None
 
                     # Initialize catalog_matches column if it doesn't exist
                     if "catalog_matches" not in final_table.columns:
-                        final_table["catalog_matches"] = "";
+                        final_table["catalog_matches"] = ""
 
                     # Map matches back to the original table indices
-                    valid_indices = valid_final_coords.index;
-                    matched_sources = np.where(matches)[0];
-                    matched_qsos = idx[matches];
+                    valid_indices = valid_final_coords.index
+                    matched_sources = np.where(matches)[0]
+                    matched_qsos = idx[matches]
 
                     for i, qso_idx in zip(matched_sources, matched_qsos):
-                        original_idx = valid_indices[i];
+                        original_idx = valid_indices[i]
                         final_table.loc[original_idx, "qso_name"] = qso_df.iloc[qso_idx][
                             "Name"
-                        ];
+                        ]
                         final_table.loc[original_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
                             "z"
-                        ];
+                        ]
                         final_table.loc[original_idx, "qso_Rmag"] = qso_df.iloc[qso_idx][
                             "Rmag"
-                        ];
+                        ]
 
                     # Update the catalog_matches column for matched quasars
-                    has_qso = final_table["qso_name"].notna();
-                    final_table.loc[has_qso, "catalog_matches"] += "QSO; ";
+                    has_qso = final_table["qso_name"].notna()
+                    final_table.loc[has_qso, "catalog_matches"] += "QSO; "
 
                     st.success(
                         f"Found {sum(has_qso)} quasars in field from Milliquas catalog."
-                    );
+                    )
                     write_to_log(
                         st.session_state.get("log_buffer"),
                         f"Found {sum(has_qso)} quasar matches in Milliquas catalog",
                         "INFO",
-                    );
-                } else {
+                    )
+                else:
                     st.info("No valid coordinates available for QSO matching")
-                }
-            } else {
-                st.warning("No quasars found in field from Milliquas catalog.");
+            else:
+                st.warning("No quasars found in field from Milliquas catalog.")
                 write_to_log(
                     st.session_state.get("log_buffer"),
                     "No quasars found in field from Milliquas catalog",
                     "INFO",
-                );
-    } catch (Exception e) {
-        st.error(f"Error querying VizieR Milliquas: {str(e)}");
+                )
+    except Exception as e:
+        st.error(f"Error querying VizieR Milliquas: {str(e)}")
         write_to_log(
             st.session_state.get("log_buffer"),
             f"Error in Milliquas catalog processing: {str(e)}",
             "ERROR",
-        );
-    }
-
-    status_text.write("Cross-matching complete")
-    final_table["catalog_matches"] = ""
-
-    if "gaia_calib_star" in final_table.columns:
-        is_calib = final_table["gaia_calib_star"]
-        final_table.loc[is_calib, "catalog_matches"] += "GAIA (calib); "
-
-    if "simbad_main_id" in final_table.columns:
-        has_simbad = final_table["simbad_main_id"].notna()
-        final_table.loc[has_simbad, "catalog_matches"] += "SIMBAD; "
-
-    if "skybot_NAME" in final_table.columns:
-        has_skybot = final_table["skybot_NAME"].notna()
-        final_table.loc[has_skybot, "catalog_matches"] += "SkyBoT; "
-
-    if "aavso_Name" in final_table.columns:
-        has_aavso = final_table["aavso_Name"].notna()
-        final_table.loc[has_aavso, "catalog_matches"] += "AAVSO; "
-
-    if "qso_name" in final_table.columns:
-        has_qso = final_table["qso_name"].notna()
-        final_table.loc[has_qso, "catalog_matches"] += "QSO; "
-
-    final_table["catalog_matches"] = final_table["catalog_matches"].str.rstrip("; ")
-    final_table.loc[final_table["catalog_matches"] == "",
-                    "catalog_matches"] = None
-
-    matches_count = final_table["catalog_matches"].notna().sum()
-    if matches_count > 0:
-        st.subheader(f"Matched Objects Summary ({matches_count} sources)")
-        matched_df = final_table[final_table["catalog_matches"].notna()].copy()
-
-        display_cols = [
-            "xcenter",
-            "ycenter",
-            "ra",
-            "dec",
-            "aperture_mag",
-            "catalog_matches",
-        ]
-        display_cols = [col for col in display_cols 
-                        if col in matched_df.columns]
-
-        st.dataframe(matched_df[display_cols])
-
-    if "match_id" in final_table.columns:
-        final_table.drop("match_id", axis=1, inplace=True)
-
-    return final_table
-
+        )
 
 def validate_wcs_orientation(original_header, solved_header, test_pixel_coords):
     """
     Validate that WCS transformation preserves expected orientation
     """
-    try {
-        orig_wcs = WCS(original_header);
-        solved_wcs = WCS(solved_header);
+    try:
+        orig_wcs = WCS(original_header)
+        solved_wcs = WCS(solved_header)
         
         # Test a few pixel positions
-        orig_sky = orig_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1]);
-        solved_sky = solved_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1]);
+        orig_sky = orig_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1])
+        solved_sky = solved_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1])
         
         # Check if coordinates are consistent (within reasonable tolerance)
-        ra_diff = np.abs(orig_sky[0] - solved_sky[0]);
-        dec_diff = np.abs(orig_sky[1] - solved_sky[1]);
+        ra_diff = np.abs(orig_sky[0] - solved_sky[0])
+        dec_diff = np.abs(orig_sky[1] - solved_sky[1])
         
         if np.any(ra_diff > 0.1) or np.any(dec_diff > 0.1):  # 0.1 degree tolerance
             st.warning("WCS orientation may have changed during plate solving")
-            return False;
+            return False
             
-        return True;
-    } catch (Exception e) {
-        st.warning(f"Could not validate WCS orientation: {e}");
-        return True;  # Assume OK if validation fails
-    }
+        return True
+    except Exception as e:
+        st.warning(f"Could not validate WCS orientation: {e}")
+        return True  # Assume OK if validation fails
 
 
 def validate_cross_match_results(phot_table, matched_table, header):
