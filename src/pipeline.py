@@ -44,17 +44,16 @@ from typing import Union, Any, Optional, Dict, Tuple
 
 def solve_with_astrometrynet(file_path, api_key=None):
     """
-    Solve astrometric plate using Astrometry.Net through stdpipe.
-    This function loads a FITS image, detects objects, and uses Astrometry.Net's
-    blind matching service to determine accurate WCS information.
+    Solve astrometric plate using local Astrometry.Net installation through stdpipe.
+    This function loads a FITS image, detects objects, and uses a local Astrometry.Net
+    installation with index files to determine accurate WCS information.
 
     Parameters
     ----------
     file_path : str
         Path to the FITS image file that needs astrometric solving
     api_key : str, optional
-        Astrometry.Net API key. If not provided, will try to read from
-        ~/.astropy/config/astroquery.cfg
+        Not used for local solving (kept for compatibility)
 
     Returns
     -------
@@ -66,8 +65,8 @@ def solve_with_astrometrynet(file_path, api_key=None):
     Notes
     -----
     This function requires:
-    - A valid Astrometry.Net API key
-    - Internet connection to access Astrometry.Net service
+    - Local Astrometry.Net installation with solve-field binary
+    - Appropriate index files for the field scale
     - The image should contain enough stars for plate solving (typically >10)
     
     The function will detect objects in the image automatically and use the
@@ -112,8 +111,8 @@ def solve_with_astrometrynet(file_path, api_key=None):
         from photutils.detection import DAOStarFinder
         
         # Estimate FWHM for detection
-        fwhm_estimate = 3.0  # Default estimate
-        threshold = 5 * np.std(image_sub)
+        fwhm_estimate = 3.5  # Default estimate
+        threshold = 4 * np.std(image_sub)
         
         daofind = DAOStarFinder(fwhm=fwhm_estimate, threshold=threshold)
         sources = daofind(image_sub)
@@ -124,7 +123,6 @@ def solve_with_astrometrynet(file_path, api_key=None):
             
         st.write(f"Detected {len(sources)} sources for plate solving")
         
-        # Prepare object list for Astrometry.Net
         # Use only the brightest sources to speed up solving
         sources.sort('flux')
         sources.reverse()  # Brightest first
@@ -135,7 +133,7 @@ def solve_with_astrometrynet(file_path, api_key=None):
         
         # Convert to format expected by stdpipe
         obj = Table()
-        obj['x'] = obj_list['xcentroid'] 
+        obj['x'] = obj_list['xcentroid']
         obj['y'] = obj_list['ycentroid']
         obj['flux'] = obj_list['flux']
         
@@ -168,15 +166,15 @@ def solve_with_astrometrynet(file_path, api_key=None):
             pixscale_upp = pixel_scale * 2.0
             
         # Set search radius if center coordinates available
-        sr0 = 1.0 if (ra0 is not None and dec0 is not None) else None
+        radius = 1.0 if (ra0 is not None and dec0 is not None) else None
         
-        st.write("Starting Astrometry.Net blind plate solving...")
+        st.write("Starting local Astrometry.Net plate solving...")
         st.write(f"Center guess: RA={ra0}, DEC={dec0}" if ra0 and dec0 else "No center guess available")
         st.write(f"Pixel scale range: {pixscale_low:.2f} - {pixscale_upp:.2f} arcsec/pixel")
         
-        # Perform blind matching using Astrometry.Net
+        # Perform blind matching using local Astrometry.Net installation
         try:
-            wcs_solution = astrometry.blind_match_astrometrynet(
+            wcs_solution = astrometry.blind_match_objects(
                 obj,
                 order=2,  # SIP polynomial order
                 update=False,  # Don't update object table
@@ -184,25 +182,28 @@ def solve_with_astrometrynet(file_path, api_key=None):
                 get_header=False,  # Return WCS object, not header
                 width=image_data.shape[1],
                 height=image_data.shape[0],
-                solve_timeout=300,  # 5 minutes timeout
-                api_key=api_key,
                 center_ra=ra0,
-                center_dec=dec0, 
-                radius=sr0,
+                center_dec=dec0,
+                radius=radius,
                 scale_lower=pixscale_low,
                 scale_upper=pixscale_upp,
-                scale_units='arcsecperpix'
+                scale_units='arcsecperpix',
+                verbose=True
             )
             
             if wcs_solution is None:
-                st.error("Astrometry.Net plate solving failed. No solution found.")
+                st.error("Local Astrometry.Net plate solving failed. No solution found.")
+                st.info("Make sure you have:")
+                st.info("1. Astrometry.Net installed locally with solve-field binary in PATH")
+                st.info("2. Appropriate index files for your field scale")
+                st.info("3. Index files placed in the correct directory")
                 return None, None
                 
             if not wcs_solution.is_celestial:
                 st.error("Plate solving returned invalid WCS solution")
                 return None, None
                 
-            st.success("Plate solving succeeded!")
+            st.success("Local plate solving succeeded!")
             
             # Update header with new WCS
             # Clear any existing WCS keywords first
@@ -214,25 +215,34 @@ def solve_with_astrometrynet(file_path, api_key=None):
             header.update(wcs_header)
             
             # Add some metadata about the solution
-            header['COMMENT'] = 'WCS solved using Astrometry.Net via stdpipe'
-            header['PLTSOLVR'] = ('Astrometry.Net', 'Plate solving software')
+            header['COMMENT'] = 'WCS solved using local Astrometry.Net via stdpipe'
+            header['PLTSOLVR'] = ('Astrometry.Net (local)', 'Plate solving software')
             header['PLTNSRC'] = (len(obj), 'Number of sources used for plate solving')
             
             return wcs_solution, header
             
         except Exception as e:
-            st.error(f"Astrometry.Net plate solving failed: {str(e)}")
+            st.error(f"Local Astrometry.Net plate solving failed: {str(e)}")
             
-            # If online solving fails, suggest checking API key
-            if "api_key" in str(e).lower() or "unauthorized" in str(e).lower():
+            # Provide helpful troubleshooting info for local installation
+            error_str = str(e).lower()
+            if "solve-field" in error_str or "command not found" in error_str or "executable" in error_str:
                 st.error("""
-                API key issue detected. Please ensure you have:
-                1. Created an account at https://nova.astrometry.net
-                2. Generated an API key from your profile page
-                3. Either pass the api_key parameter or add it to ~/.astropy/config/astroquery.cfg:
-                   
-                   [astrometry_net]
-                   api_key = your-api-key-here
+                solve-field executable not found. Please ensure:
+                1. Astrometry.Net is properly installed
+                2. solve-field binary is in your system PATH
+                3. On Windows: Add the Astrometry.Net bin directory to PATH
+                4. On Linux/Mac: Install via package manager or from source
+                """)
+            elif "index" in error_str or "no match" in error_str:
+                st.error("""
+                No astrometric solution found. This could be due to:
+                1. Missing or incorrect index files for your field scale
+                2. Too few detected sources
+                3. Poor source detection parameters
+                4. Field scale outside the range of available index files
+                
+                Try downloading index files appropriate for your pixel scale.
                 """)
             
             return None, None
