@@ -42,69 +42,204 @@ from src.tools import (FIGURE_SIZES, URL, safe_catalog_query,
 from typing import Union, Any, Optional, Dict, Tuple
 
 
-def solve_with_siril(file_path):
+def solve_with_astrometrynet(file_path, api_key=None):
     """
-    Solve astrometric plate using Siril through a PowerShell or Bash script.
-    This function sends an image file path to a platform-appropriate script that uses Siril
-    to determine accurate WCS (World Coordinate System) information for the image.
-    It then reads the resulting solved file to extract the WCS data.
+    Solve astrometric plate using Astrometry.Net through stdpipe.
+    This function loads a FITS image, detects objects, and uses Astrometry.Net's
+    blind matching service to determine accurate WCS information.
 
+    Parameters
+    ----------
     file_path : str
-        Path to the image file that needs astrometric solving
+        Path to the FITS image file that needs astrometric solving
+    api_key : str, optional
+        Astrometry.Net API key. If not provided, will try to read from
+        ~/.astropy/config/astroquery.cfg
+
     Returns
     -------
-    - wcs_object: astropy.wcs.WCS object containing the WCS solution
-    - updated_header: Header with WCS keywords from the solved image
+    tuple
+        (wcs_object, updated_header) where:
+        - wcs_object: astropy.wcs.WCS object containing the WCS solution
+        - updated_header: Original header updated with WCS keywords
 
-    The function expects a PowerShell script named 'plate_solve.ps1' (Windows)
-    or a Bash script named 'plate_solve.sh' (Linux/macOS) to be available
-    in the current or parent directory. The solved image will be saved with '_solved' appended
-    to the original filename.
+    Notes
+    -----
+    This function requires:
+    - A valid Astrometry.Net API key
+    - Internet connection to access Astrometry.Net service
+    - The image should contain enough stars for plate solving (typically >10)
+    
+    The function will detect objects in the image automatically and use the
+    brightest 500 sources for plate solving to optimize performance.
     """
-    import platform
     try:
-        if os.path.exists(file_path):
-            # Find the absolute path to the plate solving script
-            script_dir = pathlib.Path(__file__).parent.resolve()
-            system = platform.system()
-            if system == "Windows":
-                script_name = "plate_solve.ps1"
-                command_base = ["powershell.exe", "-ExecutionPolicy", "Bypass",
-                                "-File"]
-            else:
-                script_name = "plate_solve.sh"
-                command_base = ["bash"]
-            script_path = script_dir / script_name
-            if not script_path.exists():
-                # Try parent directory if not found in current
-                script_path = script_dir.parent / script_name
-            if not script_path.exists():
-                st.error(f"Could not find {script_name} at {script_path}")
-                return None
-
-            if system == "Windows":
-                command = command_base + [str(script_path), "-filepath",
-                                          str(file_path)]
-            else:
-                command = command_base + [str(script_path), str(file_path)]
-            subprocess.run(command, check=True)
+        if not os.path.exists(file_path):
+            st.error(f"File {file_path} does not exist.")
+            return None, None
+            
+        # Load the FITS file
+        st.write("Loading FITS file for plate solving...")
+        with fits.open(file_path) as hdul:
+            image_data = hdul[0].data
+            header = hdul[0].header.copy()
+            
+        if image_data is None:
+            st.error("No image data found in FITS file")
+            return None, None
+            
+        # Check if WCS already exists and is valid
+        try:
+            existing_wcs = WCS(header)
+            if existing_wcs.is_celestial:
+                st.info("Valid WCS already exists in header. Proceeding with blind solve anyway...")
+        except Exception:
+            st.info("No valid WCS found in header. Proceeding with blind solve...")
+            
+        # Detect objects for plate solving
+        st.write("Detecting objects for plate solving...")
+        
+        # Estimate background for object detection
+        bkg, bkg_error = estimate_background(image_data)
+        if bkg is None:
+            st.error(f"Failed to estimate background: {bkg_error}")
+            return None, None
+            
+        # Subtract background
+        image_sub = image_data - bkg.background
+        
+        # Detect objects using photutils
+        from photutils.detection import DAOStarFinder
+        
+        # Estimate FWHM for detection
+        fwhm_estimate = 3.0  # Default estimate
+        threshold = 5 * np.std(image_sub)
+        
+        daofind = DAOStarFinder(fwhm=fwhm_estimate, threshold=threshold)
+        sources = daofind(image_sub)
+        
+        if sources is None or len(sources) < 10:
+            st.warning("Too few sources detected for reliable plate solving. Try adjusting detection parameters.")
+            return None, None
+            
+        st.write(f"Detected {len(sources)} sources for plate solving")
+        
+        # Prepare object list for Astrometry.Net
+        # Use only the brightest sources to speed up solving
+        sources.sort('flux')
+        sources.reverse()  # Brightest first
+        
+        # Limit to 500 brightest sources for efficiency
+        n_sources = min(500, len(sources))
+        obj_list = sources[:n_sources]
+        
+        # Convert to format expected by stdpipe
+        obj = Table()
+        obj['x'] = obj_list['xcentroid'] 
+        obj['y'] = obj_list['ycentroid']
+        obj['flux'] = obj_list['flux']
+        
+        # Calculate signal-to-noise ratio
+        if 'flux' in obj_list.colnames and np.any(obj_list['flux'] > 0):
+            # Estimate noise from background RMS
+            noise_estimate = np.median(bkg.background_rms)
+            obj['sn'] = obj['flux'] / noise_estimate
         else:
-            st.warning(f"File {file_path} does not exist.")
-
+            obj['sn'] = np.ones(len(obj)) * 10  # Default S/N
+            
+        st.write(f"Using {len(obj)} brightest sources for plate solving")
+        
+        # Try to get initial guess parameters from header
+        ra0 = header.get('RA') or header.get('OBJRA') or header.get('CRVAL1')
+        dec0 = header.get('DEC') or header.get('OBJDEC') or header.get('CRVAL2')
+        
+        # Estimate pixel scale if available
+        pixscale_low = 0.3  # arcsec/pixel
+        pixscale_upp = 10.0  # arcsec/pixel
+        
+        # Try to get better pixel scale estimate from header
+        if 'PIXSCALE' in header:
+            pixel_scale = header['PIXSCALE']
+            pixscale_low = pixel_scale * 0.5
+            pixscale_upp = pixel_scale * 2.0
+        elif 'CDELT1' in header:
+            pixel_scale = abs(header['CDELT1']) * 3600  # Convert degrees to arcsec
+            pixscale_low = pixel_scale * 0.5
+            pixscale_upp = pixel_scale * 2.0
+            
+        # Set search radius if center coordinates available
+        sr0 = 1.0 if (ra0 is not None and dec0 is not None) else None
+        
+        st.write("Starting Astrometry.Net blind plate solving...")
+        st.write(f"Center guess: RA={ra0}, DEC={dec0}" if ra0 and dec0 else "No center guess available")
+        st.write(f"Pixel scale range: {pixscale_low:.2f} - {pixscale_upp:.2f} arcsec/pixel")
+        
+        # Perform blind matching using Astrometry.Net
+        try:
+            wcs_solution = astrometry.blind_match_astrometrynet(
+                obj,
+                order=2,  # SIP polynomial order
+                update=False,  # Don't update object table
+                sn=5,  # Minimum S/N for sources to use
+                get_header=False,  # Return WCS object, not header
+                width=image_data.shape[1],
+                height=image_data.shape[0],
+                solve_timeout=300,  # 5 minutes timeout
+                api_key=api_key,
+                center_ra=ra0,
+                center_dec=dec0, 
+                radius=sr0,
+                scale_lower=pixscale_low,
+                scale_upper=pixscale_upp,
+                scale_units='arcsecperpix'
+            )
+            
+            if wcs_solution is None:
+                st.error("Astrometry.Net plate solving failed. No solution found.")
+                return None, None
+                
+            if not wcs_solution.is_celestial:
+                st.error("Plate solving returned invalid WCS solution")
+                return None, None
+                
+            st.success("Plate solving succeeded!")
+            
+            # Update header with new WCS
+            # Clear any existing WCS keywords first
+            astrometry.clear_wcs(header, remove_comments=True,
+                                 remove_underscored=True, remove_history=True)
+            
+            # Add new WCS keywords
+            wcs_header = wcs_solution.to_header(relax=True)
+            header.update(wcs_header)
+            
+            # Add some metadata about the solution
+            header['COMMENT'] = 'WCS solved using Astrometry.Net via stdpipe'
+            header['PLTSOLVR'] = ('Astrometry.Net', 'Plate solving software')
+            header['PLTNSRC'] = (len(obj), 'Number of sources used for plate solving')
+            
+            return wcs_solution, header
+            
+        except Exception as e:
+            st.error(f"Astrometry.Net plate solving failed: {str(e)}")
+            
+            # If online solving fails, suggest checking API key
+            if "api_key" in str(e).lower() or "unauthorized" in str(e).lower():
+                st.error("""
+                API key issue detected. Please ensure you have:
+                1. Created an account at https://nova.astrometry.net
+                2. Generated an API key from your profile page
+                3. Either pass the api_key parameter or add it to ~/.astropy/config/astroquery.cfg:
+                   
+                   [astrometry_net]
+                   api_key = your-api-key-here
+                """)
+            
+            return None, None
+            
     except Exception as e:
-        st.error(f"Error solving with : {str(e)}")
-        return None
-    try:
-        file_path_list = file_path.split(".")
-        file_path = file_path_list[0] + "_solved.fits"
-        hdu = fits.open(file_path, mode="readonly")
-        head = hdu[0].header
-        wcs_obj = WCS(head)
-
-        return wcs_obj, head
-
-    except Exception as e:
-        st.error(f"Error reading solved file: {str(e)}")
+        st.error(f"Error in plate solving: {str(e)}")
+        return None, None
 
 
 def detect_remove_cosmic_rays(
