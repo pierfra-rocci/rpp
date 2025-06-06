@@ -112,7 +112,6 @@ def solve_with_astrometrynet(file_path):
         threshold_multipliers = [3.0, 4.0, 5.0, 6.0]
         
         sources = None
-        detection_info = {}
         
         for fwhm_est in fwhm_estimates:
             for thresh_mult in threshold_multipliers:
@@ -125,11 +124,6 @@ def solve_with_astrometrynet(file_path):
                     
                     if temp_sources is not None and len(temp_sources) >= 10:
                         sources = temp_sources
-                        detection_info = {
-                            'fwhm': fwhm_est,
-                            'threshold': threshold,
-                            'n_sources': len(sources)
-                        }
                         st.success(f"Photutils found {len(sources)} sources with "
                                  f"FWHM={fwhm_est}, threshold={threshold:.1f}")
                         break
@@ -159,11 +153,6 @@ def solve_with_astrometrynet(file_path):
                         
                         if temp_sources is not None and len(temp_sources) >= 5:
                             sources = temp_sources
-                            detection_info = {
-                                'fwhm': fwhm_est,
-                                'threshold': threshold,
-                                'n_sources': len(sources)
-                            }
                             st.success(f"Aggressive detection found {len(sources)} sources")
                             break
                             
@@ -249,11 +238,9 @@ def solve_with_astrometrynet(file_path):
                 try:
                     cd11 = header.get('CD1_1', 0)
                     cd12 = header.get('CD1_2', 0)
-                    cd21 = header.get('CD2_1', 0)
-                    cd22 = header.get('CD2_2', 0)
                     if cd11 != 0 or cd12 != 0:
                         pixel_scale_estimate = 3600 * np.sqrt(cd11**2 + cd12**2)
-                except:
+                except Exception:
                     pass
         
         # Prepare parameters for stdpipe blind_match_objects
@@ -298,12 +285,39 @@ def solve_with_astrometrynet(file_path):
                         'radius': 5.0  # 5 degree search radius
                     })
                     st.write(f"Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}")
-            except:
+            except Exception:
                 st.write("Could not parse RA/DEC from header")
         
         st.write("Running stdpipe blind_match_objects...")
         st.write(f"Using {len(obj_table)} sources for plate solving")
         
+        # Convert sources to the format expected by stdpipe
+        st.write("Converting sources for stdpipe...")
+        obj_table = Table()
+        obj_table['x'] = sources['xcentroid']
+        obj_table['y'] = sources['ycentroid'] 
+        obj_table['flux'] = sources['flux']
+        
+        # Add signal-to-noise ratio if available
+        if 'peak' in sources.colnames:
+            # Estimate SNR from peak/background ratio
+            background_std = np.std(image_sub)
+            obj_table['sn'] = sources['peak'] / background_std
+            # Calculate flux error from SNR
+            obj_table['fluxerr'] = sources['flux'] / obj_table['sn']
+        else:
+            # Use flux as proxy for SNR
+            obj_table['sn'] = sources['flux'] / np.median(sources['flux'])
+            # Estimate flux error assuming Poisson noise
+            obj_table['fluxerr'] = np.sqrt(np.abs(sources['flux']))
+        
+        # Ensure fluxerr is positive and finite
+        obj_table['fluxerr'] = np.where(
+            (obj_table['fluxerr'] <= 0) | ~np.isfinite(obj_table['fluxerr']),
+            sources['flux'] * 0.1,  # 10% error as fallback
+            obj_table['fluxerr']
+        )
+
         try:
             # Call stdpipe's blind_match_objects function
             solved_wcs = astrometry.blind_match_objects(obj_table, **kwargs)
@@ -315,8 +329,8 @@ def solve_with_astrometrynet(file_path):
                 updated_header = header.copy()
                 
                 # Clear any existing WCS keywords to avoid conflicts
-                astrometry.clear_wcs(updated_header, remove_comments=True, 
-                                   remove_underscored=True, remove_history=True)
+                astrometry.clear_wcs(updated_header, remove_comments=True,
+                                     remove_underscored=True, remove_history=True)
                 
                 # Add new WCS keywords from solution
                 wcs_header = solved_wcs.to_header(relax=True)
