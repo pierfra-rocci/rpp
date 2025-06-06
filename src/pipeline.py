@@ -106,35 +106,144 @@ def solve_with_astrometrynet(file_path):
         st.write("Detecting objects for plate solving using stdpipe...")
         
         try:
-            # Use stdpipe's object detection which is optimized for astrometry
-            obj = photometry.get_objects_sep(
-                image_data,
-                header=header,
-                thresh=3.0,  # Detection threshold
-                sn=5,        # Minimum S/N ratio
-                aper=5,    # Aperture radius for flux measurement
-                mask=None,
-                use_mask_large=True,
-                get_segmentation=False,
-                subtract_bg=True
-            )
+            # First, let's get some image statistics for better parameter selection
+            image_stats = {
+                'mean': np.mean(image_data),
+                'std': np.std(image_data),
+                'min': np.min(image_data),
+                'max': np.max(image_data),
+                'median': np.median(image_data)
+            }
+            st.write(f"Image statistics: mean={image_stats['mean']:.1f}, std={image_stats['std']:.1f}, "
+                    f"min={image_stats['min']:.1f}, max={image_stats['max']:.1f}")
             
+            # Try more sensitive detection parameters first
+            detection_params = [
+                {'thresh': 1.5, 'sn': 3, 'aper': 3, 'desc': 'Very sensitive'},
+                {'thresh': 2.0, 'sn': 4, 'desc': 'Sensitive'},
+                {'thresh': 3.0, 'sn': 5, 'desc': 'Standard'},
+                {'thresh': 4.0, 'sn': 6, 'desc': 'Conservative'}
+            ]
+            
+            obj = None
+            for params in detection_params:
+                st.write(f"Trying {params['desc']} detection (thresh={params['thresh']}, sn={params['sn']})...")
+                
+                try:
+                    obj = photometry.get_objects_sep(
+                        image_data,
+                        header=header,
+                        thresh=params['thresh'],  # Detection threshold
+                        sn=params['sn'],          # Minimum S/N ratio
+                        aper=params.get('aper', 5),  # Aperture radius for flux measurement
+                        mask=None,
+                        use_mask_large=True,
+                        get_segmentation=False,
+                        subtract_bg=True,
+                        minarea=5,  # Minimum area for detection
+                        deblend_nthresh=16,  # Number of deblending thresholds
+                        deblend_cont=0.001,  # Deblending contrast parameter
+                        clean=True,  # Clean spurious detections
+                        clean_param=1.0,  # Cleaning parameter
+                    )
+                    
+                    if obj is not None and len(obj) >= 10:
+                        st.success(f"Detected {len(obj)} sources using {params['desc']} parameters")
+                        break
+                    elif obj is not None:
+                        st.write(f"Found {len(obj)} sources (need at least 10)")
+                    else:
+                        st.write("No sources found with these parameters")
+                        
+                except Exception as param_error:
+                    st.write(f"Detection failed with {params['desc']} parameters: {param_error}")
+                    continue
+            
+            # If we still don't have enough sources, try even more aggressive parameters
             if obj is None or len(obj) < 10:
-                st.warning("Too few sources detected for reliable plate solving. Try adjusting detection parameters.")
-                return None, None
-                
-            st.write(f"Detected {len(obj)} sources using stdpipe")
+                st.warning("Standard detection failed. Trying very aggressive parameters...")
+                try:
+                    obj = photometry.get_objects_sep(
+                        image_data,
+                        header=header,
+                        thresh=1.0,  # Very low threshold
+                        sn=2,        # Very low S/N requirement
+                        aper=2,      # Smaller aperture
+                        mask=None,
+                        use_mask_large=False,  # Don't mask large objects
+                        get_segmentation=False,
+                        subtract_bg=True,
+                        minarea=3,   # Very small minimum area
+                        deblend_nthresh=32,  # More deblending levels
+                        deblend_cont=0.0001,  # Very aggressive deblending
+                        clean=False,  # Don't clean detections
+                    )
+                    
+                    if obj is not None and len(obj) > 0:
+                        st.write(f"Aggressive detection found {len(obj)} sources")
+                    
+                except Exception as aggressive_error:
+                    st.warning(f"Aggressive detection also failed: {aggressive_error}")
             
-            # Filter for best sources for plate solving
-            if len(obj) > 500:
-                # Sort by flux and take brightest sources
-                obj.sort('flux')
-                obj.reverse()
-                obj = obj[:500]
-                st.write(f"Using brightest {len(obj)} sources for plate solving")
+            if obj is None or len(obj) < 5:
+                st.warning("Very few sources detected for reliable plate solving. This could be due to:")
+                st.info("- Image has very low contrast or few stars")
+                st.info("- Background subtraction issues")
+                st.info("- Image saturation or very faint stars")
+                st.info("- Unusual image format or scaling")
+                st.info("Falling back to photutils detection...")
                 
+                # Show a small region of the image for inspection
+                try:
+                    center_y, center_x = image_data.shape[0] // 2, image_data.shape[1] // 2
+                    sample_region = image_data[center_y-50:center_y+50, center_x-50:center_x+50]
+                    
+                    fig_sample, ax_sample = plt.subplots(figsize=(6, 6))
+                    im = ax_sample.imshow(sample_region, origin='lower', cmap='gray')
+                    ax_sample.set_title('Central 100x100 pixel region')
+                    plt.colorbar(im, ax=ax_sample)
+                    st.pyplot(fig_sample)
+                    
+                except Exception as plot_error:
+                    st.warning(f"Could not display sample region: {plot_error}")
+            else:
+                st.write(f"Successfully detected {len(obj)} sources using stdpipe")
+                
+                # Filter for best sources for plate solving
+                if len(obj) > 500:
+                    # Sort by flux and take brightest sources
+                    obj.sort('flux')
+                    obj.reverse()
+                    obj = obj[:500]
+                    st.write(f"Using brightest {len(obj)} sources for plate solving")
+                
+                # Show some statistics about detected sources
+                if 'flux' in obj.colnames:
+                    flux_stats = {
+                        'min': np.min(obj['flux']),
+                        'max': np.max(obj['flux']),
+                        'median': np.median(obj['flux']),
+                        'std': np.std(obj['flux'])
+                    }
+                    st.write(f"Source flux statistics: min={flux_stats['min']:.1f}, "
+                            f"max={flux_stats['max']:.1f}, median={flux_stats['median']:.1f}")
+                
+                if 'sn' in obj.colnames:
+                    sn_stats = {
+                        'min': np.min(obj['sn']),
+                        'max': np.max(obj['sn']),
+                        'median': np.median(obj['sn'])
+                    }
+                    st.write(f"Source S/N statistics: min={sn_stats['min']:.1f}, "
+                            f"max={sn_stats['max']:.1f}, median={sn_stats['median']:.1f}")
+                    
         except Exception as e:
             st.warning(f"stdpipe object detection failed: {e}. Falling back to photutils...")
+            obj = None
+            
+        # If stdpipe detection failed or found too few sources, use photutils fallback
+        if obj is None or len(obj) < 5:
+            st.write("Using photutils fallback detection...")
             
             # Fallback to photutils detection
             bkg, bkg_error = estimate_background(image_data)
@@ -144,17 +253,40 @@ def solve_with_astrometrynet(file_path):
                 
             image_sub = image_data - bkg.background
             
-            fwhm_estimate = 3.5  # Default estimate
-            threshold = 4 * np.std(image_sub)
+            # Try different FWHM estimates and thresholds
+            fwhm_estimates = [2.0, 3.0, 4.0, 5.0]
+            threshold_multipliers = [2.0, 3.0, 4.0, 5.0]
             
-            daofind = DAOStarFinder(fwhm=fwhm_estimate, threshold=threshold)
-            sources = daofind(image_sub)
+            sources = None
+            for fwhm_est in fwhm_estimates:
+                for thresh_mult in threshold_multipliers:
+                    threshold = thresh_mult * np.std(image_sub)
+                    
+                    try:
+                        daofind = DAOStarFinder(fwhm=fwhm_est, threshold=threshold)
+                        temp_sources = daofind(image_sub)
+                        
+                        if temp_sources is not None and len(temp_sources) >= 10:
+                            sources = temp_sources
+                            st.write(f"Photutils found {len(sources)} sources with "
+                                   f"FWHM={fwhm_est}, threshold={threshold:.1f}")
+                            break
+                    except Exception:
+                        continue
+                
+                if sources is not None and len(sources) >= 10:
+                    break
             
-            if sources is None or len(sources) < 10:
-                st.warning("Too few sources detected for reliable plate solving.")
+            if sources is None or len(sources) < 5:
+                st.error("Both stdpipe and photutils failed to detect sufficient sources.")
+                st.error("Possible solutions:")
+                st.error("1. Check if the image contains stars (not empty field)")
+                st.error("2. Verify image is not severely over/under-exposed")
+                st.error("3. Try adjusting the detection threshold manually")
+                st.error("4. Consider pre-processing the image (cosmic ray removal, etc.)")
                 return None, None
                 
-            st.write(f"Detected {len(sources)} sources using photutils fallback")
+            st.write(f"Photutils detected {len(sources)} sources as fallback")
             
             # Convert to stdpipe format
             sources.sort('flux')
@@ -173,6 +305,13 @@ def solve_with_astrometrynet(file_path):
                 obj['sn'] = obj['flux'] / noise_estimate
             else:
                 obj['sn'] = np.ones(len(obj)) * 10
+                
+        # Final check before proceeding
+        if obj is None or len(obj) < 5:
+            st.error("Insufficient sources detected for plate solving (need at least 5)")
+            return None, None
+        elif len(obj) < 10:
+            st.warning(f"Only {len(obj)} sources detected. Plate solving may be unreliable.")
         
         # Extract initial guess parameters from header
         ra0 = header.get('RA') or header.get('OBJRA') or header.get('CRVAL1')
@@ -2000,7 +2139,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
     _phot_table : astropy.table.Table or pandas.DataFrame
         Photometry results table (underscore prevents caching issues)
     _matched_table : pandas.DataFrame
-        Table of GAIA cross-matched sources (underscore prevents caching issues)
+        Table of GAIA cross-matched sources (used for calibration)
     filter_band : str
         GAIA magnitude band used (e.g., 'phot_g_mean_mag')
     air : float
