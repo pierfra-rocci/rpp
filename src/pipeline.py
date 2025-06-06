@@ -1934,7 +1934,7 @@ def cross_match_with_gaia(
         st.warning("No Gaia sources found within search radius.")
         return None
 
-    try {
+    try:
         mag_filter = (gaia_table[filter_band] < filter_max_mag)
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
         color_index_filter = (gaia_table["bp_rp"] > -1) & (gaia_table["bp_rp"] < 2)
@@ -1954,52 +1954,48 @@ def cross_match_with_gaia(
             return None
 
         st.write(f"Filtered Gaia catalog to {len(gaia_table_filtered)} sources.")
-    } catch (Exception e) {
+    except Exception as e:
         st.error(f"Error filtering Gaia catalog: {e}")
         return None
-    }
 
-    try {
+    try:
         gaia_skycoords = SkyCoord(
             ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"],
             unit="deg"
         )
-        idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords);
+        idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
         max_sep_constraint = 2 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
-        gaia_matches = d2d < max_sep_constraint;
+        gaia_matches = d2d < max_sep_constraint
 
-        matched_indices_gaia = idx[gaia_matches];
-        matched_indices_phot = np.where(gaia_matches)[0];
+        matched_indices_gaia = idx[gaia_matches]
+        matched_indices_phot = np.where(gaia_matches)[0]
 
-        if (len(matched_indices_gaia) == 0) {
-            st.warning("No Gaia matches found within the separation constraint.");
-            return None;
-        }
+        if len(matched_indices_gaia) == 0:
+            st.warning("No Gaia matches found within the separation constraint.")
+            return None
 
-        matched_table_qtable = _phot_table[matched_indices_phot];
+        matched_table_qtable = _phot_table[matched_indices_phot]
 
-        matched_table = matched_table_qtable.to_pandas();
-        matched_table["gaia_index"] = matched_indices_gaia;
-        matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec;
+        matched_table = matched_table_qtable.to_pandas()
+        matched_table["gaia_index"] = matched_indices_gaia
+        matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
 
-        // Add the filter_band column from the filtered Gaia table
-        matched_table[filter_band] = gaia_table_filtered[filter_band][matched_indices_gaia];
+        # Add the filter_band column from the filtered Gaia table
+        matched_table[filter_band] = gaia_table_filtered[filter_band][matched_indices_gaia]
 
-        valid_gaia_mags = np.isfinite(matched_table[filter_band]);
-        matched_table = matched_table[valid_gaia_mags];
+        valid_gaia_mags = np.isfinite(matched_table[filter_band])
+        matched_table = matched_table[valid_gaia_mags]
 
-        // Remove sources with SNR < 1 before zero point calculation
-        if ("snr" in matched_table.columns) {
-            matched_table = matched_table[matched_table["snr"] >= 1];
-        }
+        # Remove sources with SNR < 1 before zero point calculation
+        if "snr" in matched_table.columns:
+            matched_table = matched_table[matched_table["snr"] >= 1]
 
-        st.success(f"Found {len(matched_table)} Gaia matches after filtering.");
-        return matched_table;
-    } catch (Exception e) {
-        st.error(f"Error during cross-matching: {e}");
-        return None;
-    }
+        st.success(f"Found {len(matched_table)} Gaia matches after filtering.")
+        return matched_table
+    except Exception as e:
+        st.error(f"Error during cross-matching: {e}")
+        return None
 
 
 def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
@@ -2039,81 +2035,81 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         st.warning("No matched sources to calculate zero point.")
         return None, None, None
 
-    try {
-        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[filter_band]);
+    try:
+        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[filter_band])
 
-        zero_points = _matched_table[filter_band][valid] - _matched_table["instrumental_mag"][valid];
-        _matched_table["zero_point"] = zero_points;
-        _matched_table["zero_point_error"] = np.std(zero_points);
+        zero_points = _matched_table[filter_band][valid] - _matched_table["instrumental_mag"][valid]
+        _matched_table["zero_point"] = zero_points
+        _matched_table["zero_point_error"] = np.std(zero_points)
 
         clipped_zero_points = sigma_clip(zero_points, sigma=3,
-                                         cenfunc="mean", masked=False);
+                                         cenfunc="mean", masked=False)
 
-        zero_point_value = np.median(clipped_zero_points);
-        zero_point_std = np.std(clipped_zero_points);
+        zero_point_value = np.median(clipped_zero_points)
+        zero_point_std = np.std(clipped_zero_points)
 
         if np.ma.is_masked(zero_point_value) or np.isnan(zero_point_value):
-            zero_point_value = float('nan');
+            zero_point_value = float('nan')
         if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
-            zero_point_std = float('nan');
+            zero_point_std = float('nan')
 
         _matched_table["calib_mag"] = (
             _matched_table["instrumental_mag"] + zero_point_value + 0.09 * air
-        );
+        )
 
         if not isinstance(_phot_table, pd.DataFrame):
-            _phot_table = _phot_table.to_pandas();
+            _phot_table = _phot_table.to_pandas()
 
         # Apply calibration to all aperture radii
-        aperture_radii = [1.5, 2.0, 2.5, 3.0];
+        aperture_radii = [1.5, 2.0, 2.5, 3.0]
         
         # Remove old single-aperture columns if they exist
-        old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"];
+        old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
         for col in old_columns:
             if col in _phot_table.columns:
-                _phot_table.drop(columns=[col], inplace=True);
+                _phot_table.drop(columns=[col], inplace=True)
         
         # Add calibrated magnitudes for all aperture radii
         for radius in aperture_radii:
-            radius_suffix = f"_r{radius:.1f}";
-            instrumental_col = f"instrumental_mag{radius_suffix}";
-            aperture_mag_col = f"aperture_mag{radius_suffix}";
+            radius_suffix = f"_r{radius:.1f}"
+            instrumental_col = f"instrumental_mag{radius_suffix}"
+            aperture_mag_col = f"aperture_mag{radius_suffix}"
             
             if instrumental_col in _phot_table.columns:
                 _phot_table[aperture_mag_col] = (
                     _phot_table[instrumental_col] + zero_point_value + 0.09 * air
-                );
+                )
 
         # Also apply to matched table for all aperture radii
         for radius in aperture_radii:
-            radius_suffix = f"_r{radius:.1f}";
-            instrumental_col = f"instrumental_mag{radius_suffix}";
-            aperture_mag_col = f"aperture_mag{radius_suffix}";
+            radius_suffix = f"_r{radius:.1f}"
+            instrumental_col = f"instrumental_mag{radius_suffix}"
+            aperture_mag_col = f"aperture_mag{radius_suffix}"
             
             if instrumental_col in _matched_table.columns:
                 _matched_table[aperture_mag_col] = (
                     _matched_table[instrumental_col] + zero_point_value + 0.09 * air
-                );
+                )
 
         # Keep the legacy "calib_mag" column using the 1.5*FWHM aperture for backward compatibility
         if "instrumental_mag_r1.5" in _phot_table.columns:
             _phot_table["calib_mag"] = (
                 _phot_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
-            );
+            )
         
         if "instrumental_mag_r1.5" in _matched_table.columns:
             _matched_table["calib_mag"] = (
                 _matched_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
-            );
+            )
 
-        st.session_state["final_phot_table"] = _phot_table;
+        st.session_state["final_phot_table"] = _phot_table
 
-        fig, (ax, ax_resid) = plt.subplots(1, 2, figsize=(14, 6), dpi=100);
+        fig, (ax, ax_resid) = plt.subplots(1, 2, figsize=(14, 6), dpi=100)
 
         # Calculate residuals
         _matched_table["residual"] = (
             _matched_table[filter_band] - _matched_table["calib_mag"]
-        );
+        )
 
         # Left plot: Zero point calibration
         # Create bins for magnitude ranges
@@ -2135,10 +2131,10 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             alpha=0.5,
             label="Matched sources",
             color="blue",
-        );
+        )
 
         # Plot binned means with error bars showing standard deviation
-        valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds);
+        valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds)
         ax.errorbar(
             np.array(bin_centers)[valid_bins],
             bin_means[valid_bins],
@@ -2146,67 +2142,65 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             fmt="ro-",
             label="Mean ± StdDev (binned)",
             capsize=5,
-        );
+        )
 
         # Add a diagonal line for reference
         # Create ideal y=x reference line spanning the full range of magnitudes
         mag_range = [min(_matched_table[filter_band].min(), _matched_table["calib_mag"].min()),
-                     max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max())];
-        ideal_mag = np.linspace(mag_range[0], mag_range[1], 100);
-        ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x");
+                     max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max())]
+        ideal_mag = np.linspace(mag_range[0], mag_range[1], 100)
+        ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
 
-        ax.set_xlabel(f"Gaia {filter_band}");
-        ax.set_ylabel("Calib mag");
-        ax.set_title("Gaia magnitude vs Calibrated magnitude");
-        ax.legend();
-        ax.grid(True, alpha=0.5);
+        ax.set_xlabel(f"Gaia {filter_band}")
+        ax.set_ylabel("Calib mag")
+        ax.set_title("Gaia magnitude vs Calibrated magnitude")
+        ax.legend()
+        ax.grid(True, alpha=0.5)
 
         # Right plot: Residuals
-        mag_cat = _matched_table[filter_band];
-        mag_inst = _matched_table["instrumental_mag"];
-        zp_mean = zero_point_value;
-        residuals = mag_cat - (mag_inst + zp_mean);
+        mag_cat = _matched_table[filter_band]
+        mag_inst = _matched_table["instrumental_mag"]
+        zp_mean = zero_point_value
+        residuals = mag_cat - (mag_inst + zp_mean)
         if "aperture_mag_err" in _matched_table.columns:
-            aperture_mag_err = _matched_table["aperture_mag_err"].values;
+            aperture_mag_err = _matched_table["aperture_mag_err"].values
         else:
-            aperture_mag_err = np.zeros_like(residuals);
-        zp_err = zero_point_std if zero_point_std is not None else 0.0;
-        yerr = np.sqrt(aperture_mag_err**2 + zp_err**2);
+            aperture_mag_err = np.zeros_like(residuals)
+        zp_err = zero_point_std if zero_point_std is not None else 0.0
+        yerr = np.sqrt(aperture_mag_err**2 + zp_err**2)
 
         ax_resid.errorbar(mag_cat, residuals, yerr=yerr, fmt='o', markersize=5,
-                          alpha=0.7, label='Residuals');
-        ax_resid.axhline(0, color='gray', ls='--');
-        ax_resid.set_xlabel('Calibrated magnitude');
-        ax_resid.set_ylabel('Residual (catalog - calibrated)');
-        ax_resid.set_title('Photometric Residuals');
-        ax_resid.grid(True, alpha=0.5);
-        ax_resid.legend();
+                          alpha=0.7, label='Residuals')
+        ax_resid.axhline(0, color='gray', ls='--')
+        ax_resid.set_xlabel('Calibrated magnitude')
+        ax_resid.set_ylabel('Residual (catalog - calibrated)')
+        ax_resid.set_title('Photometric Residuals')
+        ax_resid.grid(True, alpha=0.5)
+        ax_resid.legend()
 
         # Adjust layout and display
-        fig.tight_layout();
-        st.pyplot(fig);
+        fig.tight_layout()
+        st.pyplot(fig)
 
         st.success(
             f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f}"
-        );
+        )
 
-        try {
-            base_name = st.session_state.get("base_filename", "photometry");
-            username = st.session_state.get("username", "anonymous");
-            output_dir = ensure_output_directory(f"{username}_rpp_results");
+        try:
+            base_name = st.session_state.get("base_filename", "photometry")
+            username = st.session_state.get("username", "anonymous")
+            output_dir = ensure_output_directory(f"{username}_rpp_results")
             zero_point_plot_path = os.path.join(
                 output_dir, f"{base_name}_zero_point_plot.png"
-            );
-            fig.savefig(zero_point_plot_path);
-        } catch (Exception e) {
-            st.warning(f"Could not save plot to file: {e}");
-        }
+            )
+            fig.savefig(zero_point_plot_path)
+        except Exception as e:
+            st.warning(f"Could not save plot to file: {e}")
 
-        return round(zero_point_value, 2), round(zero_point_std, 2), fig;
-    } catch (Exception e) {
-        st.error(f"Error calculating zero point: {e}");
-        return None, None, None;
-    }
+        return round(zero_point_value, 2), round(zero_point_std, 2), fig
+    except Exception as e:
+        st.error(f"Error calculating zero point: {e}")
+        return None, None, None
 
 
 def enhance_catalog(
