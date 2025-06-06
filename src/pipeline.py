@@ -52,8 +52,6 @@ def solve_with_astrometrynet(file_path):
     ----------
     file_path : str
         Path to the FITS image file that needs astrometric solving
-    api_key : str, optional
-        Not used for local solving (kept for compatibility)
 
     Returns
     -------
@@ -86,6 +84,15 @@ def solve_with_astrometrynet(file_path):
         if image_data is None:
             st.error("No image data found in FITS file")
             return None, None
+            
+        # Fix byte order for stdpipe compatibility
+        if not image_data.dtype.isnative:
+            st.write("Converting image data to native byte order for stdpipe compatibility...")
+            image_data = image_data.astype(image_data.dtype.newbyteorder('='))
+        
+        # Ensure data is float32 for better compatibility
+        if image_data.dtype != np.float32:
+            image_data = image_data.astype(np.float32)
             
         # Check if WCS already exists and is valid
         try:
