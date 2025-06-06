@@ -330,7 +330,8 @@ def solve_with_astrometrynet(file_path):
                 
                 # Clear any existing WCS keywords to avoid conflicts
                 astrometry.clear_wcs(updated_header, remove_comments=True,
-                                     remove_underscored=True, remove_history=True)
+                                     remove_underscored=True,
+                                     remove_history=True)
                 
                 # Add new WCS keywords from solution
                 wcs_header = solved_wcs.to_header(relax=True)
