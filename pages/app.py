@@ -26,7 +26,7 @@ from src.tools import (FIGURE_SIZES, GAIA_BANDS, extract_coordinates,
                        cleanup_temp_files, initialize_log, write_to_log,
                        zip_rpp_results_on_exit, save_header_to_txt)
 
-from src.pipeline import (solve_with_siril, cross_match_with_gaia,
+from src.pipeline import (solve_with_astrometrynet, cross_match_with_gaia,
                           calculate_zero_point, detection_and_photometry,
                           detect_remove_cosmic_rays, enhance_catalog,
                           airmass)
@@ -1351,7 +1351,7 @@ if science_file is not None:
 
         if use_astrometry:
             with st.spinner("Running plate solve (this may take a while)..."):
-                result = solve_with_siril(science_file_path)
+                result = solve_with_astrometrynet(science_file_path)
                 if result is None:
                     st.error("Plate solving failed. No WCS solution was returned.")
                     wcs_obj, science_header = None, None
@@ -1395,7 +1395,7 @@ if science_file is not None:
 
         if replate_solve:
             with st.spinner("Running plate solve (this may take a while)..."):
-                result = solve_with_siril(science_file_path)
+                result = solve_with_astrometrynet(science_file_path)
                 if result is None:
                     st.error("Plate solving failed. No WCS solution was returned.")
                     wcs_obj, science_header = None, None
