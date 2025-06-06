@@ -238,17 +238,14 @@ def solve_with_astrometrynet(file_path):
                 try:
                     cd21 = header.get('CD2_1', 0)
                     cd22 = header.get('CD2_2', 0)
+                    cd21 = header.get('CD2_1', 0)
+                    cd22 = header.get('CD2_2', 0)
                     
                     if any(x != 0 for x in [cd11, cd12, cd21, cd22]):
                         # Calculate pixel scale as the geometric mean of the two axes
                         # This accounts for any rotation or skew in the CD matrix
                         det = abs(cd11 * cd22 - cd12 * cd21)
                         pixel_scale_estimate = 3600 * np.sqrt(det)
-                        
-                        # Alternative method: average of the two diagonal elements
-                        # scale_x = 3600 * np.sqrt(cd11**2 + cd21**2)
-                        # scale_y = 3600 * np.sqrt(cd12**2 + cd22**2)
-                        # pixel_scale_estimate = (scale_x + scale_y) / 2
                 except Exception:
                     pass
         
