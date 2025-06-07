@@ -65,6 +65,30 @@ def fix_header(header):
         # Create a copy to avoid modifying the original
         fixed_header = header.copy()
         
+        # Define problematic keywords to remove
+        problematic_keywords = [
+            'XPIXELSZ', 'YPIXELSZ',      # Pixel size keywords that can conflict with WCS
+            'CDELTM1', 'CDELTM2',        # Alternative delta keywords
+            'PIXSCALE',                   # Non-standard pixel scale
+            'SCALE',                      # Generic scale keyword
+            'XBINNING', 'YBINNING',      # Binning keywords that can confuse WCS
+            'XORGSUBF', 'YORGSUBF',      # Origin subframe keywords
+            'FOCALLEN',                   # Focal length (conflicts with CD matrix)
+        ]
+        
+        # Remove problematic keywords
+        removed_keywords = []
+        for keyword in problematic_keywords:
+            if keyword in fixed_header:
+                try:
+                    del fixed_header[keyword]
+                    removed_keywords.append(keyword)
+                except KeyError:
+                    pass
+        
+        if removed_keywords:
+            st.info(f"Removed problematic keywords: {', '.join(removed_keywords)}")
+        
         # Define WCS keywords to check for problems
         wcs_keywords = {
             'CD': ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2'],
