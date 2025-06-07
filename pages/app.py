@@ -1374,6 +1374,27 @@ if science_file is not None:
                     )
                     if wcs_header_file_path:
                         st.info("Updated WCS header saved")
+                        
+                    # Re-extract pixel scale and recalculate seeing with updated header
+                    pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
+                    seeing = st.session_state.analysis_parameters["seeing"]
+                    mean_fwhm_pixel = seeing / pixel_size_arcsec
+                    
+                    st.write("Updated pixel scale and seeing after plate solving:")
+                    st.metric(
+                        "Updated Pixel Scale (arcsec/pixel)",
+                        f"{pixel_size_arcsec:.2f}",
+                    )
+                    st.metric("Updated FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
+                    
+                    write_to_log(
+                        log_buffer,
+                        f"Updated pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
+                    )
+                    write_to_log(
+                        log_buffer,
+                        f"Updated seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
+                    )
                 else:
                     st.error("Plate solving failed")
                     write_to_log(
@@ -1421,6 +1442,27 @@ if science_file is not None:
                     )
                     if wcs_header_file_path:
                         st.info("Updated WCS header saved")
+                        
+                    # Re-extract pixel scale and recalculate seeing with updated header  
+                    pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
+                    seeing = st.session_state.analysis_parameters["seeing"]
+                    mean_fwhm_pixel = seeing / pixel_size_arcsec
+                    
+                    st.write("Updated pixel scale and seeing after plate solving:")
+                    st.metric(
+                        "Updated Pixel Scale (arcsec/pixel)",
+                        f"{pixel_size_arcsec:.2f}",
+                    )
+                    st.metric("Updated FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
+                    
+                    write_to_log(
+                        log_buffer,
+                        f"Updated pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
+                    )
+                    write_to_log(
+                        log_buffer,
+                        f"Updated seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
+                    )
                 else:
                     st.error("Plate solving failed")
                     write_to_log(
@@ -1428,6 +1470,11 @@ if science_file is not None:
                         "Failed to solve plate (forced re-solve)",
                         level="ERROR",
                     )
+        else:
+            # Extract pixel scale from existing header when not re-solving
+            pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
+            seeing = st.session_state.analysis_parameters["seeing"]
+            mean_fwhm_pixel = seeing / pixel_size_arcsec
 
     if science_header is not None:
         log_buffer = st.session_state["log_buffer"]
@@ -1521,21 +1568,24 @@ if science_file is not None:
         stats_col4.metric("Min", f"{np.min(science_data):.3f}")
         stats_col5.metric("Max", f"{np.max(science_data):.3f}")
 
-        pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
+        # Use updated header if available, otherwise use original
+        header_for_stats = st.session_state.get("calibrated_header", science_header)
+        
+        pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(header_for_stats)
         st.metric(
             "Mean Pixel Scale (arcsec/pixel)",
             f"{pixel_size_arcsec:.2f}",
         )
         write_to_log(
             log_buffer,
-            f"Pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
+            f"Final pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
         )
         seeing = st.session_state.analysis_parameters["seeing"]
         mean_fwhm_pixel = seeing / pixel_size_arcsec
         st.metric("Mean FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
         write_to_log(
             log_buffer,
-            f"Seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
+            f"Final seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
         )
 
         ra_val, dec_val, coord_source = extract_coordinates(science_header)

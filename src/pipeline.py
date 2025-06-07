@@ -304,7 +304,7 @@ def solve_with_astrometrynet(file_path):
         else:
             # Use broad scale range if no estimate available
             kwargs.update({
-                'scale_lower': 0.5,
+                'scale_lower': 0.1,
                 'scale_upper': 10.0,
                 'scale_units': 'arcsecperpix'
             })
