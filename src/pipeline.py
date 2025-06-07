@@ -88,7 +88,7 @@ def solve_with_astrometrynet(file_path):
         if image_data.dtype != np.float32:
             image_data = image_data.astype(np.float32)
             
-        # Check if WCS already exists and is valid
+        # Check if WCS already exists
         try:
             existing_wcs = WCS(header)
             if existing_wcs.is_celestial:
@@ -96,10 +96,8 @@ def solve_with_astrometrynet(file_path):
         except Exception:
             st.info("No valid WCS found in header. Proceeding with blind solve...")
             
-        # Detect objects for plate solving using photutils
+        # Estimate background
         st.write("Detecting objects for plate solving using photutils...")
-        
-        # Estimate background using photutils
         bkg, bkg_error = estimate_background(image_data)
         if bkg is None:
             st.error(f"Failed to estimate background: {bkg_error}")
@@ -107,60 +105,47 @@ def solve_with_astrometrynet(file_path):
             
         image_sub = image_data - bkg.background
         
-        # Try different FWHM estimates and thresholds for detection
-        fwhm_estimates = [3.0, 4.0, 5.0]
-        threshold_multipliers = [3.0, 4.0, 5.0]
-        
-        sources = None
-        
-        for fwhm_est in fwhm_estimates:
-            for thresh_mult in threshold_multipliers:
-                threshold = thresh_mult * np.std(image_sub)
-                
-                try:
-                    st.write(f"Trying FWHM={fwhm_est}, threshold={threshold:.1f}...")
-                    daofind = DAOStarFinder(fwhm=fwhm_est, threshold=threshold)
-                    temp_sources = daofind(image_sub)
-                    
-                    if temp_sources is not None and len(temp_sources) >= 10:
-                        sources = temp_sources
-                        st.success(f"Photutils found {len(sources)} sources with "
-                                 f"FWHM={fwhm_est}, threshold={threshold:.1f}")
-                        break
-                    elif temp_sources is not None:
-                        st.write(f"Found {len(temp_sources)} sources (need at least 10)")
-                        
-                except Exception as e:
-                    st.write(f"Detection failed with FWHM={fwhm_est}, threshold={threshold:.1f}: {e}")
-                    continue
-            
-            if sources is not None and len(sources) >= 10:
-                break
-        
-        # If no good detection, try more aggressive parameters
-        if sources is None or len(sources) < 10:
-            st.warning("Standard detection failed. Trying more aggressive parameters...")
-            
-            # Very aggressive detection
-            for fwhm_est in [1.5, 2.0, 2.5]:
-                for thresh_mult in [2.0, 2.5]:
+        # Helper function to try different detection parameters
+        def _try_source_detection(image_sub, fwhm_estimates, threshold_multipliers, min_sources=10):
+            """Helper function to try different detection parameters."""
+            for fwhm_est in fwhm_estimates:
+                for thresh_mult in threshold_multipliers:
                     threshold = thresh_mult * np.std(image_sub)
                     
                     try:
-                        st.write(f"Trying aggressive FWHM={fwhm_est}, threshold={threshold:.1f}...")
+                        st.write(f"Trying FWHM={fwhm_est}, threshold={threshold:.1f}...")
                         daofind = DAOStarFinder(fwhm=fwhm_est, threshold=threshold)
                         temp_sources = daofind(image_sub)
                         
-                        if temp_sources is not None and len(temp_sources) >= 5:
-                            sources = temp_sources
-                            st.success(f"Aggressive detection found {len(sources)} sources")
-                            break
+                        if temp_sources is not None and len(temp_sources) >= min_sources:
+                            st.success(f"Photutils found {len(temp_sources)} sources with "
+                                     f"FWHM={fwhm_est}, threshold={threshold:.1f}")
+                            return temp_sources
+                        elif temp_sources is not None:
+                            st.write(f"Found {len(temp_sources)} sources (need at least {min_sources})")
                             
-                    except Exception:
+                    except Exception as e:
+                        st.write(f"Detection failed with FWHM={fwhm_est}, threshold={threshold:.1f}: {e}")
                         continue
-                
-                if sources is not None and len(sources) >= 5:
-                    break
+            return None
+
+        # Try standard detection parameters first
+        sources = _try_source_detection(
+            image_sub, 
+            fwhm_estimates=[3.0, 4.0, 5.0],
+            threshold_multipliers=[3.0, 4.0, 5.0],
+            min_sources=10
+        )
+        
+        # If that fails, try more aggressive parameters
+        if sources is None:
+            st.warning("Standard detection failed. Trying more aggressive parameters...")
+            sources = _try_source_detection(
+                image_sub,
+                fwhm_estimates=[1.5, 2.0, 2.5],
+                threshold_multipliers=[2.0, 2.5],
+                min_sources=5
+            )
         
         if sources is None or len(sources) < 5:
             st.error("Failed to detect sufficient sources for plate solving.")
@@ -189,7 +174,7 @@ def solve_with_astrometrynet(file_path):
         # Prepare sources for astrometry solving
         st.write(f"Successfully detected {len(sources)} sources using photutils")
         
-        # Filter for best sources for plate solving (take brightest sources)
+        # Filter for best sources if too many
         if len(sources) > 500:
             sources.sort('flux')
             sources.reverse()
@@ -219,11 +204,20 @@ def solve_with_astrometrynet(file_path):
             # Estimate SNR from peak/background ratio
             background_std = np.std(image_sub)
             obj_table['sn'] = sources['peak'] / background_std
+            obj_table['fluxerr'] = sources['flux'] / obj_table['sn']
         else:
             # Use flux as proxy for SNR
             obj_table['sn'] = sources['flux'] / np.median(sources['flux'])
+            obj_table['fluxerr'] = np.sqrt(np.abs(sources['flux']))
         
-        # Estimate pixel scale from header if available
+        # Ensure fluxerr is positive and finite
+        obj_table['fluxerr'] = np.where(
+            (obj_table['fluxerr'] <= 0) | ~np.isfinite(obj_table['fluxerr']),
+            sources['flux'] * 0.1,
+            obj_table['fluxerr']
+        )
+
+        # Get pixel scale estimate
         pixel_scale_estimate = None
         if header:
             # Try to get pixel scale from various header keywords
@@ -277,12 +271,9 @@ def solve_with_astrometrynet(file_path):
             # If not found, try to calculate from CD matrix
             if pixel_scale_estimate is None:
                 try:
-                    cd11 = header.get('CD1_1', 0)
-                    cd12 = header.get('CD1_2', 0)
-                    cd21 = header.get('CD2_1', 0)
-                    cd22 = header.get('CD2_2', 0)
-                    
-                    if any(x != 0 for x in [cd11, cd12, cd21, cd22]):
+                    cd_values = [header.get(f'CD{i}_{j}', 0) for i in [1, 2] for j in [1, 2]]
+                    if any(x != 0 for x in cd_values):
+                        cd11, cd12, cd21, cd22 = cd_values
                         det = abs(cd11 * cd22 - cd12 * cd21)
                         pixel_scale_estimate = 3600 * np.sqrt(det)
                         st.write("Calculated pixel scale from CD matrix")
@@ -336,32 +327,6 @@ def solve_with_astrometrynet(file_path):
         
         st.write("Running stdpipe blind_match_objects...")
         st.write(f"Using {len(obj_table)} sources for plate solving")
-        
-        # Convert sources to the format expected by stdpipe
-        obj_table = Table()
-        obj_table['x'] = sources['xcentroid']
-        obj_table['y'] = sources['ycentroid']
-        obj_table['flux'] = sources['flux']
-        
-        # Add signal-to-noise ratio if available
-        if 'peak' in sources.colnames:
-            # Estimate SNR from peak/background ratio
-            background_std = np.std(image_sub)
-            obj_table['sn'] = sources['peak'] / background_std
-            # Calculate flux error from SNR
-            obj_table['fluxerr'] = sources['flux'] / obj_table['sn']
-        else:
-            # Use flux as proxy for SNR
-            obj_table['sn'] = sources['flux'] / np.median(sources['flux'])
-            # Estimate flux error assuming Poisson noise
-            obj_table['fluxerr'] = np.sqrt(np.abs(sources['flux']))
-        
-        # Ensure fluxerr is positive and finite
-        obj_table['fluxerr'] = np.where(
-            (obj_table['fluxerr'] <= 0) | ~np.isfinite(obj_table['fluxerr']),
-            sources['flux'] * 0.1,  # 10% error as fallback
-            obj_table['fluxerr']
-        )
 
         try:
             # Call stdpipe's blind_match_objects function
@@ -391,7 +356,7 @@ def solve_with_astrometrynet(file_path):
                     center_ra, center_dec = solved_wcs.pixel_to_world_values(
                         image_data.shape[1]/2, image_data.shape[0]/2
                     )
-                    pixel_scale = astrometry.get_pixscale(wcs=solved_wcs) * 3600  # Convert to arcsec/pixel
+                    pixel_scale = astrometry.get_pixscale(wcs=solved_wcs) * 3600
                     
                     st.write(f"Solution center: RA={center_ra:.6f}°, DEC={center_dec:.6f}°")
                     st.write(f"Pixel scale: {pixel_scale:.3f} arcsec/pixel")
@@ -419,8 +384,6 @@ def solve_with_astrometrynet(file_path):
                 
         except Exception as solve_error:
             st.error(f"Error during stdpipe plate solving: {solve_error}")
-            
-            # If stdpipe fails, provide helpful debugging info
             st.error("Stdpipe requirements:")
             st.error("- solve-field binary must be in PATH")
             st.error("- Appropriate astrometry.net index files must be installed")
@@ -1221,12 +1184,11 @@ def perform_psf_photometry(
         sharpness_criteria = np.abs(sharpness) < 0.6
         
         # Edge criteria
-        edge_buffer = 2 * fwhm
         edge_criteria = (
-            (xcentroid > edge_buffer) &
-            (xcentroid < img.shape[1] - edge_buffer) &
-            (ycentroid > edge_buffer) &
-            (ycentroid < img.shape[0] - edge_buffer)
+            (xcentroid > 2 * fwhm) &
+            (xcentroid < img.shape[1] - 2 * fwhm) &
+            (ycentroid > 2 * fwhm) &
+            (ycentroid < img.shape[0] - 2 * fwhm)
         )
         
         # Combine all criteria with validity checks
@@ -1871,78 +1833,7 @@ def cross_match_with_gaia(
     _science_header : dict or astropy.io.fits.Header
         FITS header with WCS information (underscore prevents caching issues)
     pixel_size_arcsec : float
-        Pixel scale in arcseconds per pixel
-    mean_fwhm_pixel : float
-        FWHM in pixels, used to determine matching radius
-    filter_band : str
-        GAIA magnitude band to use for filtering (e.g., 'phot_g_mean_mag', 'phot_bp_mean_mag', 
-        'phot_rp_mean_mag' or other synthetic photometry bands)
-    filter_max_mag : float
-        Maximum magnitude for GAIA source filtering
-
-    Returns
-    -------
-    pandas.DataFrame or None
-        DataFrame containing matched sources with both measured and GAIA catalog data,
-        or None if the cross-match failed or found no matches
-
-    Notes
-    -----
-    - The maximum separation for matching is set to twice the FWHM in arcseconds
-    - Applies multiple quality filters to ensure reliable calibration:
-      - Excludes variable stars (phot_variable_flag != "VARIABLE")
-      - Limits color index range (abs(bp_rp) < 1.5)
-      - Ensures good astrometric solutions (ruwe <= 1.5)
-    - For non-standard Gaia bands, queries synthetic photometry from gaiadr3.synthetic_photometry_gspc
-    - Progress and status updates are displayed in the Streamlit interface
-    - The underscore prefix in parameter names prevents issues with caching when the function is called repeatedly
-    """
-    st.write("Cross-matching with Gaia DR3...")
-
-    if _science_header is None:
-        st.warning("No header information available. Cannot cross-match with Gaia.")
-        return None
-
-    try:
-        # Use refined WCS if available, otherwise fallback to header WCS
-        if refined_wcs is not None:
-            w = refined_wcs
-            st.info("Using refined WCS for Gaia cross-matching, if possible.")
-        else:
-            w = WCS(_science_header)
-
-        st.write(f"Found {len(phot_table)} sources and performed photometry.")
-        return phot_table, epsf_table, daofind, bkg, wcs_obj
-
-    except Exception as e:
-        st.error(f"Error performing aperture photometry: {e}")
-        return None, None, daofind, bkg, wcs_obj
-
-
-def cross_match_with_gaia(
-    _phot_table,
-    _science_header,
-    pixel_size_arcsec,
-    mean_fwhm_pixel,
-    filter_band,
-    filter_max_mag,
-    refined_wcs=None
-):
-    """
-    Cross-match detected sources with the GAIA DR3 star catalog.
-    This function queries the GAIA catalog for a region matching the image field of view,
-    applies filtering based on magnitude range, and matches GAIA sources to the detected sources.
-    It also applies quality filters including variability, color index, and astrometric quality
-    to ensure reliable photometric calibration stars.
-
-    Parameters
-    ----------
-    _phot_table : astropy.table.Table
        
-        Table containing detected source positions (underscore prevents caching issues)
-    _science_header : dict or astropy.io.fits.Header
-        FITS header with WCS information (underscore prevents caching issues)
-    pixel_size_arcsec : float
         Pixel scale in arcseconds per pixel
     mean_fwhm_pixel : float
         FWHM in pixels, used to determine matching radius
