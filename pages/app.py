@@ -1380,6 +1380,10 @@ if science_file is not None:
                     seeing = st.session_state.analysis_parameters["seeing"]
                     mean_fwhm_pixel = seeing / pixel_size_arcsec
                     
+                    # Update session state with the new values
+                    st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
+                    st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
+                    
                     st.write("Updated pixel scale and seeing after plate solving:")
                     st.metric(
                         "Updated Pixel Scale (arcsec/pixel)",
@@ -1448,6 +1452,10 @@ if science_file is not None:
                     seeing = st.session_state.analysis_parameters["seeing"]
                     mean_fwhm_pixel = seeing / pixel_size_arcsec
                     
+                    # Update session state with the new values
+                    st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
+                    st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
+                    
                     st.write("Updated pixel scale and seeing after plate solving:")
                     st.metric(
                         "Updated Pixel Scale (arcsec/pixel)",
@@ -1475,6 +1483,10 @@ if science_file is not None:
             pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
             seeing = st.session_state.analysis_parameters["seeing"]
             mean_fwhm_pixel = seeing / pixel_size_arcsec
+            
+            # Update session state with the calculated values
+            st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
+            st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
 
     if science_header is not None:
         log_buffer = st.session_state["log_buffer"]
@@ -1571,7 +1583,19 @@ if science_file is not None:
         # Use updated header if available, otherwise use original
         header_for_stats = st.session_state.get("calibrated_header", science_header)
         
-        pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(header_for_stats)
+        # Get pixel scale and FWHM from session state if available, otherwise calculate
+        if "pixel_size_arcsec" in st.session_state and "mean_fwhm_pixel" in st.session_state:
+            pixel_size_arcsec = st.session_state["pixel_size_arcsec"]
+            mean_fwhm_pixel = st.session_state["mean_fwhm_pixel"]
+            pixel_scale_source = "session_state"
+        else:
+            pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(header_for_stats)
+            seeing = st.session_state.analysis_parameters["seeing"]
+            mean_fwhm_pixel = seeing / pixel_size_arcsec
+            # Store in session state for later use
+            st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
+            st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
+        
         st.metric(
             "Mean Pixel Scale (arcsec/pixel)",
             f"{pixel_size_arcsec:.2f}",
@@ -1581,7 +1605,6 @@ if science_file is not None:
             f"Final pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
         )
         seeing = st.session_state.analysis_parameters["seeing"]
-        mean_fwhm_pixel = seeing / pixel_size_arcsec
         st.metric("Mean FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
         write_to_log(
             log_buffer,
@@ -1721,7 +1744,16 @@ if science_file is not None:
             key="run_zp",
         ):
             image_to_process = science_data
-            header_to_process = science_header
+            header_to_process = st.session_state.get("calibrated_header", science_header)
+            
+            # Get the correct pixel scale and FWHM values
+            if "pixel_size_arcsec" in st.session_state and "mean_fwhm_pixel" in st.session_state:
+                pixel_size_arcsec = st.session_state["pixel_size_arcsec"]
+                mean_fwhm_pixel = st.session_state["mean_fwhm_pixel"]
+            else:
+                pixel_size_arcsec, _ = extract_pixel_scale(header_to_process)
+                seeing = st.session_state.analysis_parameters["seeing"]
+                mean_fwhm_pixel = seeing / pixel_size_arcsec
 
             if image_to_process is not None:
                 try:
