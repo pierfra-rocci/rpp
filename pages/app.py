@@ -89,31 +89,82 @@ def fix_header(header):
         if 'NAXIS2' in fixed_header and 'CRPIX2' not in fixed_header:
             fixed_header['CRPIX2'] = fixed_header['NAXIS2'] / 2.0
             
-        # Fix zero or missing CD matrix elements
+        # Check for singular or problematic CD matrix
+        cd_matrix_valid = True
         cd_keys = ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']
-        for key in cd_keys:
-            if key in fixed_header and (fixed_header[key] == 0 or not np.isfinite(fixed_header[key])):
-                if '1_1' in key or '2_2' in key:
-                    # Diagonal elements - use pixel scale if available
-                    if 'PIXSCALE' in fixed_header:
-                        fixed_header[key] = fixed_header['PIXSCALE'] / 3600.0  # Convert arcsec to degrees
-                    elif 'CDELT1' in fixed_header and '1_1' in key:
-                        fixed_header[key] = fixed_header['CDELT1']
-                    elif 'CDELT2' in fixed_header and '2_2' in key:
-                        fixed_header[key] = fixed_header['CDELT2']
-                    else:
-                        fixed_header[key] = 1.0e-4  # Default ~0.36 arcsec/pixel
-                else:
-                    # Off-diagonal elements
-                    fixed_header[key] = 0.0
         
-        # Convert CDELT to CD matrix if CD matrix is missing but CDELT exists
-        if ('CDELT1' in fixed_header and 'CDELT2' in fixed_header and 
-            'CD1_1' not in fixed_header and 'CD2_2' not in fixed_header):
-            fixed_header['CD1_1'] = fixed_header['CDELT1']
+        # Check if CD matrix exists and is valid
+        if all(key in fixed_header for key in cd_keys):
+            try:
+                cd11 = float(fixed_header['CD1_1'])
+                cd12 = float(fixed_header['CD1_2'])
+                cd21 = float(fixed_header['CD2_1'])
+                cd22 = float(fixed_header['CD2_2'])
+                
+                # Calculate determinant to check for singularity
+                determinant = cd11 * cd22 - cd12 * cd21
+                
+                # If determinant is zero or very close to zero, matrix is singular
+                if abs(determinant) < 1e-15:
+                    cd_matrix_valid = False
+                    st.warning("Detected singular CD matrix in WCS header")
+                
+                # Check for zero or invalid values
+                if any(not np.isfinite(val) or val == 0 for val in [cd11, cd22]):
+                    cd_matrix_valid = False
+                    
+            except (ValueError, TypeError):
+                cd_matrix_valid = False
+        else:
+            cd_matrix_valid = False
+        
+        # Fix or rebuild CD matrix if invalid
+        if not cd_matrix_valid:
+            # Try to get pixel scale from various sources
+            pixel_scale_deg = None
+            
+            # Check for PIXSCALE keyword (in arcsec)
+            if 'PIXSCALE' in fixed_header:
+                try:
+                    pixel_scale_deg = float(fixed_header['PIXSCALE']) / 3600.0
+                except (ValueError, TypeError):
+                    pass
+            
+            # Check for CDELT keywords
+            if pixel_scale_deg is None:
+                if 'CDELT1' in fixed_header and 'CDELT2' in fixed_header:
+                    try:
+                        cdelt1 = float(fixed_header['CDELT1'])
+                        cdelt2 = float(fixed_header['CDELT2'])
+                        if abs(cdelt1) > 0 and abs(cdelt2) > 0:
+                            pixel_scale_deg = (abs(cdelt1) + abs(cdelt2)) / 2.0
+                    except (ValueError, TypeError):
+                        pass
+            
+            # Check for SCALE keyword (sometimes used)
+            if pixel_scale_deg is None and 'SCALE' in fixed_header:
+                try:
+                    scale = float(fixed_header['SCALE'])
+                    if scale > 0:
+                        pixel_scale_deg = scale / 3600.0  # Assume arcsec/pixel
+                except (ValueError, TypeError):
+                    pass
+            
+            # Use a reasonable default if nothing found (1 arcsec/pixel)
+            if pixel_scale_deg is None:
+                pixel_scale_deg = 1.0 / 3600.0  # 1 arcsec/pixel in degrees
+                st.info("Using default pixel scale: 1.0 arcsec/pixel")
+            
+            # Set up a proper CD matrix
+            fixed_header['CD1_1'] = pixel_scale_deg
             fixed_header['CD1_2'] = 0.0
             fixed_header['CD2_1'] = 0.0
-            fixed_header['CD2_2'] = fixed_header['CDELT2']
+            fixed_header['CD2_2'] = pixel_scale_deg
+            
+            # Remove CDELT keywords to avoid conflicts
+            for key in ['CDELT1', 'CDELT2']:
+                if key in fixed_header:
+                    del fixed_header[key]
         
         # Fix EQUINOX/EPOCH issues
         if 'EQUINOX' not in fixed_header and 'EPOCH' in fixed_header:
@@ -135,6 +186,11 @@ def fix_header(header):
                 if ra_key in fixed_header:
                     fixed_header['CRVAL1'] = fixed_header[ra_key]
                     break
+        
+        # If still no CRVAL1, set a dummy value (will need manual coordinates)
+        if 'CRVAL1' not in fixed_header:
+            fixed_header['CRVAL1'] = 0.0
+            st.warning("No RA coordinate found in header - you'll need to enter coordinates manually")
                     
         if 'CRVAL2' not in fixed_header:
             # Try to get from other DEC keywords
@@ -143,11 +199,23 @@ def fix_header(header):
                     fixed_header['CRVAL2'] = fixed_header[dec_key]
                     break
         
+        # If still no CRVAL2, set a dummy value
+        if 'CRVAL2' not in fixed_header:
+            fixed_header['CRVAL2'] = 0.0
+            st.warning("No DEC coordinate found in header - you'll need to enter coordinates manually")
+        
         # Remove problematic keywords that can cause WCS issues
         problematic_keys = ['PV1_1', 'PV1_2', 'PV2_1', 'PV2_2']
         for key in problematic_keys:
             if key in fixed_header and fixed_header[key] == 0:
                 del fixed_header[key]
+        
+        # Remove PC matrix if CD matrix is present (they conflict)
+        if all(key in fixed_header for key in ['CD1_1', 'CD2_2']):
+            pc_keys = ['PC1_1', 'PC1_2', 'PC2_1', 'PC2_2']
+            for key in pc_keys:
+                if key in fixed_header:
+                    del fixed_header[key]
         
         return fixed_header
         
