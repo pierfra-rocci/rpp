@@ -65,35 +65,21 @@ def fix_header(header):
         # Create a copy to avoid modifying the original
         fixed_header = header.copy()
         
-        # Fix common WCS issues
-        # Ensure CTYPE keywords are properly formatted
-        if 'CTYPE1' in fixed_header:
-            ctype1 = str(fixed_header['CTYPE1']).strip()
-            if ctype1 and not ctype1.endswith('---'):
-                if 'RA' in ctype1.upper():
-                    fixed_header['CTYPE1'] = 'RA---TAN'
-                elif 'GLON' in ctype1.upper():
-                    fixed_header['CTYPE1'] = 'GLON-TAN'
+        # Define WCS keywords to check for problems
+        wcs_keywords = {
+            'CD': ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2'],
+            'PC': ['PC1_1', 'PC1_2', 'PC2_1', 'PC2_2'],
+            'CDELT': ['CDELT1', 'CDELT2'],
+            'CRPIX': ['CRPIX1', 'CRPIX2'],
+            'CRVAL': ['CRVAL1', 'CRVAL2'],
+            'CTYPE': ['CTYPE1', 'CTYPE2']
+        }
         
-        if 'CTYPE2' in fixed_header:
-            ctype2 = str(fixed_header['CTYPE2']).strip()
-            if ctype2 and not ctype2.endswith('---'):
-                if 'DEC' in ctype2.upper():
-                    fixed_header['CTYPE2'] = 'DEC--TAN'
-                elif 'GLAT' in ctype2.upper():
-                    fixed_header['CTYPE2'] = 'GLAT-TAN'
+        # Check for problematic values and remove entire WCS if found
+        remove_all_wcs = False
         
-        # Fix missing or invalid CRPIX values
-        if 'NAXIS1' in fixed_header and 'CRPIX1' not in fixed_header:
-            fixed_header['CRPIX1'] = fixed_header['NAXIS1'] / 2.0
-        if 'NAXIS2' in fixed_header and 'CRPIX2' not in fixed_header:
-            fixed_header['CRPIX2'] = fixed_header['NAXIS2'] / 2.0
-            
-        # Check for singular or problematic CD matrix
-        cd_matrix_valid = True
-        cd_keys = ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']
-        
-        # Check if CD matrix exists and is valid
+        # Check CD matrix for singularity
+        cd_keys = wcs_keywords['CD']
         if all(key in fixed_header for key in cd_keys):
             try:
                 cd11 = float(fixed_header['CD1_1'])
@@ -104,123 +90,164 @@ def fix_header(header):
                 # Calculate determinant to check for singularity
                 determinant = cd11 * cd22 - cd12 * cd21
                 
-                # If determinant is zero or very close to zero, matrix is singular
-                if abs(determinant) < 1e-15:
-                    cd_matrix_valid = False
-                    st.warning("Detected singular CD matrix in WCS header")
-                
-                # Check for zero or invalid values
-                if any(not np.isfinite(val) or val == 0 for val in [cd11, cd22]):
-                    cd_matrix_valid = False
+                # Check for singular matrix or invalid values
+                if (abs(determinant) < 1e-15 or 
+                    any(not np.isfinite(val) for val in [cd11, cd12, cd21, cd22]) or
+                    any(val == 0 for val in [cd11, cd22])):
+                    st.warning("Detected problematic CD matrix - removing all WCS keywords")
+                    remove_all_wcs = True
                     
             except (ValueError, TypeError):
-                cd_matrix_valid = False
-        else:
-            cd_matrix_valid = False
+                st.warning("Invalid CD matrix values - removing all WCS keywords")
+                remove_all_wcs = True
         
-        # Fix or rebuild CD matrix if invalid
-        if not cd_matrix_valid:
-            # Try to get pixel scale from various sources
-            pixel_scale_deg = None
-            
-            # Check for PIXSCALE keyword (in arcsec)
-            if 'PIXSCALE' in fixed_header:
-                try:
-                    pixel_scale_deg = float(fixed_header['PIXSCALE']) / 3600.0
-                except (ValueError, TypeError):
-                    pass
-            
-            # Check for CDELT keywords
-            if pixel_scale_deg is None:
-                if 'CDELT1' in fixed_header and 'CDELT2' in fixed_header:
-                    try:
-                        cdelt1 = float(fixed_header['CDELT1'])
-                        cdelt2 = float(fixed_header['CDELT2'])
-                        if abs(cdelt1) > 0 and abs(cdelt2) > 0:
-                            pixel_scale_deg = (abs(cdelt1) + abs(cdelt2)) / 2.0
-                    except (ValueError, TypeError):
-                        pass
-            
-            # Check for SCALE keyword (sometimes used)
-            if pixel_scale_deg is None and 'SCALE' in fixed_header:
-                try:
-                    scale = float(fixed_header['SCALE'])
-                    if scale > 0:
-                        pixel_scale_deg = scale / 3600.0  # Assume arcsec/pixel
-                except (ValueError, TypeError):
-                    pass
-            
-            # Use a reasonable default if nothing found (1 arcsec/pixel)
-            if pixel_scale_deg is None:
-                pixel_scale_deg = 1.0 / 3600.0  # 1 arcsec/pixel in degrees
-                st.info("Using default pixel scale: 1.0 arcsec/pixel")
-            
-            # Set up a proper CD matrix
-            fixed_header['CD1_1'] = pixel_scale_deg
-            fixed_header['CD1_2'] = 0.0
-            fixed_header['CD2_1'] = 0.0
-            fixed_header['CD2_2'] = pixel_scale_deg
-            
-            # Remove CDELT keywords to avoid conflicts
-            for key in ['CDELT1', 'CDELT2']:
-                if key in fixed_header:
-                    del fixed_header[key]
-        
-        # Fix EQUINOX/EPOCH issues
-        if 'EQUINOX' not in fixed_header and 'EPOCH' in fixed_header:
-            fixed_header['EQUINOX'] = fixed_header['EPOCH']
-        elif 'EQUINOX' not in fixed_header and 'EPOCH' not in fixed_header:
-            fixed_header['EQUINOX'] = 2000.0
-            
-        # Fix RADESYS if missing
-        if 'RADESYS' not in fixed_header:
-            if fixed_header.get('EQUINOX', 2000.0) == 2000.0:
-                fixed_header['RADESYS'] = 'ICRS'
-            else:
-                fixed_header['RADESYS'] = 'FK5'
-        
-        # Ensure coordinate reference values exist
-        if 'CRVAL1' not in fixed_header:
-            # Try to get from other RA keywords
-            for ra_key in ['RA', 'OBJRA', 'RA_OBJ', 'TELRA']:
-                if ra_key in fixed_header:
-                    fixed_header['CRVAL1'] = fixed_header[ra_key]
-                    break
-        
-        # If still no CRVAL1, set a dummy value (will need manual coordinates)
-        if 'CRVAL1' not in fixed_header:
-            fixed_header['CRVAL1'] = 0.0
-            st.warning("No RA coordinate found in header - you'll need to enter coordinates manually")
+        # Check for obviously fake coordinate values
+        if 'CRVAL1' in fixed_header and 'CRVAL2' in fixed_header:
+            try:
+                ra = float(fixed_header['CRVAL1'])
+                dec = float(fixed_header['CRVAL2'])
+                
+                # Check for clearly fake values (exactly 0,0 or out of range)
+                if ((ra == 0.0 and dec == 0.0) or
+                    not (0 <= ra < 360) or
+                    not (-90 <= dec <= 90) or
+                    not np.isfinite(ra) or
+                    not np.isfinite(dec)):
+                    st.warning(f"Detected fake coordinates (RA={ra}, DEC={dec}) - removing all WCS keywords")
+                    remove_all_wcs = True
                     
-        if 'CRVAL2' not in fixed_header:
-            # Try to get from other DEC keywords
-            for dec_key in ['DEC', 'OBJDEC', 'DEC_OBJ', 'TELDEC']:
-                if dec_key in fixed_header:
-                    fixed_header['CRVAL2'] = fixed_header[dec_key]
-                    break
+            except (ValueError, TypeError):
+                st.warning("Invalid coordinate values - removing all WCS keywords")
+                remove_all_wcs = True
         
-        # If still no CRVAL2, set a dummy value
-        if 'CRVAL2' not in fixed_header:
-            fixed_header['CRVAL2'] = 0.0
-            st.warning("No DEC coordinate found in header - you'll need to enter coordinates manually")
+        # Check for invalid pixel reference points
+        if 'CRPIX1' in fixed_header and 'CRPIX2' in fixed_header:
+            try:
+                crpix1 = float(fixed_header['CRPIX1'])
+                crpix2 = float(fixed_header['CRPIX2'])
+                
+                # Check for obviously wrong values
+                if (not np.isfinite(crpix1) or not np.isfinite(crpix2) or
+                    crpix1 <= 0 or crpix2 <= 0):
+                    st.warning("Detected invalid CRPIX values - removing all WCS keywords")
+                    remove_all_wcs = True
+                    
+            except (ValueError, TypeError):
+                remove_all_wcs = True
         
-        # Remove problematic keywords that can cause WCS issues
-        problematic_keys = ['PV1_1', 'PV1_2', 'PV2_1', 'PV2_2']
-        for key in problematic_keys:
-            if key in fixed_header and fixed_header[key] == 0:
-                del fixed_header[key]
+        # Check for invalid CTYPE values
+        for ctype_key in ['CTYPE1', 'CTYPE2']:
+            if ctype_key in fixed_header:
+                ctype_val = str(fixed_header[ctype_key]).strip()
+                # If CTYPE is empty or contains obvious placeholder text
+                if (not ctype_val or 
+                    ctype_val.lower() in ['', 'none', 'null', 'undefined'] or
+                    len(ctype_val) < 3):
+                    st.warning(f"Detected invalid {ctype_key} value - removing all WCS keywords")
+                    remove_all_wcs = True
         
-        # Remove PC matrix if CD matrix is present (they conflict)
-        if all(key in fixed_header for key in ['CD1_1', 'CD2_2']):
-            pc_keys = ['PC1_1', 'PC1_2', 'PC2_1', 'PC2_2']
-            for key in pc_keys:
-                if key in fixed_header:
+        # Remove all WCS keywords if problems detected
+        if remove_all_wcs:
+            st.info("Removing all WCS keywords due to detected problems")
+            
+            # Remove all WCS-related keywords
+            keys_to_remove = []
+            for key in list(fixed_header.keys()):
+                if (key.startswith('CD') or 
+                    key.startswith('PC') or 
+                    key.startswith('CDELT') or 
+                    key.startswith('CRPIX') or 
+                    key.startswith('CRVAL') or 
+                    key.startswith('CTYPE') or
+                    key.startswith('CROTA') or
+                    key.startswith('PV') or
+                    key.startswith('PROJP') or
+                    key in ['EQUINOX', 'EPOCH', 'RADESYS', 'LONPOLE', 'LATPOLE']):
+                    keys_to_remove.append(key)
+            
+            for key in keys_to_remove:
+                try:
                     del fixed_header[key]
+                except KeyError:
+                    pass
+            
+            st.info(f"Removed {len(keys_to_remove)} WCS keywords: {', '.join(keys_to_remove[:10])}{'...' if len(keys_to_remove) > 10 else ''}")
+            
+            # Add minimal default WCS if image dimensions are available
+            if 'NAXIS1' in fixed_header and 'NAXIS2' in fixed_header:
+                try:
+                    naxis1 = int(fixed_header['NAXIS1'])
+                    naxis2 = int(fixed_header['NAXIS2'])
+                    
+                    # Set basic WCS with 1 arcsec/pixel scale
+                    pixel_scale_deg = 1.0 / 3600.0  # 1 arcsec/pixel in degrees
+                    
+                    fixed_header['CTYPE1'] = 'RA---TAN'
+                    fixed_header['CTYPE2'] = 'DEC--TAN'
+                    fixed_header['CRPIX1'] = naxis1 / 2.0
+                    fixed_header['CRPIX2'] = naxis2 / 2.0
+                    fixed_header['CRVAL1'] = 0.0  # Will need manual input
+                    fixed_header['CRVAL2'] = 0.0  # Will need manual input
+                    fixed_header['CD1_1'] = pixel_scale_deg
+                    fixed_header['CD1_2'] = 0.0
+                    fixed_header['CD2_1'] = 0.0
+                    fixed_header['CD2_2'] = pixel_scale_deg
+                    fixed_header['EQUINOX'] = 2000.0
+                    fixed_header['RADESYS'] = 'ICRS'
+                    
+                    st.info("Added minimal default WCS (1 arcsec/pixel) - coordinates will need manual input")
+                    
+                except (ValueError, TypeError):
+                    st.warning("Could not add default WCS due to invalid NAXIS values")
+        
+        else:
+            # If WCS seems valid, apply minor fixes
+            
+            # Fix CTYPE formatting
+            if 'CTYPE1' in fixed_header:
+                ctype1 = str(fixed_header['CTYPE1']).strip()
+                if ctype1 and not ctype1.endswith('---'):
+                    if 'RA' in ctype1.upper():
+                        fixed_header['CTYPE1'] = 'RA---TAN'
+                    elif 'GLON' in ctype1.upper():
+                        fixed_header['CTYPE1'] = 'GLON-TAN'
+            
+            if 'CTYPE2' in fixed_header:
+                ctype2 = str(fixed_header['CTYPE2']).strip()
+                if ctype2 and not ctype2.endswith('---'):
+                    if 'DEC' in ctype2.upper():
+                        fixed_header['CTYPE2'] = 'DEC--TAN'
+                    elif 'GLAT' in ctype2.upper():
+                        fixed_header['CTYPE2'] = 'GLAT-TAN'
+            
+            # Fix missing EQUINOX/EPOCH
+            if 'EQUINOX' not in fixed_header and 'EPOCH' in fixed_header:
+                fixed_header['EQUINOX'] = fixed_header['EPOCH']
+            elif 'EQUINOX' not in fixed_header:
+                fixed_header['EQUINOX'] = 2000.0
+                
+            # Fix RADESYS if missing
+            if 'RADESYS' not in fixed_header:
+                if fixed_header.get('EQUINOX', 2000.0) == 2000.0:
+                    fixed_header['RADESYS'] = 'ICRS'
+                else:
+                    fixed_header['RADESYS'] = 'FK5'
+            
+            # Remove PC matrix if CD matrix is present (they conflict)
+            if all(key in fixed_header for key in ['CD1_1', 'CD2_2']):
+                pc_keys = ['PC1_1', 'PC1_2', 'PC2_1', 'PC2_2']
+                removed_pc = []
+                for key in pc_keys:
+                    if key in fixed_header:
+                        del fixed_header[key]
+                        removed_pc.append(key)
+                if removed_pc:
+                    st.info(f"Removed conflicting PC matrix keywords: {', '.join(removed_pc)}")
         
         return fixed_header
         
     except Exception as e:
-        # If fixing fails, return original header
+        # If fixing fails completely, return original header
         st.warning(f"Header fixing failed: {str(e)}")
         return header
 
