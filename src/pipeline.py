@@ -228,7 +228,7 @@ def solve_with_astrometrynet(file_path):
         pixel_scale_estimate = None
         if header:
             # Try to get pixel scale from various header keywords
-            for key in ['PIXSCALE', 'PIXSIZE', 'SECPIX', 'XPIXSZ']:
+            for key in ['PIXSCALE', 'PIXSIZE', 'SECPIX']:
                 if key in header:
                     st.write(key)
                     pixel_scale_estimate = float(header[key])
