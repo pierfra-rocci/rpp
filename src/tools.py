@@ -420,7 +420,7 @@ def extract_pixel_scale(header):
         return 1.0, "default (no header)"
 
     # Method 1: Direct pixel scale keywords
-    for key in ["PIXSIZE", "PIXSCALE", "PIXELSCAL"]:
+    for key in ["PIXSCALE", "PIXELSCAL"]:
         if key in header:
             value = float(header[key])
             # Sanity check: pixel scale should be reasonable (0.01 to 100 arcsec/pixel)
