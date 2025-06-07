@@ -108,8 +108,8 @@ def solve_with_astrometrynet(file_path):
         image_sub = image_data - bkg.background
         
         # Try different FWHM estimates and thresholds for detection
-        fwhm_estimates = [2.0, 3.0, 4.0, 5.0]
-        threshold_multipliers = [3.0, 4.0, 5.0, 6.0]
+        fwhm_estimates = [3.0, 4.0, 5.0]
+        threshold_multipliers = [3.0, 4.0, 5.0]
         
         sources = None
         
