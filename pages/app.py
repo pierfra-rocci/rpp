@@ -1570,6 +1570,7 @@ if science_file is not None:
                 default_ra = st.session_state["manual_ra"]
                 if (
                     not default_ra
+                    and science_header is not None
                     and "NAXIS1" in science_header
                     and "CRPIX1" in science_header
                     and "CD1_1" in science_header
@@ -1588,6 +1589,7 @@ if science_file is not None:
                 default_dec = st.session_state["manual_dec"]
                 if (
                     not default_dec
+                    and science_header is not None
                     and "NAXIS2" in science_header
                     and "CRPIX2" in science_header
                     and "CD2_2" in science_header
@@ -1612,8 +1614,9 @@ if science_file is not None:
                     elif not (-90 <= dec_val <= 90):
                         st.error("DEC must be between -90 and +90 degrees")
                     else:
-                        science_header["RA"] = ra_val
-                        science_header["DEC"] = dec_val
+                        if science_header is not None:
+                            science_header["RA"] = ra_val
+                            science_header["DEC"] = dec_val
 
                         st.session_state["valid_ra"] = ra_val
                         st.session_state["valid_dec"] = dec_val
@@ -1626,17 +1629,18 @@ if science_file is not None:
             else:
                 st.warning("Please enter both RA and DEC coordinates")
         else:
-            for ra_key in ["RA", "OBJRA", "RA---", "CRVAL1"]:
-                if ra_key in science_header:
-                    st.session_state["valid_ra"] = science_header[ra_key]
-                    break
+            if science_header is not None:
+                for ra_key in ["RA", "OBJRA", "RA---", "CRVAL1"]:
+                    if ra_key in science_header:
+                        st.session_state["valid_ra"] = science_header[ra_key]
+                        break
 
-            for dec_key in ["DEC", "OBJDEC", "DEC---", "CRVAL2"]:
-                if dec_key in science_header:
-                    st.session_state["valid_dec"] = science_header[dec_key]
-                    break
+                for dec_key in ["DEC", "OBJDEC", "DEC---", "CRVAL2"]:
+                    if dec_key in science_header:
+                        st.session_state["valid_dec"] = science_header[dec_key]
+                        break
 
-        if "valid_ra" in st.session_state and "valid_dec" in st.session_state:
+        if "valid_ra" in st.session_state and "valid_dec" in st.session_state and science_header is not None:
             science_header["RA"] = st.session_state["valid_ra"]
             science_header["DEC"] = st.session_state["valid_dec"]
 
