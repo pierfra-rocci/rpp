@@ -325,7 +325,7 @@ def solve_with_astrometrynet(file_path):
             except Exception:
                 st.write("Could not parse RA/DEC from header")
         
-        st.write("Running stdpipe blind_match_objects...")
+        st.write("Running blind_match_objects...")
         st.write(f"Using {len(obj_table)} sources for plate solving")
 
         try:
