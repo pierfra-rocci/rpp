@@ -382,7 +382,7 @@ def extract_pixel_scale(header):
        'PIXELSCAL').
     2. Uses CD matrix elements (CD1_1, CD2_2) converted from deg to arcsec.
     3. Calculates from pixel size ('XPIXSZ') and focal length ('FOCALLEN'),
-       with proper unit handling.
+       using the simple formula: 206 × pixel_size_microns / focal_length_mm.
     4. If none of the above succeed, returns a default value.
 
     Parameters
@@ -402,15 +402,14 @@ def extract_pixel_scale(header):
 
     Notes
     -----
+    - Uses the simple formula: pixel_scale = 206 × pixel_size_microns / focal_length_mm
     - Assumes XPIXSZ is in micrometers unless XPIXSZU specifies otherwise.
-    - Formula: pixel_scale = arctan(pixel_size_meters / focal_length_meters) * 206265
-    - Conversion factor: 206265 arcseconds per radian.
     """
     if header is None:
         return 1.0, "default (no header)"
 
     # Method 1: Direct pixel scale keywords (these should be in arcsec/pixel)
-    for key in ["PIXSIZE", "PIXSCALE", "PIXELSCAL"]:
+    for key in ["PIXSIZE", "PIXSCALE", "PIXELSCAL", "SECPIX"]:
         if key in header:
             value = float(header[key])
             # Sanity check: pixel scale should be reasonable (0.01 to 100 arcsec/pixel)
@@ -430,38 +429,43 @@ def extract_pixel_scale(header):
         if 0.01 <= scale <= 100:
             return scale, f"from CD matrix (CD1_1={cd1_1:.2e}, CD2_2={cd2_2:.2e})"
 
-    # Method 3: Calculate from pixel size and focal length
-    if "XPIXSZ" in header and "FOCALLEN" in header:
-        pixel_size = float(header["XPIXSZ"])
-        focal_length_mm = float(header["FOCALLEN"])
+    # Method 3: Calculate from pixel size and focal length using simple formula
+    focal_length = None
+    pixel_size = None
+    
+    # Check for focal length keywords
+    for focal_key in ['FOCALLEN', 'FOCAL', 'FOCLEN', 'FL']:
+        if focal_key in header:
+            focal_length = float(header[focal_key])
+            break
+    
+    # Check for pixel size keywords
+    for pixel_key in ['PIXELSIZE', 'PIXSIZE', 'XPIXSZ', 'YPIXSZ', 'PIXELMICRONS']:
+        if pixel_key in header:
+            pixel_size = float(header[pixel_key])
+            break
+    
+    if focal_length is not None and pixel_size is not None and focal_length > 0:
+        xpixsz_unit = header.get("XPIXSZU", "").strip().lower()
         
-        if focal_length_mm <= 0:
-            # Invalid focal length, skip this method
-            pass
+        # Handle different units
+        if xpixsz_unit == "mm":
+            # Convert mm to microns
+            pixel_size_microns = pixel_size * 1000.0
+            unit_desc = "mm"
+        elif xpixsz_unit in ["um", "μm", "micron", "microns"]:
+            pixel_size_microns = pixel_size
+            unit_desc = "μm"
         else:
-            xpixsz_unit = header.get("XPIXSZU", "").strip().lower()
-            
-            # Convert pixel size to meters based on unit
-            if xpixsz_unit == "mm":
-                pixel_size_m = pixel_size / 1000.0  # mm to meters
-                unit_desc = "mm"
-            elif xpixsz_unit in ["um", "μm", "micron", "microns"]:
-                pixel_size_m = pixel_size / 1000000.0  # μm to meters
-                unit_desc = "μm"
-            else:
-                # Default assumption: micrometers
-                pixel_size_m = pixel_size / 1000000.0  # μm to meters
-                unit_desc = "μm (assumed)"
-            
-            # Convert focal length to meters
-            focal_length_m = focal_length_mm / 1000.0  # mm to meters
-            
-            # Calculate pixel scale using the correct formula:
-            pixel_scale_rad = pixel_size_m / focal_length_m
-            scale = pixel_scale_rad * 206265.0
-            
-            if 0.01 <= scale <= 100:
-                return scale, f"calculated from XPIXSZ ({unit_desc}) and FOCALLEN"
+            # Default assumption: micrometers
+            pixel_size_microns = pixel_size
+            unit_desc = "μm (assumed)"
+        
+        # Use the simple formula: pixel_scale = 206 × pixel_size_microns / focal_length_mm
+        scale = 206.0 * pixel_size_microns / focal_length
+        
+        if 0.01 <= scale <= 100:
+            return scale, f"calculated: 206 × {pixel_size_microns} {unit_desc} / {focal_length} mm"
 
     # Method 4: Default fallback
     return 1.0, "default fallback value"
