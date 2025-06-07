@@ -457,9 +457,6 @@ def extract_pixel_scale(header):
             focal_length_m = focal_length_mm / 1000.0  # mm to meters
             
             # Calculate pixel scale using the correct formula:
-            # pixel_scale (radians) = pixel_size_meters / focal_length_meters
-            # pixel_scale (arcseconds) = pixel_scale_radians * 206265
-            import math
             pixel_scale_rad = pixel_size_m / focal_length_m
             scale = pixel_scale_rad * 206265.0
             
