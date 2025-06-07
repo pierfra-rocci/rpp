@@ -319,7 +319,7 @@ def solve_with_astrometrynet(file_path):
                     kwargs.update({
                         'center_ra': ra_hint,
                         'center_dec': dec_hint,
-                        'radius': 1.0  # 5 degree search radius
+                        'radius': 0.95  # 5 degree search radius
                     })
                     st.write(f"Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}")
             except Exception:
