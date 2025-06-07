@@ -380,14 +380,15 @@ def extract_pixel_scale(header):
     Tries multiple methods in order of preference:
     1. Looks for direct pixel scale keywords ('PIXSIZE', 'PIXSCALE',
        'PIXELSCAL').
-    2. Uses WCS keywords 'CDELT2' or 'CDELT1' (absolute value, converted
+    2. Uses CD matrix elements (CD1_1, CD2_2) converted from deg to arcsec.
+    3. Uses WCS keywords 'CDELT2' or 'CDELT1' (absolute value, converted
        from deg to arcsec).
-    3. Calculates from pixel size ('XPIXSZ') and focal length ('FOCALLEN'),
+    4. Calculates from pixel size ('XPIXSZ') and focal length ('FOCALLEN'),
        attempting to interpret the unit of 'XPIXSZ' ('XPIXSZU' keyword:
        'arcsec', 'as', 'mm', or assumes μm).
-    4. If 'XPIXSZ' exists but 'FOCALLEN' does not, returns 'XPIXSZ'
+    5. If 'XPIXSZ' exists but 'FOCALLEN' does not, returns 'XPIXSZ'
        assuming it's in arcsec.
-    5. If none of the above succeed, returns a default value.
+    6. If none of the above succeed, returns a default value.
 
     Parameters
     ----------
@@ -418,19 +419,44 @@ def extract_pixel_scale(header):
     if header is None:
         return 1.0, "default (no header)"
 
+    # Method 1: Direct pixel scale keywords
     for key in ["PIXSIZE", "PIXSCALE", "PIXELSCAL"]:
         if key in header:
-            return header[key], f"from {key}"
+            value = float(header[key])
+            # Sanity check: pixel scale should be reasonable (0.01 to 100 arcsec/pixel)
+            if 0.01 <= value <= 100:
+                return value, f"from {key}"
 
+    # Method 2: CD matrix elements (most common after plate solving)
+    if "CD1_1" in header and "CD2_2" in header:
+        cd1_1 = abs(float(header["CD1_1"]))
+        cd2_2 = abs(float(header["CD2_2"]))
+        
+        # Take average of both diagonal elements and convert from degrees to arcsec
+        avg_cd = (cd1_1 + cd2_2) / 2.0
+        scale = avg_cd * 3600.0
+        
+        # Sanity check: CD matrix values should be small (typically 1e-4 to 1e-2 degrees)
+        if 0.01 <= scale <= 100:
+            return scale, f"from CD matrix (CD1_1={cd1_1:.2e}, CD2_2={cd2_2:.2e})"
+        else:
+            # If CD values seem wrong, try CDELT
+            pass
+
+    # Method 3: CDELT values  
     for key in ["CDELT2", "CDELT1"]:
         if key in header:
-            scale = abs(header[key]) * 3600.0
-            return scale, f"from {key}"
+            value = abs(float(header[key]))
+            scale = value * 3600.0
+            # Sanity check
+            if 0.01 <= scale <= 100:
+                return scale, f"from {key}"
 
+    # Method 4: Calculate from pixel size and focal length
     if "XPIXSZ" in header:
         if "FOCALLEN" in header:
-            focal_length_mm = header["FOCALLEN"]
-            pixel_size = header["XPIXSZ"]
+            focal_length_mm = float(header["FOCALLEN"])
+            pixel_size = float(header["XPIXSZ"])
 
             xpixsz_unit = header.get("XPIXSZU", "").strip().lower()
 
@@ -440,11 +466,16 @@ def extract_pixel_scale(header):
                 scale = (pixel_size * 1000) / focal_length_mm * 206.265
                 return scale, "calculated from XPIXSZ (mm) and FOCALLEN"
             else:
+                # Assume micrometers
                 scale = pixel_size / focal_length_mm * 206.265
                 return scale, "calculated from XPIXSZ (μm) and FOCALLEN"
         else:
-            return header["XPIXSZ"], "from XPIXSZ (assumed arcsec)"
+            # Assume XPIXSZ is in arcseconds
+            value = float(header["XPIXSZ"])
+            if 0.01 <= value <= 100:
+                return value, "from XPIXSZ (assumed arcsec)"
 
+    # Method 5: Default fallback
     return 1.0, "default fallback value"
 
 
