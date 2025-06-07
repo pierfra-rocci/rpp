@@ -468,7 +468,7 @@ def extract_pixel_scale(header):
             return scale, f"calculated: 206 × {pixel_size_microns} {unit_desc} / {focal_length} mm"
 
     # Method 4: Default fallback
-    return 1.0, "default fallback value"
+    return 0.0, "default fallback value"
 
 
 def get_base_filename(file_obj):
