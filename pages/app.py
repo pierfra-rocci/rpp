@@ -979,6 +979,7 @@ def initialize_session_state():
         "filter_band": "phot_g_mean_mag",
         "filter_max_mag": 20.0,
         "astrometry_check": False,
+        "force_plate_solve": False,
         "calibrate_cosmic_rays": False,
         "cr_gain": 1.0,
         "cr_readnoise": 2.5,
@@ -1255,6 +1256,14 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
             "(requires external solver)."
         ),
     )
+    st.session_state.analysis_parameters["force_plate_solve"] = st.checkbox(
+        "Force Plate Solving",
+        value=st.session_state.analysis_parameters.get("force_plate_solve", False),
+        help=(
+            "Force plate solving even if a valid WCS is already present in the header. "
+            "This will replace the existing WCS solution."
+        ),
+    )
     st.session_state.analysis_parameters["calibrate_cosmic_rays"] = st.toggle(
         "Remove Cosmic Rays",
         value=st.session_state.analysis_parameters["calibrate_cosmic_rays"],
@@ -1441,6 +1450,9 @@ if science_file is not None:
     # Test WCS creation with better error handling
     wcs_obj, wcs_error = safe_wcs_create(science_header)
     
+    # Check if user wants to force plate solving
+    force_plate_solve = st.session_state.analysis_parameters.get("force_plate_solve", False)
+    
     # If WCS creation fails due to singular matrix, try to proceed without WCS for detection
     proceed_without_wcs = False
     if wcs_obj is None and "singular" in str(wcs_error).lower():
@@ -1451,22 +1463,34 @@ if science_file is not None:
         st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
         st.write("Attempt plate solving...")
         use_astrometry = True
+    elif force_plate_solve:
+        st.info("Force plate solving enabled - will re-solve astrometry even though valid WCS exists")
+        use_astrometry = True
+        wcs_obj = None  # Reset to trigger plate solving
     else:
         st.success("Valid WCS found in the FITS header.")
         log_buffer = st.session_state["log_buffer"]
         write_to_log(log_buffer, "Valid WCS found in header")
         proceed_without_wcs = False
+        use_astrometry = False
 
     # Handle plate solving
-    if wcs_obj is None and not proceed_without_wcs:
+    if (wcs_obj is None and not proceed_without_wcs) or force_plate_solve:
         use_astrometry = True
         if use_astrometry:
-            with st.spinner("Running plate solve (this may take a while)..."):
+            plate_solve_reason = "forced by user" if force_plate_solve else "no valid WCS found"
+            with st.spinner(f"Running plate solve ({plate_solve_reason}) - this may take a while..."):
                 result = solve_with_astrometrynet(science_file_path)
                 if result is None:
-                    st.error("Plate solving failed. No WCS solution was returned.")
-                    # Set flag to proceed without WCS
-                    proceed_without_wcs = True
+                    if force_plate_solve:
+                        st.error("Forced plate solving failed. Will use original WCS if available.")
+                        # Try to restore original WCS
+                        wcs_obj, wcs_error = safe_wcs_create(science_header)
+                        if wcs_obj is None:
+                            proceed_without_wcs = True
+                    else:
+                        st.error("Plate solving failed. No WCS solution was returned.")
+                        proceed_without_wcs = True
                 else:
                     wcs_obj, science_header = result
                     st.session_state["calibrated_header"] = science_header
@@ -1475,9 +1499,10 @@ if science_file is not None:
                 log_buffer = st.session_state["log_buffer"]
 
                 if wcs_obj is not None:
-                    st.success("plate solving successful!")
-                    write_to_log(log_buffer, "Solved")
-
+                    solve_type = "Forced re-solve" if force_plate_solve else "Initial solve"
+                    st.success(f"{solve_type} successful!")
+                    write_to_log(log_buffer, f"Plate solving completed ({plate_solve_reason})")
+                    
                     wcs_header_filename = (
                         f"{st.session_state['base_filename']}_wcs_header"
                     )
