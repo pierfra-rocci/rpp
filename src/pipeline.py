@@ -209,7 +209,7 @@ def solve_with_astrometrynet(file_path):
         st.success(f"Ready for plate solving with {len(sources)} sources")
         
         # Convert sources to the format expected by stdpipe
-        st.write("Converting sources for stdpipe...")
+        st.write("Converting sources...")
         obj_table = Table()
         obj_table['x'] = sources['xcentroid']
         obj_table['y'] = sources['ycentroid'] 
@@ -230,9 +230,50 @@ def solve_with_astrometrynet(file_path):
             # Try to get pixel scale from various header keywords
             for key in ['PIXSCALE', 'PIXSIZE', 'SECPIX']:
                 if key in header:
-                    st.write(key)
+                    st.write(f"Found pixel scale in header: {key}")
                     pixel_scale_estimate = float(header[key])
                     break
+            
+            # If still not found, try FOCALLEN + pixel size calculation
+            if pixel_scale_estimate is None:
+                try:
+                    focal_length = None
+                    pixel_size = None
+                    
+                    # Check for focal length keywords
+                    for focal_key in ['FOCALLEN', 'FOCAL', 'FOCLEN', 'FL']:
+                        if focal_key in header:
+                            focal_length = float(header[focal_key])
+                            st.write(f"Found focal length: {focal_length} mm from {focal_key}")
+                            break
+                    
+                    # Check for pixel size keywords (in microns)
+                    for pixel_key in ['PIXELSIZE', 'PIXSIZE', 'XPIXSZ', 'YPIXSZ', 'PIXELMICRONS']:
+                        if pixel_key in header:
+                            pixel_size = float(header[pixel_key])
+                            st.write(f"Found pixel size: {pixel_size} microns from {pixel_key}")
+                            break
+                    
+                    # Calculate pixel scale using the formula from the guide scope reference
+                    if focal_length is not None and pixel_size is not None:
+                        # Formula: pixel_scale = 206 * (pixel_size_microns) / (focal_length_mm)
+                        pixel_scale_estimate = 206 * pixel_size / focal_length
+                        st.write(f"Calculated pixel scale using formula: 206 × {pixel_size} µm / {focal_length} mm = {pixel_scale_estimate:.2f} arcsec/pixel")
+                        
+                        # Sanity check - typical astronomical pixel scales
+                        if not (0.1 <= pixel_scale_estimate <= 30.0):
+                            st.warning(f"Unusual pixel scale calculated: {pixel_scale_estimate:.2f} arcsec/pixel")
+                            st.warning("Please verify focal length and pixel size values in header")
+                        else:
+                            st.success(f"Pixel scale calculated from focal length and pixel size: {pixel_scale_estimate:.2f} arcsec/pixel")
+                    elif focal_length is not None:
+                        st.warning(f"Found focal length ({focal_length} mm) but no pixel size in header")
+                    elif pixel_size is not None:
+                        st.warning(f"Found pixel size ({pixel_size} µm) but no focal length in header")
+                        
+                except Exception as e:
+                    st.warning(f"Error calculating pixel scale from focal length/pixel size: {e}")
+                    pass
             
             # If not found, try to calculate from CD matrix
             if pixel_scale_estimate is None:
@@ -245,9 +286,10 @@ def solve_with_astrometrynet(file_path):
                     if any(x != 0 for x in [cd11, cd12, cd21, cd22]):
                         det = abs(cd11 * cd22 - cd12 * cd21)
                         pixel_scale_estimate = 3600 * np.sqrt(det)
+                        st.write("Calculated pixel scale from CD matrix")
                 except Exception:
                     pass
-        
+ 
         # Prepare parameters for stdpipe blind_match_objects
         kwargs = {
             'order': 2,  # SIP distortion order
