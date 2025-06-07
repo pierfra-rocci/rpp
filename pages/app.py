@@ -1383,19 +1383,20 @@ if science_file is not None:
         
         # Update observatory data from FITS header if available
         result = update_observatory_from_fits_header(science_header)
-        st.info("Observatory information updated from FITS header")
-        write_to_log(
-            st.session_state.log_buffer,
-            f"Observatory data updated from FITS header: {st.session_state.observatory_data}"
-        )
+        if result:
+            st.info("Observatory information updated from FITS header")
+            write_to_log(
+                st.session_state.log_buffer,
+                f"Observatory data updated from FITS header: {st.session_state.observatory_data}"
+            )
 
     # Apply cosmic ray removal if enabled
     if st.session_state.get("calibrate_cosmic_rays", False):
         st.info("Applying cosmic ray removal...")
         try:
-            cr_gain = st.session_state.get("cr_gain", 1.0)
-            cr_readnoise = st.session_state.get("cr_readnoise", 2.5)
-            cr_sigclip = st.session_state.get("cr_sigclip", 6.5)
+            cr_gain = st.session_state.analysis_parameters.get("cr_gain", 1.0)
+            cr_readnoise = st.session_state.analysis_parameters.get("cr_readnoise", 2.5)
+            cr_sigclip = st.session_state.analysis_parameters.get("cr_sigclip", 6.0)
             clean_data, _ = detect_remove_cosmic_rays(
                 science_data,
                 gain=cr_gain,
@@ -1410,19 +1411,35 @@ if science_file is not None:
         except Exception as e:
             st.error(f"Error during cosmic ray removal: {e}")
 
+    # Test WCS creation with better error handling
     wcs_obj, wcs_error = safe_wcs_create(science_header)
-    if wcs_obj is None:
+    
+    # If WCS creation fails due to singular matrix, try to proceed without WCS for detection
+    proceed_without_wcs = False
+    if wcs_obj is None and "singular" in str(wcs_error).lower():
+        st.warning(f"WCS header has issues: {wcs_error}")
+        st.info("Will attempt source detection without WCS and then try plate solving...")
+        proceed_without_wcs = True
+    elif wcs_obj is None:
         st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
-
         st.write("Attempt plate solving...")
         use_astrometry = True
+    else:
+        st.success("Valid WCS found in the FITS header.")
+        log_buffer = st.session_state["log_buffer"]
+        write_to_log(log_buffer, "Valid WCS found in header")
+        proceed_without_wcs = False
 
+    # Handle plate solving
+    if wcs_obj is None and not proceed_without_wcs:
+        use_astrometry = True
         if use_astrometry:
             with st.spinner("Running plate solve (this may take a while)..."):
                 result = solve_with_astrometrynet(science_file_path)
                 if result is None:
                     st.error("Plate solving failed. No WCS solution was returned.")
-                    wcs_obj, science_header = None, None
+                    # Set flag to proceed without WCS
+                    proceed_without_wcs = True
                 else:
                     wcs_obj, science_header = result
                     st.session_state["calibrated_header"] = science_header
@@ -1432,7 +1449,7 @@ if science_file is not None:
 
                 if wcs_obj is not None:
                     st.success("plate solving successful!")
-                    write_to_log(log_buffer, "Solved",)
+                    write_to_log(log_buffer, "Solved")
 
                     wcs_header_filename = (
                         f"{st.session_state['base_filename']}_wcs_header"
@@ -1474,87 +1491,22 @@ if science_file is not None:
                         "Failed",
                         level="ERROR",
                     )
+                    proceed_without_wcs = True
+    
+    # Store whether we're proceeding without WCS
+    st.session_state["proceed_without_wcs"] = proceed_without_wcs
+    if proceed_without_wcs:
+        st.warning("⚠️ Proceeding without valid WCS - photometry will be limited to instrumental magnitudes")
+
     else:
-        st.success("Valid WCS found in the FITS header.")
-        log_buffer = st.session_state["log_buffer"]
-        write_to_log(log_buffer, "Valid WCS found in header")
-
-        # Allow user to attempt plate solving even if WCS is valid
-        replate_solve = st.checkbox(
-            "Re-run plate solving (overwrite existing WCS)?",
-            value=False,
-            help="Force a new plate solve, replacing the current WCS solution."
-        )
-
-        if replate_solve:
-            with st.spinner("Running plate solve (this may take a while)..."):
-                result = solve_with_astrometrynet(science_file_path)
-                if result is None:
-                    st.error("Plate solving failed. No WCS solution was returned.")
-                    wcs_obj, science_header = None, None
-                else:
-                    wcs_obj, science_header = result
-                    st.session_state["calibrated_header"] = science_header
-                    st.session_state["wcs_obj"] = wcs_obj
-
-                log_buffer = st.session_state["log_buffer"]
-
-                if wcs_obj is not None:
-                    st.success("Plate solving successful!")
-                    write_to_log(
-                        log_buffer,
-                        "Solved plate (forced re-solve)",
-                    )
-
-                    wcs_header_filename = (
-                        f"{st.session_state['base_filename']}_wcs_header"
-                    )
-                    wcs_header_file_path = save_header_to_txt(
-                        science_header, wcs_header_filename
-                    )
-                    if wcs_header_file_path:
-                        st.info("Updated WCS header saved")
-                        
-                    # Re-extract pixel scale and recalculate seeing with updated header  
-                    pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
-                    seeing = st.session_state.analysis_parameters["seeing"]
-                    mean_fwhm_pixel = seeing / pixel_size_arcsec
-                    
-                    # Update session state with the new values
-                    st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
-                    st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
-                    
-                    st.write("Updated pixel scale and seeing after plate solving:")
-                    st.metric(
-                        "Updated Pixel Scale (arcsec/pixel)",
-                        f"{pixel_size_arcsec:.2f}",
-                    )
-                    st.metric("Updated FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
-                    
-                    write_to_log(
-                        log_buffer,
-                        f"Updated pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
-                    )
-                    write_to_log(
-                        log_buffer,
-                        f"Updated seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
-                    )
-                else:
-                    st.error("Plate solving failed")
-                    write_to_log(
-                        log_buffer,
-                        "Failed to solve plate (forced re-solve)",
-                        level="ERROR",
-                    )
-        else:
-            # Extract pixel scale from existing header when not re-solving
-            pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
-            seeing = st.session_state.analysis_parameters["seeing"]
-            mean_fwhm_pixel = seeing / pixel_size_arcsec
-            
-            # Update session state with the calculated values
-            st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
-            st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
+        # Extract pixel scale from existing header when not re-solving
+        pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
+        seeing = st.session_state.analysis_parameters["seeing"]
+        mean_fwhm_pixel = seeing / pixel_size_arcsec
+        
+        # Update session state with the calculated values
+        st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
+        st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
 
     if science_header is not None:
         log_buffer = st.session_state["log_buffer"]
