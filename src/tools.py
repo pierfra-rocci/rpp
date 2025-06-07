@@ -423,7 +423,7 @@ def extract_pixel_scale(header):
     for key in ["PIXSCALE", "PIXELSCAL"]:
         if key in header:
             value = float(header[key])
-            # Sanity check: pixel scale should be reasonable (0.01 to 100 arcsec/pixel)
+            # Sanity check:
             if 0.01 <= value <= 100:
                 return value, f"from {key}"
 
@@ -436,21 +436,12 @@ def extract_pixel_scale(header):
         avg_cd = (cd1_1 + cd2_2) / 2.0
         scale = avg_cd * 3600.0
         
-        # Sanity check: CD matrix values should be small (typically 1e-4 to 1e-2 degrees)
+        # Sanity check:
         if 0.01 <= scale <= 100:
             return scale, f"from CD matrix (CD1_1={cd1_1:.2e}, CD2_2={cd2_2:.2e})"
         else:
             # If CD values seem wrong, try CDELT
             pass
-
-    # Method 3: CDELT values  
-    for key in ["CDELT2", "CDELT1"]:
-        if key in header:
-            value = abs(float(header[key]))
-            scale = value * 3600.0
-            # Sanity check
-            if 0.01 <= scale <= 100:
-                return scale, f"from {key}"
 
     # Method 4: Calculate from pixel size and focal length
     if "XPIXSZ" in header:
@@ -460,9 +451,7 @@ def extract_pixel_scale(header):
 
             xpixsz_unit = header.get("XPIXSZU", "").strip().lower()
 
-            if xpixsz_unit in ["arcsec", "as"]:
-                return pixel_size, "from XPIXSZ (in arcsec)"
-            elif xpixsz_unit == "mm":
+            if xpixsz_unit == "mm":
                 scale = (pixel_size * 1000) / focal_length_mm * 206.265
                 return scale, "calculated from XPIXSZ (mm) and FOCALLEN"
             else:
