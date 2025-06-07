@@ -338,7 +338,6 @@ def solve_with_astrometrynet(file_path):
         st.write(f"Using {len(obj_table)} sources for plate solving")
         
         # Convert sources to the format expected by stdpipe
-        st.write("Converting sources for stdpipe...")
         obj_table = Table()
         obj_table['x'] = sources['xcentroid']
         obj_table['y'] = sources['ycentroid']
