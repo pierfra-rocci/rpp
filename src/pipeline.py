@@ -209,7 +209,6 @@ def solve_with_astrometrynet(file_path):
         st.success(f"Ready for plate solving with {len(sources)} sources")
         
         # Convert sources to the format expected by stdpipe
-        st.write("Converting sources...")
         obj_table = Table()
         obj_table['x'] = sources['xcentroid']
         obj_table['y'] = sources['ycentroid'] 
@@ -329,7 +328,7 @@ def solve_with_astrometrynet(file_path):
                     kwargs.update({
                         'center_ra': ra_hint,
                         'center_dec': dec_hint,
-                        'radius': 5.0  # 5 degree search radius
+                        'radius': 1.0  # 5 degree search radius
                     })
                     st.write(f"Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}")
             except Exception:
@@ -342,7 +341,7 @@ def solve_with_astrometrynet(file_path):
         st.write("Converting sources for stdpipe...")
         obj_table = Table()
         obj_table['x'] = sources['xcentroid']
-        obj_table['y'] = sources['ycentroid'] 
+        obj_table['y'] = sources['ycentroid']
         obj_table['flux'] = sources['flux']
         
         # Add signal-to-noise ratio if available
