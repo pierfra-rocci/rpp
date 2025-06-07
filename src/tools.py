@@ -381,14 +381,9 @@ def extract_pixel_scale(header):
     1. Looks for direct pixel scale keywords ('PIXSIZE', 'PIXSCALE',
        'PIXELSCAL').
     2. Uses CD matrix elements (CD1_1, CD2_2) converted from deg to arcsec.
-    3. Uses WCS keywords 'CDELT2' or 'CDELT1' (absolute value, converted
-       from deg to arcsec).
-    4. Calculates from pixel size ('XPIXSZ') and focal length ('FOCALLEN'),
-       attempting to interpret the unit of 'XPIXSZ' ('XPIXSZU' keyword:
-       'arcsec', 'as', 'mm', or assumes μm).
-    5. If 'XPIXSZ' exists but 'FOCALLEN' does not, returns 'XPIXSZ'
-       assuming it's in arcsec.
-    6. If none of the above succeed, returns a default value.
+    3. Calculates from pixel size ('XPIXSZ') and focal length ('FOCALLEN'),
+       with proper unit handling.
+    4. If none of the above succeed, returns a default value.
 
     Parameters
     ----------
@@ -401,25 +396,20 @@ def extract_pixel_scale(header):
     tuple (float, str)
         - (pixel_scale_value, source_description): Returns the determined pixel
           scale in arcseconds per pixel and a string describing how it was
-          obtained (e.g., "from CDELT2",
-          "calculated from XPIXSZ (μm) and FOCALLEN",
-          "default fallback value").
+          obtained.
         - The default pixel scale value returned if no information is found is
           1.0 arcsec/pixel.
 
     Notes
     -----
-    - Assumes CDELT values are in degrees.
-    - Assumes XPIXSZ is in micrometers (μm) if FOCALLEN is present and
-      XPIXSZU is missing or unrecognized, unless XPIXSZU is 'arcsec', 'as',
-      or 'mm'.
-    - Assumes XPIXSZ is in arcseconds if FOCALLEN is missing.
-    - Conversion factor used: 206.265 arcseconds per radian.
+    - Assumes XPIXSZ is in micrometers unless XPIXSZU specifies otherwise.
+    - Formula: pixel_scale = arctan(pixel_size_meters / focal_length_meters) * 206265
+    - Conversion factor: 206265 arcseconds per radian.
     """
     if header is None:
         return 1.0, "default (no header)"
 
-    # Method 1: Direct pixel scale keywords
+    # Method 1: Direct pixel scale keywords (these should be in arcsec/pixel)
     for key in ["PIXSIZE", "PIXSCALE", "PIXELSCAL"]:
         if key in header:
             value = float(header[key])
@@ -440,52 +430,43 @@ def extract_pixel_scale(header):
         if 0.01 <= scale <= 100:
             return scale, f"from CD matrix (CD1_1={cd1_1:.2e}, CD2_2={cd2_2:.2e})"
 
-    # Method 3: CDELT values (WCS linear transformation)
-    for key in ["CDELT2", "CDELT1"]:
-        if key in header:
-            value = abs(float(header[key]))
-            scale = value * 3600.0  # Convert degrees to arcseconds
-            # Sanity check
-            if 0.01 <= scale <= 100:
-                return scale, f"from {key} (WCS)"
-
-    # Method 4: Calculate from pixel size and focal length
-    if "XPIXSZ" in header:
+    # Method 3: Calculate from pixel size and focal length
+    if "XPIXSZ" in header and "FOCALLEN" in header:
         pixel_size = float(header["XPIXSZ"])
-        xpixsz_unit = header.get("XPIXSZU", "").strip().lower()
+        focal_length_mm = float(header["FOCALLEN"])
         
-        # Check if pixel size is already in arcseconds
-        if xpixsz_unit in ["arcsec", "as", "\"", "arcseconds"]:
-            if 0.01 <= pixel_size <= 100:
-                return pixel_size, "from XPIXSZ (in arcsec)"
-        
-        # Calculate from focal length if available
-        if "FOCALLEN" in header:
-            focal_length_mm = float(header["FOCALLEN"])
-            
-            if focal_length_mm <= 0:
-                # Invalid focal length, skip this method
-                pass
-            elif xpixsz_unit == "mm":
-                # Pixel size in mm, focal length in mm
-                # Formula: pixel_scale (arcsec) = (pixel_size_mm / focal_length_mm) * 206265
-                scale = (pixel_size / focal_length_mm) * 206265.0
-                if 0.01 <= scale <= 100:
-                    return scale, "calculated from XPIXSZ (mm) and FOCALLEN"
-            elif xpixsz_unit in ["um", "μm", "micron", "microns", ""]:
-                # Pixel size in micrometers (default assumption), focal length in mm
-                # Convert μm to mm first: pixel_size_mm = pixel_size_um / 1000
-                # Formula: pixel_scale (arcsec) = (pixel_size_mm / focal_length_mm) * 206265
-                pixel_size_mm = pixel_size / 1000.0  # Convert μm to mm
-                scale = (pixel_size_mm / focal_length_mm) * 206265.0
-                if 0.01 <= scale <= 100:
-                    return scale, "calculated from XPIXSZ (μm) and FOCALLEN"
+        if focal_length_mm <= 0:
+            # Invalid focal length, skip this method
+            pass
         else:
-            # No focal length available, assume XPIXSZ is in arcseconds
-            if 0.01 <= pixel_size <= 100:
-                return pixel_size, "from XPIXSZ (assumed arcsec, no focal length)"
+            xpixsz_unit = header.get("XPIXSZU", "").strip().lower()
+            
+            # Convert pixel size to meters based on unit
+            if xpixsz_unit == "mm":
+                pixel_size_m = pixel_size / 1000.0  # mm to meters
+                unit_desc = "mm"
+            elif xpixsz_unit in ["um", "μm", "micron", "microns"]:
+                pixel_size_m = pixel_size / 1000000.0  # μm to meters
+                unit_desc = "μm"
+            else:
+                # Default assumption: micrometers
+                pixel_size_m = pixel_size / 1000000.0  # μm to meters
+                unit_desc = "μm (assumed)"
+            
+            # Convert focal length to meters
+            focal_length_m = focal_length_mm / 1000.0  # mm to meters
+            
+            # Calculate pixel scale using the correct formula:
+            # pixel_scale (radians) = pixel_size_meters / focal_length_meters
+            # pixel_scale (arcseconds) = pixel_scale_radians * 206265
+            import math
+            pixel_scale_rad = pixel_size_m / focal_length_m
+            scale = pixel_scale_rad * 206265.0
+            
+            if 0.01 <= scale <= 100:
+                return scale, f"calculated from XPIXSZ ({unit_desc}) and FOCALLEN"
 
-    # Method 5: Default fallback
+    # Method 4: Default fallback
     return 1.0, "default fallback value"
 
 
