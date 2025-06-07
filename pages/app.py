@@ -1256,14 +1256,6 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
             "(requires external solver)."
         ),
     )
-    st.session_state.analysis_parameters["force_plate_solve"] = st.checkbox(
-        "Force Plate Solving",
-        value=st.session_state.analysis_parameters.get("force_plate_solve", False),
-        help=(
-            "Force plate solving even if a valid WCS is already present in the header. "
-            "This will replace the existing WCS solution."
-        ),
-    )
     st.session_state.analysis_parameters["calibrate_cosmic_rays"] = st.toggle(
         "Remove Cosmic Rays",
         value=st.session_state.analysis_parameters["calibrate_cosmic_rays"],
@@ -1450,8 +1442,8 @@ if science_file is not None:
     # Test WCS creation with better error handling
     wcs_obj, wcs_error = safe_wcs_create(science_header)
     
-    # Check if user wants to force plate solving
-    force_plate_solve = st.session_state.analysis_parameters.get("force_plate_solve", False)
+    # Initialize force_plate_solve as False by default
+    force_plate_solve = False
     
     # If WCS creation fails due to singular matrix, try to proceed without WCS for detection
     proceed_without_wcs = False
@@ -1463,16 +1455,31 @@ if science_file is not None:
         st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
         st.write("Attempt plate solving...")
         use_astrometry = True
-    elif force_plate_solve:
-        st.info("Force plate solving enabled - will re-solve astrometry even though valid WCS exists")
-        use_astrometry = True
-        wcs_obj = None  # Reset to trigger plate solving
     else:
         st.success("Valid WCS found in the FITS header.")
-        log_buffer = st.session_state["log_buffer"]
-        write_to_log(log_buffer, "Valid WCS found in header")
-        proceed_without_wcs = False
-        use_astrometry = False
+        
+        # Show Force Plate Solving checkbox only when valid WCS exists
+        force_plate_solve = st.checkbox(
+            "🔄 Force Re-solve Astrometry",
+            value=st.session_state.analysis_parameters.get("force_plate_solve", False),
+            help=(
+                "Force plate solving even though a valid WCS is present. "
+                "This will replace the existing WCS solution with a new one."
+            ),
+            key="force_plate_solve_main"
+        )
+        # Update session state
+        st.session_state.analysis_parameters["force_plate_solve"] = force_plate_solve
+        
+        if force_plate_solve:
+            st.info("🔄 Force plate solving enabled - will re-solve astrometry")
+            use_astrometry = True
+            wcs_obj = None  # Reset to trigger plate solving
+        else:
+            log_buffer = st.session_state["log_buffer"]
+            write_to_log(log_buffer, "Valid WCS found in header")
+            proceed_without_wcs = False
+            use_astrometry = False
 
     # Handle plate solving
     if (wcs_obj is None and not proceed_without_wcs) or force_plate_solve:
@@ -1484,9 +1491,13 @@ if science_file is not None:
                 if result is None:
                     if force_plate_solve:
                         st.error("Forced plate solving failed. Will use original WCS if available.")
-                        # Try to restore original WCS
-                        wcs_obj, wcs_error = safe_wcs_create(science_header)
-                        if wcs_obj is None:
+                        # Try to restore original WCS by reloading header
+                        _, original_header = load_fits_data(science_file)
+                        wcs_obj, wcs_error = safe_wcs_create(original_header)
+                        if wcs_obj is not None:
+                            science_header = original_header
+                            st.info("Restored original WCS solution")
+                        else:
                             proceed_without_wcs = True
                     else:
                         st.error("Plate solving failed. No WCS solution was returned.")
@@ -1500,7 +1511,7 @@ if science_file is not None:
 
                 if wcs_obj is not None:
                     solve_type = "Forced re-solve" if force_plate_solve else "Initial solve"
-                    st.success(f"{solve_type} successful!")
+                    st.success(f"✅ {solve_type} successful!")
                     write_to_log(log_buffer, f"Plate solving completed ({plate_solve_reason})")
                     
                     wcs_header_filename = (
