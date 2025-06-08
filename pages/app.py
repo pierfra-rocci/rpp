@@ -1615,8 +1615,8 @@ if science_file is not None:
         exposure_time_science = science_header.get(
             "EXPOSURE", science_header.get("EXPTIME", 1.0)
         )
-
         zero_point_button_disabled = science_file is None
+
         if st.button(
             "Photometric Calibration",
             disabled=zero_point_button_disabled,
