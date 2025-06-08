@@ -1623,7 +1623,6 @@ if science_file is not None:
             key="run_zp",
         ):
             image_to_process = science_data
-            st.write(science_header)
             header_to_process = science_header.copy()
             
             # Validate that we have a header
