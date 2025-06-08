@@ -1469,7 +1469,7 @@ def refine_astrometry_with_stdpipe(
 
 def detection_and_photometry(
     image_data,
-    _science_header,
+    science_header,
     mean_fwhm_pixel,
     threshold_sigma,
     detection_mask,
@@ -1525,7 +1525,7 @@ def detection_and_photometry(
     daofind = None
 
     try:
-        w, wcs_error = safe_wcs_create(_science_header)
+        w, wcs_error = safe_wcs_create(science_header)
         if w is None:
             st.error(f"Error creating WCS: {wcs_error}")
             return None, None, daofind, None, None
@@ -1533,9 +1533,9 @@ def detection_and_photometry(
         st.error(f"Error creating WCS: {e}")
         return None, None, daofind, None, None
 
-    pixel_scale = _science_header.get(
+    pixel_scale = science_header.get(
         "PIXSCALE",
-        _science_header.get("PIXSIZE", _science_header.get("PIXELSCAL", 1.0)),
+        science_header.get("PIXSIZE", science_header.get("PIXELSCAL", 1.0)),
     )
 
     bkg, bkg_error = estimate_background(image_data, box_size=128, filter_size=7)
@@ -1550,10 +1550,10 @@ def detection_and_photometry(
 
     exposure_time = 1.0
     if (np.max(image_data) - np.min(image_data)) > 10:
-        if _science_header["EXPTIME"]:
-            exposure_time = _science_header["EXPTIME"]
-        elif _science_header["EXPOSURE"]:
-            exposure_time = _science_header["EXPOSURE"]
+        if science_header["EXPTIME"]:
+            exposure_time = science_header["EXPTIME"]
+        elif science_header["EXPOSURE"]:
+            exposure_time = science_header["EXPOSURE"]
 
     effective_gain = 2.5/np.std(image_data) * exposure_time
 
@@ -1586,7 +1586,7 @@ def detection_and_photometry(
     if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
         refined_wcs = refine_astrometry_with_stdpipe(
             image_data=image_data,
-            science_header=_science_header,
+            science_header=science_header,
             wcs=w,
             fwhm_estimate=fwhm_estimate,
             pixel_scale=pixel_scale,
@@ -1597,7 +1597,7 @@ def detection_and_photometry(
         if refined_wcs:
             # Test a few source positions to ensure coordinates make sense
             test_coords = positions[:min(5, len(positions))]
-            if not validate_wcs_orientation(_science_header, _science_header, test_coords):
+            if not validate_wcs_orientation(science_header, science_header, test_coords):
                 st.warning("WCS refinement may have introduced coordinate issues")
             w = refined_wcs
     else:
@@ -1628,10 +1628,10 @@ def detection_and_photometry(
             except Exception as e:
                 st.warning(f"Error creating WCS object: {e}")
                 wcs_obj = None
-        elif "CTYPE1" in _science_header:
+        elif "CTYPE1" in science_header:
             try:
                 # Fallback to header WCS if no refined WCS available
-                wcs_obj = WCS(_science_header)
+                wcs_obj = WCS(science_header)
                 if wcs_obj.pixel_n_dim > 2:
                     wcs_obj = wcs_obj.celestial
                     st.info("Reduced WCS to 2D celestial coordinates for photometry")
@@ -1775,13 +1775,13 @@ def detection_and_photometry(
                         st.warning(f"Could not add coordinates to EPSF table: {e}")
             else:
                 if all(
-                    key in _science_header for key in ["RA", "DEC", "NAXIS1", "NAXIS2"]
+                    key in science_header for key in ["RA", "DEC", "NAXIS1", "NAXIS2"]
                 ):
                     st.info("Using simple linear approximation for RA/DEC coordinates")
-                    center_ra = _science_header["RA"]
-                    center_dec = _science_header["DEC"]
-                    width = _science_header["NAXIS1"]
-                    height = _science_header["NAXIS2"]
+                    center_ra = science_header["RA"]
+                    center_dec = science_header["DEC"]
+                    width = science_header["NAXIS1"]
+                    height = science_header["NAXIS2"]
 
                     pix_scale = pixel_scale or 1.0
 
@@ -1811,7 +1811,7 @@ def detection_and_photometry(
 
 def cross_match_with_gaia(
     _phot_table,
-    _science_header,
+    science_header,
     pixel_size_arcsec,
     mean_fwhm_pixel,
     filter_band,
@@ -1862,7 +1862,7 @@ def cross_match_with_gaia(
     """
     st.write("Cross-matching with Gaia DR3...")
 
-    if _science_header is None:
+    if science_header is None:
         st.warning("No header information available. Cannot cross-match with Gaia.")
         return None
 
@@ -1872,7 +1872,7 @@ def cross_match_with_gaia(
             w = refined_wcs
             st.info("Using refined WCS for Gaia cross-matching, if possible.")
         else:
-            w = WCS(_science_header)
+            w = WCS(science_header)
             st.info("Using header WCS for Gaia cross-matching")
     except Exception as e:
         st.error(f"Error creating WCS: {e}")
@@ -1891,12 +1891,12 @@ def cross_match_with_gaia(
 
     try:
         # Validate RA/DEC coordinates before using them
-        if "RA" not in _science_header or "DEC" not in _science_header:
+        if "RA" not in science_header or "DEC" not in science_header:
             st.error("Missing RA/DEC coordinates in header")
             return None
 
-        image_center_ra_dec = [_science_header["RA"],
-                               _science_header["DEC"]]
+        image_center_ra_dec = [science_header["RA"],
+                               science_header["DEC"]]
 
         # Validate coordinate values
         if not (0 <= image_center_ra_dec[0] <= 360) or not (-90 <= image_center_ra_dec[1] <= 90):
@@ -1905,7 +1905,7 @@ def cross_match_with_gaia(
 
         # Calculate search radius (divided by 1.5 to avoid field edge effects)
         gaia_search_radius_arcsec = (
-            max(_science_header["NAXIS1"], _science_header["NAXIS2"])
+            max(science_header["NAXIS1"], science_header["NAXIS2"])
             * pixel_size_arcsec
             / 1.5
         )

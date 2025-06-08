@@ -1625,6 +1625,14 @@ if science_file is not None:
             image_to_process = science_data
             header_to_process = st.session_state.get("calibrated_header", science_header)
             
+            # Validate that we have a header
+            if header_to_process is None:
+                st.error("No header available for processing. Cannot proceed with photometry.")
+                st.stop()
+            
+            # Debug: Show what header we're using
+            st.write(f"Using header with {len(header_to_process)} keywords")
+
             # Get the correct pixel scale and FWHM values
             if "pixel_size_arcsec" in st.session_state and "mean_fwhm_pixel" in st.session_state:
                 pixel_size_arcsec = st.session_state["pixel_size_arcsec"]
