@@ -1623,7 +1623,7 @@ if science_file is not None:
             key="run_zp",
         ):
             image_to_process = science_data
-            header_to_process = st.session_state.get("calibrated_header", science_header)
+            header_to_process = header_for_stats
             
             # Validate that we have a header
             if header_to_process is None:
