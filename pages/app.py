@@ -1946,14 +1946,20 @@ if science_file is not None:
                                                 )
                                                 # Get colibri API key from session state
                                                 colibri_api_key = st.session_state.get("colibri_api_key", "")
-                                                final_table = enhance_catalog(
-                                                    colibri_api_key,
-                                                    final_table,
-                                                    matched_table,
-                                                    header_to_process,
-                                                    pixel_size_arcsec,
-                                                    search_radius_arcsec=search_radius,
-                                                )
+                                                # Ensure final_table exists before enhancement
+                                                if final_table is None:
+                                                    st.error("Final photometry table is None - cannot perform catalog enhancement")
+                                                    final_table = st.session_state.get("final_phot_table")
+                                                    
+                                                if final_table is not None and len(final_table) > 0:
+                                                    final_table = enhance_catalog(
+                                                        colibri_api_key,
+                                                        final_table,
+                                                        matched_table,
+                                                        header_to_process,
+                                                        pixel_size_arcsec,
+                                                        search_radius_arcsec=search_radius,
+                                                    )
                                             elif final_table is not None:
                                                 st.warning(
                                                     "RA/DEC coordinates not available for catalog cross-matching"
@@ -1963,32 +1969,44 @@ if science_file is not None:
                                                     "Final photometry table is None - cannot perform cross-matching"
                                                 )
 
-                                            final_table.to_csv(csv_buffer, index=False)
-                                            csv_data = csv_buffer.getvalue()
+                                            # Add safety check before CSV creation
+                                            if final_table is not None and len(final_table) > 0:
+                                                try:
+                                                    final_table.to_csv(csv_buffer, index=False)
+                                                    csv_data = csv_buffer.getvalue()
 
-                                            timestamp_str = datetime.now().strftime(
-                                                "%Y%m%d_%H%M%S"
-                                            )
-                                            base_catalog_name = catalog_name
-                                            if base_catalog_name.endswith(".csv"):
-                                                base_catalog_name = base_catalog_name[
-                                                    :-4
-                                                ]
-                                            filename = f"{base_catalog_name}.csv"
+                                                    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                                    base_catalog_name = catalog_name
+                                                    if base_catalog_name.endswith(".csv"):
+                                                        base_catalog_name = base_catalog_name[:-4]
+                                                    filename = f"{base_catalog_name}.csv"
 
-                                            catalog_path = os.path.join(
-                                                output_dir, filename
-                                            )
+                                                    catalog_path = os.path.join(output_dir, filename)
 
-                                            with open(catalog_path, "w") as f:
-                                                f.write(csv_data)
-
+                                                    with open(catalog_path, "w") as f:
+                                                        f.write(csv_data)
+                                                        
+                                                    st.success(f"Catalog saved successfully to {filename}")
+                                                    
+                                                except Exception as e:
+                                                    st.error(f"Error preparing download: {e}")
+                                                    st.error("final_table status:")
+                                                    st.error(f"  Type: {type(final_table)}")
+                                                    st.error(f"  Length: {len(final_table) if final_table is not None else 'None'}")
+                                                    if final_table is not None:
+                                                        st.error(f"  Columns: {list(final_table.columns)}")
+                                            else:
+                                                st.error("Cannot create CSV: final_table is None or empty")
+                                                if final_table is None:
+                                                    st.error("final_table is None")
+                                                else:
+                                                    st.error(f"final_table length: {len(final_table)}")
                                         except Exception as e:
-                                            st.error(f"Error preparing download: {e}")
-                        else:
-                            st.error(
-                                "Failed to cross-match with Gaia catalog. Check WCS information in image header."
-                            )
+                                            st.error(f"{e}")
+                                else:
+                                    st.error(
+                                        "Failed to cross-match with Gaia catalog. Check WCS information in image header."
+                                    )
                 except Exception as e:
                     st.error(f"Error during zero point calibration: {str(e)}")
                     st.exception(e)
