@@ -2352,11 +2352,11 @@ def enhance_catalog(
     if matched_table is not None and len(matched_table) > 0:
         status_text.write("Adding Gaia calibration matches...")
 
-        if "xcenter" in final_table.columns and "ycenter" in final_table.columns:
-            final_table["match_id"] = (
-                final_table["xcenter"].round(2).astype(str)
+        if "xcenter" in enhanced_table.columns and "ycenter" in enhanced_table.columns:
+            enhanced_table["match_id"] = (
+                enhanced_table["xcenter"].round(2).astype(str)
                                + "_"
-                + final_table["ycenter"].round(2).astype(str)
+                + enhanced_table["ycenter"].round(2).astype(str)
             )
 
         if "xcenter" in matched_table.columns and "ycenter" in matched_table.columns:
@@ -2383,9 +2383,9 @@ def enhance_catalog(
             if rename_dict:
                 gaia_subset = gaia_subset.rename(columns=rename_dict)
 
-            final_table = pd.merge(final_table, gaia_subset, on="match_id", how="left")
+            enhanced_table = pd.merge(enhanced_table, gaia_subset, on="match_id", how="left")
 
-            final_table["gaia_calib_star"] = final_table["match_id"].isin(
+            enhanced_table["gaia_calib_star"] = enhanced_table["match_id"].isin(
                 matched_table["match_id"]
             )
 
@@ -2483,9 +2483,9 @@ def enhance_catalog(
             }
 
             # astrostars = pd.DataFrame(source)
-            final_table["astrocolibri_name"] = None
-            final_table["astrocolibri_type"] = None
-            final_table["astrocolibri_classification"] = None
+            enhanced_table["astrocolibri_name"] = None
+            enhanced_table["astrocolibri_type"] = None
+            enhanced_table["astrocolibri_classification"] = None
             for event in events:
                 if "ra" in event and "dec" in event:
                     sources["ra"].append(event["ra"])
@@ -2500,7 +2500,7 @@ def enhance_catalog(
             st.dataframe(astrostars)
 
             # Filter valid coordinates for astro-colibri matching
-            valid_final_coords = final_table[valid_coords_mask]
+            valid_final_coords = enhanced_table[valid_coords_mask]
             
             if len(valid_final_coords) > 0 and len(astrostars) > 0:
                 source_coords = SkyCoord(
@@ -2527,11 +2527,11 @@ def enhance_catalog(
                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                     if match:
                         original_idx = valid_indices[i]
-                        final_table.loc[original_idx, "astrocolibri_name"] = astrostars[
+                        enhanced_table.loc[original_idx, "astrocolibri_name"] = astrostars[
                             "discoverer_internal_name"
                         ][match_idx]
-                        final_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx]
-                        final_table.loc[original_idx, "astrocolibri_classification"] = astrostars[
+                        enhanced_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx]
+                        enhanced_table.loc[original_idx, "astrocolibri_classification"] = astrostars[
                             "classification"][match_idx]
                 
                 st.success("Astro-Colibri matched objects in field.")
@@ -2562,14 +2562,14 @@ def enhance_catalog(
             st.warning(error)
         else:
             if simbad_result is not None and len(simbad_result) > 0:
-                final_table["simbad_main_id"] = None
-                final_table["simbad_otype"] = None
-                final_table["simbad_ids"] = None
-                final_table["simbad_B"] = None
-                final_table["simbad_V"] = None
+                enhanced_table["simbad_main_id"] = None
+                enhanced_table["simbad_otype"] = None
+                enhanced_table["simbad_ids"] = None
+                enhanced_table["simbad_B"] = None
+                enhanced_table["simbad_V"] = None
 
                 # Filter valid coordinates for SIMBAD matching
-                valid_final_coords = final_table[valid_coords_mask]
+                valid_final_coords = enhanced_table[valid_coords_mask]
                 
                 if len(valid_final_coords) > 0:
                     source_coords = SkyCoord(
@@ -2608,20 +2608,20 @@ def enhance_catalog(
                                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                                     if match:
                                         original_idx = valid_indices[i]
-                                        final_table.loc[original_idx, "simbad_main_id"] = simbad_filtered[
+                                        enhanced_table.loc[original_idx, "simbad_main_id"] = simbad_filtered[
                                             "main_id"
                                         ][match_idx]
-                                        final_table.loc[original_idx, "simbad_otype"] = simbad_filtered[
+                                        enhanced_table.loc[original_idx, "simbad_otype"] = simbad_filtered[
                                             "otype"
                                         ][match_idx]
-                                        final_table.loc[original_idx, "simbad_B"] = simbad_filtered["B"][
+                                        enhanced_table.loc[original_idx, "simbad_B"] = simbad_filtered["B"][
                                             match_idx
                                         ]
-                                        final_table.loc[original_idx, "simbad_V"] = simbad_filtered["V"][
+                                        enhanced_table.loc[original_idx, "simbad_V"] = simbad_filtered["V"][
                                             match_idx
                                         ]
                                         if "ids" in simbad_filtered.colnames:
-                                            final_table.loc[original_idx, "simbad_ids"] = simbad_filtered[
+                                            enhanced_table.loc[original_idx, "simbad_ids"] = simbad_filtered[
                                                 "ids"
                                             ][match_idx]
 
@@ -2666,9 +2666,9 @@ def enhance_catalog(
             st.info("Querying SkyBoT for solar system objects...")
 
             try:
-                final_table["skybot_NAME"] = None
-                final_table["skybot_OBJECT_TYPE"] = None
-                final_table["skybot_MAGV"] = None
+                enhanced_table["skybot_NAME"] = None
+                enhanced_table["skybot_OBJECT_TYPE"] = None
+                enhanced_table["skybot_MAGV"] = None
 
                 response = requests.get(skybot_url, timeout=15)
 
@@ -2693,7 +2693,7 @@ def enhance_catalog(
                                 )
 
                                 # Filter valid coordinates for SkyBoT matching
-                                valid_final_coords = final_table[valid_coords_mask]
+                                valid_final_coords = enhanced_table[valid_coords_mask]
                                 
                                 if len(valid_final_coords) > 0:
                                     source_coords = SkyCoord(
@@ -2716,11 +2716,11 @@ def enhance_catalog(
                                         if match:
                                             original_idx = valid_indices[i]
                                             obj = skybot_result["data"][match_idx]
-                                            final_table.loc[original_idx, "skybot_NAME"] = obj["NAME"]
-                                            final_table.loc[original_idx, "skybot_OBJECT_TYPE"] = obj[
+                                            enhanced_table.loc[original_idx, "skybot_NAME"] = obj["NAME"]
+                                            enhanced_table.loc[original_idx, "skybot_OBJECT_TYPE"] = obj[
                                                 "OBJECT_TYPE"
                                             ]
-                                            final_table.loc[original_idx, "skybot_MAGV"] = obj["MAGV"]
+                                            enhanced_table.loc[original_idx, "skybot_MAGV"] = obj["MAGV"]
 
                                     st.success(
                                         f"Found {sum(matches)} solar system objects in field."
@@ -2769,7 +2769,7 @@ def enhance_catalog(
                 )
                 
                 # Filter valid coordinates for AAVSO matching
-                valid_final_coords = final_table[valid_coords_mask]
+                valid_final_coords = enhanced_table[valid_coords_mask]
                 
                 if len(valid_final_coords) > 0:
                     source_coords = SkyCoord(
@@ -2781,9 +2781,9 @@ def enhance_catalog(
                     idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
                     matches = d2d <= (10 * u.arcsec)
 
-                    final_table["aavso_Name"] = None
-                    final_table["aavso_Type"] = None
-                    final_table["aavso_Period"] = None
+                    enhanced_table["aavso_Name"] = None
+                    enhanced_table["aavso_Type"] = None
+                    enhanced_table["aavso_Period"] = None
 
                     # Map matches back to the original table indices
                     valid_indices = valid_final_coords.index
@@ -2791,10 +2791,10 @@ def enhance_catalog(
                     for i, (match, match_idx) in enumerate(zip(matches, idx)):
                         if match:
                             original_idx = valid_indices[i]
-                            final_table.loc[original_idx, "aavso_Name"] = vsx_table["Name"][match_idx]
-                            final_table.loc[original_idx, "aavso_Type"] = vsx_table["Type"][match_idx]
+                            enhanced_table.loc[original_idx, "aavso_Name"] = vsx_table["Name"][match_idx]
+                            enhanced_table.loc[original_idx, "aavso_Type"] = vsx_table["Type"][match_idx]
                             if "Period" in vsx_table.colnames:
-                                final_table.loc[original_idx, "aavso_Period"] = vsx_table["Period"][
+                                enhanced_table.loc[original_idx, "aavso_Period"] = vsx_table["Period"][
                                     match_idx
                                 ]
 
@@ -2830,7 +2830,7 @@ def enhance_catalog(
                 )
 
                 # Filter valid coordinates for QSO matching
-                valid_final_coords = final_table[valid_coords_mask]
+                valid_final_coords = enhanced_table[valid_coords_mask]
                 
                 if len(valid_final_coords) > 0:
                     # Create source coordinates for matching
@@ -2843,13 +2843,13 @@ def enhance_catalog(
                     matches = d2d.arcsec <= 10
 
                     # Add matched quasar information to the final table
-                    final_table["qso_name"] = None
-                    final_table["qso_redshift"] = None
-                    final_table["qso_Rmag"] = None
+                    enhanced_table["qso_name"] = None
+                    enhanced_table["qso_redshift"] = None
+                    enhanced_table["qso_Rmag"] = None
 
                     # Initialize catalog_matches column if it doesn't exist
-                    if "catalog_matches" not in final_table.columns:
-                        final_table["catalog_matches"] = ""
+                    if "catalog_matches" not in enhanced_table.columns:
+                        enhanced_table["catalog_matches"] = ""
 
                     # Map matches back to the original table indices
                     valid_indices = valid_final_coords.index
@@ -2858,19 +2858,19 @@ def enhance_catalog(
 
                     for i, qso_idx in zip(matched_sources, matched_qsos):
                         original_idx = valid_indices[i]
-                        final_table.loc[original_idx, "qso_name"] = qso_df.iloc[qso_idx][
+                        enhanced_table.loc[original_idx, "qso_name"] = qso_df.iloc[qso_idx][
                             "Name"
                         ]
-                        final_table.loc[original_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
+                        enhanced_table.loc[original_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
                             "z"
                         ]
-                        final_table.loc[original_idx, "qso_Rmag"] = qso_df.iloc[qso_idx][
+                        enhanced_table.loc[original_idx, "qso_Rmag"] = qso_df.iloc[qso_idx][
                             "Rmag"
                         ]
 
                     # Update the catalog_matches column for matched quasars
-                    has_qso = final_table["qso_name"].notna()
-                    final_table.loc[has_qso, "catalog_matches"] += "QSO; "
+                    has_qso = enhanced_table["qso_name"].notna()
+                    enhanced_table.loc[has_qso, "catalog_matches"] += "QSO; "
 
                     st.success(
                         f"Found {sum(has_qso)} quasars in field from Milliquas catalog."
@@ -2896,6 +2896,9 @@ def enhance_catalog(
             f"Error in Milliquas catalog processing: {str(e)}",
             "ERROR",
         )
+
+    return enhanced_table
+
 
 def validate_wcs_orientation(original_header, solved_header, test_pixel_coords):
     """
