@@ -7,6 +7,7 @@ from datetime import datetime
 
 # Third-Party Imports
 import requests
+import numpy as np
 import matplotlib.pyplot as plt
 from astropy.wcs import WCS
 import streamlit as st  # Keep if directly used, otherwise remove
