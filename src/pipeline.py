@@ -2291,7 +2291,12 @@ def enhance_catalog(
     error handling to prevent failures if any catalog service is unavailable.
     API requests are processed in batches to avoid overwhelming servers.
     """
-    if final_table is None or len(final_table) == 0:
+    # Add input validation at the beginning
+    if final_table is None:
+        st.error("final_table is None - cannot enhance catalog")
+        return None
+    
+    if len(final_table) == 0:
         st.warning("No sources to cross-match with catalogs.")
         return final_table
 
@@ -2300,19 +2305,22 @@ def enhance_catalog(
         st.error("final_table must contain 'ra' and 'dec' columns for cross-matching")
         return final_table
     
+    # Make a copy to avoid modifying the original table
+    enhanced_table = final_table.copy()
+
     # Filter out sources with NaN coordinates at the beginning
     valid_coords_mask = (
-        pd.notna(final_table["ra"]) & 
-        pd.notna(final_table["dec"]) & 
-        np.isfinite(final_table["ra"]) & 
-        np.isfinite(final_table["dec"])
+        pd.notna(enhanced_table["ra"]) & 
+        pd.notna(enhanced_table["dec"]) & 
+        np.isfinite(enhanced_table["ra"]) & 
+        np.isfinite(enhanced_table["dec"])
     )
     
     if not valid_coords_mask.any():
         st.error("No sources with valid RA/Dec coordinates found for cross-matching")
-        return final_table
+        return enhanced_table
     
-    num_invalid = len(final_table) - valid_coords_mask.sum()
+    num_invalid = len(enhanced_table) - valid_coords_mask.sum()
     if num_invalid > 0:
         st.warning(f"Excluding {num_invalid} sources with invalid coordinates from cross-matching")
 
