@@ -393,19 +393,12 @@ def fix_header(header):
                     naxis1 = int(fixed_header['NAXIS1'])
                     naxis2 = int(fixed_header['NAXIS2'])
                     
-                    # Set basic WCS with 1 arcsec/pixel scale
-                    pixel_scale_deg = 1.0 / 3600.0  # 1 arcsec/pixel in degrees
-                    
                     fixed_header['CTYPE1'] = 'RA---TAN'
                     fixed_header['CTYPE2'] = 'DEC--TAN'
                     fixed_header['CRPIX1'] = naxis1 / 2.0
                     fixed_header['CRPIX2'] = naxis2 / 2.0
                     fixed_header['CRVAL1'] = 0.0  # Will need manual input
                     fixed_header['CRVAL2'] = 0.0  # Will need manual input
-                    fixed_header['CD1_1'] = pixel_scale_deg
-                    fixed_header['CD1_2'] = 0.0
-                    fixed_header['CD2_1'] = 0.0
-                    fixed_header['CD2_2'] = pixel_scale_deg
                     fixed_header['EQUINOX'] = 2000.0
                     fixed_header['RADESYS'] = 'ICRS'
                     
