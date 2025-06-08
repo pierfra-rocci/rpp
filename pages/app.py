@@ -1988,15 +1988,31 @@ if science_file is not None:
                 ra_center = None
                 dec_center = None
 
+                # Use the correct header - prioritize calibrated header if available
+                header_for_coords = st.session_state.get("calibrated_header", science_header)
+                if header_for_coords is None:
+                    header_for_coords = science_header
+
                 coord_keys = [("CRVAL1", "CRVAL2"),
                               ("RA", "DEC"),
                               ("OBJRA", "OBJDEC")]
 
                 for ra_key, dec_key in coord_keys:
-                    if ra_key in header_to_process and dec_key in header_to_process:
-                        ra_center = header_to_process[ra_key]
-                        dec_center = header_to_process[dec_key]
-                        break
+                    if (header_for_coords is not None and
+                        ra_key in header_for_coords and dec_key in
+                        header_for_coords):
+                        try:
+                            ra_center = float(header_for_coords[ra_key])
+                            dec_center = float(header_for_coords[dec_key])
+                            if ra_center is not None and dec_center is not None:
+                                break
+                        except (ValueError, TypeError):
+                            continue
+
+                # Fallback to session state coordinates if header extraction failed
+                if ra_center is None or dec_center is None:
+                    ra_center = st.session_state.get("valid_ra")
+                    dec_center = st.session_state.get("valid_dec")
 
                 if ra_center is not None and dec_center is not None:
                     # Check if we have a valid final photometry table
