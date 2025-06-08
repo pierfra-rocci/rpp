@@ -1471,7 +1471,7 @@ if science_file is not None:
             pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(header_for_stats)
             seeing = st.session_state.analysis_parameters["seeing"]
             mean_fwhm_pixel = seeing / pixel_size_arcsec
-            # Store in session state for later use
+
             st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
             st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
         
