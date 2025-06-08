@@ -147,15 +147,38 @@ def safe_wcs_create(header):
     if not header:
         return None, "No header provided"
 
+    # Create a copy of the header to avoid modifying the original
+    try:
+        working_header = header.copy()
+    except AttributeError:
+        # Handle case where header is a regular dict
+        working_header = dict(header)
+
+    # Remove problematic keywords that can interfere with WCS
+    problematic_keywords = ['XPIXELSZ', 'YPIXELSZ', 'CDELTM1', 'CDELTM2', 
+                          'PIXSCALE', 'SCALE', 'XORGSUBF', 'YORGSUBF']
+    
+    removed_keywords = []
+    for keyword in problematic_keywords:
+        if keyword in working_header:
+            try:
+                del working_header[keyword]
+                removed_keywords.append(keyword)
+            except KeyError:
+                pass
+    
+    if removed_keywords and hasattr(st, 'info'):
+        st.info(f"Removed problematic WCS keywords: {', '.join(removed_keywords)}")
+
     required_keys = ["CTYPE1", "CTYPE2", "CRVAL1", "CRVAL2",
                      "CRPIX1", "CRPIX2"]
-    missing_keys = [key for key in required_keys if key not in header]
+    missing_keys = [key for key in required_keys if key not in working_header]
 
     if missing_keys:
         return None, f"Missing required WCS keywords: {', '.join(missing_keys)}"
 
     try:
-        wcs_obj = WCS(header)
+        wcs_obj = WCS(working_header)
 
         if wcs_obj is None:
             return None, "WCS creation returned None"
