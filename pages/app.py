@@ -71,9 +71,7 @@ def fix_header(header):
             'CDELTM1', 'CDELTM2',        # Alternative delta keywords
             'PIXSCALE',                   # Non-standard pixel scale
             'SCALE',                      # Generic scale keyword
-            'XBINNING', 'YBINNING',      # Binning keywords that can confuse WCS
             'XORGSUBF', 'YORGSUBF',      # Origin subframe keywords
-            'FOCALLEN',                   # Focal length (conflicts with CD matrix)
         ]
         
         # Remove problematic keywords
