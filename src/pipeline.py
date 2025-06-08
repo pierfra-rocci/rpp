@@ -1130,15 +1130,28 @@ def perform_psf_photometry(
     If successful, the photometry results are also stored in the Streamlit session state
     under 'epsf_photometry_result'.
     """
+    # Initial validation
     try:
         if img is None or not isinstance(img, np.ndarray) or img.size == 0:
             raise ValueError(
                 "Invalid image data provided. Ensure the image is a non-empty numpy array."
             )
 
+        if mask is not None and (
+            not isinstance(mask, np.ndarray) or mask.shape != img.shape
+        ):
+            raise ValueError(
+                "Invalid mask provided. Ensure the mask is a numpy array with the same shape as the image."
+            )
+
+        if not callable(daostarfind):
+            raise ValueError(
+                "The 'finder' parameter must be a callable star finder, such as DAOStarFinder."
+            )
+
         nddata = NDData(data=img)
     except Exception as e:
-        st.error(f"Error creating NDData: {e}")
+        st.error(f"Error in initial validation: {e}")
         raise
 
     # Filter photo_table to select only the best stars for PSF model
@@ -1278,7 +1291,7 @@ def perform_psf_photometry(
         st.error(f"Error fitting PSF model: {e}")
         raise
 
-    # FIX: Add explicit check for epsf.data existence and validity
+    # Check for valid EPSF
     if epsf is not None and hasattr(epsf, 'data') and epsf.data is not None and epsf.data.size > 0:
         try:
             hdu = fits.PrimaryHDU(data=epsf.data)
@@ -1316,60 +1329,34 @@ def perform_psf_photometry(
             st.warning(f"Error working with PSF model: {e}")
     else:
         st.warning("EPSF data is empty or invalid. Cannot display the PSF model.")
-        # FIX: Check if daostarfind is callable before raising error
-        if not callable(daostarfind):
-            raise ValueError(
-                "The 'finder' parameter must be a callable star finder, such as DAOStarFinder."
-            )
+        raise ValueError("EPSF model creation failed - no valid PSF data")
 
-    # FIX: Add validation before creating PSF photometry object
-    if img is None or not isinstance(img, np.ndarray) or img.size == 0:
-        raise ValueError(
-            "Invalid image data provided. Ensure the image is a non-empty numpy array."
-        )
-    if mask is not None and (
-        not isinstance(mask, np.ndarray) or mask.shape != img.shape
-    ):
-        raise ValueError(
-            "Invalid mask provided. Ensure the mask is a numpy array with the same shape as the image."
-        )
-
-    # Use the original photo_table for the actual PSF photometry (not just the filtered subset)
-    psfphot = IterativePSFPhotometry(
-        psf_model=epsf,
-        fit_shape=fit_shape,
-        finder=daostarfind,
-        aperture_radius=fit_shape / 2,
-        maxiters=3,
-        mode="new",
-        progress_bar=True,
-    )
-
-    if img is None or not isinstance(img, np.ndarray) or img.size == 0:
-        raise ValueError(
-            "Invalid image data provided. Ensure the image is a non-empty numpy array."
-        )
-    if mask is not None and (
-        not isinstance(mask, np.ndarray) or mask.shape != img.shape
-    ):
-        raise ValueError(
-            "Invalid mask provided. Ensure the mask is a numpy array with the same shape as the image."
-        )
-
-    # Use original photo_table positions for PSF photometry
-    psfphot.x = photo_table["xcentroid"]
-    psfphot.y = photo_table["ycentroid"]
-
+    # Create PSF photometry object and perform photometry
     try:
+        psfphot = IterativePSFPhotometry(
+            psf_model=epsf,
+            fit_shape=fit_shape,
+            finder=daostarfind,
+            aperture_radius=fit_shape / 2,
+            maxiters=3,
+            mode="new",
+            progress_bar=True,
+        )
+
+        # Use original photo_table positions for PSF photometry
+        psfphot.x = photo_table["xcentroid"]
+        psfphot.y = photo_table["ycentroid"]
+
         st.write("Performing PSF photometry on all sources...")
         phot_epsf_result = psfphot(img, mask=mask, error=error)
         st.session_state["epsf_photometry_result"] = phot_epsf_result
         st.write("PSF photometry completed successfully.")
+        
+        return phot_epsf_result, epsf
+        
     except Exception as e:
         st.error(f"Error executing PSF photometry: {e}")
         raise
-
-    return phot_epsf_result, epsf
 
 
 def refine_astrometry_with_stdpipe(
