@@ -239,6 +239,233 @@ def get_header_value(header, keys, default=None):
     return default
 
 
+def fix_header(header):
+    """
+    Fix common issues in FITS headers based on stdweb processing approach.
+    
+    Parameters
+    ----------
+    header : astropy.io.fits.Header
+        FITS header object to fix
+        
+    Returns
+    -------
+    astropy.io.fits.Header
+        Fixed header object
+    """
+    try:
+        # Create a copy to avoid modifying the original
+        fixed_header = header.copy()
+        
+        # Define problematic keywords to remove
+        problematic_keywords = [
+            'XPIXELSZ', 'YPIXELSZ',      # Pixel size keywords that can conflict with WCS
+            'CDELTM1', 'CDELTM2',        # Alternative delta keywords
+            'PIXSCALE',                   # Non-standard pixel scale
+            'SCALE',                      # Generic scale keyword
+            'XORGSUBF', 'YORGSUBF',      # Origin subframe keywords
+        ]
+        
+        # Remove problematic keywords
+        removed_keywords = []
+        for keyword in problematic_keywords:
+            if keyword in fixed_header:
+                try:
+                    del fixed_header[keyword]
+                    removed_keywords.append(keyword)
+                except KeyError:
+                    pass
+        
+        if removed_keywords:
+            st.info(f"Removed problematic keywords: {', '.join(removed_keywords)}")
+        
+        # Define WCS keywords to check for problems
+        wcs_keywords = {
+            'CD': ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2'],
+            'PC': ['PC1_1', 'PC1_2', 'PC2_1', 'PC2_2'],
+            'CDELT': ['CDELT1', 'CDELT2'],
+            'CRPIX': ['CRPIX1', 'CRPIX2'],
+            'CRVAL': ['CRVAL1', 'CRVAL2'],
+            'CTYPE': ['CTYPE1', 'CTYPE2']
+        }
+        
+        # Check for problematic values and remove entire WCS if found
+        remove_all_wcs = False
+        
+        # Check CD matrix for singularity
+        cd_keys = wcs_keywords['CD']
+        if all(key in fixed_header for key in cd_keys):
+            try:
+                cd11 = float(fixed_header['CD1_1'])
+                cd12 = float(fixed_header['CD1_2'])
+                cd21 = float(fixed_header['CD2_1'])
+                cd22 = float(fixed_header['CD2_2'])
+                
+                # Calculate determinant to check for singularity
+                determinant = cd11 * cd22 - cd12 * cd21
+                
+                # Check for singular matrix or invalid values
+                if (abs(determinant) < 1e-15 or 
+                    any(not np.isfinite(val) for val in [cd11, cd12, cd21, cd22]) or
+                    any(val == 0 for val in [cd11, cd22])):
+                    st.warning("Detected problematic CD matrix - removing all WCS keywords")
+                    remove_all_wcs = True
+                    
+            except (ValueError, TypeError):
+                st.warning("Invalid CD matrix values - removing all WCS keywords")
+                remove_all_wcs = True
+        
+        # Check for obviously fake coordinate values
+        if 'CRVAL1' in fixed_header and 'CRVAL2' in fixed_header:
+            try:
+                ra = float(fixed_header['CRVAL1'])
+                dec = float(fixed_header['CRVAL2'])
+                
+                # Check for clearly fake values (exactly 0,0 or out of range)
+                if ((ra == 0.0 and dec == 0.0) or
+                    not (0 <= ra < 360) or
+                    not (-90 <= dec <= 90) or
+                    not np.isfinite(ra) or
+                    not np.isfinite(dec)):
+                    st.warning(f"Detected fake coordinates (RA={ra}, DEC={dec}) - removing all WCS keywords")
+                    remove_all_wcs = True
+                    
+            except (ValueError, TypeError):
+                st.warning("Invalid coordinate values - removing all WCS keywords")
+                remove_all_wcs = True
+        
+        # Check for invalid pixel reference points
+        if 'CRPIX1' in fixed_header and 'CRPIX2' in fixed_header:
+            try:
+                crpix1 = float(fixed_header['CRPIX1'])
+                crpix2 = float(fixed_header['CRPIX2'])
+                
+                # Check for obviously wrong values
+                if (not np.isfinite(crpix1) or not np.isfinite(crpix2) or
+                    crpix1 <= 0 or crpix2 <= 0):
+                    st.warning("Detected invalid CRPIX values - removing all WCS keywords")
+                    remove_all_wcs = True
+                    
+            except (ValueError, TypeError):
+                remove_all_wcs = True
+        
+        # Check for invalid CTYPE values
+        for ctype_key in ['CTYPE1', 'CTYPE2']:
+            if ctype_key in fixed_header:
+                ctype_val = str(fixed_header[ctype_key]).strip()
+                # If CTYPE is empty or contains obvious placeholder text
+                if (not ctype_val or 
+                    ctype_val.lower() in ['', 'none', 'null', 'undefined'] or
+                    len(ctype_val) < 3):
+                    st.warning(f"Detected invalid {ctype_key} value - removing all WCS keywords")
+                    remove_all_wcs = True
+        
+        # Remove all WCS keywords if problems detected
+        if remove_all_wcs:
+            st.info("Removing all WCS keywords due to detected problems")
+            
+            # Remove all WCS-related keywords
+            keys_to_remove = []
+            for key in list(fixed_header.keys()):
+                if (key.startswith('CD') or 
+                    key.startswith('PC') or 
+                    key.startswith('CDELT') or 
+                    key.startswith('CRPIX') or 
+                    key.startswith('CRVAL') or 
+                    key.startswith('CTYPE') or
+                    key.startswith('CROTA') or
+                    key.startswith('PV') or
+                    key.startswith('PROJP') or
+                    key in ['EQUINOX', 'EPOCH', 'RADESYS', 'LONPOLE', 'LATPOLE']):
+                    keys_to_remove.append(key)
+            
+            for key in keys_to_remove:
+                try:
+                    del fixed_header[key]
+                except KeyError:
+                    pass
+            
+            st.info(f"Removed {len(keys_to_remove)} WCS keywords: {', '.join(keys_to_remove[:10])}{'...' if len(keys_to_remove) > 10 else ''}")
+            
+            # Add minimal default WCS if image dimensions are available
+            if 'NAXIS1' in fixed_header and 'NAXIS2' in fixed_header:
+                try:
+                    naxis1 = int(fixed_header['NAXIS1'])
+                    naxis2 = int(fixed_header['NAXIS2'])
+                    
+                    # Set basic WCS with 1 arcsec/pixel scale
+                    pixel_scale_deg = 1.0 / 3600.0  # 1 arcsec/pixel in degrees
+                    
+                    fixed_header['CTYPE1'] = 'RA---TAN'
+                    fixed_header['CTYPE2'] = 'DEC--TAN'
+                    fixed_header['CRPIX1'] = naxis1 / 2.0
+                    fixed_header['CRPIX2'] = naxis2 / 2.0
+                    fixed_header['CRVAL1'] = 0.0  # Will need manual input
+                    fixed_header['CRVAL2'] = 0.0  # Will need manual input
+                    fixed_header['CD1_1'] = pixel_scale_deg
+                    fixed_header['CD1_2'] = 0.0
+                    fixed_header['CD2_1'] = 0.0
+                    fixed_header['CD2_2'] = pixel_scale_deg
+                    fixed_header['EQUINOX'] = 2000.0
+                    fixed_header['RADESYS'] = 'ICRS'
+                    
+                    st.info("Added minimal default WCS (1 arcsec/pixel) - coordinates will need manual input")
+                    
+                except (ValueError, TypeError):
+                    st.warning("Could not add default WCS due to invalid NAXIS values")
+        
+        else:
+            # If WCS seems valid, apply minor fixes
+            
+            # Fix CTYPE formatting
+            if 'CTYPE1' in fixed_header:
+                ctype1 = str(fixed_header['CTYPE1']).strip()
+                if ctype1 and not ctype1.endswith('---'):
+                    if 'RA' in ctype1.upper():
+                        fixed_header['CTYPE1'] = 'RA---TAN'
+                    elif 'GLON' in ctype1.upper():
+                        fixed_header['CTYPE1'] = 'GLON-TAN'
+            
+            if 'CTYPE2' in fixed_header:
+                ctype2 = str(fixed_header['CTYPE2']).strip()
+                if ctype2 and not ctype2.endswith('---'):
+                    if 'DEC' in ctype2.upper():
+                        fixed_header['CTYPE2'] = 'DEC--TAN'
+                    elif 'GLAT' in ctype2.upper():
+                        fixed_header['CTYPE2'] = 'GLAT-TAN'
+            
+            # Fix missing EQUINOX/EPOCH
+            if 'EQUINOX' not in fixed_header and 'EPOCH' in fixed_header:
+                fixed_header['EQUINOX'] = fixed_header['EPOCH']
+            elif 'EQUINOX' not in fixed_header:
+                fixed_header['EQUINOX'] = 2000.0
+                
+            # Fix RADESYS if missing
+            if 'RADESYS' not in fixed_header:
+                if fixed_header.get('EQUINOX', 2000.0) == 2000.0:
+                    fixed_header['RADESYS'] = 'ICRS'
+                else:
+                    fixed_header['RADESYS'] = 'FK5'
+            
+            # Remove PC matrix if CD matrix is present (they conflict)
+            if all(key in fixed_header for key in ['CD1_1', 'CD2_2']):
+                pc_keys = ['PC1_1', 'PC1_2', 'PC2_1', 'PC2_2']
+                removed_pc = []
+                for key in pc_keys:
+                    if key in fixed_header:
+                        del fixed_header[key]
+                        removed_pc.append(key)
+                if removed_pc:
+                    st.info(f"Removed conflicting PC matrix keywords: {', '.join(removed_pc)}")
+        
+        return fixed_header
+        
+    except Exception as e:
+        # If fixing fails completely, return original header
+        st.warning(f"Header fixing failed: {str(e)}")
+        return header
+
+
 def safe_catalog_query(query_func, error_msg, *args, **kwargs):
     """
     Execute an astronomical catalog query function with robust error handling.
