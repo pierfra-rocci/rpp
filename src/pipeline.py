@@ -1397,7 +1397,12 @@ def refine_astrometry_with_stdpipe(
     """
     try:
         st.write("Doing astrometry refinement using Stdpipe and Astropy...")
-        
+
+        # Convert image data to float32 if it's not already a supported dtype
+        if image_data.dtype not in [np.float32, np.float64]:
+            st.info(f"Converting image from {image_data.dtype} to float32 for stdpipe compatibility")
+            image_data = image_data.astype(np.float32)
+
         # Get objects using stdpipe
         obj = photometry.get_objects_sep(
             image_data,
@@ -1410,7 +1415,7 @@ def refine_astrometry_with_stdpipe(
             get_segmentation=False,
             subtract_bg=True
         )
-        
+
         # Get frame center
         ra0, dec0, sr0 = astrometry.get_frame_center(
             header=science_header,
