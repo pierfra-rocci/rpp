@@ -1192,9 +1192,12 @@ def perform_psf_photometry(
             raise ValueError("No sources with all valid parameters found")
         
         # Apply criteria only to valid sources - FIX: Use np.where to avoid ambiguous truth value
-        flux_criteria = np.where(valid_flux, (flux >= flux_min) & (flux <= flux_max), False)
-        roundness_criteria = np.where(valid_roundness, np.abs(roundness1) < 0.25, False)
-        sharpness_criteria = np.where(valid_sharpness, np.abs(sharpness) < 0.6, False)
+        flux_criteria = np.where(valid_flux, (flux >= flux_min) &
+                                 (flux <= flux_max), False)
+        roundness_criteria = np.where(valid_roundness,
+                                      np.abs(roundness1) < 0.25, False)
+        sharpness_criteria = np.where(valid_sharpness,
+                                      np.abs(sharpness) < 0.6, False)
         
         # Edge criteria - FIX: Use np.where to avoid ambiguous truth value
         edge_criteria = np.where(
@@ -1230,20 +1233,22 @@ def perform_psf_photometry(
             st.warning(f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria...")
             
             # Relax criteria with the same explicit approach - FIX: Use np.where
-            roundness_criteria_relaxed = np.where(valid_roundness, np.abs(roundness1) < 0.4, False)
-            sharpness_criteria_relaxed = np.where(valid_sharpness, np.abs(sharpness) < 1.0, False)
+            roundness_criteria_relaxed = np.where(valid_roundness,
+                                                  np.abs(roundness1) < 0.4, False)
+            sharpness_criteria_relaxed = np.where(valid_sharpness,
+                                                  np.abs(sharpness) < 1.0, False)
             flux_criteria_relaxed = np.where(
                 valid_flux,
-                (flux >= flux_median - 2*flux_std) & 
+                (flux >= flux_median - 2*flux_std) &
                 (flux <= flux_median + 2*flux_std),
                 False
             )
             
             good_stars_mask = (
                 valid_all &
-                flux_criteria_relaxed & 
-                roundness_criteria_relaxed & 
-                sharpness_criteria_relaxed & 
+                flux_criteria_relaxed &
+                roundness_criteria_relaxed &
+                sharpness_criteria_relaxed &
                 edge_criteria
             )
             
@@ -1291,7 +1296,7 @@ def perform_psf_photometry(
         st.error(f"Error fitting PSF model: {e}")
         raise
 
-    # Check for valid EPSF
+    # Check for valid PSF
     if epsf is not None and hasattr(epsf, 'data') and epsf.data is not None and epsf.data.size > 0:
         try:
             hdu = fits.PrimaryHDU(data=epsf.data)
