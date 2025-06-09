@@ -2055,6 +2055,8 @@ if science_file is not None:
                                 final_table=final_phot_table,
                                 ra_center=ra_center,
                                 dec_center=dec_center,
+                                id_cols=["id", "simbad_main_id", "skybot_NAME",
+                                         "aavso_Name", "gaia_source_id"]
                             )
                         except Exception as e:
                             st.error(f"Error displaying Aladin viewer: {str(e)}")
