@@ -48,6 +48,36 @@ if getattr(sys, "frozen", False):
 warnings.filterwarnings("ignore")
 
 
+def clear_all_caches():
+    """Clear all Streamlit caches and reset file upload state"""
+    try:
+        st.cache_data.clear()
+        if hasattr(st.cache_resource, 'clear'):
+            st.cache_resource.clear()
+        
+        # Clear file upload related session state
+        upload_keys = [key for key in st.session_state.keys() if 'uploader' in key.lower()]
+        for key in upload_keys:
+            del st.session_state[key]
+        
+        # Clear file-related session state
+        if "science_file_path" in st.session_state:
+            try:
+                if os.path.exists(st.session_state["science_file_path"]):
+                    os.unlink(st.session_state["science_file_path"])
+            except Exception:
+                pass
+            del st.session_state["science_file_path"]
+        
+        if "files_loaded" in st.session_state:
+            st.session_state["files_loaded"] = {"science_file": None}
+            
+        st.success("All caches cleared successfully!")
+        st.rerun()
+    except Exception as e:
+        st.error(f"Error clearing caches: {e}")
+
+
 @st.cache_data
 def load_fits_data(file):
     """
@@ -1145,6 +1175,10 @@ with st.sidebar.expander("📁 Archived Results", expanded=False):
     username = st.session_state.get("username", "anonymous")
     output_dir = ensure_output_directory(f"{username}_rpp_results")
     display_archived_files_browser(output_dir)
+
+with st.sidebar:
+    if st.button("🧹 Clear Cache & Reset Upload"):
+        clear_all_caches()
 
 science_file = st.file_uploader(
     "Choose a FITS file for analysis", type=["fits", "fit", "fts", "fits.gz"],
