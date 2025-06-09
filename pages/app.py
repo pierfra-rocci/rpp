@@ -1264,8 +1264,6 @@ if science_file is not None:
             ),
             key="force_plate_solve_main"
         )
-        # Update session state
-        st.session_state.analysis_parameters["force_plate_solve"] = force_plate_solve
         
         if force_plate_solve:
             st.info("🔄 Force plate solving enabled - will re-solve astrometry")
