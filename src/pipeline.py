@@ -1568,10 +1568,11 @@ def detection_and_photometry(
 
     exposure_time = 1.0
     if (np.max(image_data) - np.min(image_data)) > 10:
-        if science_header["EXPTIME"]:
-            exposure_time = science_header["EXPTIME"]
-        elif science_header["EXPOSURE"]:
-            exposure_time = science_header["EXPOSURE"]
+         # Use .get() method to safely access header keywords with fallbacks
+        exposure_time = science_header.get("EXPTIME",
+                                           science_header.get("EXPOSURE",
+                                                              science_header.get("EXP_TIME",
+                                                                                 1.0)))
 
     # Ensure effective_gain is float64
     effective_gain = np.float64(2.5/np.std(image_data) * exposure_time)
