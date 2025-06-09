@@ -1554,9 +1554,12 @@ def detection_and_photometry(
         return None, None, daofind, None, None
 
     mask = make_border_mask(image_data, border=detection_mask)
-    image_sub = image_data - bkg.background
 
-    bkg_error = np.full_like(image_sub, bkg.background_rms)
+    # Ensure image_sub is float64 to avoid casting errors
+    image_sub = image_data.astype(np.float64) - bkg.background.astype(np.float64)
+
+    # Ensure bkg_error is also float64
+    bkg_error = np.full_like(image_sub, bkg.background_rms.astype(np.float64), dtype=np.float64)
 
     exposure_time = 1.0
     if (np.max(image_data) - np.min(image_data)) > 10:
@@ -1565,9 +1568,15 @@ def detection_and_photometry(
         elif science_header["EXPOSURE"]:
             exposure_time = science_header["EXPOSURE"]
 
-    effective_gain = 2.5/np.std(image_data) * exposure_time
+    # Ensure effective_gain is float64
+    effective_gain = np.float64(2.5/np.std(image_data) * exposure_time)
 
-    total_error = calc_total_error(image_sub, bkg_error, effective_gain)
+    # Convert to float64 to ensure compatibility with calc_total_error
+    total_error = calc_total_error(
+        image_sub.astype(np.float64), 
+        bkg_error.astype(np.float64), 
+        effective_gain
+    )
 
     st.write("Estimating FWHM...")
     fwhm_estimate = fwhm_fit(image_sub, mean_fwhm_pixel, mask)
