@@ -2056,7 +2056,8 @@ if science_file is not None:
                                 ra_center=ra_center,
                                 dec_center=dec_center,
                                 id_cols=["id", "simbad_main_id", "skybot_NAME",
-                                         "aavso_Name", "gaia_source_id"]
+                                         "aavso_Name", "gaia_source_id",
+                                         "astrocolibri_name", "qso_name"]
                             )
                         except Exception as e:
                             st.error(f"Error displaying Aladin viewer: {str(e)}")
