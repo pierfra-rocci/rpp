@@ -295,34 +295,17 @@ def display_catalog_in_aladin(
             except (ValueError, TypeError):
                 continue
 
-            # Handle magnitude - prefer alt_mag_col over mag_col
+            # Handle magnitude - use only PSF magnitude
             mag_to_use = None
             mag_source = ""
             
-            # Check for multi-aperture columns first
-            for aperture_col in ["aperture_mag_r1.5", "aperture_mag_r2.0", "aperture_mag_r2.5"]:
-                if aperture_col in present_optional_cols and pd.notna(row[aperture_col]):
-                    try:
-                        mag_to_use = float(row[aperture_col])
-                        mag_source = aperture_col.replace("aperture_mag_r", "Ap(") + "×FWHM)"
-                        break
-                    except (ValueError, TypeError):
-                        pass
-            
-            # Fall back to standard magnitude columns
-            if mag_to_use is None:
-                if alt_mag_col in present_optional_cols and pd.notna(row[alt_mag_col]):
-                    try:
-                        mag_to_use = float(row[alt_mag_col])
-                        mag_source = "Aperture"
-                    except (ValueError, TypeError):
-                        pass
-                elif mag_col in present_optional_cols and pd.notna(row[mag_col]):
-                    try:
-                        mag_to_use = float(row[mag_col])
-                        mag_source = "PSF"
-                    except (ValueError, TypeError):
-                        pass
+            # Use only PSF magnitude column
+            if mag_col in present_optional_cols and pd.notna(row[mag_col]):
+                try:
+                    mag_to_use = float(row[mag_col])
+                    mag_source = "PSF"
+                except (ValueError, TypeError):
+                    pass
 
             if mag_to_use is not None:
                 source["mag"] = mag_to_use
