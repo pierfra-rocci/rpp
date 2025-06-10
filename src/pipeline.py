@@ -1466,7 +1466,7 @@ def refine_astrometry_with_stdpipe(
             wcs_result = pipeline.refine_astrometry(
                 obj,
                 cat,
-                sr=1.8 * fwhm_estimate * pixel_scale / 3600.,
+                sr=1.4 * fwhm_estimate * pixel_scale / 3600.,
                 wcs=wcs,
                 order=3,
                 sn=5,
