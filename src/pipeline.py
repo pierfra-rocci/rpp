@@ -1403,26 +1403,72 @@ def refine_astrometry_with_stdpipe(
             st.info(f"Converting image from {image_data.dtype} to float32 for stdpipe compatibility")
             image_data = image_data.astype(np.float32)
 
+        # Clean the header to remove problematic WCS keywords before processing
+        clean_header = science_header.copy()
+
+        # Remove problematic DSS/distortion keywords that might cause WCS errors
+        problematic_keywords = [
+            'DSS', 'DSSSET', 'DSSCALE', 'DSSCOEFF',
+            'A_ORDER', 'B_ORDER', 'A_DMAX', 'B_DMAX',
+            'CPDIS1', 'CPDIS2', 'DP1', 'DP2'
+        ]
+
+        # Also remove any keyword starting with these patterns
+        problematic_patterns = ['A_', 'B_', 'AP_', 'BP_', 'DSS']
+
+        keys_to_remove = []
+        for key in clean_header.keys():
+            if key in problematic_keywords:
+                keys_to_remove.append(key)
+            elif any(key.startswith(pattern) for pattern in problematic_patterns):
+                # But keep essential WCS keywords
+                if key not in ['A_ORDER', 'B_ORDER', 'A_DMAX', 'B_DMAX']:
+                    keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            if key in clean_header:
+                del clean_header[key]
+                st.info(f"Removed problematic WCS keyword: {key}")
+        
+        # Try to create a clean WCS object
+        try:
+            clean_wcs = WCS(clean_header)
+            if clean_wcs.is_celestial:
+                wcs = clean_wcs
+                st.info("Using cleaned WCS header for astrometry refinement")
+            else:
+                st.warning("Cleaned WCS is not celestial, using original")
+        except Exception as wcs_error:
+            st.warning(f"Could not create clean WCS: {wcs_error}, using original")
+
         # Get objects using stdpipe
-        obj = photometry.get_objects_sep(
-            image_data,
-            header=science_header,
-            thresh=3.0,
-            sn=5,
-            aper=1.5 * fwhm_estimate,
-            mask=None,
-            use_mask_large=True,
-            get_segmentation=False,
-            subtract_bg=True
-        )
+        try:
+            obj = photometry.get_objects_sep(
+                image_data,
+                header=clean_header,
+                thresh=2.5,
+                sn=5,
+                aper=1.5 * fwhm_estimate,
+                mask=None,
+                use_mask_large=True,
+                get_segmentation=False,
+                subtract_bg=True
+            )
+        except Exception as obj_error:
+            st.error(f"Failed to extract objects: {obj_error}")
+            return None
 
         # Get frame center
-        ra0, dec0, sr0 = astrometry.get_frame_center(
-            header=science_header,
-            wcs=wcs,
-            width=image_data.shape[1],
-            height=image_data.shape[0]
-        )
+        try:
+            ra0, dec0, sr0 = astrometry.get_frame_center(
+                header=clean_header,
+                wcs=wcs,
+                width=image_data.shape[1],
+                height=image_data.shape[0]
+            )
+        except Exception as center_error:
+            st.error(f"Failed to get frame center: {center_error}")
+            return None
         
         # Map filter band to GAIA band names
         gaia_band_mapping = {
@@ -1440,21 +1486,25 @@ def refine_astrometry_with_stdpipe(
         )
         
         # Perform astrometry refinement
-        wcs_result = pipeline.refine_astrometry(
-            obj,
-            cat,
-            sr=1.8 * fwhm_estimate * pixel_scale / 3600.,
-            wcs=wcs,
-            order=3,
-            sn=5,
-            cat_col_mag=gb,
-            cat_col_mag_err=None,
-            n_iter=3,
-            min_matches=5,
-            use_photometry=True,
-            method='astropy',
-            verbose=True,
-        )
+        try:
+            wcs_result = pipeline.refine_astrometry(
+                obj,
+                cat,
+                sr=1.8 * fwhm_estimate * pixel_scale / 3600.,
+                wcs=wcs,
+                order=3,
+                sn=5,
+                cat_col_mag=gb,
+                cat_col_mag_err=None,
+                n_iter=3,
+                min_matches=5,
+                use_photometry=True,
+                method='astropy',
+                verbose=True,
+            )
+        except Exception as refine_error:
+            st.warning(f"Astrometry refinement failed: {refine_error}")
+            return None
         
         # Extract WCS from result
         if isinstance(wcs_result, tuple):
@@ -1464,15 +1514,35 @@ def refine_astrometry_with_stdpipe(
             
         if refined_wcs:
             st.info("Refined WCS successfully.")
+
+            # Test the refined WCS before returning it
+            try:
+                # Try a simple pixel-to-world conversion to verify it works
+                test_x, test_y = image_data.shape[1] // 2, image_data.shape[0] // 2
+                test_ra, test_dec = refined_wcs.pixel_to_world_values(test_x, test_y)
+                
+                if not (0 <= test_ra <= 360 and -90 <= test_dec <= 90):
+                    st.warning(f"Refined WCS produces invalid coordinates: RA={test_ra}, DEC={test_dec}")
+                    return None
+                    
+                st.success(f"Verified refined WCS: center at RA={test_ra:.6f}, DEC={test_dec:.6f}")
+                
+            except Exception as test_error:
+                st.warning(f"Refined WCS failed verification: {test_error}")
+                return None
             
-            # Clear old WCS keywords and update with new ones
-            astrometry.clear_wcs(
-                science_header,
-                remove_comments=True,
-                remove_underscored=True,
-                remove_history=True,
-            )
-            science_header.update(refined_wcs.to_header(relax=True))
+            try:
+                # Clear old WCS keywords and update with new ones
+                astrometry.clear_wcs(
+                    science_header,
+                    remove_comments=True,
+                    remove_underscored=True,
+                    remove_history=True,
+                )
+                science_header.update(refined_wcs.to_header(relax=True))
+            except Exception as header_error:
+                st.warning(f"Could not update header with refined WCS: {header_error}")
+                # Return the WCS object anyway, as it might still be usable
             
             return refined_wcs
         else:
