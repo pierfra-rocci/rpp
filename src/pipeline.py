@@ -1373,7 +1373,7 @@ def refine_astrometry_with_stdpipe(
     filter_band: str
 ) -> Optional[WCS]:
     """
-    Perform astrometry refinement using stdpipe and GAIA DR3 catalog.
+    Perform astrometry refinement using stdpipe SCAMP and GAIA DR3 catalog.
     
     Parameters
     ----------
@@ -1396,7 +1396,7 @@ def refine_astrometry_with_stdpipe(
         Refined WCS object if successful, None otherwise
     """
     try:
-        st.write("Doing astrometry refinement using Astropy...")
+        st.write("Doing astrometry refinement using SCAMP...")
 
         # Convert image data to float32 if it's not already a supported dtype
         if image_data.dtype not in [np.float32, np.float64]:
@@ -1455,46 +1455,49 @@ def refine_astrometry_with_stdpipe(
         gb = gaia_band_mapping.get(filter_band, "Gmag")
         
         # Get catalog from GAIA
-        cat = catalogs.get_cat_vizier(
-            ra0, dec0, sr0, "gaiaedr3",
-            filters={gb: "<20"}
-        )
-        
-        # Perform astrometry refinement
         try:
-            wcs_result = pipeline.refine_astrometry(
-                obj,
-                cat,
-                sr=1.4 * fwhm_estimate * pixel_scale / 3600.,
+            cat = catalogs.get_cat_vizier(
+                ra0, dec0, sr0, "gaiaedr3",
+                filters={gb: "<20"}
+            )
+        except Exception as cat_error:
+            st.error(f"Failed to get GAIA catalog: {cat_error}")
+            return None
+        
+        # Perform astrometry refinement using SCAMP
+        try:
+            wcs_result = astrometry.refine_wcs_scamp(
+                obj=obj,
+                cat=cat,
                 wcs=wcs,
-                order=3,
-                sn=5,
+                header=clean_header,
+                sr=1.4 * fwhm_estimate * pixel_scale / 3600.,  # Matching radius in degrees
+                order=3,  # Polynomial order for PV distortion solution
+                cat_col_ra='RAJ2000',
+                cat_col_dec='DEJ2000',
+                cat_col_ra_err='e_RAJ2000',
+                cat_col_dec_err='e_DEJ2000',
                 cat_col_mag=gb,
-                cat_col_mag_err=None,
-                n_iter=3,
-                min_matches=5,
-                use_photometry=True,
-                method='astropy',
-                verbose=True,
+                cat_col_mag_err=f'e_{gb}',
+                cat_mag_lim=20.0,
+                sn=5,
+                get_header=False,  # Return WCS object, not header
+                update=False,  # Don't update object list in place
+                verbose=True
             )
         except Exception as refine_error:
-            st.warning(f"Astrometry refinement failed: {refine_error}")
+            st.warning(f"SCAMP astrometry refinement failed: {refine_error}")
             return None
         
         # Extract WCS from result
-        if isinstance(wcs_result, tuple):
-            refined_wcs = wcs_result[0]
-        else:
-            refined_wcs = wcs_result
-            
-        if refined_wcs:
-            st.info("Refined WCS successfully.")
+        if wcs_result:
+            st.info("Refined WCS successfully using SCAMP.")
 
             # Test the refined WCS before returning it
             try:
                 # Try a simple pixel-to-world conversion to verify it works
                 test_x, test_y = image_data.shape[1] // 2, image_data.shape[0] // 2
-                test_ra, test_dec = refined_wcs.pixel_to_world_values(test_x, test_y)
+                test_ra, test_dec = wcs_result.pixel_to_world_values(test_x, test_y)
                 
                 if not (0 <= test_ra <= 360 and -90 <= test_dec <= 90):
                     st.warning(f"Refined WCS produces invalid coordinates: RA={test_ra}, DEC={test_dec}")
@@ -1514,14 +1517,14 @@ def refine_astrometry_with_stdpipe(
                     remove_underscored=True,
                     remove_history=True,
                 )
-                science_header.update(refined_wcs.to_header(relax=True))
+                science_header.update(wcs_result.to_header(relax=True))
             except Exception as header_error:
                 st.warning(f"Could not update header with refined WCS: {header_error}")
                 # Return the WCS object anyway, as it might still be usable
             
-            return refined_wcs
+            return wcs_result
         else:
-            st.warning("WCS refinement failed.")
+            st.warning("SCAMP WCS refinement failed.")
             return None
             
     except Exception as e:
