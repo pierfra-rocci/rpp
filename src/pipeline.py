@@ -1405,30 +1405,6 @@ def refine_astrometry_with_stdpipe(
 
         # Clean the header to remove problematic WCS keywords before processing
         clean_header = science_header.copy()
-
-        # Remove problematic DSS/distortion keywords that might cause WCS errors
-        problematic_keywords = [
-            'DSS', 'DSSSET', 'DSSCALE', 'DSSCOEFF',
-            'A_ORDER', 'B_ORDER', 'A_DMAX', 'B_DMAX',
-            'CPDIS1', 'CPDIS2', 'DP1', 'DP2'
-        ]
-
-        # Also remove any keyword starting with these patterns
-        problematic_patterns = ['A_', 'B_', 'AP_', 'BP_', 'DSS']
-
-        keys_to_remove = []
-        for key in clean_header.keys():
-            if key in problematic_keywords:
-                keys_to_remove.append(key)
-            elif any(key.startswith(pattern) for pattern in problematic_patterns):
-                # But keep essential WCS keywords
-                if key not in ['A_ORDER', 'B_ORDER', 'A_DMAX', 'B_DMAX']:
-                    keys_to_remove.append(key)
-        
-        for key in keys_to_remove:
-            if key in clean_header:
-                del clean_header[key]
-                st.info(f"Removed problematic WCS keyword: {key}")
         
         # Try to create a clean WCS object
         try:
