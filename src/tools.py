@@ -169,7 +169,7 @@ def safe_wcs_create(header):
                 pass
     
     if removed_keywords and hasattr(st, 'info'):
-        st.info(f"Removed problematic WCS keywords: {', '.join(removed_keywords)}")
+        st.info("Removed problematic WCS keywords") # {', '.join(removed_keywords)}")
 
     required_keys = ["CTYPE1", "CTYPE2", "CRVAL1", "CRVAL2",
                      "CRPIX1", "CRPIX2"]
