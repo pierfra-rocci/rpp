@@ -1403,7 +1403,6 @@ def refine_astrometry_with_stdpipe(
             st.info(f"Converting image from {image_data.dtype} to float32 for stdpipe compatibility")
             image_data = image_data.astype(np.float32)
 
-        # Clean the header to remove problematic WCS keywords before processing
         clean_header = science_header.copy()
         
         # Try to create a clean WCS object
@@ -1428,7 +1427,7 @@ def refine_astrometry_with_stdpipe(
                 mask=None,
                 use_mask_large=True,
                 get_segmentation=False,
-                subtract_bg=True
+                subtract_bg=False
             )
         except Exception as obj_error:
             st.error(f"Failed to extract objects: {obj_error}")
