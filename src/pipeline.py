@@ -1443,14 +1443,16 @@ def refine_astrometry_with_stdpipe(
         wcs_result = pipeline.refine_astrometry(
             obj,
             cat,
-            1.5 * fwhm_estimate * pixel_scale / 3600,
+            sr=1.8 * fwhm_estimate * pixel_scale / 3600.,
             wcs=wcs,
-            order=2,
+            order=3,
+            sn=5,
             cat_col_mag=gb,
             cat_col_mag_err=None,
             n_iter=3,
             min_matches=5,
             use_photometry=True,
+            method='astropy',
             verbose=True,
         )
         
