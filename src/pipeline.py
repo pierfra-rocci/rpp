@@ -1418,6 +1418,7 @@ def refine_astrometry_with_stdpipe(
 
         # Get objects using stdpipe
         try:
+            # First attempt with standard parameters
             obj = photometry.get_objects_sep(
                 image_data,
                 header=clean_header,
@@ -1427,11 +1428,56 @@ def refine_astrometry_with_stdpipe(
                 mask=None,
                 use_mask_large=True,
                 get_segmentation=False,
-                subtract_bg=False
+                subtract_bg=True  # Ensure background subtraction is enabled
             )
         except Exception as obj_error:
-            st.error(f"Failed to extract objects: {obj_error}")
-            return None
+            # If we get the pixel buffer error, try with more restrictive parameters
+            if "internal pixel buffer full" in str(obj_error).lower():
+                st.warning("Too many pixels detected, trying with higher threshold...")
+                try:
+                    # Try with higher threshold and S/N ratio
+                    obj = photometry.get_objects_sep(
+                        image_data,
+                        header=clean_header,
+                        thresh=5.0,  # Higher threshold
+                        sn=10,       # Higher S/N ratio
+                        aper=1.5 * fwhm_estimate,
+                        mask=None,
+                        use_mask_large=True,
+                        get_segmentation=False,
+                        subtract_bg=True
+                    )
+                    st.info("Successfully extracted objects with higher threshold")
+                except Exception as second_error:
+                    if "internal pixel buffer full" in str(second_error).lower():
+                        st.warning("Still too many pixels, trying with very restrictive parameters...")
+                        try:
+                            # Final attempt with very high threshold
+                            obj = photometry.get_objects_sep(
+                                image_data,
+                                header=clean_header,
+                                thresh=10.0,  # Very high threshold
+                                sn=20,        # Very high S/N ratio
+                                aper=1.5 * fwhm_estimate,
+                                mask=None,
+                                use_mask_large=True,
+                                get_segmentation=False,
+                                subtract_bg=True
+                            )
+                            st.info("Successfully extracted objects with very high threshold")
+                        except Exception as final_error:
+                            st.error(f"Failed to extract objects even with high threshold: {final_error}")
+                            st.error("Possible solutions:")
+                            st.error("1. Check if image is properly background subtracted")
+                            st.error("2. Verify the image doesn't contain large extended sources")
+                            st.error("3. Consider pre-processing to remove artifacts")
+                            return None
+                    else:
+                        st.error(f"Failed to extract objects: {second_error}")
+                        return None
+            else:
+                st.error(f"Failed to extract objects: {obj_error}")
+                return None
 
         # Get frame center
         try:
