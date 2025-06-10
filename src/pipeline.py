@@ -1396,7 +1396,7 @@ def refine_astrometry_with_stdpipe(
         Refined WCS object if successful, None otherwise
     """
     try:
-        st.write("Doing astrometry refinement using Stdpipe and Astropy...")
+        st.write("Doing astrometry refinement using Astropy...")
 
         # Convert image data to float32 if it's not already a supported dtype
         if image_data.dtype not in [np.float32, np.float64]:
