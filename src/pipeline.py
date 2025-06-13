@@ -2663,27 +2663,26 @@ def enhance_catalog(
                 if not isinstance(search_radius_arcsec, (int, float)):
                     raise ValueError("Search radius must be a number")
 
-                idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords);
-                matches = d2d < (15 * u.arcsec);
+                idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
+                matches = d2d < (15 * u.arcsec)
 
                 # Map matches back to the original table indices
-                valid_indices = valid_final_coords.index;
+                valid_indices = valid_final_coords.index
                 
                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                     if match:
-                        original_idx = valid_indices[i];
+                        original_idx = valid_indices[i]
                         enhanced_table.loc[original_idx, "astrocolibri_name"] = astrostars[
                             "discoverer_internal_name"
-                        ][match_idx];
-                        enhanced_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx];
+                        ][match_idx]
+                        enhanced_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx]
                         enhanced_table.loc[original_idx, "astrocolibri_classification"] = astrostars[
-                            "classification"][match_idx];
+                            "classification"][match_idx]
                 
-                st.success("Astro-Colibri matched objects in field.");
-            } else {
+                st.success("Astro-Colibri matched objects in field.")
+            else:
                 st.info("No valid coordinates available for Astro-Colibri matching")
-            }
-        } else {
+        else:
             st.write("No Astro-Colibri sources found in the field.")
     except Exception as e:
         st.error(f"Error querying Astro-Colibri: {str(e)}")
