@@ -1418,9 +1418,9 @@ def refine_astrometry_with_stdpipe(
             obj = photometry.get_objects_sep(
                 image_data,
                 header=clean_header,
-                threshold=2.5,  # Changed from 'thresh' to 'threshold'
+                thresh=2.5,  # Changed from 'thresh' to 'threshold'
                 minarea=5,      # Minimum area in pixels
-                r=1.5 * fwhm_estimate,  # Changed from 'aper' to 'r'
+                aper=1.5 * fwhm_estimate,  # Changed from 'aper' to 'r'
                 gain=1.0,
                 mask=None,
                 use_fwhm=True,
@@ -1442,7 +1442,7 @@ def refine_astrometry_with_stdpipe(
                     header=clean_header,
                     thresh=1.5,  # Lower threshold
                     minarea=3,
-                    r=2.0 * fwhm_estimate,
+                    aper=2.0 * fwhm_estimate,
                     gain=1.0,
                     mask=None,
                     use_fwhm=True,
@@ -1478,7 +1478,7 @@ def refine_astrometry_with_stdpipe(
         # Map filter band to correct GAIA EDR3 column names
         gaia_band_mapping = {
             "phot_bp_mean_mag": "BPmag",
-            "phot_rp_mean_mag": "RPmag", 
+            "phot_rp_mean_mag": "RPmag",
             "phot_g_mean_mag": "Gmag"
         }
         
@@ -1492,7 +1492,7 @@ def refine_astrometry_with_stdpipe(
                 center_dec, 
                 radius, 
                 "I/350/gaiaedr3",  # Correct GAIA EDR3 catalog identifier
-                filters={gaia_band: f"<20.0"},
+                filters={gaia_band: "<20.0"},
                 extra_filters={"Plx": ">-100"}  # Basic parallax filter
             )
             
