@@ -1422,7 +1422,6 @@ def refine_astrometry_with_stdpipe(
                 minarea=5,      # Minimum area in pixels
                 aper=1.5 * fwhm_estimate,  # Changed from 'aper' to 'r'
                 gain=1.0,
-                mask=None,
                 use_fwhm=True,
                 use_mask_large=True,
                 subtract_bg=True,
@@ -1441,14 +1440,13 @@ def refine_astrometry_with_stdpipe(
                     image_data,
                     header=clean_header,
                     thresh=1.5,  # Lower threshold
-                    minarea=3,
+                    minarea=5,
                     aper=2.0 * fwhm_estimate,
                     gain=1.0,
-                    mask=None,
                     use_fwhm=True,
                     use_mask_large=True,
                     subtract_bg=True,
-                    bg_size=32,
+                    bg_size=64,
                     verbose=False
                 )
                 
