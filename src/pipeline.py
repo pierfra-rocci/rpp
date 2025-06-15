@@ -1440,7 +1440,7 @@ def refine_astrometry_with_stdpipe(
                 obj = photometry.get_objects_sep(
                     image_data,
                     header=clean_header,
-                    threshold=1.5,  # Lower threshold
+                    thresh=1.5,  # Lower threshold
                     minarea=3,
                     r=2.0 * fwhm_estimate,
                     gain=1.0,
