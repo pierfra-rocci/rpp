@@ -19,8 +19,8 @@ copyright = "2024-2025, Pier-Francesco Rocci"
 author = "Pier-Francesco Rocci"
 
 # The full version, including alpha/beta/rc tags
-release = "1.0.0"
-version = "1.0"
+release = "0.9.8"
+version = "0.9"
 
 
 # -- General configuration ---------------------------------------------------
