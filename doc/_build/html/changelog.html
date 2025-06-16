@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Changelog &mdash; RAPAS Photometry Pipeline (RPP) v1.0.0 Documentation</title>
+  <title>Changelog &mdash; RAPAS Photometry Pipeline (RPP) v0.9.8 Documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/documentation_options.js?v=1a282f62"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -52,12 +52,10 @@
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Changelog</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#version-1-1-0-upcoming">Version 1.1.0 (Upcoming)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#version-1-0-0-2023-09-01">Version 1.0.0 (2023-09-01)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#version-0-9-0-2023-07-15">Version 0.9.0 (2023-07-15)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#version-0-2-0-2025-05-02">Version 0.2.0 (2025-05-02)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#version-0-1-0-2024-xx-xx-placeholder-for-previous-state">Version 0.1.0 (2024-XX-XX) - <em>Placeholder for previous state</em></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#version-0-9-0-2023-07-15-placeholder">Version 0.9.0 (2023-07-15) - <em>Placeholder</em></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#version-0-9-8-current">Version 0.9.8 (Current)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#version-1-0-0-2023-09-01-previous-release">Version 1.0.0 (2023-09-01) - Previous Release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#version-0-9-0-2023-07-15-beta-release">Version 0.9.0 (2023-07-15) - Beta Release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#development-roadmap">Development Roadmap</a></li>
 </ul>
 </li>
 </ul>
@@ -88,105 +86,171 @@
              
   <section id="changelog">
 <h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading"></a></h1>
-<p>This document records all notable changes to Photometry Factory for RAPAS.</p>
-<section id="version-1-1-0-upcoming">
-<h2>Version 1.1.0 (Upcoming)<a class="headerlink" href="#version-1-1-0-upcoming" title="Link to this heading"></a></h2>
-<p><strong>New Features</strong>
-- Cross-matching with multiple astronomical catalogs (SIMBAD, SkyBot, AAVSO VSX)
-- Interactive Aladin Lite sky viewer integration
-- Automatic PSF model construction and PSF photometry
-- Enhanced zero-point calibration with sigma clipping</p>
-<p><strong>Improvements</strong>
-- Improved WCS refinement using Gaia DR3
-- More robust source detection in crowded fields
-- Better error handling for network services
-- Performance optimizations for large images</p>
-<p><strong>Bug Fixes</strong>
-- Fixed memory leak when processing multiple large images
-- Resolved issue with coordinate transformations near celestial poles
-- Corrected zero point calculation for images with small number of reference stars
-- Fixed display errors in magnitude histograms</p>
+<p>This document records all notable changes to RAPAS Photometry Pipeline.</p>
+<section id="version-0-9-8-current">
+<h2>Version 0.9.8 (Current)<a class="headerlink" href="#version-0-9-8-current" title="Link to this heading"></a></h2>
+<p><strong>Major Features &amp; Enhancements</strong></p>
+<ul class="simple">
+<li><p><strong>Advanced Astrometric Pipeline</strong>:
+*   Integrated stdpipe for robust local plate solving with Astrometry.net
+*   Added WCS refinement using SCAMP and GAIA DR3 catalog
+*   Automatic header validation and fixing for problematic WCS keywords
+*   Force re-solve option for overriding existing WCS solutions
+*   Comprehensive coordinate validation and transformation checking</p></li>
+<li><p><strong>Multi-Aperture Photometry</strong>:
+*   Implemented four aperture radii (1.5×, 2.0×, 2.5×, 3.0× FWHM)
+*   Local background estimation with annular apertures for each radius
+*   Background-corrected and raw flux measurements
+*   Signal-to-noise ratio calculation for all apertures
+*   Backward compatibility with legacy single-aperture columns</p></li>
+<li><p><strong>Enhanced PSF Photometry</strong>:
+*   Empirical PSF model construction using EPSFBuilder
+*   Advanced star selection with quality filtering criteria
+*   Iterative PSF fitting with IterativePSFPhotometry
+*   PSF model visualization and FITS output
+*   Integration with multi-aperture photometry workflow</p></li>
+<li><p><strong>Comprehensive Catalog Cross-Matching</strong>:
+*   GAIA DR3 with quality filtering (variability, color, astrometry)
+*   SIMBAD for object identification and classification
+*   Astro-Colibri API for transient event correlation
+*   SkyBoT for solar system object identification
+*   AAVSO VSX for variable star catalog matching
+*   VizieR Milliquas for quasar and AGN identification</p></li>
+<li><p><strong>Interactive Visualization</strong>:
+*   Aladin Lite integration for interactive sky viewing
+*   Source overlay with detailed popup information
+*   Multiple survey options and coordinate display
+*   ESA Sky external viewer integration
+*   Real-time catalog cross-match results display</p></li>
+<li><p><strong>Robust Error Handling</strong>:
+*   Comprehensive error recovery mechanisms
+*   Graceful degradation when optional components fail
+*   Detailed error messages with recovery suggestions
+*   Automatic fallback options for common failure modes
+*   Enhanced logging with severity levels and timestamps</p></li>
+</ul>
+<dl class="simple">
+<dt><strong>Image Processing Improvements</strong>:</dt><dd><ul class="simple">
+<li><p>Advanced FITS header validation and automatic fixing</p></li>
+<li><p>Support for multi-extension FITS and data cubes</p></li>
+<li><p>RGB astronomical image handling (first channel extraction)</p></li>
+<li><p>Cosmic ray removal integration with L.A.Cosmic algorithm</p></li>
+<li><p>Enhanced background modeling with visualization and FITS output</p></li>
+</ul>
+</dd>
+<dt><strong>User Interface Enhancements</strong>:</dt><dd><ul class="simple">
+<li><p>Streamlined sidebar organization with collapsible sections</p></li>
+<li><p>Real-time parameter validation with helpful error messages</p></li>
+<li><p>Improved file upload handling with format detection</p></li>
+<li><p>Enhanced progress indicators and status updates</p></li>
+<li><p>Mobile-friendly responsive design improvements</p></li>
+</ul>
+</dd>
+<dt><strong>Data Management</strong>:</dt><dd><ul class="simple">
+<li><p>Automatic result archiving with timestamped ZIP files</p></li>
+<li><p>User-specific workspace isolation and management</p></li>
+<li><p>Archive browser for accessing previous results</p></li>
+<li><p>Automatic cleanup of old files (30+ day retention)</p></li>
+<li><p>Comprehensive output file generation and organization</p></li>
+</ul>
+</dd>
+<dt><strong>Performance Optimizations</strong>:</dt><dd><ul class="simple">
+<li><p>Streamlit caching for improved response times</p></li>
+<li><p>Memory-efficient handling of large FITS files</p></li>
+<li><p>Optimized algorithms for typical astronomical image sizes</p></li>
+<li><p>Background processing for time-consuming operations</p></li>
+<li><p>Resource monitoring and management improvements</p></li>
+</ul>
+</dd>
+<dt><strong>Configuration Management</strong>:</dt><dd><ul class="simple">
+<li><p>Enhanced parameter persistence across user sessions</p></li>
+<li><p>Observatory information extraction from FITS headers</p></li>
+<li><p>API key management with secure storage</p></li>
+<li><p>Default parameter sets for common use cases</p></li>
+<li><p>Configuration validation and error checking</p></li>
+</ul>
+</dd>
+</dl>
+<p><strong>Minor Enhancements &amp; Bug Fixes</strong></p>
+<ul class="simple">
+<li><p>Improved coordinate system handling with multiple keyword support</p></li>
+<li><p>Enhanced pixel scale calculation with multiple methods</p></li>
+<li><p>Better FWHM estimation with outlier rejection</p></li>
+<li><p>Robust airmass calculation with multiple date format support</p></li>
+<li><p>Enhanced zero-point calculation with atmospheric extinction correction</p></li>
+<li><p>Improved catalog query error handling and retry mechanisms</p></li>
+<li><p>Better temporary file management and cleanup</p></li>
+<li><p>Enhanced logging with structured format and severity levels</p></li>
+</ul>
+<dl class="simple">
+<dt><strong>Documentation Updates</strong>:</dt><dd><ul class="simple">
+<li><p>Comprehensive API reference documentation</p></li>
+<li><p>Updated installation guide with current dependencies</p></li>
+<li><p>Enhanced user guide with step-by-step workflows</p></li>
+<li><p>Feature documentation with detailed descriptions</p></li>
+<li><p>Troubleshooting guide with common issues and solutions</p></li>
+</ul>
+</dd>
+</dl>
 </section>
-<section id="version-1-0-0-2023-09-01">
-<h2>Version 1.0.0 (2023-09-01)<a class="headerlink" href="#version-1-0-0-2023-09-01" title="Link to this heading"></a></h2>
-<p><strong>Features</strong>
+<section id="version-1-0-0-2023-09-01-previous-release">
+<h2>Version 1.0.0 (2023-09-01) - Previous Release<a class="headerlink" href="#version-1-0-0-2023-09-01-previous-release" title="Link to this heading"></a></h2>
+<p><strong>Features</strong>:
 - FITS image calibration (bias, dark, flat)
-- Automatic plate solving with astrometry.net
+- Basic plate solving with astrometry.net
 - Source detection and aperture photometry
 - Zero-point calibration with Gaia DR3
 - CSV catalog export
 - Image visualization with matplotlib
 - User-friendly Streamlit interface</p>
-<p><strong>Requirements</strong>
+<p><strong>Requirements</strong>:
 - Python 3.8+
-- Required packages: astropy, photutils, astroquery, streamlit, numpy, pandas, matplotlib</p>
+- Core packages: astropy, photutils, astroquery, streamlit, numpy, pandas, matplotlib</p>
 </section>
-<section id="version-0-9-0-2023-07-15">
-<h2>Version 0.9.0 (2023-07-15)<a class="headerlink" href="#version-0-9-0-2023-07-15" title="Link to this heading"></a></h2>
-<p><strong>Initial Beta Release</strong>
+<section id="version-0-9-0-2023-07-15-beta-release">
+<h2>Version 0.9.0 (2023-07-15) - Beta Release<a class="headerlink" href="#version-0-9-0-2023-07-15-beta-release" title="Link to this heading"></a></h2>
+<p><strong>Initial Beta Features</strong>:
 - Core functionality implemented
 - Basic calibration and photometry workflow
-- Preliminary documentation</p>
+- Preliminary documentation
+- Single-user desktop application</p>
+<p><strong>Technical Foundation</strong>:
+- photutils-based photometry pipeline
+- Basic FITS loading and display
+- Simple aperture photometry
+- Gaia DR3 cross-matching
+- Basic CSV export functionality</p>
 </section>
-<section id="version-0-2-0-2025-05-02">
-<h2>Version 0.2.0 (2025-05-02)<a class="headerlink" href="#version-0-2-0-2025-05-02" title="Link to this heading"></a></h2>
-<p><strong>Major Features &amp; Changes</strong></p>
-<ul class="simple">
-<li><p><strong>User Authentication</strong>: Implemented user login, registration, and password recovery using a Flask backend (<cite>backend_dev.py</cite>) and SQLite database (<cite>users.db</cite>). Email recovery requires SMTP configuration via environment variables.</p></li>
-<li><p><strong>User Configuration</strong>: User-specific settings (observatory, analysis parameters, API keys) are now saved and loaded via the backend.</p></li>
-<li><p><strong>Astrometry</strong>:
-*   Added Siril integration (<cite>plate_solve.ps1</cite>/<cite>.sh</cite>) for robust plate solving when WCS is missing.
-*   Added optional WCS refinement (“Astrometry+”) using the <cite>stdpipe</cite> library and GAIA DR3.</p></li>
-<li><p><strong>Image Processing</strong>:
-*   Added optional Cosmic Ray Removal using <cite>astroscrappy</cite> (L.A.Cosmic algorithm) with configurable parameters.
-*   Improved background estimation using <cite>photutils.Background2D</cite> and SExtractor algorithm, including visualization and FITS output.
-*   Improved FWHM estimation using Gaussian fitting on marginal sums, with histogram visualization.</p></li>
-<li><p><strong>Photometry</strong>:
-*   Implemented PSF Photometry using <cite>photutils.psf.EPSFBuilder</cite> and <cite>IterativePSFPhotometry</cite>. PSF model is visualized and saved as FITS.
-*   Added Signal-to-Noise Ratio (SNR) calculation to aperture photometry results.</p></li>
-<li><p><strong>Catalog Integration</strong>:
-*   Added cross-matching with Astro-Colibri API (requires UID key) for transient identification.
-*   Added cross-matching with Milliquas catalog (VizieR VII/294) for quasar identification.
-*   Refined GAIA DR3 cross-matching for calibration (filtering by variability, color, RUWE).</p></li>
-<li><p><strong>UI &amp; Workflow</strong>:
-*   Restructured sidebar for better organization of settings (Observatory, Process Options, Analysis Params, etc.).
-*   Added “Save Configuration” button.
-*   Added “Download All Results (ZIP)” button for convenient output retrieval.
-*   Improved logging with timestamps and levels, saved to <cite>.log</cite> file.
-*   Added Aladin Lite viewer for interactive source exploration.
-*   Application entry point changed to <cite>run_frontend.py</cite>.</p></li>
-<li><p><strong>Documentation</strong>: Updated all documentation files (<cite>.rst</cite>) to reflect current features and usage. Added new sections and refined existing ones.</p></li>
-</ul>
-<p><strong>Minor Changes &amp; Fixes</strong></p>
-<ul class="simple">
-<li><p>Refactored code into <cite>pages/app.py</cite>, <cite>pages/login.py</cite>, <cite>tools.py</cite>, and <cite>backend_dev.py</cite>.</p></li>
-<li><p>Improved error handling in various processing steps.</p></li>
-<li><p>Standardized figure sizes using <cite>tools.FIGURE_SIZES</cite>.</p></li>
-<li><p>Added <cite>__version__.py</cite> for version tracking.</p></li>
-<li><p>Updated <cite>requirements.txt</cite>.</p></li>
-<li><p>Added cleanup for temporary files.</p></li>
-</ul>
-</section>
-<section id="version-0-1-0-2024-xx-xx-placeholder-for-previous-state">
-<h2>Version 0.1.0 (2024-XX-XX) - <em>Placeholder for previous state</em><a class="headerlink" href="#version-0-1-0-2024-xx-xx-placeholder-for-previous-state" title="Link to this heading"></a></h2>
-<p><strong>Initial Release Candidate</strong>
-*   Core photometry pipeline based on <cite>photutils</cite>.
-*   Basic FITS loading and display.
-*   Aperture photometry.
-*   Zero-point calibration with Gaia DR3.
-*   CSV catalog export.
-*   Image visualization with matplotlib.
-*   User-friendly Streamlit interface (single script <cite>pfr_app.py</cite>).</p>
-<p><strong>Requirements</strong>
-*   Python 3.8+
-*   Required packages: astropy, photutils, astroquery, streamlit, numpy, pandas, matplotlib</p>
-</section>
-<section id="version-0-9-0-2023-07-15-placeholder">
-<h2>Version 0.9.0 (2023-07-15) - <em>Placeholder</em><a class="headerlink" href="#version-0-9-0-2023-07-15-placeholder" title="Link to this heading"></a></h2>
-<p><strong>Initial Beta Release</strong>
-*   Core functionality implemented.
-*   Basic calibration and photometry workflow.
-*   Preliminary documentation.</p>
+<section id="development-roadmap">
+<h2>Development Roadmap<a class="headerlink" href="#development-roadmap" title="Link to this heading"></a></h2>
+<p><strong>Planned Features for v1.0</strong>:
+- Enhanced PSF modeling with multiple PSF types
+- Advanced astrometric distortion correction
+- Batch processing capabilities for image sequences
+- Machine learning-based source classification
+- Advanced visualization tools and interactive plots
+- Integration with additional astronomical catalogs
+- Performance optimizations for large surveys
+- Enhanced documentation and tutorials</p>
+<p><strong>Future Enhancements</strong>:
+- Multi-band photometry across different filters
+- Time-series analysis for variable source monitoring
+- Advanced statistical analysis tools
+- Integration with observatory control systems
+- Cloud-based processing and storage options
+- Advanced machine learning features
+- Professional data reduction pipeline integration</p>
+<p><strong>Known Issues &amp; Limitations</strong>:
+- SCAMP refinement requires proper installation and configuration
+- Large images (&gt;8K×8K) may require increased memory allocation
+- Some catalog services may have temporary availability issues
+- Complex WCS solutions with high-order distortions may need manual validation
+- Network-dependent features require stable internet connection</p>
+<p><strong>Migration Notes</strong>:
+- Configuration files from previous versions are automatically migrated
+- Output file formats are backward compatible
+- API changes are minimal and documented in the API reference
+- Legacy single-aperture photometry columns are maintained for compatibility</p>
 </section>
 </section>
 

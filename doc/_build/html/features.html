@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Features &mdash; RAPAS Photometry Pipeline (RPP) v1.0.0 Documentation</title>
+  <title>Features &mdash; RAPAS Photometry Pipeline (RPP) v0.9.8 Documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/documentation_options.js?v=1a282f62"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -48,15 +48,16 @@
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Features</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#user-authentication-configuration">User Authentication &amp; Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#image-processing">Image Processing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#source-detection">Source Detection</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#photometry">Photometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#astrometry">Astrometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#calibration">Calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#catalog-integration">Catalog Integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#visualization">Visualization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#output-and-results">Output and Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#user-authentication-multi-user-support">User Authentication &amp; Multi-User Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-image-processing">Advanced Image Processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#astrometric-solutions">Astrometric Solutions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#source-detection-photometry">Source Detection &amp; Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#photometric-calibration">Photometric Calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multi-catalog-cross-matching">Multi-Catalog Cross-Matching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#data-visualization-analysis">Data Visualization &amp; Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#user-interface-workflow">User Interface &amp; Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#output-generation-export">Output Generation &amp; Export</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#performance-scalability">Performance &amp; Scalability</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
@@ -92,123 +93,348 @@
              
   <section id="features">
 <h1>Features<a class="headerlink" href="#features" title="Link to this heading"></a></h1>
-<section id="user-authentication-configuration">
-<h2>User Authentication &amp; Configuration<a class="headerlink" href="#user-authentication-configuration" title="Link to this heading"></a></h2>
-<ul class="simple">
-<li><p><strong>Secure Login</strong>: User registration and login system via a Flask backend.</p></li>
-<li><p><strong>Password Management</strong>: Password hashing and secure recovery via email (requires SMTP configuration).</p></li>
-<li><p><strong>User Configuration</strong>: Saves and loads user-specific settings (observatory, analysis parameters, API keys) via the backend database.</p></li>
-</ul>
-</section>
-<section id="image-processing">
-<h2>Image Processing<a class="headerlink" href="#image-processing" title="Link to this heading"></a></h2>
+<section id="user-authentication-multi-user-support">
+<h2>User Authentication &amp; Multi-User Support<a class="headerlink" href="#user-authentication-multi-user-support" title="Link to this heading"></a></h2>
 <dl class="simple">
-<dt><strong>FITS File Support</strong></dt><dd><p>PFR supports standard FITS file formats (.fits, .fit, .fts, .fits.gz). It handles multi-extension files, data cubes (extracting the first plane), and properly extracts header information.</p>
-</dd>
-<dt><strong>Cosmic Ray Removal</strong></dt><dd><p>Optional detection and removal of cosmic rays using the <cite>astroscrappy</cite> package (L.A.Cosmic algorithm). Configurable parameters (gain, readnoise, thresholds).</p>
-</dd>
-<dt><strong>Background Estimation</strong></dt><dd><p>Sophisticated 2D background modeling using <cite>photutils.Background2D</cite> with sigma-clipping and the SExtractor background algorithm. Visualizations and FITS output of the background model and RMS map.</p>
-</dd>
-</dl>
-</section>
-<section id="source-detection">
-<h2>Source Detection<a class="headerlink" href="#source-detection" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>DAOStarFinder Implementation</strong></dt><dd><p>Uses the DAOPhot algorithm (<cite>photutils.detection.DAOStarFinder</cite>) to detect point sources based on sharpness and roundness.</p>
-</dd>
-<dt><strong>FWHM Estimation</strong></dt><dd><p>Automatically estimates the Full Width at Half Maximum (FWHM) of stars by fitting 1D Gaussian models to marginal sums of detected sources. Includes histogram visualization.</p>
-</dd>
-<dt><strong>PSF Modeling</strong></dt><dd><p>Builds an empirical Point Spread Function (PSF) model from bright, isolated stars using <cite>photutils.psf.EPSFBuilder</cite>. Saves the model as a FITS file.</p>
-</dd>
-</dl>
-</section>
-<section id="photometry">
-<h2>Photometry<a class="headerlink" href="#photometry" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>Aperture Photometry</strong></dt><dd><p>Measures source brightness using circular apertures (<cite>photutils.aperture.CircularAperture</cite>) scaled to the estimated FWHM. Calculates instrumental magnitudes and Signal-to-Noise Ratio (SNR).</p>
-</dd>
-<dt><strong>PSF Photometry</strong></dt><dd><p>Performs PSF photometry using the empirically built PSF model via <cite>photutils.psf.IterativePSFPhotometry</cite>. Calculates fitted fluxes and instrumental magnitudes.</p>
-</dd>
-<dt><strong>Error Estimation</strong></dt><dd><p>Propagates background RMS noise into aperture photometry errors. PSF photometry provides fitted flux errors.</p>
-</dd>
-</dl>
-</section>
-<section id="astrometry">
-<h2>Astrometry<a class="headerlink" href="#astrometry" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>WCS Handling</strong></dt><dd><p>Extracts and validates World Coordinate System (WCS) information from FITS headers using <cite>astropy.wcs</cite>. Handles multi-dimensional WCS by reducing to celestial coordinates.</p>
-</dd>
-<dt><strong>Plate Solving</strong></dt><dd><ul class="simple">
-<li><p><strong>Siril Integration</strong>: Option to use an external Siril script (<cite>plate_solve.ps1</cite>/<cite>.sh</cite>) for robust plate solving if WCS is missing or invalid.</p></li>
-<li><p><strong>Astrometry.net</strong>: (Mentioned in docs, but Siril/Stdpipe seem primary now) Potential integration for web-based solving.</p></li>
+<dt><strong>Secure User Management</strong>:</dt><dd><ul class="simple">
+<li><p>User registration and login system via Flask backend</p></li>
+<li><p>Password hashing with secure storage in SQLite database</p></li>
+<li><p>Password recovery via email (requires SMTP configuration)</p></li>
+<li><p>Individual user workspaces with isolated data storage</p></li>
+<li><p>Session management with automatic logout options</p></li>
 </ul>
 </dd>
-<dt><strong>Astrometry Refinement (Astrometry+)</strong></dt><dd><p>Optional WCS refinement using <cite>stdpipe</cite> library, cross-matching detected sources with GAIA DR3 to improve WCS accuracy.</p>
-</dd>
-<dt><strong>Coordinate Transformations</strong></dt><dd><p>Converts between pixel coordinates and celestial coordinates (RA/Dec) using the validated WCS.</p>
-</dd>
-</dl>
-</section>
-<section id="calibration">
-<h2>Calibration<a class="headerlink" href="#calibration" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>Zero Point Calculation</strong></dt><dd><p>Determines photometric zero point by cross-matching detected sources with the GAIA DR3 catalog using sigma-clipping for robustness. Includes visualization plot.</p>
-</dd>
-<dt><strong>Airmass Calculation</strong></dt><dd><p>Calculates airmass based on FITS header time/coordinates and configured observatory location using <cite>astropy.coordinates</cite>.</p>
-</dd>
-<dt><strong>Magnitude Systems</strong></dt><dd><p>Calculates instrumental magnitudes and converts them to a calibrated magnitude system tied to GAIA DR3 (currently G-band, BP, RP selectable), applying a basic airmass correction (0.1 * airmass).</p>
-</dd>
-</dl>
-</section>
-<section id="catalog-integration">
-<h2>Catalog Integration<a class="headerlink" href="#catalog-integration" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>GAIA DR3</strong></dt><dd><p>Accesses the GAIA Data Release 3 catalog via <cite>astroquery.gaia</cite> for astrometric refinement and photometric calibration. Filters calibration stars based on magnitude, variability flags, color index, and RUWE.</p>
-</dd>
-<dt><strong>Astro-Colibri</strong></dt><dd><p>Cross-matches field with the Astro-Colibri database via API (requires UID key) to identify known transients or events.</p>
-</dd>
-<dt><strong>SIMBAD</strong></dt><dd><p>Cross-matches with SIMBAD database via <cite>astroquery.simbad</cite> for object identification and classification.</p>
-</dd>
-<dt><strong>SkyBoT</strong></dt><dd><p>Queries the SkyBoT service (IMCCE) via web request to identify known solar system objects in the field of view based on observation time and location.</p>
-</dd>
-<dt><strong>AAVSO VSX</strong></dt><dd><p>Queries the AAVSO Variable Star Index (via VizieR <cite>B/vsx/vsx</cite>) to check for known variable stars.</p>
-</dd>
-<dt><strong>Milliquas (VizieR VII/294)</strong></dt><dd><p>Queries the Million Quasars Catalog (via VizieR <cite>VII/294</cite>) for quasar identification.</p>
-</dd>
-</dl>
-</section>
-<section id="visualization">
-<h2>Visualization<a class="headerlink" href="#visualization" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>Image Display</strong></dt><dd><p>Displays the FITS image using <cite>matplotlib</cite> with options for scaling (ZScale, Percentile).</p>
-</dd>
-<dt><strong>Interactive Plots</strong></dt><dd><ul class="simple">
-<li><p>Background and RMS maps.</p></li>
-<li><p>FWHM distribution histogram.</p></li>
-<li><p>PSF model visualization.</p></li>
-<li><p>Zero point calibration plot (Gaia vs. Calibrated Mags) with binned statistics.</p></li>
+<dt><strong>Configuration Persistence</strong>:</dt><dd><ul class="simple">
+<li><p>User-specific settings stored in backend database</p></li>
+<li><p>Observatory parameters, analysis settings, and API keys</p></li>
+<li><p>Automatic loading of saved configurations on login</p></li>
+<li><p>Local and remote configuration synchronization</p></li>
 </ul>
 </dd>
-<dt><strong>Aladin Integration</strong></dt><dd><p>Embeds an interactive Aladin Lite sky viewer showing the field of view (DSS) with detected sources overlaid. Popups provide source details (coordinates, magnitude, catalog matches).</p>
+</dl>
+</section>
+<section id="advanced-image-processing">
+<h2>Advanced Image Processing<a class="headerlink" href="#advanced-image-processing" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>FITS File Support</strong>:</dt><dd><ul class="simple">
+<li><p>Standard FITS formats (.fits, .fit, .fts, .fits.gz)</p></li>
+<li><p>Multi-extension FITS (MEF) file handling</p></li>
+<li><p>Data cubes with automatic 2D plane extraction</p></li>
+<li><p>RGB astronomical images (uses first color channel)</p></li>
+<li><p>Automatic header validation and fixing</p></li>
+</ul>
 </dd>
-<dt><strong>Data Tables</strong></dt><dd><p>Uses <cite>streamlit</cite> and <cite>pandas</cite> DataFrames for interactive display of:
-*   GAIA calibration star matches.
-*   Summary of external catalog matches.
-*   Full final photometry catalog with sorting and filtering.</p>
+<dt><strong>Header Processing</strong>:</dt><dd><ul class="simple">
+<li><p>Automatic WCS keyword validation and correction</p></li>
+<li><p>Removal of problematic or conflicting keywords</p></li>
+<li><p>Observatory information extraction from headers</p></li>
+<li><p>Coordinate system standardization and validation</p></li>
+<li><p>Missing keyword interpolation and defaults</p></li>
+</ul>
+</dd>
+<dt><strong>Cosmic Ray Removal</strong>:</dt><dd><ul class="simple">
+<li><p>L.A.Cosmic algorithm implementation via astroscrappy</p></li>
+<li><p>Configurable parameters (gain, read noise, sigma clipping)</p></li>
+<li><p>Before/after image comparison</p></li>
+<li><p>Integration with photometry pipeline</p></li>
+<li><p>Quality assessment and validation</p></li>
+</ul>
+</dd>
+<dt><strong>Background Estimation</strong>:</dt><dd><ul class="simple">
+<li><p>photutils.Background2D with SExtractor algorithm</p></li>
+<li><p>2D background modeling with sigma clipping</p></li>
+<li><p>Automatic box size adjustment for image dimensions</p></li>
+<li><p>Background and RMS map visualization</p></li>
+<li><p>FITS output for background and noise models</p></li>
+</ul>
 </dd>
 </dl>
 </section>
-<section id="output-and-results">
-<h2>Output and Results<a class="headerlink" href="#output-and-results" title="Link to this heading"></a></h2>
+<section id="astrometric-solutions">
+<h2>Astrometric Solutions<a class="headerlink" href="#astrometric-solutions" title="Link to this heading"></a></h2>
 <dl class="simple">
-<dt><strong>Catalog Generation</strong></dt><dd><p>Creates a final CSV catalog containing source positions (pixel and sky), aperture photometry results (flux, error, instrumental mag, calibrated mag, SNR), PSF photometry results (if successful), and cross-match information from all queried catalogs.</p>
-</dd>
-<dt><strong>Metadata Logging</strong></dt><dd><ul class="simple">
-<li><p><strong>Log File</strong>: Records processing steps, parameters, warnings, and errors to a <cite>.log</cite> file.</p></li>
-<li><p><strong>Header File</strong>: Saves the original FITS header to a <cite>.txt</cite> file.</p></li>
+<dt><strong>Local Plate Solving</strong>:</dt><dd><ul class="simple">
+<li><p>Astrometry.net integration via stdpipe wrapper</p></li>
+<li><p>Blind astrometric solving for images without WCS</p></li>
+<li><p>Automatic source detection using photutils</p></li>
+<li><p>Scale estimation from focal length and pixel size</p></li>
+<li><p>Solution validation and coordinate range checking</p></li>
 </ul>
 </dd>
-<dt><strong>Result Downloads</strong></dt><dd><p>Provides a single “Download All Results (ZIP)” button to download a compressed archive containing the CSV catalog, log file, header file, background FITS, PSF FITS, and all generated PNG plots for the processed image. Files are organized in the <cite>rpp_results</cite> directory.</p>
+<dt><strong>WCS Refinement</strong>:</dt><dd><ul class="simple">
+<li><p>SCAMP integration for high-precision astrometry</p></li>
+<li><p>GAIA DR3 catalog matching for reference stars</p></li>
+<li><p>High-order polynomial distortion correction</p></li>
+<li><p>Residual analysis and quality assessment</p></li>
+<li><p>Optional refinement for existing WCS solutions</p></li>
+</ul>
+</dd>
+<dt><strong>Coordinate Systems</strong>:</dt><dd><ul class="simple">
+<li><p>Support for multiple coordinate reference frames</p></li>
+<li><p>SIP distortion correction handling</p></li>
+<li><p>Coordinate transformation validation</p></li>
+<li><p>Edge case handling for problematic coordinates</p></li>
+<li><p>Force re-solve option for existing solutions</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="source-detection-photometry">
+<h2>Source Detection &amp; Photometry<a class="headerlink" href="#source-detection-photometry" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Source Detection</strong>:</dt><dd><ul class="simple">
+<li><p>DAOStarFinder implementation with configurable parameters</p></li>
+<li><p>Border masking to avoid edge artifacts</p></li>
+<li><p>Quality filtering based on shape parameters (roundness, sharpness)</p></li>
+<li><p>Automatic threshold optimization</p></li>
+<li><p>Detection validation and source counting</p></li>
+</ul>
+</dd>
+<dt><strong>FWHM Estimation</strong>:</dt><dd><ul class="simple">
+<li><p>Gaussian profile fitting on stellar marginal sums</p></li>
+<li><p>Multiple source averaging for robust estimates</p></li>
+<li><p>FWHM vs relative flux analysis</p></li>
+<li><p>Outlier rejection with sigma clipping</p></li>
+<li><p>Seeing estimation from stellar profiles</p></li>
+</ul>
+</dd>
+<dt><strong>Multi-Aperture Photometry</strong>:</dt><dd><ul class="simple">
+<li><p>Four aperture radii: 1.5×, 2.0×, 2.5×, 3.0× FWHM</p></li>
+<li><p>Circular apertures with local background estimation</p></li>
+<li><p>Annular background regions for each aperture</p></li>
+<li><p>Background-corrected and raw flux measurements</p></li>
+<li><p>Signal-to-noise ratio calculation for each aperture</p></li>
+</ul>
+</dd>
+<dt><strong>PSF Photometry</strong>:</dt><dd><ul class="simple">
+<li><p>Empirical PSF model construction using EPSFBuilder</p></li>
+<li><p>Star selection with quality filtering criteria</p></li>
+<li><p>Iterative PSF fitting with IterativePSFPhotometry</p></li>
+<li><p>PSF model visualization and FITS output</p></li>
+<li><p>Comparison metrics with aperture photometry</p></li>
+</ul>
+</dd>
+<dt><strong>Error Propagation</strong>:</dt><dd><ul class="simple">
+<li><p>Comprehensive photometric error calculation</p></li>
+<li><p>Poisson noise plus read noise modeling</p></li>
+<li><p>Background uncertainty propagation</p></li>
+<li><p>Total error estimation with calc_total_error</p></li>
+<li><p>SNR-based magnitude error calculation</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="photometric-calibration">
+<h2>Photometric Calibration<a class="headerlink" href="#photometric-calibration" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>GAIA DR3 Integration</strong>:</dt><dd><ul class="simple">
+<li><p>Automatic cross-matching with GAIA Data Release 3</p></li>
+<li><p>Quality filtering (variability, color, astrometric quality)</p></li>
+<li><p>Multiple photometric bands including synthetic photometry</p></li>
+<li><p>Cone search with configurable radius</p></li>
+<li><p>Proper motion and parallax data inclusion</p></li>
+</ul>
+</dd>
+<dt><strong>Zero-Point Calculation</strong>:</dt><dd><ul class="simple">
+<li><p>Robust calibration with sigma clipping outlier rejection</p></li>
+<li><p>Multiple aperture zero-point determination</p></li>
+<li><p>Atmospheric extinction correction using airmass</p></li>
+<li><p>Calibration star quality assessment</p></li>
+<li><p>Zero-point uncertainty estimation</p></li>
+</ul>
+</dd>
+<dt><strong>Magnitude Systems</strong>:</dt><dd><ul class="simple">
+<li><p>GAIA G, BP, RP photometric bands</p></li>
+<li><p>Johnson-Cousins UBVRI synthetic photometry</p></li>
+<li><p>SDSS ugriz synthetic photometry</p></li>
+<li><p>Instrumental to standard magnitude conversion</p></li>
+<li><p>Multi-band calibration support</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="multi-catalog-cross-matching">
+<h2>Multi-Catalog Cross-Matching<a class="headerlink" href="#multi-catalog-cross-matching" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>GAIA DR3 Catalog</strong>:</dt><dd><ul class="simple">
+<li><p>Stellar parameters, proper motions, and photometry</p></li>
+<li><p>Quality filtering for reliable calibration sources</p></li>
+<li><p>Synthetic photometry for non-standard bands</p></li>
+<li><p>Astrometric quality indicators (RUWE)</p></li>
+<li><p>Variability and color index filtering</p></li>
+</ul>
+</dd>
+<dt><strong>SIMBAD Database</strong>:</dt><dd><ul class="simple">
+<li><p>Object identification and classification</p></li>
+<li><p>Multiple identifier retrieval</p></li>
+<li><p>Astronomical object types and properties</p></li>
+<li><p>B and V magnitude data when available</p></li>
+<li><p>Cross-reference with other catalogs</p></li>
+</ul>
+</dd>
+<dt><strong>Astro-Colibri Transient Alerts</strong>:</dt><dd><ul class="simple">
+<li><p>Real-time transient and variable source alerts</p></li>
+<li><p>Multi-messenger astronomy event correlation</p></li>
+<li><p>Configurable time windows around observation date</p></li>
+<li><p>API key authentication for full access</p></li>
+<li><p>Event classification and discovery information</p></li>
+</ul>
+</dd>
+<dt><strong>Solar System Objects (SkyBoT)</strong>:</dt><dd><ul class="simple">
+<li><p>Moving object identification and ephemeris</p></li>
+<li><p>Asteroid and comet detection</p></li>
+<li><p>Magnitude predictions and orbital elements</p></li>
+<li><p>Time-dependent position calculations</p></li>
+<li><p>Integration with observation timestamps</p></li>
+</ul>
+</dd>
+<dt><strong>Variable Star Catalog (AAVSO VSX)</strong>:</dt><dd><ul class="simple">
+<li><p>Variable star identification and classification</p></li>
+<li><p>Period information when available</p></li>
+<li><p>Variable star types and characteristics</p></li>
+<li><p>Cross-matching with detected sources</p></li>
+<li><p>Integration with photometric analysis</p></li>
+</ul>
+</dd>
+<dt><strong>Quasar Catalog (Milliquas)</strong>:</dt><dd><ul class="simple">
+<li><p>Quasar and AGN identification</p></li>
+<li><p>Redshift information when available</p></li>
+<li><p>R-band magnitude data</p></li>
+<li><p>Large-scale structure studies support</p></li>
+<li><p>Cross-matching with point sources</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="data-visualization-analysis">
+<h2>Data Visualization &amp; Analysis<a class="headerlink" href="#data-visualization-analysis" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Image Display</strong>:</dt><dd><ul class="simple">
+<li><p>Dual visualization modes (ZScale and histogram equalization)</p></li>
+<li><p>Automatic contrast optimization</p></li>
+<li><p>Color-mapped display with customizable scales</p></li>
+<li><p>Interactive zoom and pan capabilities</p></li>
+<li><p>Multi-panel layout for comparison</p></li>
+</ul>
+</dd>
+<dt><strong>Interactive Sky Viewer</strong>:</dt><dd><ul class="simple">
+<li><p>Aladin Lite integration for source exploration</p></li>
+<li><p>Overlay of detected sources with catalog information</p></li>
+<li><p>Clickable source markers with detailed information</p></li>
+<li><p>Survey selection and coordinate display</p></li>
+<li><p>Export to external sky viewers (ESA Sky)</p></li>
+</ul>
+</dd>
+<dt><strong>Photometric Plots</strong>:</dt><dd><ul class="simple">
+<li><p>FWHM analysis with scatter plots and statistics</p></li>
+<li><p>Magnitude distribution histograms</p></li>
+<li><p>Zero-point calibration plots with residuals</p></li>
+<li><p>Background model visualization</p></li>
+<li><p>PSF model display and analysis</p></li>
+</ul>
+</dd>
+<dt><strong>Source Catalogs</strong>:</dt><dd><ul class="simple">
+<li><p>Comprehensive tabular display of all measurements</p></li>
+<li><p>Multi-aperture photometry results</p></li>
+<li><p>Cross-match results from all catalogs</p></li>
+<li><p>Coordinate information and quality indicators</p></li>
+<li><p>Export capabilities in multiple formats</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="user-interface-workflow">
+<h2>User Interface &amp; Workflow<a class="headerlink" href="#user-interface-workflow" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Streamlit Web Interface</strong>:</dt><dd><ul class="simple">
+<li><p>Modern, responsive design accessible via web browser</p></li>
+<li><p>Real-time processing progress indicators</p></li>
+<li><p>Interactive parameter adjustment with immediate feedback</p></li>
+<li><p>Organized sidebar with collapsible sections</p></li>
+<li><p>Mobile-friendly responsive layout</p></li>
+</ul>
+</dd>
+<dt><strong>Configuration Management</strong>:</dt><dd><ul class="simple">
+<li><p>Persistent parameter storage across sessions</p></li>
+<li><p>Save/load configuration with single click</p></li>
+<li><p>Default parameter sets for common use cases</p></li>
+<li><p>Parameter validation with helpful error messages</p></li>
+<li><p>Reset options for troubleshooting</p></li>
+</ul>
+</dd>
+<dt><strong>File Management</strong>:</dt><dd><ul class="simple">
+<li><p>Drag-and-drop file upload interface</p></li>
+<li><p>Automatic file format detection and validation</p></li>
+<li><p>Temporary file handling with automatic cleanup</p></li>
+<li><p>Archive browser for previous results</p></li>
+<li><p>Batch download options for result sets</p></li>
+</ul>
+</dd>
+<dt><strong>Error Handling</strong>:</dt><dd><ul class="simple">
+<li><p>Comprehensive error messages with recovery suggestions</p></li>
+<li><p>Graceful degradation when optional components fail</p></li>
+<li><p>Automatic fallback options for common failure modes</p></li>
+<li><p>Detailed logging for troubleshooting</p></li>
+<li><p>User-friendly error reporting</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="output-generation-export">
+<h2>Output Generation &amp; Export<a class="headerlink" href="#output-generation-export" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Comprehensive Result Files</strong>:</dt><dd><ul class="simple">
+<li><p>CSV catalogs with complete photometric measurements</p></li>
+<li><p>FITS files for background and PSF models</p></li>
+<li><p>PNG plots for all analysis visualizations</p></li>
+<li><p>Text files for headers and processing logs</p></li>
+<li><p>ZIP archives for convenient result distribution</p></li>
+</ul>
+</dd>
+<dt><strong>Data Organization</strong>:</dt><dd><ul class="simple">
+<li><p>User-specific result directories</p></li>
+<li><p>Timestamped file naming for version control</p></li>
+<li><p>Automatic file categorization by type</p></li>
+<li><p>Metadata preservation in output files</p></li>
+<li><p>Cross-referenced file relationships</p></li>
+</ul>
+</dd>
+<dt><strong>Archive Management</strong>:</dt><dd><ul class="simple">
+<li><p>Automatic result archiving with compression</p></li>
+<li><p>Old file cleanup with configurable retention</p></li>
+<li><p>Browse interface for historical results</p></li>
+<li><p>Bulk download options for research workflows</p></li>
+<li><p>Secure multi-user data isolation</p></li>
+</ul>
+</dd>
+</dl>
+</section>
+<section id="performance-scalability">
+<h2>Performance &amp; Scalability<a class="headerlink" href="#performance-scalability" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt><strong>Efficient Processing</strong>:</dt><dd><ul class="simple">
+<li><p>Streamlit caching for improved response times</p></li>
+<li><p>Memory-efficient handling of large FITS files</p></li>
+<li><p>Optimized algorithms for typical image sizes</p></li>
+<li><p>Background processing for time-consuming operations</p></li>
+<li><p>Resource monitoring and management</p></li>
+</ul>
+</dd>
+<dt><strong>Multi-User Support</strong>:</dt><dd><ul class="simple">
+<li><p>Concurrent user session handling</p></li>
+<li><p>Isolated workspaces for data security</p></li>
+<li><p>Shared configuration options when appropriate</p></li>
+<li><p>Load balancing for multiple simultaneous analyses</p></li>
+<li><p>Scalable backend architecture</p></li>
+</ul>
+</dd>
+<dt><strong>Quality Assurance</strong>:</dt><dd><ul class="simple">
+<li><p>Comprehensive input validation</p></li>
+<li><p>Automatic quality checks throughout pipeline</p></li>
+<li><p>Robust error recovery mechanisms</p></li>
+<li><p>Extensive testing with real astronomical data</p></li>
+<li><p>Performance benchmarking and optimization</p></li>
+</ul>
 </dd>
 </dl>
 </section>

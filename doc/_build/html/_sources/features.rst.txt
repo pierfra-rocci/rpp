@@ -1,127 +1,290 @@
 Features
 ========
 
-User Authentication & Configuration
----------------------------------
-*   **Secure Login**: User registration and login system via a Flask backend.
-*   **Password Management**: Password hashing and secure recovery via email (requires SMTP configuration).
-*   **User Configuration**: Saves and loads user-specific settings (observatory, analysis parameters, API keys) via the backend database.
+User Authentication & Multi-User Support
+---------------------------------------
 
-Image Processing
---------------
+**Secure User Management**:
+   - User registration and login system via Flask backend
+   - Password hashing with secure storage in SQLite database
+   - Password recovery via email (requires SMTP configuration)
+   - Individual user workspaces with isolated data storage
+   - Session management with automatic logout options
 
-**FITS File Support**
-   PFR supports standard FITS file formats (.fits, .fit, .fts, .fits.gz). It handles multi-extension files, data cubes (extracting the first plane), and properly extracts header information.
+**Configuration Persistence**:
+   - User-specific settings stored in backend database
+   - Observatory parameters, analysis settings, and API keys
+   - Automatic loading of saved configurations on login
+   - Local and remote configuration synchronization
 
-**Cosmic Ray Removal**
-   Optional detection and removal of cosmic rays using the `astroscrappy` package (L.A.Cosmic algorithm). Configurable parameters (gain, readnoise, thresholds).
+Advanced Image Processing
+------------------------
 
-**Background Estimation**
-   Sophisticated 2D background modeling using `photutils.Background2D` with sigma-clipping and the SExtractor background algorithm. Visualizations and FITS output of the background model and RMS map.
+**FITS File Support**:
+   - Standard FITS formats (.fits, .fit, .fts, .fits.gz)
+   - Multi-extension FITS (MEF) file handling
+   - Data cubes with automatic 2D plane extraction
+   - RGB astronomical images (uses first color channel)
+   - Automatic header validation and fixing
 
-Source Detection
---------------
+**Header Processing**:
+   - Automatic WCS keyword validation and correction
+   - Removal of problematic or conflicting keywords
+   - Observatory information extraction from headers
+   - Coordinate system standardization and validation
+   - Missing keyword interpolation and defaults
 
-**DAOStarFinder Implementation**
-   Uses the DAOPhot algorithm (`photutils.detection.DAOStarFinder`) to detect point sources based on sharpness and roundness.
+**Cosmic Ray Removal**:
+   - L.A.Cosmic algorithm implementation via astroscrappy
+   - Configurable parameters (gain, read noise, sigma clipping)
+   - Before/after image comparison
+   - Integration with photometry pipeline
+   - Quality assessment and validation
 
-**FWHM Estimation**
-   Automatically estimates the Full Width at Half Maximum (FWHM) of stars by fitting 1D Gaussian models to marginal sums of detected sources. Includes histogram visualization.
+**Background Estimation**:
+   - photutils.Background2D with SExtractor algorithm
+   - 2D background modeling with sigma clipping
+   - Automatic box size adjustment for image dimensions
+   - Background and RMS map visualization
+   - FITS output for background and noise models
 
-**PSF Modeling**
-   Builds an empirical Point Spread Function (PSF) model from bright, isolated stars using `photutils.psf.EPSFBuilder`. Saves the model as a FITS file.
+Astrometric Solutions
+--------------------
 
-Photometry
----------
+**Local Plate Solving**:
+   - Astrometry.net integration via stdpipe wrapper
+   - Blind astrometric solving for images without WCS
+   - Automatic source detection using photutils
+   - Scale estimation from focal length and pixel size
+   - Solution validation and coordinate range checking
 
-**Aperture Photometry**
-   Measures source brightness using circular apertures (`photutils.aperture.CircularAperture`) scaled to the estimated FWHM. Calculates instrumental magnitudes and Signal-to-Noise Ratio (SNR).
+**WCS Refinement**:
+   - SCAMP integration for high-precision astrometry
+   - GAIA DR3 catalog matching for reference stars
+   - High-order polynomial distortion correction
+   - Residual analysis and quality assessment
+   - Optional refinement for existing WCS solutions
 
-**PSF Photometry**
-   Performs PSF photometry using the empirically built PSF model via `photutils.psf.IterativePSFPhotometry`. Calculates fitted fluxes and instrumental magnitudes.
+**Coordinate Systems**:
+   - Support for multiple coordinate reference frames
+   - SIP distortion correction handling
+   - Coordinate transformation validation
+   - Edge case handling for problematic coordinates
+   - Force re-solve option for existing solutions
 
-**Error Estimation**
-   Propagates background RMS noise into aperture photometry errors. PSF photometry provides fitted flux errors.
+Source Detection & Photometry
+-----------------------------
 
-Astrometry
----------
+**Source Detection**:
+   - DAOStarFinder implementation with configurable parameters
+   - Border masking to avoid edge artifacts
+   - Quality filtering based on shape parameters (roundness, sharpness)
+   - Automatic threshold optimization
+   - Detection validation and source counting
 
-**WCS Handling**
-   Extracts and validates World Coordinate System (WCS) information from FITS headers using `astropy.wcs`. Handles multi-dimensional WCS by reducing to celestial coordinates.
+**FWHM Estimation**:
+   - Gaussian profile fitting on stellar marginal sums
+   - Multiple source averaging for robust estimates
+   - FWHM vs relative flux analysis
+   - Outlier rejection with sigma clipping
+   - Seeing estimation from stellar profiles
 
-**Plate Solving**
-   *   **Siril Integration**: Option to use an external Siril script (`plate_solve.ps1`/`.sh`) for robust plate solving if WCS is missing or invalid.
-   *   **Astrometry.net**: (Mentioned in docs, but Siril/Stdpipe seem primary now) Potential integration for web-based solving.
+**Multi-Aperture Photometry**:
+   - Four aperture radii: 1.5×, 2.0×, 2.5×, 3.0× FWHM
+   - Circular apertures with local background estimation
+   - Annular background regions for each aperture
+   - Background-corrected and raw flux measurements
+   - Signal-to-noise ratio calculation for each aperture
 
-**Astrometry Refinement (Astrometry+)**
-   Optional WCS refinement using `stdpipe` library, cross-matching detected sources with GAIA DR3 to improve WCS accuracy.
+**PSF Photometry**:
+   - Empirical PSF model construction using EPSFBuilder
+   - Star selection with quality filtering criteria
+   - Iterative PSF fitting with IterativePSFPhotometry
+   - PSF model visualization and FITS output
+   - Comparison metrics with aperture photometry
 
-**Coordinate Transformations**
-   Converts between pixel coordinates and celestial coordinates (RA/Dec) using the validated WCS.
+**Error Propagation**:
+   - Comprehensive photometric error calculation
+   - Poisson noise plus read noise modeling
+   - Background uncertainty propagation
+   - Total error estimation with calc_total_error
+   - SNR-based magnitude error calculation
 
-Calibration
-----------
+Photometric Calibration
+-----------------------
 
-**Zero Point Calculation**
-   Determines photometric zero point by cross-matching detected sources with the GAIA DR3 catalog using sigma-clipping for robustness. Includes visualization plot.
+**GAIA DR3 Integration**:
+   - Automatic cross-matching with GAIA Data Release 3
+   - Quality filtering (variability, color, astrometric quality)
+   - Multiple photometric bands including synthetic photometry
+   - Cone search with configurable radius
+   - Proper motion and parallax data inclusion
 
-**Airmass Calculation**
-   Calculates airmass based on FITS header time/coordinates and configured observatory location using `astropy.coordinates`.
+**Zero-Point Calculation**:
+   - Robust calibration with sigma clipping outlier rejection
+   - Multiple aperture zero-point determination
+   - Atmospheric extinction correction using airmass
+   - Calibration star quality assessment
+   - Zero-point uncertainty estimation
 
-**Magnitude Systems**
-   Calculates instrumental magnitudes and converts them to a calibrated magnitude system tied to GAIA DR3 (currently G-band, BP, RP selectable), applying a basic airmass correction (0.1 * airmass).
+**Magnitude Systems**:
+   - GAIA G, BP, RP photometric bands
+   - Johnson-Cousins UBVRI synthetic photometry
+   - SDSS ugriz synthetic photometry
+   - Instrumental to standard magnitude conversion
+   - Multi-band calibration support
 
-Catalog Integration
------------------
+Multi-Catalog Cross-Matching
+----------------------------
 
-**GAIA DR3**
-   Accesses the GAIA Data Release 3 catalog via `astroquery.gaia` for astrometric refinement and photometric calibration. Filters calibration stars based on magnitude, variability flags, color index, and RUWE.
+**GAIA DR3 Catalog**:
+   - Stellar parameters, proper motions, and photometry
+   - Quality filtering for reliable calibration sources
+   - Synthetic photometry for non-standard bands
+   - Astrometric quality indicators (RUWE)
+   - Variability and color index filtering
 
-**Astro-Colibri**
-   Cross-matches field with the Astro-Colibri database via API (requires UID key) to identify known transients or events.
+**SIMBAD Database**:
+   - Object identification and classification
+   - Multiple identifier retrieval
+   - Astronomical object types and properties
+   - B and V magnitude data when available
+   - Cross-reference with other catalogs
 
-**SIMBAD**
-   Cross-matches with SIMBAD database via `astroquery.simbad` for object identification and classification.
+**Astro-Colibri Transient Alerts**:
+   - Real-time transient and variable source alerts
+   - Multi-messenger astronomy event correlation
+   - Configurable time windows around observation date
+   - API key authentication for full access
+   - Event classification and discovery information
 
-**SkyBoT**
-   Queries the SkyBoT service (IMCCE) via web request to identify known solar system objects in the field of view based on observation time and location.
+**Solar System Objects (SkyBoT)**:
+   - Moving object identification and ephemeris
+   - Asteroid and comet detection
+   - Magnitude predictions and orbital elements
+   - Time-dependent position calculations
+   - Integration with observation timestamps
 
-**AAVSO VSX**
-   Queries the AAVSO Variable Star Index (via VizieR `B/vsx/vsx`) to check for known variable stars.
+**Variable Star Catalog (AAVSO VSX)**:
+   - Variable star identification and classification
+   - Period information when available
+   - Variable star types and characteristics
+   - Cross-matching with detected sources
+   - Integration with photometric analysis
 
-**Milliquas (VizieR VII/294)**
-   Queries the Million Quasars Catalog (via VizieR `VII/294`) for quasar identification.
+**Quasar Catalog (Milliquas)**:
+   - Quasar and AGN identification
+   - Redshift information when available
+   - R-band magnitude data
+   - Large-scale structure studies support
+   - Cross-matching with point sources
 
-Visualization
------------
+Data Visualization & Analysis
+-----------------------------
 
-**Image Display**
-   Displays the FITS image using `matplotlib` with options for scaling (ZScale, Percentile).
+**Image Display**:
+   - Dual visualization modes (ZScale and histogram equalization)
+   - Automatic contrast optimization
+   - Color-mapped display with customizable scales
+   - Interactive zoom and pan capabilities
+   - Multi-panel layout for comparison
 
-**Interactive Plots**
-   *   Background and RMS maps.
-   *   FWHM distribution histogram.
-   *   PSF model visualization.
-   *   Zero point calibration plot (Gaia vs. Calibrated Mags) with binned statistics.
+**Interactive Sky Viewer**:
+   - Aladin Lite integration for source exploration
+   - Overlay of detected sources with catalog information
+   - Clickable source markers with detailed information
+   - Survey selection and coordinate display
+   - Export to external sky viewers (ESA Sky)
 
-**Aladin Integration**
-   Embeds an interactive Aladin Lite sky viewer showing the field of view (DSS) with detected sources overlaid. Popups provide source details (coordinates, magnitude, catalog matches).
+**Photometric Plots**:
+   - FWHM analysis with scatter plots and statistics
+   - Magnitude distribution histograms
+   - Zero-point calibration plots with residuals
+   - Background model visualization
+   - PSF model display and analysis
 
-**Data Tables**
-   Uses `streamlit` and `pandas` DataFrames for interactive display of:
-   *   GAIA calibration star matches.
-   *   Summary of external catalog matches.
-   *   Full final photometry catalog with sorting and filtering.
+**Source Catalogs**:
+   - Comprehensive tabular display of all measurements
+   - Multi-aperture photometry results
+   - Cross-match results from all catalogs
+   - Coordinate information and quality indicators
+   - Export capabilities in multiple formats
 
-Output and Results
-----------------
+User Interface & Workflow
+-------------------------
 
-**Catalog Generation**
-   Creates a final CSV catalog containing source positions (pixel and sky), aperture photometry results (flux, error, instrumental mag, calibrated mag, SNR), PSF photometry results (if successful), and cross-match information from all queried catalogs.
+**Streamlit Web Interface**:
+   - Modern, responsive design accessible via web browser
+   - Real-time processing progress indicators
+   - Interactive parameter adjustment with immediate feedback
+   - Organized sidebar with collapsible sections
+   - Mobile-friendly responsive layout
 
-**Metadata Logging**
-   *   **Log File**: Records processing steps, parameters, warnings, and errors to a `.log` file.
-   *   **Header File**: Saves the original FITS header to a `.txt` file.
+**Configuration Management**:
+   - Persistent parameter storage across sessions
+   - Save/load configuration with single click
+   - Default parameter sets for common use cases
+   - Parameter validation with helpful error messages
+   - Reset options for troubleshooting
 
-**Result Downloads**
-   Provides a single "Download All Results (ZIP)" button to download a compressed archive containing the CSV catalog, log file, header file, background FITS, PSF FITS, and all generated PNG plots for the processed image. Files are organized in the `rpp_results` directory.
+**File Management**:
+   - Drag-and-drop file upload interface
+   - Automatic file format detection and validation
+   - Temporary file handling with automatic cleanup
+   - Archive browser for previous results
+   - Batch download options for result sets
+
+**Error Handling**:
+   - Comprehensive error messages with recovery suggestions
+   - Graceful degradation when optional components fail
+   - Automatic fallback options for common failure modes
+   - Detailed logging for troubleshooting
+   - User-friendly error reporting
+
+Output Generation & Export
+--------------------------
+
+**Comprehensive Result Files**:
+   - CSV catalogs with complete photometric measurements
+   - FITS files for background and PSF models
+   - PNG plots for all analysis visualizations
+   - Text files for headers and processing logs
+   - ZIP archives for convenient result distribution
+
+**Data Organization**:
+   - User-specific result directories
+   - Timestamped file naming for version control
+   - Automatic file categorization by type
+   - Metadata preservation in output files
+   - Cross-referenced file relationships
+
+**Archive Management**:
+   - Automatic result archiving with compression
+   - Old file cleanup with configurable retention
+   - Browse interface for historical results
+   - Bulk download options for research workflows
+   - Secure multi-user data isolation
+
+Performance & Scalability
+-------------------------
+
+**Efficient Processing**:
+   - Streamlit caching for improved response times
+   - Memory-efficient handling of large FITS files
+   - Optimized algorithms for typical image sizes
+   - Background processing for time-consuming operations
+   - Resource monitoring and management
+
+**Multi-User Support**:
+   - Concurrent user session handling
+   - Isolated workspaces for data security
+   - Shared configuration options when appropriate
+   - Load balancing for multiple simultaneous analyses
+   - Scalable backend architecture
+
+**Quality Assurance**:
+   - Comprehensive input validation
+   - Automatic quality checks throughout pipeline
+   - Robust error recovery mechanisms
+   - Extensive testing with real astronomical data
+   - Performance benchmarking and optimization

@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation Guide &mdash; RAPAS Photometry Pipeline (RPP) v1.0.0 Documentation</title>
+  <title>Installation Guide &mdash; RAPAS Photometry Pipeline (RPP) v0.9.8 Documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/documentation_options.js?v=1a282f62"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -48,11 +48,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#system-requirements">System Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#installation-steps">Installation Steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#running-the-application">Running the Application</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#api-keys-and-external-services">API Keys and External Services</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#troubleshooting-installation">Troubleshooting Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#performance-optimization">Performance Optimization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#updating-the-application">Updating the Application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#verification">Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting">Troubleshooting</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
@@ -101,13 +98,14 @@
 </ul>
 </dd>
 <dt><strong>External Dependencies</strong>:</dt><dd><ul class="simple">
-<li><p>SIRIL astronomical image processing software</p></li>
+<li><p>Astrometry.net with solve-field binary</p></li>
+<li><p>SCAMP for astrometric refinement (optional)</p></li>
 <li><p>Modern web browser (Chrome, Firefox, Safari, Edge)</p></li>
 <li><p>Internet connection for catalog queries</p></li>
 </ul>
 </dd>
 <dt><strong>Operating System Support</strong>:</dt><dd><ul class="simple">
-<li><p>Windows 10/11 (with PowerShell)</p></li>
+<li><p>Windows 10/11</p></li>
 <li><p>macOS 10.15 or later</p></li>
 <li><p>Linux (Ubuntu 18.04+ or equivalent)</p></li>
 </ul>
@@ -150,207 +148,137 @@ rpp-env<span class="se">\S</span>cripts<span class="se">\a</span>ctivate
 - flask &gt;= 2.0.0 (backend server)
 - flask-cors (cross-origin resource sharing)
 - werkzeug (WSGI utilities)</p>
-<p><strong>Optional Dependencies</strong>:
+<p><strong>Advanced Dependencies</strong>:
 - astroscrappy (cosmic ray removal)
-- stdpipe (astrometry refinement)
-- requests (HTTP client)</p>
+- stdpipe (astrometry refinement and plate solving)
+- requests (HTTP client for catalog queries)
+- scikit-image (image processing utilities)</p>
 </li>
-<li><p><strong>Install SIRIL</strong> (required for plate solving):</p>
-<p><strong>Windows</strong>:
-- Download from <a class="reference external" href="https://siril.org/download/">https://siril.org/download/</a>
-- Install using the provided installer
-- Ensure <cite>siril-cli</cite> is available in system PATH</p>
-<p><strong>macOS</strong>:
-- Install via Homebrew: <cite>brew install siril</cite>
-- Or download from <a class="reference external" href="https://siril.org/download/">https://siril.org/download/</a></p>
-<p><strong>Linux</strong>:
-- Ubuntu/Debian: <cite>sudo apt install siril</cite>
-- Fedora: <cite>sudo dnf install siril</cite>
-- Or compile from source: <a class="reference external" href="https://siril.org/download/">https://siril.org/download/</a></p>
-</li>
-<li><p><strong>Verify SIRIL Installation</strong>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>siril-cli<span class="w"> </span>--version
+<li><p><strong>Install Astrometry.net</strong> (required for plate solving):</p>
+<p><strong>Ubuntu/Debian</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt-get<span class="w"> </span>update
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>astrometry.net<span class="w"> </span>astrometry-data-tycho2
 </pre></div>
 </div>
-<p>If this command fails, ensure SIRIL is properly installed and in your system PATH.</p>
+<p><strong>macOS with Homebrew</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>brew<span class="w"> </span>install<span class="w"> </span>astrometry-net
+</pre></div>
+</div>
+<p><strong>Windows</strong>:
+- Download from <a class="reference external" href="http://astrometry.net/downloads/">http://astrometry.net/downloads/</a>
+- Install using provided installer
+- Ensure solve-field is available in system PATH
+- Download appropriate index files for your field scale</p>
 </li>
-<li><p><strong>Initialize User Database</strong>:
-The backend will automatically create <cite>users.db</cite> on first run. No manual initialization required.</p></li>
+<li><p><strong>Install SCAMP</strong> (optional, for astrometric refinement):</p>
+<p><strong>Ubuntu/Debian</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>scamp
+</pre></div>
+</div>
+<p><strong>macOS with Homebrew</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>brew<span class="w"> </span>install<span class="w"> </span>scamp
+</pre></div>
+</div>
+<p><strong>Windows</strong>:
+- Download from <a class="reference external" href="https://www.astromatic.net/software/scamp">https://www.astromatic.net/software/scamp</a>
+- Follow installation instructions
+- Ensure scamp is available in system PATH</p>
+</li>
 </ol>
 </section>
 <section id="configuration">
 <h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
-<p><strong>Environment Variables</strong> (optional):</p>
-<p>For email-based password recovery, set these environment variables:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Email server configuration</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_SERVER</span><span class="o">=</span>smtp.gmail.com
-<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_PORT</span><span class="o">=</span><span class="m">587</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_USER</span><span class="o">=</span>your-email@gmail.com
-<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_PASS</span><span class="o">=</span>your-app-password
+<ol class="arabic">
+<li><p><strong>Astrometry.net Index Files</strong>:
+Download appropriate index files for your typical field scale:</p>
+<ul class="simple">
+<li><p>For wide-field images (&gt;30 arcmin): index-4200 series</p></li>
+<li><p>For medium fields (1-30 arcmin): index-4100 series</p></li>
+<li><p>For narrow fields (&lt;1 arcmin): index-5000 series</p></li>
+</ul>
+</li>
+<li><p><strong>Environment Variables</strong> (optional):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># For email functionality</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_SERVER</span><span class="o">=</span><span class="s2">&quot;smtp.gmail.com&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_PORT</span><span class="o">=</span><span class="s2">&quot;587&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_USER</span><span class="o">=</span><span class="s2">&quot;your-email@gmail.com&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">SMTP_PASS</span><span class="o">=</span><span class="s2">&quot;your-app-password&quot;</span>
+
+<span class="c1"># For Astro-Colibri API</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ASTROCOLIBRI_API</span><span class="o">=</span><span class="s2">&quot;your-api-key&quot;</span>
 </pre></div>
 </div>
-<p><strong>File Structure</strong>:</p>
-<p>After installation, your directory should contain:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>rpp/
-├── src/
-│   ├── __version__.py      # Version information
-│   ├── tools.py           # Utility functions
-│   ├── pipeline.py        # Core processing pipeline
-│   ├── plate_solve.ps1    # Windows plate solving script
-│   └── plate_solve.sh     # Linux/macOS plate solving script
+</li>
+<li><p><strong>Directory Structure</strong>:
+The application will create user-specific directories:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>rpp/
+├── frontend.py
+├── backend.py
 ├── pages/
-│   ├── app.py            # Main application interface
-│   └── login.py          # User authentication
-├── doc/                  # Documentation (Sphinx)
-├── backend.py           # Flask server
-├── frontend.py         # Streamlit entry point
-├── requirements.txt    # Python dependencies
-└── README.md          # Project overview
+│   ├── app.py
+│   └── login.py
+├── src/
+│   ├── tools.py
+│   ├── pipeline.py
+│   └── __version__.py
+└── [username]_rpp_results/
 </pre></div>
 </div>
+</li>
+</ol>
 </section>
-<section id="running-the-application">
-<h2>Running the Application<a class="headerlink" href="#running-the-application" title="Link to this heading"></a></h2>
-<p><strong>1. Start the Backend Server</strong>:</p>
-<blockquote>
-<div><p>Open a terminal and run:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>backend.py
+<section id="verification">
+<h2>Verification<a class="headerlink" href="#verification" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p><strong>Test Installation</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Test Astrometry.net</span>
+solve-field<span class="w"> </span>--help
+
+<span class="c1"># Test Python dependencies</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import streamlit, astropy, photutils; print(&#39;All core dependencies available&#39;)&quot;</span>
+
+<span class="c1"># Test SCAMP (if installed)</span>
+scamp<span class="w"> </span>-v
 </pre></div>
 </div>
-<p>The server will start on <a class="reference external" href="http://localhost:5000">http://localhost:5000</a> by default.</p>
-</div></blockquote>
-<p><strong>2. Start the Frontend Application</strong>:</p>
-<blockquote>
-<div><p>In a separate terminal, run:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>streamlit<span class="w"> </span>run<span class="w"> </span>frontend.py
+</li>
+<li><p><strong>Launch Application</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Start backend (in one terminal)</span>
+python<span class="w"> </span>backend.py
+
+<span class="c1"># Start frontend (in another terminal)</span>
+streamlit<span class="w"> </span>run<span class="w"> </span>frontend.py
 </pre></div>
 </div>
-<p>The application will open in your default browser at <a class="reference external" href="http://localhost:8501">http://localhost:8501</a>.</p>
-</div></blockquote>
-<dl class="simple">
-<dt><strong>3. First-Time Setup</strong>:</dt><dd><ul class="simple">
-<li><p>Register a new user account</p></li>
-<li><p>Configure observatory settings</p></li>
-<li><p>Set analysis parameters</p></li>
-<li><p>Enter API keys (optional)</p></li>
-<li><p>Save configuration for future sessions</p></li>
-</ul>
-</dd>
-</dl>
+</li>
+<li><p><strong>Access Web Interface</strong>:
+Open your browser to <a class="reference external" href="http://localhost:8501">http://localhost:8501</a> and verify the interface loads correctly.</p></li>
+</ol>
 </section>
-<section id="api-keys-and-external-services">
-<h2>API Keys and External Services<a class="headerlink" href="#api-keys-and-external-services" title="Link to this heading"></a></h2>
-<p>Some features require API keys from external services:</p>
-<dl class="simple">
-<dt><strong>Astro-Colibri</strong> (optional):</dt><dd><ul class="simple">
-<li><p>Register at <a class="reference external" href="https://astro-colibri.science/">https://astro-colibri.science/</a></p></li>
-<li><p>Obtain your UID key</p></li>
-<li><p>Enter in the application’s API Keys section</p></li>
-<li><p>Enables transient event cross-matching</p></li>
-</ul>
-</dd>
-<dt><strong>Gaia Archive</strong> (automatic):</dt><dd><ul class="simple">
-<li><p>No registration required</p></li>
-<li><p>Accessed via astroquery.gaia</p></li>
-<li><p>Used for photometric calibration</p></li>
-</ul>
-</dd>
-<dt><strong>SIMBAD/VizieR</strong> (automatic):</dt><dd><ul class="simple">
-<li><p>No registration required</p></li>
-<li><p>Accessed via astroquery</p></li>
-<li><p>Used for object identification</p></li>
-</ul>
-</dd>
-</dl>
-</section>
-<section id="troubleshooting-installation">
-<h2>Troubleshooting Installation<a class="headerlink" href="#troubleshooting-installation" title="Link to this heading"></a></h2>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
 <p><strong>Common Issues</strong>:</p>
-<ol class="arabic simple">
-<li><p><strong>ImportError for Python packages</strong>:
-- Ensure virtual environment is activated
-- Reinstall requirements: <cite>pip install -r requirements.txt –force-reinstall</cite>
-- Check Python version compatibility</p></li>
-<li><p><strong>SIRIL not found</strong>:
-- Verify SIRIL installation: <cite>siril-cli –version</cite>
-- Check system PATH includes SIRIL directory
-- Restart terminal after SIRIL installation</p></li>
-<li><p><strong>Permission errors</strong>:
-- Use virtual environment to avoid system-wide installations
-- On Linux/macOS: Check file permissions for script execution
-- On Windows: Run as administrator if needed</p></li>
-<li><p><strong>Network connectivity issues</strong>:
-- Check internet connection for catalog queries
-- Verify firewall settings allow HTTP/HTTPS traffic
-- Some institutional networks may block astronomical databases</p></li>
-<li><p><strong>Browser compatibility</strong>:
-- Use modern browsers (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
-- Enable JavaScript and allow local connections
-- Clear browser cache if interface doesn’t load properly</p></li>
-</ol>
-<p><strong>Platform-Specific Notes</strong>:</p>
-<dl class="simple">
-<dt><strong>Windows</strong>:</dt><dd><ul class="simple">
-<li><p>PowerShell execution policy may need adjustment</p></li>
-<li><p>Windows Defender may quarantine downloaded files</p></li>
-<li><p>Use Command Prompt or PowerShell for terminal commands</p></li>
+<ul class="simple">
+<li><p><strong>Astrometry.net not found</strong>: Ensure solve-field is in your system PATH</p></li>
+<li><p><strong>SCAMP not found</strong>: Install SCAMP or disable astrometry refinement</p></li>
+<li><p><strong>Permission errors</strong>: Run with appropriate user permissions</p></li>
+<li><p><strong>Port conflicts</strong>: Change Streamlit port with –server.port option</p></li>
+<li><p><strong>Index file errors</strong>: Download appropriate astrometry.net index files</p></li>
 </ul>
-</dd>
-<dt><strong>macOS</strong>:</dt><dd><ul class="simple">
-<li><p>May need to allow unsigned applications in Security preferences</p></li>
-<li><p>Homebrew installation recommended for dependencies</p></li>
-<li><p>Command Line Tools for Xcode required for some packages</p></li>
+<p><strong>Performance Tips</strong>:</p>
+<ul class="simple">
+<li><p>Use SSD storage for better I/O performance</p></li>
+<li><p>Ensure adequate RAM (8GB+ recommended)</p></li>
+<li><p>Close other applications during processing</p></li>
+<li><p>Use virtual environment to avoid dependency conflicts</p></li>
 </ul>
-</dd>
-<dt><strong>Linux</strong>:</dt><dd><ul class="simple">
-<li><p>Package manager installation preferred for system dependencies</p></li>
-<li><p>May need development headers for compilation</p></li>
-<li><p>Check distribution-specific package names</p></li>
+<p><strong>Getting Help</strong>:</p>
+<ul class="simple">
+<li><p>Check the troubleshooting section</p></li>
+<li><p>Review application logs for error details</p></li>
+<li><p>Verify all dependencies are properly installed</p></li>
+<li><p>Test with sample FITS files first</p></li>
 </ul>
-</dd>
-</dl>
-</section>
-<section id="performance-optimization">
-<h2>Performance Optimization<a class="headerlink" href="#performance-optimization" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>System Resources</strong>:</dt><dd><ul class="simple">
-<li><p>Minimum 4GB RAM recommended</p></li>
-<li><p>SSD storage preferred for temporary file handling</p></li>
-<li><p>Multi-core processor beneficial for image processing</p></li>
-</ul>
-</dd>
-<dt><strong>Configuration Tuning</strong>:</dt><dd><ul class="simple">
-<li><p>Adjust detection parameters for your typical image sizes</p></li>
-<li><p>Configure appropriate timeout values for slow networks</p></li>
-<li><p>Set reasonable maximum catalog query limits</p></li>
-</ul>
-</dd>
-<dt><strong>Data Management</strong>:</dt><dd><ul class="simple">
-<li><p>Regular cleanup of old result directories</p></li>
-<li><p>Monitor disk space usage for large datasets</p></li>
-<li><p>Consider archival strategies for important results</p></li>
-</ul>
-</dd>
-</dl>
-</section>
-<section id="updating-the-application">
-<h2>Updating the Application<a class="headerlink" href="#updating-the-application" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>Update Process</strong>:</dt><dd><ol class="arabic simple">
-<li><p>Backup your configuration files and important results</p></li>
-<li><p>Pull latest changes from repository or download new version</p></li>
-<li><p>Update Python dependencies: <cite>pip install -r requirements.txt –upgrade</cite></p></li>
-<li><p>Restart both backend and frontend services</p></li>
-<li><p>Test with a simple image to verify functionality</p></li>
-</ol>
-</dd>
-<dt><strong>Version Compatibility</strong>:</dt><dd><ul class="simple">
-<li><p>Configuration files are generally forward-compatible</p></li>
-<li><p>User databases automatically migrate when needed</p></li>
-<li><p>Previous result archives remain accessible</p></li>
-</ul>
-</dd>
-</dl>
 </section>
 </section>
 

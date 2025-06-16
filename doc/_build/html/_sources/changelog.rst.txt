@@ -1,110 +1,172 @@
 Changelog
 =========
 
-This document records all notable changes to Photometry Factory for RAPAS.
+This document records all notable changes to RAPAS Photometry Pipeline.
 
-Version 1.1.0 (Upcoming)
-----------------------
+Version 0.9.8 (Current)
+-----------------------
 
-**New Features**
-- Cross-matching with multiple astronomical catalogs (SIMBAD, SkyBot, AAVSO VSX)
-- Interactive Aladin Lite sky viewer integration
-- Automatic PSF model construction and PSF photometry
-- Enhanced zero-point calibration with sigma clipping
+**Major Features & Enhancements**
 
-**Improvements**
-- Improved WCS refinement using Gaia DR3
-- More robust source detection in crowded fields
-- Better error handling for network services
-- Performance optimizations for large images
+*   **Advanced Astrometric Pipeline**: 
+    *   Integrated stdpipe for robust local plate solving with Astrometry.net
+    *   Added WCS refinement using SCAMP and GAIA DR3 catalog
+    *   Automatic header validation and fixing for problematic WCS keywords
+    *   Force re-solve option for overriding existing WCS solutions
+    *   Comprehensive coordinate validation and transformation checking
 
-**Bug Fixes**
-- Fixed memory leak when processing multiple large images
-- Resolved issue with coordinate transformations near celestial poles
-- Corrected zero point calculation for images with small number of reference stars
-- Fixed display errors in magnitude histograms
+*   **Multi-Aperture Photometry**:
+    *   Implemented four aperture radii (1.5×, 2.0×, 2.5×, 3.0× FWHM)
+    *   Local background estimation with annular apertures for each radius
+    *   Background-corrected and raw flux measurements
+    *   Signal-to-noise ratio calculation for all apertures
+    *   Backward compatibility with legacy single-aperture columns
 
-Version 1.0.0 (2023-09-01)
-----------------------
+*   **Enhanced PSF Photometry**:
+    *   Empirical PSF model construction using EPSFBuilder
+    *   Advanced star selection with quality filtering criteria
+    *   Iterative PSF fitting with IterativePSFPhotometry
+    *   PSF model visualization and FITS output
+    *   Integration with multi-aperture photometry workflow
 
-**Features**
+*   **Comprehensive Catalog Cross-Matching**:
+    *   GAIA DR3 with quality filtering (variability, color, astrometry)
+    *   SIMBAD for object identification and classification
+    *   Astro-Colibri API for transient event correlation
+    *   SkyBoT for solar system object identification
+    *   AAVSO VSX for variable star catalog matching
+    *   VizieR Milliquas for quasar and AGN identification
+
+*   **Interactive Visualization**:
+    *   Aladin Lite integration for interactive sky viewing
+    *   Source overlay with detailed popup information
+    *   Multiple survey options and coordinate display
+    *   ESA Sky external viewer integration
+    *   Real-time catalog cross-match results display
+
+*   **Robust Error Handling**:
+    *   Comprehensive error recovery mechanisms
+    *   Graceful degradation when optional components fail
+    *   Detailed error messages with recovery suggestions
+    *   Automatic fallback options for common failure modes
+    *   Enhanced logging with severity levels and timestamps
+
+**Image Processing Improvements**:
+    *   Advanced FITS header validation and automatic fixing
+    *   Support for multi-extension FITS and data cubes
+    *   RGB astronomical image handling (first channel extraction)
+    *   Cosmic ray removal integration with L.A.Cosmic algorithm
+    *   Enhanced background modeling with visualization and FITS output
+
+**User Interface Enhancements**:
+    *   Streamlined sidebar organization with collapsible sections
+    *   Real-time parameter validation with helpful error messages
+    *   Improved file upload handling with format detection
+    *   Enhanced progress indicators and status updates
+    *   Mobile-friendly responsive design improvements
+
+**Data Management**:
+    *   Automatic result archiving with timestamped ZIP files
+    *   User-specific workspace isolation and management
+    *   Archive browser for accessing previous results
+    *   Automatic cleanup of old files (30+ day retention)
+    *   Comprehensive output file generation and organization
+
+**Performance Optimizations**:
+    *   Streamlit caching for improved response times
+    *   Memory-efficient handling of large FITS files
+    *   Optimized algorithms for typical astronomical image sizes
+    *   Background processing for time-consuming operations
+    *   Resource monitoring and management improvements
+
+**Configuration Management**:
+    *   Enhanced parameter persistence across user sessions
+    *   Observatory information extraction from FITS headers
+    *   API key management with secure storage
+    *   Default parameter sets for common use cases
+    *   Configuration validation and error checking
+
+**Minor Enhancements & Bug Fixes**
+
+*   Improved coordinate system handling with multiple keyword support
+*   Enhanced pixel scale calculation with multiple methods
+*   Better FWHM estimation with outlier rejection
+*   Robust airmass calculation with multiple date format support
+*   Enhanced zero-point calculation with atmospheric extinction correction
+*   Improved catalog query error handling and retry mechanisms
+*   Better temporary file management and cleanup
+*   Enhanced logging with structured format and severity levels
+
+**Documentation Updates**:
+    *   Comprehensive API reference documentation
+    *   Updated installation guide with current dependencies
+    *   Enhanced user guide with step-by-step workflows
+    *   Feature documentation with detailed descriptions
+    *   Troubleshooting guide with common issues and solutions
+
+Version 1.0.0 (2023-09-01) - Previous Release
+--------------------------------------------
+
+**Features**:
 - FITS image calibration (bias, dark, flat)
-- Automatic plate solving with astrometry.net
+- Basic plate solving with astrometry.net
 - Source detection and aperture photometry
 - Zero-point calibration with Gaia DR3
 - CSV catalog export
 - Image visualization with matplotlib
 - User-friendly Streamlit interface
 
-**Requirements**
+**Requirements**:
 - Python 3.8+
-- Required packages: astropy, photutils, astroquery, streamlit, numpy, pandas, matplotlib
+- Core packages: astropy, photutils, astroquery, streamlit, numpy, pandas, matplotlib
 
-Version 0.9.0 (2023-07-15)
-----------------------
+Version 0.9.0 (2023-07-15) - Beta Release
+-----------------------------------------
 
-**Initial Beta Release**
+**Initial Beta Features**:
 - Core functionality implemented
 - Basic calibration and photometry workflow
 - Preliminary documentation
+- Single-user desktop application
 
-Version 0.2.0 (2025-05-02)
---------------------------
+**Technical Foundation**:
+- photutils-based photometry pipeline
+- Basic FITS loading and display
+- Simple aperture photometry
+- Gaia DR3 cross-matching
+- Basic CSV export functionality
 
-**Major Features & Changes**
+Development Roadmap
+------------------
 
-*   **User Authentication**: Implemented user login, registration, and password recovery using a Flask backend (`backend_dev.py`) and SQLite database (`users.db`). Email recovery requires SMTP configuration via environment variables.
-*   **User Configuration**: User-specific settings (observatory, analysis parameters, API keys) are now saved and loaded via the backend.
-*   **Astrometry**:
-    *   Added Siril integration (`plate_solve.ps1`/`.sh`) for robust plate solving when WCS is missing.
-    *   Added optional WCS refinement ("Astrometry+") using the `stdpipe` library and GAIA DR3.
-*   **Image Processing**:
-    *   Added optional Cosmic Ray Removal using `astroscrappy` (L.A.Cosmic algorithm) with configurable parameters.
-    *   Improved background estimation using `photutils.Background2D` and SExtractor algorithm, including visualization and FITS output.
-    *   Improved FWHM estimation using Gaussian fitting on marginal sums, with histogram visualization.
-*   **Photometry**:
-    *   Implemented PSF Photometry using `photutils.psf.EPSFBuilder` and `IterativePSFPhotometry`. PSF model is visualized and saved as FITS.
-    *   Added Signal-to-Noise Ratio (SNR) calculation to aperture photometry results.
-*   **Catalog Integration**:
-    *   Added cross-matching with Astro-Colibri API (requires UID key) for transient identification.
-    *   Added cross-matching with Milliquas catalog (VizieR VII/294) for quasar identification.
-    *   Refined GAIA DR3 cross-matching for calibration (filtering by variability, color, RUWE).
-*   **UI & Workflow**:
-    *   Restructured sidebar for better organization of settings (Observatory, Process Options, Analysis Params, etc.).
-    *   Added "Save Configuration" button.
-    *   Added "Download All Results (ZIP)" button for convenient output retrieval.
-    *   Improved logging with timestamps and levels, saved to `.log` file.
-    *   Added Aladin Lite viewer for interactive source exploration.
-    *   Application entry point changed to `run_frontend.py`.
-*   **Documentation**: Updated all documentation files (`.rst`) to reflect current features and usage. Added new sections and refined existing ones.
+**Planned Features for v1.0**:
+- Enhanced PSF modeling with multiple PSF types
+- Advanced astrometric distortion correction
+- Batch processing capabilities for image sequences
+- Machine learning-based source classification
+- Advanced visualization tools and interactive plots
+- Integration with additional astronomical catalogs
+- Performance optimizations for large surveys
+- Enhanced documentation and tutorials
 
-**Minor Changes & Fixes**
+**Future Enhancements**:
+- Multi-band photometry across different filters
+- Time-series analysis for variable source monitoring
+- Advanced statistical analysis tools
+- Integration with observatory control systems
+- Cloud-based processing and storage options
+- Advanced machine learning features
+- Professional data reduction pipeline integration
 
-*   Refactored code into `pages/app.py`, `pages/login.py`, `tools.py`, and `backend_dev.py`.
-*   Improved error handling in various processing steps.
-*   Standardized figure sizes using `tools.FIGURE_SIZES`.
-*   Added `__version__.py` for version tracking.
-*   Updated `requirements.txt`.
-*   Added cleanup for temporary files.
+**Known Issues & Limitations**:
+- SCAMP refinement requires proper installation and configuration
+- Large images (>8K×8K) may require increased memory allocation
+- Some catalog services may have temporary availability issues
+- Complex WCS solutions with high-order distortions may need manual validation
+- Network-dependent features require stable internet connection
 
-Version 0.1.0 (2024-XX-XX) - *Placeholder for previous state*
--------------------------------------------------------------
-**Initial Release Candidate**
-*   Core photometry pipeline based on `photutils`.
-*   Basic FITS loading and display.
-*   Aperture photometry.
-*   Zero-point calibration with Gaia DR3.
-*   CSV catalog export.
-*   Image visualization with matplotlib.
-*   User-friendly Streamlit interface (single script `pfr_app.py`).
-
-**Requirements**
-*   Python 3.8+
-*   Required packages: astropy, photutils, astroquery, streamlit, numpy, pandas, matplotlib
-
-Version 0.9.0 (2023-07-15) - *Placeholder*
-------------------------------------------
-**Initial Beta Release**
-*   Core functionality implemented.
-*   Basic calibration and photometry workflow.
-*   Preliminary documentation.
+**Migration Notes**:
+- Configuration files from previous versions are automatically migrated
+- Output file formats are backward compatible
+- API changes are minimal and documented in the API reference
+- Legacy single-aperture photometry columns are maintained for compatibility

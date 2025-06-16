@@ -20,27 +20,34 @@ Key Features
    - Automatic source detection using DAOStarFinder
    - FWHM estimation through Gaussian fitting of stellar profiles
 
-**Advanced Image Processing**:
-   - Automatic FITS header validation and fixing
-   - Cosmic ray removal using L.A.Cosmic algorithm (astroscrappy)
-   - Support for multi-extension FITS files and data cubes
-   - Automatic plate solving using SIRIL integration
-   - Optional WCS refinement using stdpipe and Gaia DR3
+**Advanced Astrometric Solutions**:
+   - Local plate solving using Astrometry.net via stdpipe for blind astrometric solving
+   - WCS refinement using SCAMP and GAIA DR3 catalog
+   - Automatic WCS header validation and fixing
+   - Support for multiple coordinate reference frames
+   - Force re-solve option for existing WCS solutions
 
-**Comprehensive Calibration**:
+**Comprehensive Photometric Calibration**:
    - Photometric calibration against Gaia DR3 catalog
-   - Robust zero-point calculation with outlier rejection
+   - Robust zero-point calculation with sigma clipping and outlier rejection
    - Atmospheric extinction correction based on airmass calculation
    - Quality filtering for reliable calibration stars
-   - Support for multiple Gaia photometric bands
+   - Support for multiple Gaia photometric bands and synthetic photometry
 
 **Multi-Catalog Cross-matching**:
-   - Gaia DR3 for stellar properties and calibration
+   - Gaia DR3 for stellar properties, proper motions, and calibration
    - SIMBAD for object identification and classification
+   - Astro-Colibri for transient event correlation and alerts
    - SkyBoT for solar system object detection
    - AAVSO VSX for variable star identification
-   - Astro-Colibri for transient event correlation
-   - VizieR Milliquas for quasar identification
+   - VizieR Milliquas for quasar and AGN identification
+
+**Advanced Image Processing**:
+   - Cosmic ray removal using L.A.Cosmic algorithm (astroscrappy)
+   - Support for multi-extension FITS files and data cubes
+   - Multiple visualization modes (ZScale, histogram equalization)
+   - Automatic FITS header validation and fixing
+   - Quality filtering and automated source assessment
 
 **User-Friendly Interface**:
    - Web-based interface accessible through any modern browser
@@ -48,13 +55,14 @@ Key Features
    - Real-time processing progress and status updates
    - Comprehensive error handling and user feedback
    - Multi-user support with individual accounts and workspaces
+   - Configuration persistence across sessions
 
 **Data Management**:
    - Automated result archiving and organization
    - ZIP package generation for easy data distribution
-   - Configuration persistence across sessions
-   - Automatic cleanup of temporary and old files
+   - User-specific workspaces with automatic cleanup
    - Detailed processing logs with timestamps
+   - Comprehensive output file generation
 
 .. toctree::
    :maxdepth: 2
@@ -73,7 +81,7 @@ Key Features
 Quick Start
 ----------
 
-1. **Installation**: Install Python dependencies and SIRIL
+1. **Installation**: Install Python dependencies, Astrometry.net, and SCAMP
 2. **Launch**: Start backend (`python backend.py`) and frontend (`streamlit run frontend.py`)
 3. **Register**: Create user account and configure observatory settings
 4. **Upload**: Load FITS image file for analysis
@@ -103,10 +111,10 @@ System Architecture
    - Integration with external tools and services
 
 **External Integration**:
-   - SIRIL for astrometric plate solving
+   - Astrometry.net via stdpipe for local plate solving
+   - SCAMP for astrometric refinement
    - Multiple astronomical catalog services
-   - Email services for password recovery
-   - File system for result storage and archival
+   - Aladin Lite for interactive sky visualization
 
 Supported Data Formats
 ---------------------
@@ -132,19 +140,19 @@ Scientific Applications
    - Precise magnitude measurements for stellar photometry
    - Variable star monitoring and light curve generation
    - Color-magnitude diagram construction
-   - Photometric redshift estimation preparation
+   - Multi-aperture photometric analysis
 
 **Astrometric Analysis**:
    - Accurate source position determination
-   - Proper motion measurement preparation
-   - Coordinate system calibration and validation
+   - WCS solution validation and refinement
+   - Coordinate system calibration
    - Multi-epoch analysis support
 
 **Survey Work**:
    - Large-scale source catalog generation
    - Cross-identification with existing catalogs
    - Quality assessment and filtering
-   - Data reduction pipeline integration
+   - Transient detection and classification
 
 **Educational Use**:
    - Teaching astronomical data analysis techniques
@@ -157,45 +165,17 @@ Performance Characteristics
 
 **Processing Speed**:
    - Typical 2K×2K image: 2-5 minutes complete analysis
-   - 4K×4K image: 5-15 minutes depending on source density
-   - Network-dependent catalog queries: 30 seconds - 2 minutes
-   - Concurrent user support with isolated workspaces
+   - Multi-aperture photometry with background modeling
+   - Efficient memory management for large files
+   - Streamlit caching for improved performance
 
 **Accuracy**:
-   - Photometric precision: ~0.01-0.05 mag (depending on SNR)
-   - Astrometric accuracy: ~0.1-0.5 arcsec (WCS-dependent)
-   - Calibration stability: Limited by Gaia DR3 systematics
-   - Background estimation: Adaptive to image characteristics
+   - Sub-arcsecond astrometric precision with plate solving
+   - Millimagnitude photometric precision with proper calibration
+   - Robust error propagation and uncertainty estimation
 
-**Scalability**:
-   - Multi-user concurrent operation
-   - Configurable resource usage limits
-   - Automatic cleanup and memory management
-   - Extensible catalog integration framework
-
-Community and Support
---------------------
-
-**Development**:
-   - Open-source development model
-   - Community contributions welcome
-   - Regular updates and feature additions
-   - Comprehensive testing and validation
-
-**Documentation**:
-   - Complete user guides and tutorials
-   - API documentation for developers
-   - Troubleshooting guides and FAQ
-   - Example workflows and use cases
-
-**Collaboration**:
-   - Integration with RAPAS project workflows
-   - Compatible with standard astronomical tools
-   - Export formats for external analysis software
-   - Professional astronomy community support
-
-Indices and Tables
------------------
+Indices and tables
+==================
 
 * :ref:`genindex`
 * :ref:`modindex`

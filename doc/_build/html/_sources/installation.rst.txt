@@ -10,12 +10,13 @@ System Requirements
    - Virtual environment (recommended)
 
 **External Dependencies**:
-   - SIRIL astronomical image processing software
+   - Astrometry.net with solve-field binary
+   - SCAMP for astrometric refinement (optional)
    - Modern web browser (Chrome, Firefox, Safari, Edge)
    - Internet connection for catalog queries
 
 **Operating System Support**:
-   - Windows 10/11 (with PowerShell)
+   - Windows 10/11
    - macOS 10.15 or later
    - Linux (Ubuntu 18.04+ or equivalent)
 
@@ -61,202 +62,142 @@ Installation Steps
    - flask-cors (cross-origin resource sharing)
    - werkzeug (WSGI utilities)
 
-   **Optional Dependencies**:
+   **Advanced Dependencies**:
    - astroscrappy (cosmic ray removal)
-   - stdpipe (astrometry refinement)
-   - requests (HTTP client)
+   - stdpipe (astrometry refinement and plate solving)
+   - requests (HTTP client for catalog queries)
+   - scikit-image (image processing utilities)
 
-4. **Install SIRIL** (required for plate solving):
+4. **Install Astrometry.net** (required for plate solving):
    
-   **Windows**:
-   - Download from https://siril.org/download/
-   - Install using the provided installer
-   - Ensure `siril-cli` is available in system PATH
-
-   **macOS**:
-   - Install via Homebrew: `brew install siril`
-   - Or download from https://siril.org/download/
-
-   **Linux**:
-   - Ubuntu/Debian: `sudo apt install siril`
-   - Fedora: `sudo dnf install siril`
-   - Or compile from source: https://siril.org/download/
-
-5. **Verify SIRIL Installation**:
+   **Ubuntu/Debian**:
    
    .. code-block:: bash
 
-      siril-cli --version
+      sudo apt-get update
+      sudo apt-get install astrometry.net astrometry-data-tycho2
+      
+   **macOS with Homebrew**:
+   
+   .. code-block:: bash
 
-   If this command fails, ensure SIRIL is properly installed and in your system PATH.
+      brew install astrometry-net
+      
+   **Windows**:
+   - Download from http://astrometry.net/downloads/
+   - Install using provided installer
+   - Ensure solve-field is available in system PATH
+   - Download appropriate index files for your field scale
 
-6. **Initialize User Database**:
-   The backend will automatically create `users.db` on first run. No manual initialization required.
+5. **Install SCAMP** (optional, for astrometric refinement):
+   
+   **Ubuntu/Debian**:
+   
+   .. code-block:: bash
+
+      sudo apt-get install scamp
+      
+   **macOS with Homebrew**:
+   
+   .. code-block:: bash
+
+      brew install scamp
+      
+   **Windows**:
+   - Download from https://www.astromatic.net/software/scamp
+   - Follow installation instructions
+   - Ensure scamp is available in system PATH
 
 Configuration
 ------------
 
-**Environment Variables** (optional):
-
-For email-based password recovery, set these environment variables:
-
-.. code-block:: bash
-
-   # Email server configuration
-   export SMTP_SERVER=smtp.gmail.com
-   export SMTP_PORT=587
-   export SMTP_USER=your-email@gmail.com
-   export SMTP_PASS=your-app-password
-
-**File Structure**:
-
-After installation, your directory should contain:
-
-.. code-block:: text
-
-   rpp/
-   ├── src/
-   │   ├── __version__.py      # Version information
-   │   ├── tools.py           # Utility functions
-   │   ├── pipeline.py        # Core processing pipeline
-   │   ├── plate_solve.ps1    # Windows plate solving script
-   │   └── plate_solve.sh     # Linux/macOS plate solving script
-   ├── pages/
-   │   ├── app.py            # Main application interface
-   │   └── login.py          # User authentication
-   ├── doc/                  # Documentation (Sphinx)
-   ├── backend.py           # Flask server
-   ├── frontend.py         # Streamlit entry point
-   ├── requirements.txt    # Python dependencies
-   └── README.md          # Project overview
-
-Running the Application
-----------------------
-
-**1. Start the Backend Server**:
+1. **Astrometry.net Index Files**:
+   Download appropriate index files for your typical field scale:
    
-   Open a terminal and run:
+   - For wide-field images (>30 arcmin): index-4200 series
+   - For medium fields (1-30 arcmin): index-4100 series  
+   - For narrow fields (<1 arcmin): index-5000 series
 
+2. **Environment Variables** (optional):
+   
    .. code-block:: bash
 
+      # For email functionality
+      export SMTP_SERVER="smtp.gmail.com"
+      export SMTP_PORT="587"
+      export SMTP_USER="your-email@gmail.com"
+      export SMTP_PASS="your-app-password"
+      
+      # For Astro-Colibri API
+      export ASTROCOLIBRI_API="your-api-key"
+
+3. **Directory Structure**:
+   The application will create user-specific directories:
+   
+   .. code-block::
+
+      rpp/
+      ├── frontend.py
+      ├── backend.py
+      ├── pages/
+      │   ├── app.py
+      │   └── login.py
+      ├── src/
+      │   ├── tools.py
+      │   ├── pipeline.py
+      │   └── __version__.py
+      └── [username]_rpp_results/
+
+Verification
+-----------
+
+1. **Test Installation**:
+   
+   .. code-block:: bash
+
+      # Test Astrometry.net
+      solve-field --help
+      
+      # Test Python dependencies
+      python -c "import streamlit, astropy, photutils; print('All core dependencies available')"
+      
+      # Test SCAMP (if installed)
+      scamp -v
+
+2. **Launch Application**:
+   
+   .. code-block:: bash
+
+      # Start backend (in one terminal)
       python backend.py
-
-   The server will start on http://localhost:5000 by default.
-
-**2. Start the Frontend Application**:
-   
-   In a separate terminal, run:
-
-   .. code-block:: bash
-
+      
+      # Start frontend (in another terminal)
       streamlit run frontend.py
 
-   The application will open in your default browser at http://localhost:8501.
+3. **Access Web Interface**:
+   Open your browser to http://localhost:8501 and verify the interface loads correctly.
 
-**3. First-Time Setup**:
-   - Register a new user account
-   - Configure observatory settings
-   - Set analysis parameters
-   - Enter API keys (optional)
-   - Save configuration for future sessions
-
-API Keys and External Services
------------------------------
-
-Some features require API keys from external services:
-
-**Astro-Colibri** (optional):
-   - Register at https://astro-colibri.science/
-   - Obtain your UID key
-   - Enter in the application's API Keys section
-   - Enables transient event cross-matching
-
-**Gaia Archive** (automatic):
-   - No registration required
-   - Accessed via astroquery.gaia
-   - Used for photometric calibration
-
-**SIMBAD/VizieR** (automatic):
-   - No registration required
-   - Accessed via astroquery
-   - Used for object identification
-
-Troubleshooting Installation
----------------------------
+Troubleshooting
+--------------
 
 **Common Issues**:
 
-1. **ImportError for Python packages**:
-   - Ensure virtual environment is activated
-   - Reinstall requirements: `pip install -r requirements.txt --force-reinstall`
-   - Check Python version compatibility
+- **Astrometry.net not found**: Ensure solve-field is in your system PATH
+- **SCAMP not found**: Install SCAMP or disable astrometry refinement
+- **Permission errors**: Run with appropriate user permissions
+- **Port conflicts**: Change Streamlit port with --server.port option
+- **Index file errors**: Download appropriate astrometry.net index files
 
-2. **SIRIL not found**:
-   - Verify SIRIL installation: `siril-cli --version`
-   - Check system PATH includes SIRIL directory
-   - Restart terminal after SIRIL installation
+**Performance Tips**:
 
-3. **Permission errors**:
-   - Use virtual environment to avoid system-wide installations
-   - On Linux/macOS: Check file permissions for script execution
-   - On Windows: Run as administrator if needed
+- Use SSD storage for better I/O performance
+- Ensure adequate RAM (8GB+ recommended)
+- Close other applications during processing
+- Use virtual environment to avoid dependency conflicts
 
-4. **Network connectivity issues**:
-   - Check internet connection for catalog queries
-   - Verify firewall settings allow HTTP/HTTPS traffic
-   - Some institutional networks may block astronomical databases
+**Getting Help**:
 
-5. **Browser compatibility**:
-   - Use modern browsers (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
-   - Enable JavaScript and allow local connections
-   - Clear browser cache if interface doesn't load properly
-
-**Platform-Specific Notes**:
-
-**Windows**:
-   - PowerShell execution policy may need adjustment
-   - Windows Defender may quarantine downloaded files
-   - Use Command Prompt or PowerShell for terminal commands
-
-**macOS**:
-   - May need to allow unsigned applications in Security preferences
-   - Homebrew installation recommended for dependencies
-   - Command Line Tools for Xcode required for some packages
-
-**Linux**:
-   - Package manager installation preferred for system dependencies
-   - May need development headers for compilation
-   - Check distribution-specific package names
-
-Performance Optimization
------------------------
-
-**System Resources**:
-   - Minimum 4GB RAM recommended
-   - SSD storage preferred for temporary file handling
-   - Multi-core processor beneficial for image processing
-
-**Configuration Tuning**:
-   - Adjust detection parameters for your typical image sizes
-   - Configure appropriate timeout values for slow networks
-   - Set reasonable maximum catalog query limits
-
-**Data Management**:
-   - Regular cleanup of old result directories
-   - Monitor disk space usage for large datasets
-   - Consider archival strategies for important results
-
-Updating the Application
------------------------
-
-**Update Process**:
-   1. Backup your configuration files and important results
-   2. Pull latest changes from repository or download new version
-   3. Update Python dependencies: `pip install -r requirements.txt --upgrade`
-   4. Restart both backend and frontend services
-   5. Test with a simple image to verify functionality
-
-**Version Compatibility**:
-   - Configuration files are generally forward-compatible
-   - User databases automatically migrate when needed
-   - Previous result archives remain accessible
+- Check the troubleshooting section
+- Review application logs for error details
+- Verify all dependencies are properly installed
+- Test with sample FITS files first

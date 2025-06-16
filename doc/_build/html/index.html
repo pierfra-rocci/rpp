@@ -6,14 +6,14 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RAPAS Photometry Pipeline (RPP) &mdash; RAPAS Photometry Pipeline (RPP) v1.0.0 Documentation</title>
+  <title>RAPAS Photometry Pipeline (RPP) &mdash; RAPAS Photometry Pipeline (RPP) v0.9.8 Documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/documentation_options.js?v=1a282f62"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
@@ -95,29 +95,37 @@
 <li><p>FWHM estimation through Gaussian fitting of stellar profiles</p></li>
 </ul>
 </dd>
-<dt><strong>Advanced Image Processing</strong>:</dt><dd><ul class="simple">
-<li><p>Automatic FITS header validation and fixing</p></li>
-<li><p>Cosmic ray removal using L.A.Cosmic algorithm (astroscrappy)</p></li>
-<li><p>Support for multi-extension FITS files and data cubes</p></li>
-<li><p>Automatic plate solving using SIRIL integration</p></li>
-<li><p>Optional WCS refinement using stdpipe and Gaia DR3</p></li>
+<dt><strong>Advanced Astrometric Solutions</strong>:</dt><dd><ul class="simple">
+<li><p>Local plate solving using Astrometry.net via stdpipe for blind astrometric solving</p></li>
+<li><p>WCS refinement using SCAMP and GAIA DR3 catalog</p></li>
+<li><p>Automatic WCS header validation and fixing</p></li>
+<li><p>Support for multiple coordinate reference frames</p></li>
+<li><p>Force re-solve option for existing WCS solutions</p></li>
 </ul>
 </dd>
-<dt><strong>Comprehensive Calibration</strong>:</dt><dd><ul class="simple">
+<dt><strong>Comprehensive Photometric Calibration</strong>:</dt><dd><ul class="simple">
 <li><p>Photometric calibration against Gaia DR3 catalog</p></li>
-<li><p>Robust zero-point calculation with outlier rejection</p></li>
+<li><p>Robust zero-point calculation with sigma clipping and outlier rejection</p></li>
 <li><p>Atmospheric extinction correction based on airmass calculation</p></li>
 <li><p>Quality filtering for reliable calibration stars</p></li>
-<li><p>Support for multiple Gaia photometric bands</p></li>
+<li><p>Support for multiple Gaia photometric bands and synthetic photometry</p></li>
 </ul>
 </dd>
 <dt><strong>Multi-Catalog Cross-matching</strong>:</dt><dd><ul class="simple">
-<li><p>Gaia DR3 for stellar properties and calibration</p></li>
+<li><p>Gaia DR3 for stellar properties, proper motions, and calibration</p></li>
 <li><p>SIMBAD for object identification and classification</p></li>
+<li><p>Astro-Colibri for transient event correlation and alerts</p></li>
 <li><p>SkyBoT for solar system object detection</p></li>
 <li><p>AAVSO VSX for variable star identification</p></li>
-<li><p>Astro-Colibri for transient event correlation</p></li>
-<li><p>VizieR Milliquas for quasar identification</p></li>
+<li><p>VizieR Milliquas for quasar and AGN identification</p></li>
+</ul>
+</dd>
+<dt><strong>Advanced Image Processing</strong>:</dt><dd><ul class="simple">
+<li><p>Cosmic ray removal using L.A.Cosmic algorithm (astroscrappy)</p></li>
+<li><p>Support for multi-extension FITS files and data cubes</p></li>
+<li><p>Multiple visualization modes (ZScale, histogram equalization)</p></li>
+<li><p>Automatic FITS header validation and fixing</p></li>
+<li><p>Quality filtering and automated source assessment</p></li>
 </ul>
 </dd>
 <dt><strong>User-Friendly Interface</strong>:</dt><dd><ul class="simple">
@@ -126,14 +134,15 @@
 <li><p>Real-time processing progress and status updates</p></li>
 <li><p>Comprehensive error handling and user feedback</p></li>
 <li><p>Multi-user support with individual accounts and workspaces</p></li>
+<li><p>Configuration persistence across sessions</p></li>
 </ul>
 </dd>
 <dt><strong>Data Management</strong>:</dt><dd><ul class="simple">
 <li><p>Automated result archiving and organization</p></li>
 <li><p>ZIP package generation for easy data distribution</p></li>
-<li><p>Configuration persistence across sessions</p></li>
-<li><p>Automatic cleanup of temporary and old files</p></li>
+<li><p>User-specific workspaces with automatic cleanup</p></li>
 <li><p>Detailed processing logs with timestamps</p></li>
+<li><p>Comprehensive output file generation</p></li>
 </ul>
 </dd>
 </dl>
@@ -144,21 +153,15 @@
 <li class="toctree-l2"><a class="reference internal" href="installation.html#system-requirements">System Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#installation-steps">Installation Steps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#configuration">Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#running-the-application">Running the Application</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#api-keys-and-external-services">API Keys and External Services</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#troubleshooting-installation">Troubleshooting Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#performance-optimization">Performance Optimization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#updating-the-application">Updating the Application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#verification">Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#troubleshooting">Troubleshooting</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#getting-started">Getting Started</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#basic-workflow">Basic Workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#observatory-configuration">Observatory Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#analysis-parameters">Analysis Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#image-processing-pipeline">Image Processing Pipeline</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#catalog-cross-matching">Catalog Cross-matching</a></li>
-<li class="toctree-l2"><a class="reference internal" href="usage.html#results-and-outputs">Results and Outputs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#detailed-step-by-step-guide">Detailed Step-by-Step Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#processing-pipeline-details">Processing Pipeline Details</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#configuration-management">Configuration Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#file-management">File Management</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#error-handling-and-troubleshooting">Error Handling and Troubleshooting</a></li>
@@ -180,15 +183,16 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="features.html">Features</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="features.html#user-authentication-configuration">User Authentication &amp; Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="features.html#image-processing">Image Processing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="features.html#source-detection">Source Detection</a></li>
-<li class="toctree-l2"><a class="reference internal" href="features.html#photometry">Photometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="features.html#astrometry">Astrometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="features.html#calibration">Calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="features.html#catalog-integration">Catalog Integration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="features.html#visualization">Visualization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="features.html#output-and-results">Output and Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#user-authentication-multi-user-support">User Authentication &amp; Multi-User Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#advanced-image-processing">Advanced Image Processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#astrometric-solutions">Astrometric Solutions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#source-detection-photometry">Source Detection &amp; Photometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#photometric-calibration">Photometric Calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#multi-catalog-cross-matching">Multi-Catalog Cross-Matching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#data-visualization-analysis">Data Visualization &amp; Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#user-interface-workflow">User Interface &amp; Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#output-generation-export">Output Generation &amp; Export</a></li>
+<li class="toctree-l2"><a class="reference internal" href="features.html#performance-scalability">Performance &amp; Scalability</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a><ul>
@@ -200,14 +204,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="api.html#initialization-setup">Initialization &amp; Setup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#file-handling-loading">File Handling &amp; Loading</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#image-processing-calibration">Image Processing &amp; Calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#astrometry">Astrometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#source-detection-photometry">Source Detection &amp; Photometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#catalog-operations-calibration">Catalog Operations &amp; Calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#visualization-output">Visualization &amp; Output</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#backend-interaction-login-config">Backend Interaction (Login/Config)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#core-application-modules">Core Application Modules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#configuration-constants">Configuration Constants</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#usage-examples">Usage Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#notes">Notes</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
@@ -226,12 +226,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-1-0-upcoming">Version 1.1.0 (Upcoming)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-0-0-2023-09-01">Version 1.0.0 (2023-09-01)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-9-0-2023-07-15">Version 0.9.0 (2023-07-15)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-2-0-2025-05-02">Version 0.2.0 (2025-05-02)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-1-0-2024-xx-xx-placeholder-for-previous-state">Version 0.1.0 (2024-XX-XX) - <em>Placeholder for previous state</em></a></li>
-<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-9-0-2023-07-15-placeholder">Version 0.9.0 (2023-07-15) - <em>Placeholder</em></a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-9-8-current">Version 0.9.8 (Current)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-1-0-0-2023-09-01-previous-release">Version 1.0.0 (2023-09-01) - Previous Release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-9-0-2023-07-15-beta-release">Version 0.9.0 (2023-07-15) - Beta Release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#development-roadmap">Development Roadmap</a></li>
 </ul>
 </li>
 </ul>
@@ -240,7 +238,7 @@
 <section id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
 <ol class="arabic simple">
-<li><p><strong>Installation</strong>: Install Python dependencies and SIRIL</p></li>
+<li><p><strong>Installation</strong>: Install Python dependencies, Astrometry.net, and SCAMP</p></li>
 <li><p><strong>Launch</strong>: Start backend (<cite>python backend.py</cite>) and frontend (<cite>streamlit run frontend.py</cite>)</p></li>
 <li><p><strong>Register</strong>: Create user account and configure observatory settings</p></li>
 <li><p><strong>Upload</strong>: Load FITS image file for analysis</p></li>
@@ -274,10 +272,10 @@
 </ul>
 </dd>
 <dt><strong>External Integration</strong>:</dt><dd><ul class="simple">
-<li><p>SIRIL for astrometric plate solving</p></li>
+<li><p>Astrometry.net via stdpipe for local plate solving</p></li>
+<li><p>SCAMP for astrometric refinement</p></li>
 <li><p>Multiple astronomical catalog services</p></li>
-<li><p>Email services for password recovery</p></li>
-<li><p>File system for result storage and archival</p></li>
+<li><p>Aladin Lite for interactive sky visualization</p></li>
 </ul>
 </dd>
 </dl>
@@ -310,13 +308,13 @@
 <li><p>Precise magnitude measurements for stellar photometry</p></li>
 <li><p>Variable star monitoring and light curve generation</p></li>
 <li><p>Color-magnitude diagram construction</p></li>
-<li><p>Photometric redshift estimation preparation</p></li>
+<li><p>Multi-aperture photometric analysis</p></li>
 </ul>
 </dd>
 <dt><strong>Astrometric Analysis</strong>:</dt><dd><ul class="simple">
 <li><p>Accurate source position determination</p></li>
-<li><p>Proper motion measurement preparation</p></li>
-<li><p>Coordinate system calibration and validation</p></li>
+<li><p>WCS solution validation and refinement</p></li>
+<li><p>Coordinate system calibration</p></li>
 <li><p>Multi-epoch analysis support</p></li>
 </ul>
 </dd>
@@ -324,7 +322,7 @@
 <li><p>Large-scale source catalog generation</p></li>
 <li><p>Cross-identification with existing catalogs</p></li>
 <li><p>Quality assessment and filtering</p></li>
-<li><p>Data reduction pipeline integration</p></li>
+<li><p>Transient detection and classification</p></li>
 </ul>
 </dd>
 <dt><strong>Educational Use</strong>:</dt><dd><ul class="simple">
@@ -341,61 +339,27 @@
 <dl class="simple">
 <dt><strong>Processing Speed</strong>:</dt><dd><ul class="simple">
 <li><p>Typical 2K×2K image: 2-5 minutes complete analysis</p></li>
-<li><p>4K×4K image: 5-15 minutes depending on source density</p></li>
-<li><p>Network-dependent catalog queries: 30 seconds - 2 minutes</p></li>
-<li><p>Concurrent user support with isolated workspaces</p></li>
+<li><p>Multi-aperture photometry with background modeling</p></li>
+<li><p>Efficient memory management for large files</p></li>
+<li><p>Streamlit caching for improved performance</p></li>
 </ul>
 </dd>
 <dt><strong>Accuracy</strong>:</dt><dd><ul class="simple">
-<li><p>Photometric precision: ~0.01-0.05 mag (depending on SNR)</p></li>
-<li><p>Astrometric accuracy: ~0.1-0.5 arcsec (WCS-dependent)</p></li>
-<li><p>Calibration stability: Limited by Gaia DR3 systematics</p></li>
-<li><p>Background estimation: Adaptive to image characteristics</p></li>
-</ul>
-</dd>
-<dt><strong>Scalability</strong>:</dt><dd><ul class="simple">
-<li><p>Multi-user concurrent operation</p></li>
-<li><p>Configurable resource usage limits</p></li>
-<li><p>Automatic cleanup and memory management</p></li>
-<li><p>Extensible catalog integration framework</p></li>
+<li><p>Sub-arcsecond astrometric precision with plate solving</p></li>
+<li><p>Millimagnitude photometric precision with proper calibration</p></li>
+<li><p>Robust error propagation and uncertainty estimation</p></li>
 </ul>
 </dd>
 </dl>
 </section>
-<section id="community-and-support">
-<h2>Community and Support<a class="headerlink" href="#community-and-support" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>Development</strong>:</dt><dd><ul class="simple">
-<li><p>Open-source development model</p></li>
-<li><p>Community contributions welcome</p></li>
-<li><p>Regular updates and feature additions</p></li>
-<li><p>Comprehensive testing and validation</p></li>
-</ul>
-</dd>
-<dt><strong>Documentation</strong>:</dt><dd><ul class="simple">
-<li><p>Complete user guides and tutorials</p></li>
-<li><p>API documentation for developers</p></li>
-<li><p>Troubleshooting guides and FAQ</p></li>
-<li><p>Example workflows and use cases</p></li>
-</ul>
-</dd>
-<dt><strong>Collaboration</strong>:</dt><dd><ul class="simple">
-<li><p>Integration with RAPAS project workflows</p></li>
-<li><p>Compatible with standard astronomical tools</p></li>
-<li><p>Export formats for external analysis software</p></li>
-<li><p>Professional astronomy community support</p></li>
-</ul>
-</dd>
-</dl>
 </section>
 <section id="indices-and-tables">
-<h2>Indices and Tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h2>
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h1>
 <ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
 <li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
 <li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
 </ul>
-</section>
 </section>
 
 
