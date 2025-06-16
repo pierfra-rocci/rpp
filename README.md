@@ -6,7 +6,7 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 
 ### 🔭 Core Photometry
 - **Multi-aperture photometry**: Automatic aperture photometry with multiple radii (1.5×, 2.0×, 2.5×, 3.0× FWHM)
-- **PSF photometry**: Empirical Point Spread Function (ePSF) modeling and fitting
+- **PSF photometry**: Effective Point Spread Function (ePSF) modeling and fitting
 - **Background estimation**: Advanced 2D background modeling with SExtractor algorithm
 - **Source detection**: DAOStarFinder with configurable detection thresholds
 - **FWHM estimation**: Automatic seeing measurement with Gaussian profile fitting
@@ -46,7 +46,7 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 ## Installation
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.10+
 - Astrometry.net installation with solve-field binary
 - SCAMP installation (for astrometric refinement)
 
