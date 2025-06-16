@@ -1,223 +1,223 @@
-# RAPAS Photometry Pipeline (RPP)
+# RAPAS Photometry Pipeline
 
-A comprehensive web-based astronomical photometry pipeline built with Streamlit, designed for automated stellar photometry and catalog cross-matching.
+A comprehensive astronomical photometry pipeline built with Streamlit, featuring local astrometric plate solving, multi-catalog cross-matching, and advanced photometric analysis capabilities.
 
 ## Features
 
-### Core Photometry Capabilities
-- **Automated Source Detection**: Uses DAOStarFinder for robust stellar source detection
-- **Multi-Aperture Photometry**: Performs aperture photometry with multiple radii (1.5×, 2.0×, 2.5×, 3.0× FWHM)
-- **PSF Photometry**: Builds empirical PSF models using EPSFBuilder for precise photometry
-- **Background Estimation**: 2D background modeling using SExtractor algorithm
-- **FWHM Estimation**: Automatic stellar FWHM determination through Gaussian fitting
+### 🔭 Core Photometry
+- **Multi-aperture photometry**: Automatic aperture photometry with multiple radii (1.5×, 2.0×, 2.5×, 3.0× FWHM)
+- **PSF photometry**: Empirical Point Spread Function (ePSF) modeling and fitting
+- **Background estimation**: Advanced 2D background modeling with SExtractor algorithm
+- **Source detection**: DAOStarFinder with configurable detection thresholds
+- **FWHM estimation**: Automatic seeing measurement with Gaussian profile fitting
 
-### Astrometric Solutions
-- **Plate Solving**: Integration with SIRIL for automatic astrometric calibration
-- **WCS Refinement**: Optional astrometry refinement using stdpipe and Gaia DR3
-- **Header Validation**: Automatic FITS header fixing and WCS validation
-- **Coordinate Systems**: Support for multiple coordinate reference systems
+### 🌌 Astrometric Solutions
+- **Local plate solving**: Integration with Astrometry.net via stdpipe for blind astrometric solving
+- **WCS refinement**: Advanced astrometric refinement using SCAMP and GAIA DR3 catalog
+- **Header validation**: Automatic WCS header fixing and validation
+- **Coordinate systems**: Support for multiple coordinate reference frames
 
-### Photometric Calibration
-- **Gaia DR3 Integration**: Automatic cross-matching with Gaia DR3 catalog
-- **Zero Point Calculation**: Robust photometric calibration with outlier rejection
-- **Atmospheric Extinction**: Automatic airmass calculation and extinction correction
-- **Multiple Filter Bands**: Support for Gaia G, BP, RP bands and synthetic photometry
+### 📊 Photometric Calibration
+- **GAIA DR3 integration**: Automatic cross-matching with GAIA Data Release 3
+- **Zero-point calculation**: Robust photometric calibration with outlier rejection
+- **Extinction correction**: Atmospheric extinction correction using airmass
+- **Multiple filter bands**: Support for GAIA G, BP, RP and synthetic photometry bands
 
-### Advanced Processing
-- **Cosmic Ray Removal**: L.A.Cosmic algorithm implementation using astroscrappy
-- **Data Quality Filtering**: Multiple quality filters for reliable photometry
-- **Multi-Format Support**: Handles various FITS formats including multi-extension files
-- **Image Enhancement**: ZScale visualization and histogram equalization
+### 🛰️ Multi-Catalog Cross-Matching
+- **GAIA DR3**: Stellar parameters, proper motions, and photometry
+- **SIMBAD**: Object identifications and classifications
+- **Astro-Colibri**: Transient and variable source alerts
+- **SkyBoT**: Solar system object identification
+- **AAVSO VSX**: Variable star catalog
+- **Milliquas**: Quasar and AGN catalog
 
-### Catalog Cross-Matching
-- **SIMBAD Integration**: Object identification and classification
-- **SkyBoT**: Solar system object detection
-- **AAVSO VSX**: Variable star cross-matching
-- **Astro-Colibri**: Transient event database queries
-- **VizieR Catalogs**: Quasar and specialized catalog access
+### 🔧 Advanced Processing
+- **Cosmic ray removal**: L.A.Cosmic algorithm implementation via astroscrappy
+- **Image enhancement**: Multiple visualization modes (ZScale, histogram equalization)
+- **Quality filtering**: Automated source quality assessment
+- **Error propagation**: Comprehensive photometric error calculation
 
-### Interactive Visualization
-- **Aladin Lite Integration**: Interactive sky viewer with catalog overlays
-- **Statistical Plots**: Magnitude distributions and error analysis
-- **ESA Sky Links**: Direct links to external sky surveys
-- **Real-time Progress**: Live processing updates and status monitoring
-
-### User Management & Configuration
-- **Multi-User Support**: Individual user accounts with isolated workspaces
-- **Configuration Persistence**: Save and restore analysis parameters
-- **Observatory Profiles**: Custom observatory location settings
-- **API Key Management**: Secure storage of external service credentials
-
-### Data Management
-- **Automated Archiving**: ZIP archive creation for result downloads
-- **File Organization**: Structured output with timestamps and metadata
-- **Log Generation**: Comprehensive processing logs
-- **Cleanup Automation**: Automatic cleanup of temporary and old files
+### 🖥️ User Interface
+- **Interactive web interface**: Streamlit-based GUI with real-time processing
+- **Parameter configuration**: Adjustable detection and photometry parameters
+- **Progress tracking**: Real-time status updates and logging
+- **Results visualization**: Interactive plots and Aladin sky viewer integration
 
 ## Installation
 
 ### Prerequisites
-- Python 3.10 or higher
-- SIRIL (for plate solving functionality)
-- Modern web browser (for Streamlit interface)
+- Python 3.8+
+- Astrometry.net installation with solve-field binary
+- SCAMP installation (for astrometric refinement)
 
 ### Required Python Packages
 ```bash
-pip install streamlit astropy photutils astroquery numpy pandas matplotlib
-pip install astroscrappy stdpipe requests flask flask-cors werkzeug
+pip install streamlit astropy photutils astroquery matplotlib pandas numpy
+pip install astroscrappy stdpipe requests scikit-image
 ```
 
-### Optional Dependencies
-```bash
-pip install importlib-metadata  # For frozen/packaged applications
-```
+### System Dependencies
+- **Astrometry.net**: For local plate solving
+  ```bash
+  # Ubuntu/Debian
+  sudo apt-get install astrometry.net
+  
+  # macOS with Homebrew
+  brew install astrometry-net
+  ```
 
-### External Tools
-- **SIRIL**: Required for plate solving functionality
-  - Install from [https://siril.org/](https://siril.org/)
-  - Ensure `siril-cli` is available in system PATH
+- **SCAMP**: For astrometric refinement
+  ```bash
+  # Ubuntu/Debian
+  sudo apt-get install scamp
+  
+  # macOS with Homebrew
+  brew install scamp
+  ```
 
-## Usage
+## Quick Start
 
-### Starting the Application
-```bash
-# Start the backend server
-python backend.py
+1. **Start the application**:
+   ```bash
+   streamlit run frontend.py
+   ```
 
-# Start the frontend (in a separate terminal)
-streamlit run frontend.py
-```
+2. **Login**: Create an account or login with existing credentials
 
-### Basic Workflow
-1. **Login/Registration**: Create account or login with existing credentials
-2. **Upload FITS File**: Select astronomical image for processing
-3. **Configure Parameters**: Set observatory location and analysis parameters
-4. **Run Analysis**: Execute automated photometry pipeline
-5. **Review Results**: Examine catalogs, plots, and cross-matches
-6. **Download Data**: Export results as ZIP archives
+3. **Configure observatory**: Set your observatory location and parameters
 
-### Configuration Options
+4. **Upload FITS file**: Upload your astronomical image
 
-#### Observatory Settings
+5. **Run photometry**: Click "Photometric Calibration" to start the pipeline
+
+## Configuration
+
+### Observatory Parameters
 - **Name**: Observatory identifier
 - **Latitude/Longitude**: Geographic coordinates (decimal degrees)
 - **Elevation**: Height above sea level (meters)
 
-#### Analysis Parameters
-- **Seeing (FWHM)**: Initial stellar seeing estimate (1.0-6.0 arcsec)
-- **Detection Threshold**: Source detection sigma threshold (0.5-4.5)
-- **Border Mask**: Edge exclusion zone (pixels)
-- **Filter Band**: Gaia photometric band for calibration
-- **Maximum Magnitude**: Faint limit for calibration stars
+### Analysis Parameters
+- **Seeing (FWHM)**: Initial estimate in arcseconds
+- **Detection Threshold**: Source detection sigma threshold
+- **Border Mask**: Pixel border exclusion size
+- **Filter Band**: GAIA magnitude band for calibration
+- **Max Calibration Mag**: Faintest magnitude for calibration stars
 
-#### Processing Options
-- **Refine Astrometry**: Use stdpipe for WCS improvement
+### Advanced Options
+- **Refine Astrometry**: Enable SCAMP-based WCS refinement
 - **Remove Cosmic Rays**: Apply L.A.Cosmic algorithm
-- **Cosmic Ray Parameters**: Gain, read noise, sigma clipping settings
+- **Force Re-solve**: Override existing WCS solution
 
-## Technical Architecture
+## Astrometric Pipeline
 
-### Backend Components
-- **Flask Server**: RESTful API for user management and configuration
-- **Database**: User credentials and settings storage
-- **File Management**: Secure file handling and workspace isolation
+### Local Plate Solving (stdpipe + Astrometry.net)
+The pipeline uses stdpipe as a Python wrapper around Astrometry.net for robust astrometric solutions:
 
-### Frontend Components
-- **Streamlit Interface**: Interactive web application
-- **Session Management**: Stateful user sessions and data persistence
-- **Real-time Updates**: Live progress monitoring and error handling
+1. **Source Detection**: Automated star detection using photutils
+2. **Blind Matching**: stdpipe.astrometry.blind_match_objects for initial WCS
+3. **Parameter Optimization**: Automatic scale and position hint extraction
+4. **Solution Validation**: Coordinate range and transformation validation
 
-### Processing Pipeline
-1. **Image Loading**: FITS file parsing with multi-extension support
-2. **Header Processing**: WCS validation and coordinate extraction
-3. **Preprocessing**: Optional cosmic ray removal and background estimation
-4. **Source Detection**: DAOStarFinder with configurable parameters
-5. **Photometry**: Multi-aperture and PSF photometry
-6. **Astrometry**: Optional plate solving and WCS refinement
-7. **Calibration**: Gaia cross-matching and zero point calculation
-8. **Enhancement**: Multi-catalog cross-matching and object identification
-9. **Output**: Structured results with logs and visualizations
+### WCS Refinement (SCAMP + GAIA DR3)
+For images with existing WCS, the pipeline can refine the solution:
 
-### Data Flow
-```
-FITS Image → Header Analysis → Preprocessing → Source Detection
-     ↓
-Photometry ← Astrometry ← Background Estimation ← Quality Filtering
-     ↓
-Gaia Cross-match → Zero Point → Calibrated Magnitudes
-     ↓
-Multi-Catalog Cross-match → Final Catalog → Results Export
-```
-
-## File Structure
-```
-rpp/
-├── src/
-│   ├── __version__.py         # Version information
-│   ├── tools.py              # Utility functions
-│   ├── pipeline.py           # Core processing pipeline
-│   ├── plate_solve.ps1       # Windows plate solving script
-│   └── plate_solve.sh        # Linux/macOS plate solving script
-├── pages/
-│   ├── app.py               # Main application interface
-│   └── login.py             # User authentication
-├── backend.py               # Flask server
-├── frontend.py             # Streamlit entry point
-├── README.md               # This file
-└── LICENSE                 # MIT License
-```
+1. **Source Extraction**: SEP-based source detection via stdpipe
+2. **Catalog Matching**: Cross-match with GAIA DR3 reference catalog
+3. **SCAMP Fitting**: High-order polynomial distortion correction
+4. **Quality Assessment**: Astrometric residual analysis
 
 ## Output Files
 
-### Generated Results
-- **Photometry Catalog**: CSV file with source measurements
-- **Processing Log**: Detailed execution log
-- **Plots**: Magnitude distributions and error analysis
-- **Headers**: FITS header dumps and WCS solutions
-- **Archives**: ZIP files containing all results
+The pipeline generates comprehensive output files:
 
-### Catalog Columns
-- **Coordinates**: RA, Dec (decimal degrees)
-- **Photometry**: Multi-aperture and PSF magnitudes
-- **Uncertainties**: Photometric errors and SNR
-- **Astrometry**: Pixel coordinates and WCS information
-- **Cross-matches**: SIMBAD, Gaia, variable star identifications
-- **Metadata**: Zero point, airmass, processing parameters
+- **Photometry Catalog** (CSV): Complete source catalog with multi-aperture photometry
+- **Log File**: Detailed processing log with timestamps
+- **Background Model** (FITS): 2D background and RMS maps
+- **PSF Model** (FITS): Empirical PSF for the field
+- **Plots**: FWHM analysis, magnitude distributions, zero-point calibration
+- **WCS Header** (TXT): Updated astrometric solution
 
 ## API Integration
 
-### Supported Services
-- **Gaia DR3**: ESA's stellar catalog
-- **SIMBAD**: CDS astronomical database
-- **VizieR**: CDS catalog service
-- **SkyBoT**: IMCCE solar system service
-- **AAVSO VSX**: Variable star database
-- **Astro-Colibri**: Transient event platform
+### Astro-Colibri
+Real-time transient alerts and multi-messenger astronomy events:
+- Requires API key from https://www.astro-colibri.science
+- Configurable time windows around observation date
+- Automatic coordinate-based event matching
 
-### Rate Limiting
-- Automatic query throttling to respect service limits
-- Batch processing for multiple object queries
-- Error handling and retry mechanisms
+### GAIA Archive
+Direct integration with ESA's GAIA Data Release 3:
+- Cone search around field center
+- Quality filtering (variability, astrometry, photometry)
+- Synthetic photometry for non-standard bands
 
-## Performance Considerations
+## Technical Details
 
-### Optimization Features
-- **Caching**: Streamlit caching for expensive operations
+### Algorithms
+- **Background**: photutils.Background2D with SExtractorBackground
+- **Detection**: photutils.DAOStarFinder with configurable parameters
+- **PSF Modeling**: photutils.EPSFBuilder with iterative improvement
+- **Photometry**: Circular apertures with local background subtraction
+- **Astrometry**: Astrometry.net via stdpipe with SCAMP refinement
+
+### Data Processing
+- **Image Formats**: FITS with support for multi-extension and compressed files
+- **Coordinate Systems**: Full WCS support with SIP distortion corrections
+- **Error Propagation**: Poisson noise plus read noise modeling
+- **Quality Control**: Automated outlier rejection and validation
+
+### Performance
+- **Caching**: Streamlit caching for improved performance
 - **Memory Management**: Efficient handling of large FITS files
-- **Parallel Processing**: Multi-threaded operations where applicable
-- **Resource Cleanup**: Automatic temporary file management
+- **Processing Time**: Typical 2-5 minutes for 2K×2K images
 
-### Scalability
-- **Multi-User**: Isolated user workspaces
-- **Concurrent Sessions**: Support for multiple simultaneous users
-- **Storage Management**: Automatic cleanup of old results
+## Troubleshooting
 
-## Error Handling
+### Common Issues
 
-### Robust Processing
-- **Input Validation**: Comprehensive parameter checking
-- **Graceful Degradation**: Fallback options for failed operations
-- **Detailed Logging**: Complete processing audit trails
+**Plate Solving Fails**:
+- Ensure solve-field is in PATH
+- Check astrometry.net index files are installed
+- Verify sufficient stars in field (>10 recommended)
+
+**WCS Refinement Fails**:
+- Ensure SCAMP is installed and accessible
+- Check GAIA catalog connectivity
+- Verify initial WCS is reasonable
+
+**No Catalog Matches**:
+- Check internet connectivity for catalog queries
+- Verify coordinate system and field center
+- Ensure reasonable search radius
+
+### Performance Optimization
+- Use SSD storage for temporary files
+- Ensure adequate RAM (8GB+ recommended)
+- Close other applications during processing
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
+
+## License
+
+This project is open source. Please check the license file for details.
+
+## Citation
+
+If you use this pipeline in your research, please cite:
+```
+RAPAS Photometry Pipeline
+[Add appropriate citation format]
+```
+
+## Support
+
+For support and questions:
+- Create an issue on the project repository
+- Check the troubleshooting section above
+- Review the detailed log files for error diagnosis
 - **User Feedback**: Clear error messages and recovery suggestions
 
 ### Common Issues
