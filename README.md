@@ -288,3 +288,20 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 ## Support
 
 For questions, issues, or feature requests, please contact the development team or create an issue in the project repository.
+
+**Firefox Aladin Lite Issues**:
+Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loading problems:
+
+1. **Refresh the page**: Sometimes a simple refresh resolves the issue
+2. **Clear Firefox cache**: 
+   - Go to `Settings > Privacy & Security > Cookies and Site Data > Clear Data`
+   - Select both cookies and cached web content
+3. **Check WebAssembly support**:
+   - Type `about:config` in Firefox address bar
+   - Search for `javascript.options.wasm` and ensure it's set to `true`
+4. **Disable Enhanced Tracking Protection** for localhost:
+   - Click the shield icon in address bar → Toggle off protection
+5. **Alternative browsers**: Use Chrome, Edge, or Safari for best Aladin Lite compatibility
+6. **Check browser console**: Press F12 and look for specific error messages
+
+If Aladin Lite still doesn't work, the application provides a fallback table view of the catalog data.
