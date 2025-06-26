@@ -25,13 +25,13 @@ if not st.session_state.logged_in:
     st.sidebar.markdown("## User Credentials")
 
     username = st.sidebar.text_input(
-        "Username", 
+        "Username",
         value="",
         placeholder="Enter your username",
         help="Your registered username"
     )
     password = st.sidebar.text_input(
-        "Password", 
+        "Password",
         value="",
         type="password",
         placeholder="Enter your password",
