@@ -174,6 +174,35 @@ Direct integration with ESA's GAIA Data Release 3:
 
 ## Troubleshooting
 
+### Browser Compatibility Issues
+
+**Firefox Autocomplete Problems**:
+Firefox may not properly handle autocomplete with Streamlit's login form. Try these solutions:
+
+1. **Clear Browser Data**:
+   - Go to `Settings > Privacy & Security > Cookies and Site Data`
+   - Click "Clear Data" and select both cookies and cached web content
+   - Alternatively, press `Ctrl+Shift+Delete` and clear data for localhost
+
+2. **Disable Enhanced Tracking Protection** (for localhost):
+   - Click the shield icon in the address bar when on the login page
+   - Toggle off "Enhanced Tracking Protection" for this site
+
+3. **Check Autocomplete Settings**:
+   - Go to `Settings > Privacy & Security > Forms and Autofill`
+   - Ensure "Autofill logins and passwords" is enabled
+   - Check that localhost is not in the exceptions list
+
+4. **Alternative Solutions**:
+   - Use the "🔄 Refresh Fields" button if autocomplete doesn't populate fields
+   - Try manually typing credentials instead of using autocomplete
+   - Consider using Chrome or Edge as alternative browsers
+
+**Streamlit Connection Issues**:
+- Default port `localhost:8501` may conflict with other services
+- Try running on different port: `streamlit run frontend.py --server.port 8502`
+- Check Windows Firewall settings for localhost connections
+
 ### Common Issues
 
 **Plate Solving Fails**:
