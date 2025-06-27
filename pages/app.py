@@ -295,41 +295,67 @@ def display_catalog_in_aladin(
             except (ValueError, TypeError):
                 continue
 
-            # Handle magnitude - use only PSF magnitude
-            mag_to_use = None
-            mag_source = ""
+            # Handle magnitude - collect both PSF and aperture magnitudes
+            psf_mag = None
+            aperture_mag = None
             
-            # Use only PSF magnitude column
+            # Get PSF magnitude
             if mag_col in present_optional_cols and pd.notna(row[mag_col]):
                 try:
-                    mag_to_use = float(row[mag_col])
-                    mag_source = "PSF"
+                    psf_mag = float(row[mag_col])
+                    source["psf_mag"] = psf_mag
                 except (ValueError, TypeError):
                     pass
 
-            if mag_to_use is not None:
-                source["mag"] = mag_to_use
-                source["mag_source"] = mag_source
+            # Get aperture magnitude (try multiple aperture columns)
+            aperture_mag_cols = ["aperture_mag_r1.5", "aperture_mag", "calib_mag"]
+            for ap_col in aperture_mag_cols:
+                if ap_col in present_optional_cols and pd.notna(row[ap_col]):
+                    try:
+                        aperture_mag = float(row[ap_col])
+                        source["aperture_mag"] = aperture_mag
+                        break
+                    except (ValueError, TypeError):
+                        continue
 
-            # Handle catalog matches
-            catalog_info = ""
-            if catalog_col in present_optional_cols and pd.notna(row[catalog_col]):
-                catalog_info = str(row[catalog_col])
+            # Handle catalog matches - collect individual catalog IDs
+            catalog_matches = {}
             
-            # Check for specific catalog columns
-            catalog_matches = []
-            for cat_prefix in ["simbad_", "skybot_", "aavso_", "gaia_"]:
-                cat_cols = [col for col in present_optional_cols if col.startswith(cat_prefix)]
-                if cat_cols:
-                    for cat_col in cat_cols:
-                        if pd.notna(row[cat_col]) and str(row[cat_col]).strip() not in ["", "nan", "None"]:
-                            catalog_matches.append(f"{cat_prefix.rstrip('_').upper()}: {row[cat_col]}")
+            # SIMBAD matches
+            if "simbad_main_id" in present_optional_cols and pd.notna(row["simbad_main_id"]):
+                simbad_id = str(row["simbad_main_id"]).strip()
+                if simbad_id and simbad_id not in ["", "nan", "None"]:
+                    catalog_matches["SIMBAD"] = simbad_id
             
-            if catalog_matches:
-                catalog_info = "; ".join(catalog_matches)
+            # SkyBoT matches (solar system objects)
+            if "skybot_NAME" in present_optional_cols and pd.notna(row["skybot_NAME"]):
+                skybot_name = str(row["skybot_NAME"]).strip()
+                if skybot_name and skybot_name not in ["", "nan", "None"]:
+                    catalog_matches["SkyBoT"] = skybot_name
             
-            if catalog_info:
-                source["catalog"] = catalog_info
+            # AAVSO VSX matches (variable stars)
+            if "aavso_Name" in present_optional_cols and pd.notna(row["aavso_Name"]):
+                aavso_name = str(row["aavso_Name"]).strip()
+                if aavso_name and aavso_name not in ["", "nan", "None"]:
+                    catalog_matches["AAVSO"] = aavso_name
+            
+            # Astro-Colibri matches
+            if "astrocolibri_name" in present_optional_cols and pd.notna(row["astrocolibri_name"]):
+                colibri_name = str(row["astrocolibri_name"]).strip()
+                if colibri_name and colibri_name not in ["", "nan", "None"]:
+                    catalog_matches["Astro-Colibri"] = colibri_name
+            
+            # Quasar matches
+            if "qso_name" in present_optional_cols and pd.notna(row["qso_name"]):
+                qso_name = str(row["qso_name"]).strip()
+                if qso_name and qso_name not in ["", "nan", "None"]:
+                    catalog_matches["QSO"] = qso_name
+            
+            # GAIA matches (if calibration star)
+            if "gaia_calib_star" in present_optional_cols and row.get("gaia_calib_star", False):
+                catalog_matches["GAIA"] = "Calibration Star"
+            
+            source["catalog_matches"] = catalog_matches
 
             # Handle source identification with priority
             source_id = f"{fallback_id_prefix} {idx + 1}"
@@ -345,7 +371,7 @@ def display_catalog_in_aladin(
             source["source_number"] = idx + 1
 
             # Add additional useful information
-            for info_col in ["fwhm", "flux_fit", "sky_center"]:
+            for info_col in ["snr", "flux_fit", "fwhm"]:
                 if info_col in present_optional_cols and pd.notna(row[info_col]):
                     try:
                         source[info_col] = float(row[info_col])
@@ -412,25 +438,76 @@ def display_catalog_in_aladin(
                                     return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
                                 }});
                                 
-                                let popupContent = '<div style="padding:5px;">';
+                                // Build comprehensive popup content
+                                let popupContent = '<div style="padding:8px; max-width:300px; font-family:Arial,sans-serif;">';
+                                
+                                // Header with source name and number
                                 if(escapedName) {{
-                                    popupContent += '<b>' + escapedName + '</b><br/>';
+                                    popupContent += '<h4 style="margin:0 0 8px 0; color:#2c5282;">' + escapedName + '</h4>';
                                 }}
-                                popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '<br/>';
-                                popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '<br/>';
-
-                                if(source.mag) {{
-                                    popupContent += 'Mag: ' + (typeof source.mag === 'number' ? source.mag.toFixed(2) : source.mag) + '<br/>';
+                                if(source.source_number) {{
+                                    popupContent += '<p style="margin:0 0 8px 0; font-weight:bold; color:#1a365d;">Source #' + source.source_number + '</p>';
                                 }}
-                                if(source.catalog) {{
-                                    let escapedCatalog = source.catalog.replace(/[<>&"']/g, function(m) {{
-                                        return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
-                                    }});
-                                    popupContent += 'Catalogs: ' + escapedCatalog + '<br/>';
-                                }}
+                                
+                                // Coordinates section
+                                popupContent += '<div style="background:#f7fafc; padding:6px; margin:4px 0; border-radius:4px;">';
+                                popupContent += '<strong>Coordinates:</strong><br/>';
+                                popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '°<br/>';
+                                popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '°';
                                 popupContent += '</div>';
 
-                                let aladinSource = A.source(source.ra, source.dec, {{popupTitle: escapedName, popupDesc: popupContent}});
+                                // Photometry section
+                                if(source.psf_mag || source.aperture_mag) {{
+                                    popupContent += '<div style="background:#edf2f7; padding:6px; margin:4px 0; border-radius:4px;">';
+                                    popupContent += '<strong>Photometry:</strong><br/>';
+                                    if(source.psf_mag) {{
+                                        popupContent += 'PSF Mag: ' + (typeof source.psf_mag === 'number' ? source.psf_mag.toFixed(2) : source.psf_mag) + '<br/>';
+                                    }}
+                                    if(source.aperture_mag) {{
+                                        popupContent += 'Aperture Mag: ' + (typeof source.aperture_mag === 'number' ? source.aperture_mag.toFixed(2) : source.aperture_mag) + '<br/>';
+                                    }}
+                                    if(source.snr) {{
+                                        popupContent += 'S/N: ' + (typeof source.snr === 'number' ? source.snr.toFixed(1) : source.snr);
+                                    }}
+                                    popupContent += '</div>';
+                                }}
+                                
+                                // Catalog matches section
+                                if(source.catalog_matches && Object.keys(source.catalog_matches).length > 0) {{
+                                    popupContent += '<div style="background:#e6fffa; padding:6px; margin:4px 0; border-radius:4px;">';
+                                    popupContent += '<strong>Catalog Matches:</strong><br/>';
+                                    for(let catalog in source.catalog_matches) {{
+                                        let catalogValue = source.catalog_matches[catalog];
+                                        if(catalogValue && catalogValue !== '' && catalogValue !== 'nan') {{
+                                            let escapedCatalogValue = catalogValue.toString().replace(/[<>&"']/g, function(m) {{
+                                                return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
+                                            }});
+                                            popupContent += '<span style="display:inline-block; background:#81e6d9; color:#234e52; padding:2px 6px; margin:1px; border-radius:3px; font-size:11px;">';
+                                            popupContent += catalog + ': ' + escapedCatalogValue + '</span><br/>';
+                                        }}
+                                    }}
+                                    popupContent += '</div>';
+                                }}
+                                
+                                // Additional info section
+                                if(source.flux_fit || source.fwhm) {{
+                                    popupContent += '<div style="background:#fef5e7; padding:6px; margin:4px 0; border-radius:4px; font-size:12px;">';
+                                    popupContent += '<strong>Additional Info:</strong><br/>';
+                                    if(source.flux_fit) {{
+                                        popupContent += 'PSF Flux: ' + (typeof source.flux_fit === 'number' ? source.flux_fit.toFixed(1) : source.flux_fit) + '<br/>';
+                                    }}
+                                    if(source.fwhm) {{
+                                        popupContent += 'FWHM: ' + (typeof source.fwhm === 'number' ? source.fwhm.toFixed(2) : source.fwhm) + ' px';
+                                    }}
+                                    popupContent += '</div>';
+                                }}
+                                
+                                popupContent += '</div>';
+
+                                let aladinSource = A.source(source.ra, source.dec, {{
+                                    popupTitle: escapedName || ('Source #' + source.source_number), 
+                                    popupDesc: popupContent
+                                }});
                                 aladinSources.push(aladinSource);
                             }});
 
@@ -1795,9 +1872,7 @@ if science_file is not None:
                                                 epsf_cols["match_id"] = "match_id"
                                                 epsf_cols["flux_fit"] = "psf_flux_fit"
                                                 epsf_cols["flux_err"] = "psf_flux_err"
-                                                epsf_cols["instrumental_mag"] = (
-                                                    "psf_instrumental_mag"
-                                                )
+                                                epsf_cols["instrumental_mag"] = "psf_instrumental_mag"
 
                                                 if (
                                                     len(epsf_cols) > 1
