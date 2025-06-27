@@ -1,7 +1,5 @@
 import os
-import subprocess
 import json
-import pathlib
 
 import streamlit as st
 
@@ -33,7 +31,7 @@ from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
-from stdpipe import photometry, astrometry, catalogs, pipeline
+from stdpipe import photometry, astrometry, catalogs
 
 from src.tools import (FIGURE_SIZES, URL, safe_catalog_query,
                        safe_wcs_create, ensure_output_directory,
@@ -615,10 +613,10 @@ def estimate_background(image_data, box_size=128, filter_size=7):
         )
 
         # Plot the background model with ZScale and save as FITS
+        fig_bkg = None
         try:
             # Create a figure with two subplots side by side for background/RMS
-            fig_bkg, (ax1, ax2) = plt.subplots(1, 2,
-                                               figsize=FIGURE_SIZES["wide"])
+            fig_bkg, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
             
             # Use ZScaleInterval for better visualization
             zscale = ZScaleInterval()
@@ -667,6 +665,10 @@ def estimate_background(image_data, box_size=128, filter_size=7):
             
         except Exception as e:
             st.warning(f"Error creating or saving background plot: {str(e)}")
+        finally:
+            # Clean up matplotlib figure to prevent memory leaks
+            if fig_bkg is not None:
+                plt.close(fig_bkg)
 
         return bkg, None
     except Exception as e:
@@ -1555,8 +1557,8 @@ def refine_astrometry_with_stdpipe(
 
             # Test the refined WCS
             try:
-                test_x, test_y = image_data.shape[1] // 2, image_data.shape[0] // 2
-                test_coords = wcs_result.pixel_to_world_values(test_x, test_y)
+                center_x, center_y = image_data.shape[1] // 2, image_data.shape[0] // 2
+                test_coords = wcs_result.pixel_to_world_values(center_x, center_y)
                 
                 if isinstance(test_coords, (list, tuple)) and len(test_coords) >= 2:
                     test_ra, test_dec = test_coords[0], test_coords[1]
