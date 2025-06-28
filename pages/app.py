@@ -395,7 +395,7 @@ def display_catalog_in_aladin(
                 return
 
             # Fix JavaScript error handling structure - Use Aladin Lite v2 for better Firefox compatibility
-             html_content = f"""
+            html_content = f"""
             <!DOCTYPE html>
             <html>
             <head>
