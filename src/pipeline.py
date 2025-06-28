@@ -1694,7 +1694,7 @@ def detection_and_photometry(
 
     exposure_time = 1.0
     if (np.max(image_data) - np.min(image_data)) > 10:
-         # Use .get() method to safely access header keywords with fallbacks
+        # Use .get() method to safely access header keywords with fallbacks
         exposure_time = science_header.get("EXPTIME",
                                            science_header.get("EXPOSURE",
                                                               science_header.get("EXP_TIME",
@@ -1717,10 +1717,11 @@ def detection_and_photometry(
         st.warning("Failed to estimate FWHM. Using the initial estimate.")
         fwhm_estimate = mean_fwhm_pixel
 
+    median_bkg_rms = np.median(bkg.background_rms)
     peak_max = 0.99 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=threshold_sigma * np.std(image_sub),
+        threshold=threshold_sigma * median_bkg_rms,
         peakmax=peak_max,
     )
 
