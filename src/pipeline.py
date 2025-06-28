@@ -1689,6 +1689,8 @@ def detection_and_photometry(
     # Ensure image_sub is float64 to avoid casting errors
     image_sub = image_data.astype(np.float64) - bkg.background.astype(np.float64)
 
+    show_subtracted_image(image_sub)
+
     # Ensure bkg_error is also float64
     bkg_error = np.full_like(image_sub, bkg.background_rms.astype(np.float64), dtype=np.float64)
 
@@ -1717,13 +1719,12 @@ def detection_and_photometry(
         st.warning("Failed to estimate FWHM. Using the initial estimate.")
         fwhm_estimate = mean_fwhm_pixel
 
-    median_rms = np.std(image_sub)
+    median_bkg_rms = np.median(bkg.background_rms)
     peak_max = 0.99 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=threshold_sigma * median_rms,
-        peakmax=peak_max,
-    )
+        threshold=threshold_sigma * median_bkg_rms,
+        peakmax=peak_max)
 
     sources = daofind(image_sub,
                       mask=mask)
@@ -1959,6 +1960,18 @@ def detection_and_photometry(
     except Exception as e:
         st.error(f"Error performing aperture photometry: {e}")
         return None, None, daofind, bkg, wcs_obj
+
+
+# Visual check of the background-subtracted image
+def show_subtracted_image(image_sub):
+    fig, ax = plt.subplots(figsize=(7, 7))
+    zscale = ZScaleInterval()
+    vmin, vmax = zscale.get_limits(image_sub)
+    im = ax.imshow(image_sub, origin='lower', cmap='gray', vmin=vmin, vmax=vmax)
+    ax.set_title("Background-subtracted image")
+    plt.colorbar(im, ax=ax, label='Flux')
+    st.pyplot(fig)
+    plt.close(fig)
 
 
 def cross_match_with_gaia(
