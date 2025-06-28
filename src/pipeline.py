@@ -1717,11 +1717,11 @@ def detection_and_photometry(
         st.warning("Failed to estimate FWHM. Using the initial estimate.")
         fwhm_estimate = mean_fwhm_pixel
 
-    median_bkg_rms = np.median(bkg.background_rms)
+    median_rms = np.std(image_sub)
     peak_max = 0.99 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=threshold_sigma * median_bkg_rms,
+        threshold=threshold_sigma * median_rms,
         peakmax=peak_max,
     )
 
