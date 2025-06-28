@@ -395,18 +395,18 @@ def display_catalog_in_aladin(
                 return
 
             # Fix JavaScript error handling structure - Use Aladin Lite v2 for better Firefox compatibility
-            html_content = f"""
+             html_content = f"""
             <!DOCTYPE html>
             <html>
             <head>
                 <meta charset="utf-8">
                 <title>Aladin Lite</title>
-                <link rel="stylesheet" href="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.css" />
+                <link rel="stylesheet" href="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.min.css" />
             </head>
             <body>
                 <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
                 <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js" charset="utf-8"></script>
-                <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.js" charset="utf-8"></script>
+                <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.min.js" charset="utf-8"></script>
                 <script type="text/javascript">
                     document.addEventListener("DOMContentLoaded", function(event) {{
                         try {{
