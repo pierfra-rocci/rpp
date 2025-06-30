@@ -976,7 +976,7 @@ def fwhm_fit(
         st.write(f"95th percentile: {np.percentile(_img, 95):.2f}")
         # Show what happens if we exclude bright pixels
         clipped_std = np.std(_img[_img < np.percentile(_img, 95)])
-        st.write(f"Std excluding brightest 10% pixels: {clipped_std:.2f}")
+        st.write(f"Std excluding brightest 5% pixels: {clipped_std:.2f}")
 
         daofind = DAOStarFinder(
             fwhm=1.5 * fwhm, threshold=4.5 * clipped_std, peakmax=peak
@@ -1986,7 +1986,7 @@ def show_subtracted_image(image_sub):
     fig, ax = plt.subplots(figsize=(7, 7))
     zscale = ZScaleInterval()
     vmin, vmax = zscale.get_limits(image_sub)
-    im = ax.imshow(image_sub, origin='lower', cmap='gray', vmin=vmin, vmax=vmax)
+    im = ax.imshow(image_sub, origin='lower', cmap='viridis', vmin=vmin, vmax=vmax)
     ax.set_title("Background-subtracted image")
     plt.colorbar(im, ax=ax, label='Flux')
     st.pyplot(fig)
