@@ -971,13 +971,8 @@ def fwhm_fit(
 
     try:
         peak = 0.95 * np.nanmax(_img)
-        st.write(f"Background RMS: {np.median(bkg.background_rms):.2f}")
-        st.write(f"Image std (all pixels): {np.std(_img):.2f}")
         
         # DIAGNOSTIC: Show the distribution
-        st.write(f"Image min: {np.min(_img):.2f}")
-        st.write(f"Image max: {np.max(_img):.2f}")
-        st.write(f"Image median: {np.median(_img):.2f}")
         st.write(f"95th percentile: {np.percentile(_img, 95):.2f}")
         
         # Show what happens if we exclude bright pixels
