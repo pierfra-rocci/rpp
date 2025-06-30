@@ -901,7 +901,7 @@ def fwhm_fit(
         half_box = box_size // 2
 
         if box_size < 5:
-            return None
+            return None, None
 
         row_start = center_row - half_box
         row_end = center_row + half_box + 1
@@ -914,7 +914,7 @@ def fwhm_fit(
             or col_start < 0
             or col_end > image_data.shape[1]
         ):
-            return None
+            return None, None
 
         box_data = image_data[row_start:row_end, col_start:col_end]
 
@@ -927,7 +927,7 @@ def fwhm_fit(
         if np.max(sum_rows) < 5 * np.median(sum_rows) or np.max(
             sum_cols
         ) < 5 * np.median(sum_cols):
-            return None
+            return None, None
 
         row_indices = np.arange(box_data.shape[0])
         col_indices = np.arange(box_data.shape[1])
@@ -946,7 +946,7 @@ def fwhm_fit(
             center_row_fit = fitted_row.mean.value + row_start
             fwhm_row = 2 * np.sqrt(2 * np.log(2)) * fitted_row.stddev.value
         except Exception:
-            return None
+            return None, None
 
         try:
             col_max_idx = np.argmax(sum_cols)
@@ -960,7 +960,7 @@ def fwhm_fit(
             center_col_fit = fitted_col.mean.value + col_start
             fwhm_col = 2 * np.sqrt(2 * np.log(2)) * fitted_col.stddev.value
         except Exception:
-            return None
+            return None, None
 
         # Calculate relative flux in the box
         box_flux = np.sum(box_data)
@@ -984,7 +984,7 @@ def fwhm_fit(
         sources = daofind(_img, mask=mask)
         if sources is None:
             st.warning("No sources found !")
-            return None
+            return None, None
 
         flux = sources["flux"]
         median_flux = np.median(flux)
@@ -1089,7 +1089,7 @@ def fwhm_fit(
         mean_fwhm = np.median(fwhm_values_arr[valid])
         st.success(f"FWHM based on Gaussian model: {round(mean_fwhm, 2)} pixels")
 
-        return round(mean_fwhm, 2)
+        return round(mean_fwhm, 2), clipped_std
     except ValueError as e:
         raise e
     except Exception as e:
@@ -1732,19 +1732,17 @@ def detection_and_photometry(
     )
 
     st.write("Estimating FWHM...")
-    fwhm_estimate = fwhm_fit(image_sub, mean_fwhm_pixel, mask)
+    fwhm_estimate, clipped_std = fwhm_fit(image_sub, mean_fwhm_pixel, mask)
 
     if fwhm_estimate is None:
         st.warning("Failed to estimate FWHM. Using the initial estimate.")
         fwhm_estimate = mean_fwhm_pixel
 
-    median_bkg_rms = np.median(bkg.background_rms)
-    st.write(median_bkg_rms)
-    st.write(np.std(image_sub))
+    # median_bkg_rms = np.median(bkg.background_rms)
     peak_max = 0.99 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=threshold_sigma * median_bkg_rms,
+        threshold=threshold_sigma * clipped_std,
         peakmax=peak_max)
 
     sources = daofind(image_sub,
