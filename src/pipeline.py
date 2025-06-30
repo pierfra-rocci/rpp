@@ -1431,9 +1431,9 @@ def refine_astrometry_with_stdpipe(
             obj = photometry.get_objects_sep(
                 image_data,
                 header=clean_header,
-                thresh=2.5,  # Changed from 'thresh' to 'threshold'
-                minarea=5,      # Minimum area in pixels
-                aper=1.5 * fwhm_estimate,  # Changed from 'aper' to 'r'
+                thresh=2.5,
+                minarea=5,
+                aper=1.5 * fwhm_estimate,
                 gain=1.0,
                 use_fwhm=True,
                 use_mask_large=True,
