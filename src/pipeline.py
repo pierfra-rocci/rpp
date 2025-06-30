@@ -1685,8 +1685,8 @@ def detection_and_photometry(
     )
 
     height, width = image_data.shape
-    adaptive_box_size = max(64, min(height // 10, width // 10, 128))
-    adaptive_filter_size = min(11, adaptive_box_size // 2)
+    adaptive_box_size = max(32, min(height // 10, width // 10, 128))
+    adaptive_filter_size = min(9, adaptive_box_size // 2)
 
     bkg, bkg_error = estimate_background(
         image_data, box_size=adaptive_box_size, filter_size=adaptive_filter_size
