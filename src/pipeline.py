@@ -979,7 +979,7 @@ def fwhm_fit(
         st.write(f"Std excluding brightest 10% pixels: {clipped_std:.2f}")
 
         daofind = DAOStarFinder(
-            fwhm=1.5 * fwhm, threshold=4.5 * np.std(_img), peakmax=peak
+            fwhm=1.5 * fwhm, threshold=4.5 * clipped_std, peakmax=peak
         )
         sources = daofind(_img, mask=mask)
         if sources is None:
