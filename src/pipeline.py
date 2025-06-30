@@ -1116,6 +1116,8 @@ def perform_psf_photometry(
         Star detection function used as "finder" in PSF photometry
     mask : numpy.ndarray, optional
         Mask to exclude certain image areas from analysis
+    error : numpy.ndarray, optional
+        Error array for the image
 
     Returns
     -------
@@ -1193,22 +1195,25 @@ def perform_psf_photometry(
         if not np.any(valid_all):
             raise ValueError("No sources with all valid parameters found")
         
-        # Apply criteria only to valid sources - FIX: Use np.where to avoid ambiguous truth value
-        flux_criteria = np.where(valid_flux, (flux >= flux_min) &
-                                 (flux <= flux_max), False)
-        roundness_criteria = np.where(valid_roundness,
-                                      np.abs(roundness1) < 0.25, False)
-        sharpness_criteria = np.where(valid_sharpness,
-                                      np.abs(sharpness) < 0.6, False)
+        # FIXED: Apply criteria using boolean indexing instead of np.where
+        # This avoids the ambiguous truth value error
+        flux_criteria = np.zeros_like(valid_flux, dtype=bool)
+        flux_criteria[valid_flux] = (flux[valid_flux] >= flux_min) & (flux[valid_flux] <= flux_max)
         
-        # Edge criteria - FIX: Use np.where to avoid ambiguous truth value
-        edge_criteria = np.where(
-            valid_xcentroid & valid_ycentroid,
-            (xcentroid > 2 * fwhm) &
-            (xcentroid < img.shape[1] - 2 * fwhm) &
-            (ycentroid > 2 * fwhm) &
-            (ycentroid < img.shape[0] - 2 * fwhm),
-            False
+        roundness_criteria = np.zeros_like(valid_roundness, dtype=bool)
+        roundness_criteria[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.25
+        
+        sharpness_criteria = np.zeros_like(valid_sharpness, dtype=bool)
+        sharpness_criteria[valid_sharpness] = np.abs(sharpness[valid_sharpness]) < 0.6
+        
+        # Edge criteria
+        edge_criteria = np.zeros_like(valid_xcentroid, dtype=bool)
+        valid_coords = valid_xcentroid & valid_ycentroid
+        edge_criteria[valid_coords] = (
+            (xcentroid[valid_coords] > 2 * fwhm) &
+            (xcentroid[valid_coords] < img.shape[1] - 2 * fwhm) &
+            (ycentroid[valid_coords] > 2 * fwhm) &
+            (ycentroid[valid_coords] < img.shape[0] - 2 * fwhm)
         )
         
         # Combine all criteria with validity checks
@@ -1219,9 +1224,6 @@ def perform_psf_photometry(
             sharpness_criteria & 
             edge_criteria
         )
-        
-        # Ensure we have a 1D boolean array
-        good_stars_mask = np.asarray(good_stars_mask, dtype=bool)
         
         # Apply filters
         filtered_photo_table = photo_table[good_stars_mask]
@@ -1234,16 +1236,17 @@ def perform_psf_photometry(
         if len(filtered_photo_table) < 10:
             st.warning(f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria...")
             
-            # Relax criteria with the same explicit approach - FIX: Use np.where
-            roundness_criteria_relaxed = np.where(valid_roundness,
-                                                  np.abs(roundness1) < 0.4, False)
-            sharpness_criteria_relaxed = np.where(valid_sharpness,
-                                                  np.abs(sharpness) < 1.0, False)
-            flux_criteria_relaxed = np.where(
-                valid_flux,
-                (flux >= flux_median - 2*flux_std) &
-                (flux <= flux_median + 2*flux_std),
-                False
+            # FIXED: Relax criteria using the same approach
+            roundness_criteria_relaxed = np.zeros_like(valid_roundness, dtype=bool)
+            roundness_criteria_relaxed[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.4
+            
+            sharpness_criteria_relaxed = np.zeros_like(valid_sharpness, dtype=bool)
+            sharpness_criteria_relaxed[valid_sharpness] = np.abs(sharpness[valid_sharpness]) < 1.0
+            
+            flux_criteria_relaxed = np.zeros_like(valid_flux, dtype=bool)
+            flux_criteria_relaxed[valid_flux] = (
+                (flux[valid_flux] >= flux_median - 2*flux_std) &
+                (flux[valid_flux] <= flux_median + 2*flux_std)
             )
             
             good_stars_mask = (
@@ -1254,8 +1257,6 @@ def perform_psf_photometry(
                 edge_criteria
             )
             
-            # Ensure we have a 1D boolean array
-            good_stars_mask = np.asarray(good_stars_mask, dtype=bool)
             filtered_photo_table = photo_table[good_stars_mask]
             
             st.write(f"After relaxing criteria: {len(filtered_photo_table)} stars")
@@ -1340,6 +1341,14 @@ def perform_psf_photometry(
 
     # Create PSF photometry object and perform photometry
     try:
+        # FIXED: Validate error array before using it
+        if error is not None and not isinstance(error, np.ndarray):
+            st.warning("Invalid error array provided, proceeding without error estimation")
+            error = None
+        elif error is not None and error.shape != img.shape:
+            st.warning("Error array shape mismatch, proceeding without error estimation")
+            error = None
+            
         psfphot = IterativePSFPhotometry(
             psf_model=epsf,
             fit_shape=fit_shape,
@@ -1351,11 +1360,13 @@ def perform_psf_photometry(
         )
 
         # Use original photo_table positions for PSF photometry
-        psfphot.x = photo_table["xcentroid"]
-        psfphot.y = photo_table["ycentroid"]
+        # FIXED: Create initial guess table to ensure proper indexing
+        initial_guesses = Table()
+        initial_guesses['x_0'] = photo_table["xcentroid"]
+        initial_guesses['y_0'] = photo_table["ycentroid"]
 
         st.write("Performing PSF photometry on all sources...")
-        phot_epsf_result = psfphot(img, mask=mask, error=error)
+        phot_epsf_result = psfphot(img, init_guesses=initial_guesses, mask=mask, error=error)
         st.session_state["epsf_photometry_result"] = phot_epsf_result
         st.write("PSF photometry completed successfully.")
         
