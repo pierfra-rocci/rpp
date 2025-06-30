@@ -971,9 +971,21 @@ def fwhm_fit(
 
     try:
         peak = 0.95 * np.nanmax(_img)
-        st.write(np.std(_img))
+        st.write(f"Background RMS: {np.median(bkg.background_rms):.2f}")
+        st.write(f"Image std (all pixels): {np.std(_img):.2f}")
+        
+        # DIAGNOSTIC: Show the distribution
+        st.write(f"Image min: {np.min(_img):.2f}")
+        st.write(f"Image max: {np.max(_img):.2f}")
+        st.write(f"Image median: {np.median(_img):.2f}")
+        st.write(f"95th percentile: {np.percentile(_img, 95):.2f}")
+        
+        # Show what happens if we exclude bright pixels
+        clipped_std = np.std(_img[_img < np.percentile(_img, 90)])
+        st.write(f"Std excluding brightest 10% pixels: {clipped_std:.2f}")
+
         daofind = DAOStarFinder(
-            fwhm=1.5 * fwhm, threshold=4. * np.std(_img), peakmax=peak
+            fwhm=1.5 * fwhm, threshold=4.5 * np.std(_img), peakmax=peak
         )
         sources = daofind(_img, mask=mask)
         if sources is None:
