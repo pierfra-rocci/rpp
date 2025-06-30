@@ -1360,13 +1360,13 @@ def perform_psf_photometry(
         )
 
         # Use original photo_table positions for PSF photometry
-        # FIXED: Create initial guess table to ensure proper indexing
-        initial_guesses = Table()
-        initial_guesses['x_0'] = photo_table["xcentroid"]
-        initial_guesses['y_0'] = photo_table["ycentroid"]
+        # FIXED: Create initial guess table with correct parameter name
+        initial_params = Table()
+        initial_params['x_0'] = photo_table["xcentroid"]
+        initial_params['y_0'] = photo_table["ycentroid"]
 
         st.write("Performing PSF photometry on all sources...")
-        phot_epsf_result = psfphot(img, init_guesses=initial_guesses, mask=mask, error=error)
+        phot_epsf_result = psfphot(img, init_params=initial_params, mask=mask, error=error)
         st.session_state["epsf_photometry_result"] = phot_epsf_result
         st.write("PSF photometry completed successfully.")
         
