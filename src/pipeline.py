@@ -971,6 +971,7 @@ def fwhm_fit(
 
     try:
         peak = 0.95 * np.nanmax(_img)
+        st.write(np.std(_img))
         daofind = DAOStarFinder(
             fwhm=1.5 * fwhm, threshold=4. * np.std(_img), peakmax=peak
         )
