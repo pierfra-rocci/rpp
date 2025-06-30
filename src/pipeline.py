@@ -970,9 +970,9 @@ def fwhm_fit(
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit, relative_flux
 
     try:
-        peak = 0.90 * np.nanmax(_img)
+        peak = 0.95 * np.nanmax(_img)
         daofind = DAOStarFinder(
-            fwhm=1.5 * fwhm, threshold=4.5 * np.std(_img), peakmax=peak
+            fwhm=1.5 * fwhm, threshold=4. * np.std(_img), peakmax=peak
         )
         sources = daofind(_img, mask=mask)
         if sources is None:
