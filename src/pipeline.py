@@ -1689,7 +1689,8 @@ def detection_and_photometry(
     adaptive_filter_size = min(9, adaptive_box_size // 2)
 
     bkg, bkg_error = estimate_background(
-        image_data, box_size=adaptive_box_size, filter_size=adaptive_filter_size
+        image_data, box_size=adaptive_box_size,
+        filter_size=adaptive_filter_size
     )
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
