@@ -975,7 +975,7 @@ def fwhm_fit(
         # DIAGNOSTIC: Show the distribution
         st.write(f"95th percentile: {np.percentile(_img, 95):.2f}")
         # Show what happens if we exclude bright pixels
-        clipped_std = np.std(_img[_img < np.percentile(_img, 90)])
+        clipped_std = np.std(_img[_img < np.percentile(_img, 95)])
         st.write(f"Std excluding brightest 10% pixels: {clipped_std:.2f}")
 
         daofind = DAOStarFinder(
