@@ -1506,12 +1506,11 @@ def refine_astrometry_with_stdpipe(
         try:
             # Use correct catalog name and filters
             cat = catalogs.get_cat_vizier(
-                center_ra, 
-                center_dec, 
-                radius, 
+                center_ra,
+                center_dec,
+                radius,
                 "I/350/gaiaedr3",  # Correct GAIA EDR3 catalog identifier
-                filters={gaia_band: "<20.0"},
-                extra_filters={"Plx": ">-100"}  # Basic parallax filter
+                filters={gaia_band: "<20.0"}  # Removed extra_filters parameter
             )
             
             if cat is None or len(cat) == 0:
@@ -1524,9 +1523,18 @@ def refine_astrometry_with_stdpipe(
         
         st.info(f"Retrieved {len(cat)} GAIA catalog sources")
         
-        # Perform astrometry refinement using SCAMP with corrected parameters
+        # Apply additional filtering after retrieval if needed
         try:
+            # Filter out sources with poor parallax measurements if the column exists
+            if 'parallax' in cat.colnames:
+                # Keep sources with reasonable parallax values (not extreme negative values)
+                parallax_filter = cat['parallax'] > -100  # Basic parallax filter
+                cat = cat[parallax_filter]
+                st.info(f"After parallax filtering: {len(cat)} GAIA catalog sources")
+        except Exception as filter_error:
+            st.warning(f"Could not apply additional filtering: {filter_error}")
             # Calculate matching radius in degrees
+        try:
             match_radius_deg = 2.0 * fwhm_estimate * pixel_scale / 3600.0
             
             wcs_result = astrometry.refine_wcs_scamp(
