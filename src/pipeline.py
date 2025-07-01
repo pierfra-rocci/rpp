@@ -30,7 +30,7 @@ from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
-from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry, EPSFStars
+from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from stdpipe import photometry, astrometry, catalogs
 
 from src.tools import (FIGURE_SIZES, URL, safe_catalog_query,
@@ -1308,20 +1308,16 @@ def perform_psf_photometry(
 
     try:
         # Remove stars with NaN or all-zero data
-        valid_stars = []
-        valid_table_rows = []
-        for i, star in enumerate(stars):
+        mask_valid = []
+        for star in stars:
             if np.isnan(star.data).any():
-                continue
-            if np.all(star.data == 0):
-                continue
-            valid_stars.append(star)
-            if hasattr(stars, 'table'):
-                valid_table_rows.append(stars.table[i])
-        if hasattr(stars, 'table'):
-            stars = EPSFStars(valid_stars, meta=stars.meta, table=Table(rows=valid_table_rows, names=stars.table.colnames))
-        else:
-            stars = EPSFStars(valid_stars)
+                mask_valid.append(False)
+            elif np.all(star.data == 0):
+                mask_valid.append(False)
+            else:
+                mask_valid.append(True)
+        mask_valid = np.array(mask_valid)
+        stars = stars[mask_valid]  # This returns a new EPSFStars object
         n_stars = len(stars)
         st.write(f"{n_stars} valid stars remain for PSF model.")
         if n_stars == 0:
@@ -1686,7 +1682,7 @@ def detection_and_photometry(
     _science_header : dict or astropy.io.fits.Header
         FITS header or dictionary with image metadata.
     mean_fwhm_pixel : float
-        Estimated FWHM in pixels, used for aperture and PSF sizing.
+        Estimated FWHM in pixels, used for aperture and PSF sizing
     threshold_sigma : float
         Detection threshold in sigma above background.
     detection_mask : int
