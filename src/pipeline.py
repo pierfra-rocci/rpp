@@ -1303,7 +1303,7 @@ def perform_psf_photometry(
 
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
-        epsf = epsf_builder(stars)
+        epsf, fitted_stars = epsf_builder(stars)
         if epsf is None or not hasattr(epsf, 'data') or epsf.data is None or epsf.data.size == 0:
             raise ValueError("EPSFBuilder returned an empty or invalid PSF model. Check star selection and image quality.")
         st.session_state["epsf_model"] = epsf
