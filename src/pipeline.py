@@ -1293,7 +1293,10 @@ def perform_psf_photometry(
 
     try:
         stars = extract_stars(nddata, stars_table, size=fit_shape)
-        st.write(f"{len(stars)} stars extracted for PSF model.")
+        n_stars = len(stars)
+        st.write(f"{n_stars} stars extracted for PSF model.")
+        if n_stars == 0:
+            raise ValueError("No stars extracted for PSF model. Check your selection criteria.")
     except Exception as e:
         st.error(f"Error extracting stars: {e}")
         raise
@@ -1301,6 +1304,8 @@ def perform_psf_photometry(
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
         epsf = epsf_builder(stars)
+        if epsf is None or not hasattr(epsf, 'data') or epsf.data is None or epsf.data.size == 0:
+            raise ValueError("EPSFBuilder returned an empty or invalid PSF model. Check star selection and image quality.")
         st.session_state["epsf_model"] = epsf
     except Exception as e:
         st.error(f"Error fitting PSF model: {e}")
