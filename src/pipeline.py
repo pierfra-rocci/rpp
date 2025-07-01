@@ -1308,20 +1308,20 @@ def perform_psf_photometry(
 
     try:
         # Remove stars with NaN or all-zero data
-        valid_star_indices = []
+        valid_stars = []
+        valid_table_rows = []
         for i, star in enumerate(stars):
             if np.isnan(star.data).any():
                 continue
             if np.all(star.data == 0):
                 continue
-            valid_star_indices.append(i)
-        if len(valid_star_indices) < len(stars):
-            st.warning(f"Removed {len(stars) - len(valid_star_indices)} stars with NaN or zero data before PSF modeling.")
-        # FIX: Convert filtered list back to EPSFStars object
+            valid_stars.append(star)
+            if hasattr(stars, 'table'):
+                valid_table_rows.append(stars.table[i])
         if hasattr(stars, 'table'):
-            stars = EPSFStars([stars[i] for i in valid_star_indices], meta=stars.meta, table=stars.table[valid_star_indices])
+            stars = EPSFStars(valid_stars, meta=stars.meta, table=Table(rows=valid_table_rows, names=stars.table.colnames))
         else:
-            stars = EPSFStars([stars[i] for i in valid_star_indices])
+            stars = EPSFStars(valid_stars)
         n_stars = len(stars)
         st.write(f"{n_stars} valid stars remain for PSF model.")
         if n_stars == 0:
