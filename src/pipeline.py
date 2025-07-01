@@ -1295,6 +1295,11 @@ def perform_psf_photometry(
         stars = extract_stars(nddata, stars_table, size=fit_shape)
         n_stars = len(stars)
         st.write(f"{n_stars} stars extracted for PSF model.")
+        # Diagnostic: check the type and contents of stars
+        st.write(f"Type of stars: {type(stars)}")
+        if hasattr(stars, 'data'):
+            st.write(f"Shape of stars.data: {stars.data.shape}")
+            st.write(f"Any NaN in stars.data: {np.isnan(stars.data).any()}")
         if n_stars == 0:
             raise ValueError("No stars extracted for PSF model. Check your selection criteria.")
     except Exception as e:
@@ -1302,8 +1307,32 @@ def perform_psf_photometry(
         raise
 
     try:
+        # Remove stars with NaN or all-zero data
+        valid_star_indices = []
+        for i, star in enumerate(stars):
+            if np.isnan(star.data).any():
+                continue
+            if np.all(star.data == 0):
+                continue
+            valid_star_indices.append(i)
+        if len(valid_star_indices) < len(stars):
+            st.warning(f"Removed {len(stars) - len(valid_star_indices)} stars with NaN or zero data before PSF modeling.")
+        stars = stars[valid_star_indices]
+        n_stars = len(stars)
+        st.write(f"{n_stars} valid stars remain for PSF model.")
+        if n_stars == 0:
+            raise ValueError("No valid stars for PSF model after filtering.")
+    except Exception as e:
+        st.error(f"Error filtering stars for PSF model: {e}")
+        raise
+
+    try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
         epsf, fitted_stars = epsf_builder(stars)
+        st.write(f"Type of epsf: {type(epsf)}")
+        if hasattr(epsf, 'data'):
+            st.write(f"Shape of epsf.data: {epsf.data.shape}")
+            st.write(f"Any NaN in epsf.data: {np.isnan(epsf.data).any()}")
         if epsf is None or not hasattr(epsf, 'data') or epsf.data is None or epsf.data.size == 0:
             raise ValueError("EPSFBuilder returned an empty or invalid PSF model. Check star selection and image quality.")
         st.session_state["epsf_model"] = epsf
