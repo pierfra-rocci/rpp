@@ -1533,7 +1533,8 @@ def refine_astrometry_with_stdpipe(
                 st.info(f"After parallax filtering: {len(cat)} GAIA catalog sources")
         except Exception as filter_error:
             st.warning(f"Could not apply additional filtering: {filter_error}")
-            # Calculate matching radius in degrees
+        
+        # Calculate matching radius in degrees
         try:
             match_radius_deg = 2.0 * fwhm_estimate * pixel_scale / 3600.0
             
@@ -1544,13 +1545,12 @@ def refine_astrometry_with_stdpipe(
                 sr=match_radius_deg,
                 order=2,  # Start with lower order for stability
                 # Correct GAIA EDR3 column names
-                cat_col_ra='RA_ICRS',      # Corrected column name
-                cat_col_dec='DE_ICRS',     # Corrected column name  
+                cat_col_ra='RA_ICRS',
+                cat_col_dec='DE_ICRS',
                 cat_col_mag=gaia_band,
                 cat_mag_lim=19.0,
-                obj_col_mag='mag',         # Object magnitude column
+                # FIXED: Removed 'obj_col_mag' parameter - not supported by stdpipe
                 verbose=True,
-                _workdir=None,             # Let stdpipe handle temp directory
                 clean=True                 # Clean temporary files
             )
             
@@ -1563,13 +1563,13 @@ def refine_astrometry_with_stdpipe(
                     obj,
                     cat,
                     wcs=wcs,
-                    sr=match_radius_deg * 1.5,  # Larger matching radius
-                    order=1,                    # Linear fit only
+                    sr=match_radius_deg * 1.5,
+                    order=1,
                     cat_col_ra='RA_ICRS',
-                    cat_col_dec='DE_ICRS', 
+                    cat_col_dec='DE_ICRS',
                     cat_col_mag=gaia_band,
-                    cat_mag_lim=18.0,           # Brighter stars only
-                    obj_col_mag='mag',
+                    cat_mag_lim=18.0,
+                    # FIXED: Removed 'obj_col_mag' parameter - not supported by stdpipe
                     verbose=True,
                     clean=True
                 )
@@ -2888,34 +2888,41 @@ def enhance_catalog(
                                 valid_final_coords = enhanced_table[valid_coords_mask]
                                 
                                 if len(valid_final_coords) > 0:
+                                    # Create source coordinates for matching
                                     source_coords = SkyCoord(
-                                        ra=valid_final_coords["ra"].values,
-                                        dec=valid_final_coords["dec"].values,
-                                        unit=u.deg,
+                                        ra=valid_final_coords["ra"], dec=valid_final_coords["dec"], unit=u.deg
                                     )
 
-                                    idx, d2d, _ = source_coords.match_to_catalog_sky(
-                                        skybot_coords
-                                    )
-                                    matches = d2d <= (10 * u.arcsec)
+                                    # Perform cross-matching
+                                    idx, d2d, _ = source_coords.match_to_catalog_3d(skybot_coords)
+                                    matches = d2d.arcsec <= 10
+
+                                    # Add matched solar system object information to the final table
+                                    enhanced_table["skybot_NAME"] = None
+                                    enhanced_table["skybot_OBJECT_TYPE"] = None
+                                    enhanced_table["skybot_MAGV"] = None
+
+                                    # Initialize catalog_matches column if it doesn't exist
+                                    if "catalog_matches" not in enhanced_table.columns:
+                                        enhanced_table["catalog_matches"] = ""
 
                                     # Map matches back to the original table indices
                                     valid_indices = valid_final_coords.index
+                                    matched_sources = np.where(matches)[0]
+                                    matched_skybots = idx[matches]
 
-                                    for i, (match, match_idx) in enumerate(
-                                        zip(matches, idx)
-                                    ):
-                                        if match:
-                                            original_idx = valid_indices[i]
-                                            obj = skybot_result["data"][match_idx]
-                                            enhanced_table.loc[original_idx, "skybot_NAME"] = obj["NAME"]
-                                            enhanced_table.loc[original_idx, "skybot_OBJECT_TYPE"] = obj[
-                                                "OBJECT_TYPE"
-                                            ]
-                                            enhanced_table.loc[original_idx, "skybot_MAGV"] = obj["MAGV"]
+                                    for i, skybot_idx in zip(matched_sources, matched_skybots):
+                                        original_idx = valid_indices[i]
+                                        enhanced_table.loc[original_idx, "skybot_NAME"] = skybot_result["data"][skybot_idx]["NAME"]
+                                        enhanced_table.loc[original_idx, "skybot_OBJECT_TYPE"] = skybot_result["data"][skybot_idx]["OBJECT_TYPE"]
+                                        enhanced_table.loc[original_idx, "skybot_MAGV"] = skybot_result["data"][skybot_idx]["MAGV"]
+
+                                    # Update the catalog_matches column for matched solar system objects
+                                    has_skybot = enhanced_table["skybot_NAME"].notna()
+                                    enhanced_table.loc[has_skybot, "catalog_matches"] += "SkyBoT; "
 
                                     st.success(
-                                        f"Found {sum(matches)} solar system objects in field."
+                                        f"Found {sum(has_skybot)} solar system objects in field."
                                     )
                                 else:
                                     st.info("No valid coordinates available for SkyBoT matching")
