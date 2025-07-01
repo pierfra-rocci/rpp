@@ -970,7 +970,7 @@ def fwhm_fit(
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit, relative_flux
 
     try:
-        peak = 0.95 * np.nanmax(_img)
+        peak = 0.99 * np.nanmax(_img)
         
         # DIAGNOSTIC: Show the distribution
         st.write(f"95th percentile: {np.percentile(_img, 99):.2f}")
