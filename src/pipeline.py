@@ -1544,7 +1544,6 @@ def refine_astrometry_with_stdpipe(
                 wcs=wcs,
                 sr=match_radius_deg,
                 order=2,  # Start with lower order for stability
-                # Correct GAIA EDR3 column names
                 cat_col_ra='RA_ICRS',
                 cat_col_dec='DE_ICRS',
                 cat_col_mag=gaia_band,

@@ -1961,7 +1961,10 @@ if science_file is not None:
                                                 "local_bkg",
                                                 "npixfit",
                                                 "x_err",
-                                                "y_err"
+                                                "y_err",
+                                                "calib_mag",
+                                                "instrumental_mag",
+                                                "snr"
                                             ]:
                                                 if col_name in final_table.columns:
                                                     cols_to_drop.append(col_name)
