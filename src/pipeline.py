@@ -30,7 +30,7 @@ from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
-from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
+from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry, EPSFStars
 from stdpipe import photometry, astrometry, catalogs
 
 from src.tools import (FIGURE_SIZES, URL, safe_catalog_query,
@@ -1317,7 +1317,11 @@ def perform_psf_photometry(
             valid_star_indices.append(i)
         if len(valid_star_indices) < len(stars):
             st.warning(f"Removed {len(stars) - len(valid_star_indices)} stars with NaN or zero data before PSF modeling.")
-        stars = stars[valid_star_indices]
+        # FIX: Convert filtered list back to EPSFStars object
+        if hasattr(stars, 'table'):
+            stars = EPSFStars([stars[i] for i in valid_star_indices], meta=stars.meta, table=stars.table[valid_star_indices])
+        else:
+            stars = EPSFStars([stars[i] for i in valid_star_indices])
         n_stars = len(stars)
         st.write(f"{n_stars} valid stars remain for PSF model.")
         if n_stars == 0:
@@ -3003,7 +3007,7 @@ def enhance_catalog(
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"].values,
                         dec=valid_final_coords["dec"].values,
-                        unit=u.deg,
+                        unit="deg",
                     )
 
                     idx, d2d, _ = source_coords.match_to_catalog_sky(vsx_coords)
