@@ -1300,7 +1300,7 @@ def perform_psf_photometry(
 
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
-        epsf, _ = epsf_builder(stars)
+        epsf = epsf_builder(stars)
         st.session_state["epsf_model"] = epsf
     except Exception as e:
         st.error(f"Error fitting PSF model: {e}")
