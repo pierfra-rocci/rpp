@@ -1549,9 +1549,7 @@ def refine_astrometry_with_stdpipe(
                 cat_col_dec='DE_ICRS',
                 cat_col_mag=gaia_band,
                 cat_mag_lim=19.0,
-                # FIXED: Removed 'obj_col_mag' parameter - not supported by stdpipe
-                verbose=True,
-                clean=True                 # Clean temporary files
+                verbose=True
             )
             
         except Exception as refine_error:
@@ -1569,9 +1567,7 @@ def refine_astrometry_with_stdpipe(
                     cat_col_dec='DE_ICRS',
                     cat_col_mag=gaia_band,
                     cat_mag_lim=18.0,
-                    # FIXED: Removed 'obj_col_mag' parameter - not supported by stdpipe
-                    verbose=True,
-                    clean=True
+                    verbose=True
                 )
             except Exception as final_refine_error:
                 st.error(f"Final SCAMP attempt failed: {final_refine_error}")
