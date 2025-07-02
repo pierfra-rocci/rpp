@@ -1293,6 +1293,12 @@ def perform_psf_photometry(
 
     try:
         stars = extract_stars(nddata, stars_table, size=fit_shape)
+        # FIX: If extract_stars returns a list, convert to EPSFStars
+        from photutils.psf import EPSFStars
+        if isinstance(stars, list):
+            if len(stars) == 0:
+                raise ValueError("No stars extracted for PSF model. Check your selection criteria.")
+            stars = EPSFStars(stars)
         n_stars = len(stars)
         st.write(f"{n_stars} stars extracted for PSF model.")
         # Diagnostic: check the type and contents of stars
