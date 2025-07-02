@@ -1304,7 +1304,6 @@ def perform_psf_photometry(
             # For EPSFStars, data is a list of individual star arrays
             if isinstance(stars.data, list) and len(stars.data) > 0:
                 st.write(f"Number of star cutouts: {len(stars.data)}")
-                st.write(f"Shape of first star cutout: {stars.data[0].shape}")
                 # Check for NaN in all star data
                 has_nan = any(np.isnan(star_data).any() for star_data in stars.data)
                 st.write(f"Any NaN in star data: {has_nan}")
