@@ -15,11 +15,13 @@ import astroscrappy
 from astropy.table import Table, join
 from astropy.wcs import WCS
 from astropy.stats import sigma_clip, SigmaClip
+from astropy.stats import sigma_clipped_stats
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from astropy.time import Time
 from astropy.modeling import models, fitting
 from astropy.nddata import NDData
 from astropy.visualization import (ZScaleInterval, simple_norm)
+
 
 import astropy.units as u
 from astropy.io import fits
@@ -971,12 +973,8 @@ def fwhm_fit(
 
     try:
         peak = 0.99 * np.nanmax(_img)
-        
-        # DIAGNOSTIC: Show the distribution
-        st.write(f"95th percentile: {np.percentile(_img, 99):.2f}")
         # Show what happens if we exclude bright pixels
-        clipped_std = np.std(_img[_img < np.percentile(_img, 99)])
-        st.write(f"Std excluding brightest 5% pixels: {clipped_std:.2f}")
+        _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
         daofind = DAOStarFinder(
             fwhm=1.5 * fwhm, threshold=5 * clipped_std, peakmax=peak
