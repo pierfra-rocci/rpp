@@ -396,133 +396,147 @@ def display_catalog_in_aladin(
 
             # Fix JavaScript error handling structure - Use Aladin Lite v2 for better Firefox compatibility
             html_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <title>Aladin Lite</title>
-                <link rel="stylesheet" href="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.css" />
-            </head>
-            <body>
-                <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
-                <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js" charset="utf-8"></script>
-                <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v2/latest/aladin.min.js" charset="utf-8"></script>
-                <script type="text/javascript">
-                    document.addEventListener("DOMContentLoaded", function(event) {{
-                        try {{
-                            let aladin = A.aladin('#aladin-lite-div', {{
-                                target: '{ra_center} {dec_center}',
-                                fov: {fov},
-                                survey: '{survey}',
-                                showReticle: false,
-                                showZoomControl: true,
-                                showFullscreenControl: true,
-                                showLayersControl: true,
-                                showGotoControl: true,
-                                showSimbadPointerControl: true
-                            }});
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Aladin Lite v3</title>
+    <link rel="stylesheet" href="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.min.css" />
+</head>
+<body>
+    <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js" charset="utf-8"></script>
+    <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+    <script type="text/javascript">
+        document.addEventListener("DOMContentLoaded", function(event) {{
+            try {{
+                // Initialize Aladin v3
+                let aladin = A.aladin('#aladin-lite-div', {{
+                    target: '{ra_center} {dec_center}',
+                    fov: {fov},
+                    survey: '{survey}',
+                    reticleSize: 0,  // v3 uses reticleSize instead of showReticle
+                    showZoomControl: true,
+                    showFullscreenControl: true,
+                    showLayersControl: true,
+                    showGotoControl: true,
+                    showSimbadPointerControl: true
+                }});
 
-                            let cat = A.catalog({{
-                                name: 'Photometry Results',
-                                sourceSize: 12,
-                                shape: 'circle',
-                                color: '#00ff88'
-                            }});
-                            aladin.addCatalog(cat);
-                            
-                            let sourcesData = JSON.parse(atob("{sources_json_b64}"));
-                            let aladinSources = [];
+                // Create catalog overlay
+                let cat = A.catalog({{
+                    name: 'Photometry Results',
+                    sourceSize: 12,
+                    shape: 'circle',
+                    color: '#00ff88',
+                    onClick: 'showPopup'  // v3 enhancement for popup handling
+                }});
+                aladin.addCatalog(cat);
+                
+                // Decode and parse the base64 encoded JSON data
+                let sourcesData = JSON.parse(atob("{sources_json_b64}"));
+                let aladinSources = [];
 
-                            sourcesData.forEach(function(source) {{
-                                let escapedName = (source.name || '').replace(/[<>&"']/g, function(m) {{
+                sourcesData.forEach(function(source) {{
+                    let escapedName = (source.name || '').replace(/[<>&"']/g, function(m) {{
+                        return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
+                    }});
+                    
+                    // Build comprehensive popup content
+                    let popupContent = '<div style="padding:8px; max-width:300px; font-family:Arial,sans-serif;">';
+                    
+                    // Header with source name and number
+                    if(escapedName) {{
+                        popupContent += '<h4 style="margin:0 0 8px 0; color:#2c5282;">' + escapedName + '</h4>';
+                    }}
+                    if(source.source_number) {{
+                        popupContent += '<p style="margin:0 0 8px 0; font-weight:bold; color:#1a365d;">Source #' + source.source_number + '</p>';
+                    }}
+                    
+                    // Coordinates section
+                    popupContent += '<div style="background:#f7fafc; padding:6px; margin:4px 0; border-radius:4px;">';
+                    popupContent += '<strong>Coordinates:</strong><br/>';
+                    popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '°<br/>';
+                    popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '°';
+                    popupContent += '</div>';
+
+                    // Photometry section
+                    if(source.psf_mag || source.aperture_mag) {{
+                        popupContent += '<div style="background:#edf2f7; padding:6px; margin:4px 0; border-radius:4px;">';
+                        popupContent += '<strong>Photometry:</strong><br/>';
+                        if(source.psf_mag) {{
+                            popupContent += 'PSF Mag: ' + (typeof source.psf_mag === 'number' ? source.psf_mag.toFixed(2) : source.psf_mag) + '<br/>';
+                        }}
+                        if(source.aperture_mag) {{
+                            popupContent += 'Aperture Mag: ' + (typeof source.aperture_mag === 'number' ? source.aperture_mag.toFixed(2) : source.aperture_mag) + '<br/>';
+                        }}
+                        if(source.snr) {{
+                            popupContent += 'S/N: ' + (typeof source.snr === 'number' ? source.snr.toFixed(1) : source.snr);
+                        }}
+                        popupContent += '</div>';
+                    }}
+                    
+                    // Catalog matches section
+                    if(source.catalog_matches && Object.keys(source.catalog_matches).length > 0) {{
+                        popupContent += '<div style="background:#e6fffa; padding:6px; margin:4px 0; border-radius:4px;">';
+                        popupContent += '<strong>Catalog Matches:</strong><br/>';
+                        for(let catalog in source.catalog_matches) {{
+                            let catalogValue = source.catalog_matches[catalog];
+                            if(catalogValue && catalogValue !== '' && catalogValue !== 'nan') {{
+                                let escapedCatalogValue = catalogValue.toString().replace(/[<>&"']/g, function(m) {{
                                     return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
                                 }});
-                                
-                                // Build comprehensive popup content
-                                let popupContent = '<div style="padding:8px; max-width:300px; font-family:Arial,sans-serif;">';
-                                
-                                // Header with source name and number
-                                if(escapedName) {{
-                                    popupContent += '<h4 style="margin:0 0 8px 0; color:#2c5282;">' + escapedName + '</h4>';
-                                }}
-                                if(source.source_number) {{
-                                    popupContent += '<p style="margin:0 0 8px 0; font-weight:bold; color:#1a365d;">Source #' + source.source_number + '</p>';
-                                }}
-                                
-                                // Coordinates section
-                                popupContent += '<div style="background:#f7fafc; padding:6px; margin:4px 0; border-radius:4px;">';
-                                popupContent += '<strong>Coordinates:</strong><br/>';
-                                popupContent += 'RA: ' + (typeof source.ra === 'number' ? source.ra.toFixed(6) : source.ra) + '°<br/>';
-                                popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '°';
-                                popupContent += '</div>';
-
-                                // Photometry section
-                                if(source.psf_mag || source.aperture_mag) {{
-                                    popupContent += '<div style="background:#edf2f7; padding:6px; margin:4px 0; border-radius:4px;">';
-                                    popupContent += '<strong>Photometry:</strong><br/>';
-                                    if(source.psf_mag) {{
-                                        popupContent += 'PSF Mag: ' + (typeof source.psf_mag === 'number' ? source.psf_mag.toFixed(2) : source.psf_mag) + '<br/>';
-                                    }}
-                                    if(source.aperture_mag) {{
-                                        popupContent += 'Aperture Mag: ' + (typeof source.aperture_mag === 'number' ? source.aperture_mag.toFixed(2) : source.aperture_mag) + '<br/>';
-                                    }}
-                                    if(source.snr) {{
-                                        popupContent += 'S/N: ' + (typeof source.snr === 'number' ? source.snr.toFixed(1) : source.snr);
-                                    }}
-                                    popupContent += '</div>';
-                                }}
-                                
-                                // Catalog matches section
-                                if(source.catalog_matches && Object.keys(source.catalog_matches).length > 0) {{
-                                    popupContent += '<div style="background:#e6fffa; padding:6px; margin:4px 0; border-radius:4px;">';
-                                    popupContent += '<strong>Catalog Matches:</strong><br/>';
-                                    for(let catalog in source.catalog_matches) {{
-                                        let catalogValue = source.catalog_matches[catalog];
-                                        if(catalogValue && catalogValue !== '' && catalogValue !== 'nan') {{
-                                            let escapedCatalogValue = catalogValue.toString().replace(/[<>&"']/g, function(m) {{
-                                                return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
-                                            }});
-                                            popupContent += '<span style="display:inline-block; background:#81e6d9; color:#234e52; padding:2px 6px; margin:1px; border-radius:3px; font-size:11px;">';
-                                            popupContent += catalog + ': ' + escapedCatalogValue + '</span><br/>';
-                                        }}
-                                    }}
-                                    popupContent += '</div>';
-                                }}
-                                
-                                // Additional info section
-                                if(source.flux_fit || source.fwhm) {{
-                                    popupContent += '<div style="background:#fef5e7; padding:6px; margin:4px 0; border-radius:4px; font-size:12px;">';
-                                    popupContent += '<strong>Additional Info:</strong><br/>';
-                                    if(source.flux_fit) {{
-                                        popupContent += 'PSF Flux: ' + (typeof source.flux_fit === 'number' ? source.flux_fit.toFixed(1) : source.flux_fit) + '<br/>';
-                                    }}
-                                    if(source.fwhm) {{
-                                        popupContent += 'FWHM: ' + (typeof source.fwhm === 'number' ? source.fwhm.toFixed(2) : source.fwhm) + ' px';
-                                    }}
-                                    popupContent += '</div>';
-                                }}
-                                
-                                popupContent += '</div>';
-
-                                let aladinSource = A.source(source.ra, source.dec, {{
-                                    popupTitle: escapedName || ('Source #' + source.source_number), 
-                                    popupDesc: popupContent
-                                }});
-                                aladinSources.push(aladinSource);
-                            }});
-
-                            if (aladinSources.length > 0) {{
-                                cat.addSources(aladinSources);
+                                popupContent += '<span style="display:inline-block; background:#81e6d9; color:#234e52; padding:2px 6px; margin:1px; border-radius:3px; font-size:11px;">';
+                                popupContent += catalog + ': ' + escapedCatalogValue + '</span><br/>';
                             }}
-                        }} catch (error) {{
-                            console.error("Error initializing Aladin Lite or adding sources:", error);
-                            document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin viewer. Try refreshing the page or use Chrome/Edge browser.</p>';
                         }}
-                    }});
-                </script>
-            </body>
-            </html>
-            """
+                        popupContent += '</div>';
+                    }}
+                    
+                    // Additional info section
+                    if(source.flux_fit || source.fwhm) {{
+                        popupContent += '<div style="background:#fef5e7; padding:6px; margin:4px 0; border-radius:4px; font-size:12px;">';
+                        popupContent += '<strong>Additional Info:</strong><br/>';
+                        if(source.flux_fit) {{
+                            popupContent += 'PSF Flux: ' + (typeof source.flux_fit === 'number' ? source.flux_fit.toFixed(1) : source.flux_fit) + '<br/>';
+                        }}
+                        if(source.fwhm) {{
+                            popupContent += 'FWHM: ' + (typeof source.fwhm === 'number' ? source.fwhm.toFixed(2) : source.fwhm) + ' px';
+                        }}
+                        popupContent += '</div>';
+                    }}
+                    
+                    popupContent += '</div>';
+
+                    // Create source with v3 properties
+                    let aladinSource = A.source(
+                        source.ra, 
+                        source.dec, 
+                        {{
+                            popupTitle: escapedName || ('Source #' + source.source_number), 
+                            popupDesc: popupContent,
+                            name: escapedName || ('Source #' + source.source_number)
+                        }}
+                    );
+                    aladinSources.push(aladinSource);
+                }});
+
+                // Add sources to catalog
+                if (aladinSources.length > 0) {{
+                    cat.addSources(aladinSources);
+                    
+                    // v3 enhancement: draw the sources immediately
+                    cat.updateShape();
+                }}
+            }} catch (error) {{
+                console.error("Error initializing Aladin Lite v3 or adding sources:", error);
+                document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin v3 viewer. Try refreshing the page or use a modern browser.</p>';
+            }}
+        }});
+    </script>
+</body>
+</html>
+"""
 
             components.html(
                 html_content,
