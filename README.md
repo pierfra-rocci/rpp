@@ -147,7 +147,7 @@ Real-time transient alerts and multi-messenger astronomy events:
 - Automatic coordinate-based event matching
 
 ### GAIA Archive
-Direct integration with ESA's GAIA Data Release 3:
+Direct integration with ESA GAIA DR3:
 - Cone search around field center
 - Quality filtering (variability, astrometry, photometry)
 - Synthetic photometry for non-standard bands
@@ -235,11 +235,7 @@ This project is open source. Please check the license file for details.
 
 ## Citation
 
-If you use this pipeline in your research, please cite:
-```
-RAPAS Photometry Pipeline
-[Add appropriate citation format]
-```
+If you use this pipeline in your research, please cites it.
 
 ## Support
 
