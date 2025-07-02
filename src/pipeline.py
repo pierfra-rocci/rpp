@@ -1299,9 +1299,7 @@ def perform_psf_photometry(
             stars = EPSFStars(stars)
         n_stars = len(stars)
         st.write(f"{n_stars} stars extracted for PSF model.")
-        
-        # FIXED: Diagnostic information - handle EPSFStars properly
-        st.write(f"Type of stars: {type(stars)}")
+
         if hasattr(stars, 'data') and stars.data is not None:
             # For EPSFStars, data is a list of individual star arrays
             if isinstance(stars.data, list) and len(stars.data) > 0:
@@ -1369,7 +1367,7 @@ def perform_psf_photometry(
 
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
-        epsf, fitted_stars = epsf_builder(stars)
+        epsf, _ = epsf_builder(stars)
         
         # FIXED: Check EPSF properly
         st.write(f"Type of epsf: {type(epsf)}")
