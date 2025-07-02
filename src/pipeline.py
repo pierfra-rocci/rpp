@@ -1324,18 +1324,44 @@ def perform_psf_photometry(
     try:
         # Remove stars with NaN or all-zero data
         mask_valid = []
-        for star in stars:
-            if np.isnan(star.data).any():
-                mask_valid.append(False)
-            elif np.all(star.data == 0):
-                mask_valid.append(False)
-            else:
-                mask_valid.append(True)
+        
+        # FIXED: Proper iteration through EPSFStars object
+        # EPSFStars objects have a .data attribute that is a list of star arrays
+        if hasattr(stars, 'data') and isinstance(stars.data, list):
+            for star_data in stars.data:
+                if np.isnan(star_data).any():
+                    mask_valid.append(False)
+                elif np.all(star_data == 0):
+                    mask_valid.append(False)
+                else:
+                    mask_valid.append(True)
+        else:
+            # Fallback: try to iterate through the EPSFStars object directly
+            try:
+                for i in range(len(stars)):
+                    star = stars[i]
+                    if np.isnan(star.data).any():
+                        mask_valid.append(False)
+                    elif np.all(star.data == 0):
+                        mask_valid.append(False)
+                    else:
+                        mask_valid.append(True)
+            except Exception as iter_error:
+                st.warning(f"Could not iterate through stars for validation: {iter_error}")
+                # If we can't validate, assume all stars are valid
+                mask_valid = [True] * len(stars)
+        
         mask_valid = np.array(mask_valid)
-        stars = stars[mask_valid]  # This returns a new EPSFStars object
-        n_stars = len(stars)
-        st.write(f"{n_stars} valid stars remain for PSF model.")
-        if n_stars == 0:
+        
+        # Only filter if we have any invalid stars
+        if not np.all(mask_valid):
+            stars = stars[mask_valid]  # This returns a new EPSFStars object
+            n_stars = len(stars)
+            st.write(f"{n_stars} valid stars remain for PSF model after filtering invalid data.")
+        else:
+            st.write(f"All {len(stars)} stars are valid for PSF model.")
+            
+        if len(stars) == 0:
             raise ValueError("No valid stars for PSF model after filtering.")
     except Exception as e:
         st.error(f"Error filtering stars for PSF model: {e}")
