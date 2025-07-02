@@ -1299,11 +1299,22 @@ def perform_psf_photometry(
             stars = EPSFStars(stars)
         n_stars = len(stars)
         st.write(f"{n_stars} stars extracted for PSF model.")
-        # Diagnostic: check the type and contents of stars
+        
+        # FIXED: Diagnostic information - handle EPSFStars properly
         st.write(f"Type of stars: {type(stars)}")
-        if hasattr(stars, 'data'):
-            st.write(f"Shape of stars.data: {stars.data.shape}")
-            st.write(f"Any NaN in stars.data: {np.isnan(stars.data).any()}")
+        if hasattr(stars, 'data') and stars.data is not None:
+            # For EPSFStars, data is a list of individual star arrays
+            if isinstance(stars.data, list) and len(stars.data) > 0:
+                st.write(f"Number of star cutouts: {len(stars.data)}")
+                st.write(f"Shape of first star cutout: {stars.data[0].shape}")
+                # Check for NaN in all star data
+                has_nan = any(np.isnan(star_data).any() for star_data in stars.data)
+                st.write(f"Any NaN in star data: {has_nan}")
+            else:
+                st.write("Stars data is empty or not a list")
+        else:
+            st.write("Stars object has no data attribute")
+            
         if n_stars == 0:
             raise ValueError("No stars extracted for PSF model. Check your selection criteria.")
     except Exception as e:
@@ -1333,10 +1344,15 @@ def perform_psf_photometry(
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
         epsf, fitted_stars = epsf_builder(stars)
+        
+        # FIXED: Check EPSF properly
         st.write(f"Type of epsf: {type(epsf)}")
-        if hasattr(epsf, 'data'):
+        if hasattr(epsf, 'data') and epsf.data is not None:
             st.write(f"Shape of epsf.data: {epsf.data.shape}")
             st.write(f"Any NaN in epsf.data: {np.isnan(epsf.data).any()}")
+        else:
+            st.write("EPSF has no data attribute or data is None")
+            
         if epsf is None or not hasattr(epsf, 'data') or epsf.data is None or epsf.data.size == 0:
             raise ValueError("EPSFBuilder returned an empty or invalid PSF model. Check star selection and image quality.")
         st.session_state["epsf_model"] = epsf
