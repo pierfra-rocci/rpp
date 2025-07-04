@@ -1500,15 +1500,85 @@ def refine_astrometry_with_stdpipe(
             st.info(f"Converting image from {image_data.dtype} to float32 for stdpipe compatibility")
             image_data = image_data.astype(np.float32)
 
-        # Clean and prepare header
+        # Clean and prepare header - remove problematic WCS distortion parameters
         clean_header = science_header.copy()
         
-        # Remove problematic keywords that might interfere
+        # Remove problematic keywords that might interfere with stdpipe
         problematic_keys = ['HISTORY', 'COMMENT', 'CONTINUE']
+        
+        # Remove DSS distortion parameters that cause the "coefficient scale is zero" error
+        dss_distortion_keys = [key for key in clean_header.keys() if 
+                              any(pattern in str(key) for pattern in ['DSS', 'CNPIX', 'A_', 'B_', 'AP_', 'BP_'])]
+        
+        if dss_distortion_keys:
+            st.info(f"Removing {len(dss_distortion_keys)} problematic distortion parameters")
+            for key in dss_distortion_keys:
+                if key in clean_header:
+                    del clean_header[key]
+        
+        # Remove other problematic keys
         for key in problematic_keys:
             if key in clean_header:
                 del clean_header[key]
         
+        # Validate and fix basic WCS parameters
+        try:
+            # Ensure CTYPE values are valid
+            if 'CTYPE1' not in clean_header or not clean_header['CTYPE1']:
+                clean_header['CTYPE1'] = 'RA---TAN'
+            if 'CTYPE2' not in clean_header or not clean_header['CTYPE2']:
+                clean_header['CTYPE2'] = 'DEC--TAN'
+            
+            # Ensure reference pixel is valid
+            if 'CRPIX1' not in clean_header or not np.isfinite(clean_header['CRPIX1']):
+                clean_header['CRPIX1'] = image_data.shape[1] / 2.0
+            if 'CRPIX2' not in clean_header or not np.isfinite(clean_header['CRPIX2']):
+                clean_header['CRPIX2'] = image_data.shape[0] / 2.0
+            
+            # Check CD matrix validity
+            cd_keys = ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']
+            cd_values = [clean_header.get(key, 0) for key in cd_keys]
+            
+            if any(not np.isfinite(val) or val == 0 for val in cd_values):
+                st.warning("Invalid CD matrix detected, attempting reconstruction")
+                # Try to reconstruct from CDELT if available
+                if 'CDELT1' in clean_header and 'CDELT2' in clean_header:
+                    cdelt1 = clean_header['CDELT1']
+                    cdelt2 = clean_header['CDELT2']
+                    crota = clean_header.get('CROTA2', 0.0)
+                    
+                    cos_rot = np.cos(np.radians(crota))
+                    sin_rot = np.sin(np.radians(crota))
+                    
+                    clean_header['CD1_1'] = cdelt1 * cos_rot
+                    clean_header['CD1_2'] = -cdelt1 * sin_rot
+                    clean_header['CD2_1'] = cdelt2 * sin_rot
+                    clean_header['CD2_2'] = cdelt2 * cos_rot
+                    
+                    st.info("Reconstructed CD matrix from CDELT/CROTA")
+                else:
+                    # Use pixel scale estimate to create basic CD matrix
+                    pixel_scale_deg = pixel_scale / 3600.0
+                    clean_header['CD1_1'] = -pixel_scale_deg
+                    clean_header['CD1_2'] = 0.0
+                    clean_header['CD2_1'] = 0.0
+                    clean_header['CD2_2'] = pixel_scale_deg
+                    st.info("Created basic CD matrix from pixel scale estimate")
+            
+        except Exception as header_fix_error:
+            st.warning(f"Error fixing header: {header_fix_error}")
+        
+        # Test the cleaned WCS before proceeding
+        try:
+            test_wcs = WCS(clean_header)
+            # Try a test transformation
+            test_x, test_y = image_data.shape[1] // 2, image_data.shape[0] // 2
+            test_coords = test_wcs.pixel_to_world_values(test_x, test_y)
+            st.info("Cleaned WCS passes basic validation")
+        except Exception as wcs_test_error:
+            st.error(f"Cleaned WCS still has issues: {wcs_test_error}")
+            return None
+
         # Get objects using stdpipe with corrected parameters
         try:
             # Use correct parameter names based on stdpipe documentation
@@ -1557,18 +1627,33 @@ def refine_astrometry_with_stdpipe(
 
         st.info(f"Detected {len(obj)} objects for astrometry refinement")
 
-        # Get frame center using stdpipe
+        # Get frame center using the cleaned header and test WCS
         try:
-            # Use the correct function signature
+            # Use the cleaned header instead of original
             center_ra, center_dec, radius = astrometry.get_frame_center(
                 header=clean_header,
-                wcs=wcs,
+                wcs=test_wcs,  # Use the validated test WCS
                 width=image_data.shape[1],
                 height=image_data.shape[0]
             )
         except Exception as center_error:
             st.error(f"Failed to get frame center: {center_error}")
-            return None
+            # Try fallback method using header coordinates
+            try:
+                center_ra = clean_header.get('CRVAL1') or clean_header.get('RA') or clean_header.get('OBJRA')
+                center_dec = clean_header.get('CRVAL2') or clean_header.get('DEC') or clean_header.get('OBJDEC')
+                
+                if center_ra is None or center_dec is None:
+                    st.error("Could not determine field center coordinates")
+                    return None
+                
+                # Calculate radius from image dimensions
+                radius = max(image_data.shape) * pixel_scale / 3600.0 / 2.0
+                st.info(f"Using fallback field center: RA={center_ra:.3f}, DEC={center_dec:.3f}, radius={radius:.3f}°")
+                
+            except Exception as fallback_error:
+                st.error(f"Fallback coordinate extraction failed: {fallback_error}")
+                return None
         
         # Map filter band to correct GAIA EDR3 column names
         gaia_band_mapping = {
@@ -1579,7 +1664,7 @@ def refine_astrometry_with_stdpipe(
         
         gaia_band = gaia_band_mapping.get(filter_band, "Gmag")
         
-        # Get GAIA catalog with correct parameters
+        # Get GAIA catalog with correct parameters and error handling
         try:
             # Use correct catalog name and filters
             cat = catalogs.get_cat_vizier(
@@ -1587,7 +1672,7 @@ def refine_astrometry_with_stdpipe(
                 center_dec,
                 radius,
                 "I/350/gaiaedr3",  # Correct GAIA EDR3 catalog identifier
-                filters={gaia_band: "<20.0"}  # Removed extra_filters parameter
+                filters={gaia_band: "<20.0"}
             )
             
             if cat is None or len(cat) == 0:
@@ -1596,7 +1681,25 @@ def refine_astrometry_with_stdpipe(
                 
         except Exception as cat_error:
             st.error(f"Failed to get GAIA catalog: {cat_error}")
-            return None
+            # Try with a smaller search radius
+            try:
+                smaller_radius = min(radius, 0.5)  # Limit to 0.5 degrees
+                st.info(f"Retrying GAIA query with smaller radius: {smaller_radius:.3f}°")
+                cat = catalogs.get_cat_vizier(
+                    center_ra,
+                    center_dec,
+                    smaller_radius,
+                    "I/350/gaiaedr3",
+                    filters={gaia_band: "<19.0"}  # Also reduce magnitude limit
+                )
+                
+                if cat is None or len(cat) == 0:
+                    st.warning("No GAIA catalog sources found even with reduced search radius")
+                    return None
+                    
+            except Exception as retry_error:
+                st.error(f"GAIA catalog query retry failed: {retry_error}")
+                return None
         
         st.info(f"Retrieved {len(cat)} GAIA catalog sources")
         
@@ -1611,20 +1714,26 @@ def refine_astrometry_with_stdpipe(
         except Exception as filter_error:
             st.warning(f"Could not apply additional filtering: {filter_error}")
         
+        # Ensure we still have enough sources for refinement
+        if len(cat) < 10:
+            st.warning(f"Too few GAIA sources ({len(cat)}) for reliable astrometry refinement")
+            return None
+        
         # Calculate matching radius in degrees
         try:
             match_radius_deg = 2.0 * fwhm_estimate * pixel_scale / 3600.0
             
+            # Try SCAMP refinement with conservative parameters
             wcs_result = astrometry.refine_wcs_scamp(
                 obj,
                 cat,
-                wcs=wcs,
+                wcs=test_wcs,  # Use the validated test WCS
                 sr=match_radius_deg,
-                order=2,  # Start with lower order for stability
+                order=1,  # Start with first order for stability
                 cat_col_ra='RA_ICRS',
                 cat_col_dec='DE_ICRS',
                 cat_col_mag=gaia_band,
-                cat_mag_lim=19.0,
+                cat_mag_lim=18.5,  # Conservative magnitude limit
                 verbose=True
             )
             
@@ -1632,17 +1741,17 @@ def refine_astrometry_with_stdpipe(
             st.warning(f"SCAMP astrometry refinement failed: {refine_error}")
             # Try with even more conservative parameters
             try:
-                st.info("Retrying with conservative SCAMP parameters...")
+                st.info("Retrying with ultra-conservative SCAMP parameters...")
                 wcs_result = astrometry.refine_wcs_scamp(
                     obj,
                     cat,
-                    wcs=wcs,
-                    sr=match_radius_deg * 1.5,
-                    order=1,
+                    wcs=test_wcs,
+                    sr=match_radius_deg * 2.0,  # Double the search radius
+                    order=0,  # Zero order (shift only)
                     cat_col_ra='RA_ICRS',
                     cat_col_dec='DE_ICRS',
                     cat_col_mag=gaia_band,
-                    cat_mag_lim=18.0,
+                    cat_mag_lim=17.0,  # Bright stars only
                     verbose=True
                 )
             except Exception as final_refine_error:
@@ -1667,10 +1776,27 @@ def refine_astrometry_with_stdpipe(
                 if not (0 <= test_ra <= 360 and -90 <= test_dec <= 90):
                     st.warning(f"Refined WCS produces invalid coordinates: RA={test_ra}, DEC={test_dec}")
                     return None
+                
+                # Additional validation: check if the solution is reasonable
+                original_ra = clean_header.get('CRVAL1') or clean_header.get('RA')
+                original_dec = clean_header.get('CRVAL2') or clean_header.get('DEC')
+                
+                if original_ra is not None and original_dec is not None:
+                    ra_diff = abs(test_ra - original_ra)
+                    dec_diff = abs(test_dec - original_dec)
+                    
+                    # Allow for coordinate wrapping around 0/360
+                    if ra_diff > 180:
+                        ra_diff = 360 - ra_diff
+                    
+                    if ra_diff > 1.0 or dec_diff > 1.0:  # More than 1 degree difference
+                        st.warning(f"Large coordinate shift detected: ΔRA={ra_diff:.3f}°, ΔDEC={dec_diff:.3f}°")
+                        st.warning("This might indicate a plate solving error")
+                        # Don't return None, but warn the user
                     
                 st.success(f"Verified refined WCS: center at RA={test_ra:.6f}°, DEC={test_dec:.6f}°")
                 
-                # Update the science header with refined WCS
+                # Update the science header with refined WCS if validation passes
                 try:
                     # Clear old WCS and add new keywords
                     astrometry.clear_wcs(science_header)
