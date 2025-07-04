@@ -2009,7 +2009,7 @@ if science_file is not None:
                                             )
 
                                             # Plot histogram of aperture_mag and psf_mag before catalog enhancement
-                                            st.subheader("Magnitude Distribution (Aperture vs PSF)")
+                                            st.subheader("Magnitude Distribution (Aperture & PSF)")
                                             
                                             # Create and display the magnitude distribution plots
                                             fig_mag = plot_magnitude_distribution(final_table, log_buffer)
