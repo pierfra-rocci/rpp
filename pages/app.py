@@ -17,6 +17,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from astropy.io import fits
+from astropy.io.votable import from_table, writeto
+from astropy.table import Table
 from astropy.visualization import (ZScaleInterval, ImageNormalize)
 
 # Local Application Imports
@@ -2074,10 +2076,6 @@ if science_file is not None:
                                             # Add safety check before VOTable creation
                                             if final_table is not None and len(final_table) > 0:
                                                 try:
-                                                    # Import VOTable library
-                                                    from astropy.io.votable import from_table, writeto
-                                                    from astropy.table import Table
-                                                    
                                                     # Clean the DataFrame before conversion to handle problematic columns
                                                     df_for_votable = final_table.copy()
                                                     
