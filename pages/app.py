@@ -2078,13 +2078,34 @@ if science_file is not None:
                                                     from astropy.io.votable import from_table, writeto
                                                     from astropy.table import Table
                                                     
+                                                    # Clean the DataFrame before conversion to handle problematic columns
+                                                    df_for_votable = final_table.copy()
+                                                    
+                                                    # Remove or fix columns that might cause issues with astropy Table conversion
+                                                    problematic_columns = []
+                                                    for col in df_for_votable.columns:
+                                                        # Check for columns with mixed types or object arrays that might cause issues
+                                                        if df_for_votable[col].dtype == 'object':
+                                                            # Try to convert to string, handling None/NaN values
+                                                            try:
+                                                                df_for_votable[col] = df_for_votable[col].astype(str)
+                                                                df_for_votable[col] = df_for_votable[col].replace('nan', '')
+                                                                df_for_votable[col] = df_for_votable[col].replace('None', '')
+                                                            except:
+                                                                problematic_columns.append(col)
+                                                    
+                                                    # Remove columns that still cause issues
+                                                    if problematic_columns:
+                                                        df_for_votable = df_for_votable.drop(columns=problematic_columns)
+                                                        st.warning(f"Removed problematic columns from VOTable: {problematic_columns}")
+                                                    
                                                     # Convert pandas DataFrame to astropy Table
-                                                    astropy_table = Table.from_pandas(final_table)
+                                                    astropy_table = Table.from_pandas(df_for_votable)
                                                     
                                                     # Create VOTable
                                                     votable = from_table(astropy_table)
                                                     
-                                                    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                                    # Define base_catalog_name here to ensure it's available for both success and fallback
                                                     base_catalog_name = catalog_name
                                                     if base_catalog_name.endswith(".csv"):
                                                         base_catalog_name = base_catalog_name[:-4]
@@ -2113,6 +2134,12 @@ if science_file is not None:
                                                     # Fallback to CSV format if VOTable creation fails
                                                     try:
                                                         st.warning("Falling back to CSV format...")
+                                                        
+                                                        # Define base_catalog_name for fallback (moved here to ensure it's defined)
+                                                        base_catalog_name = catalog_name
+                                                        if base_catalog_name.endswith(".csv"):
+                                                            base_catalog_name = base_catalog_name[:-4]
+                                                        
                                                         csv_buffer = StringIO()
                                                         final_table.to_csv(csv_buffer, index=False)
                                                         csv_data = csv_buffer.getvalue()
