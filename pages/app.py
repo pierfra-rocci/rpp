@@ -1414,7 +1414,7 @@ if science_file is not None:
                     wcs_header_filename = (
                         f"{st.session_state['base_filename']}_wcs_header"
                     )
-                     wcs_header_file_path = save_header_to_fits(
+                    wcs_header_file_path = save_header_to_fits(
                         science_header, wcs_header_filename
                         )
                     if wcs_header_file_path:
