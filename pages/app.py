@@ -24,7 +24,7 @@ from src.tools import (FIGURE_SIZES, GAIA_BANDS, extract_coordinates,
                        extract_pixel_scale, get_base_filename,
                        safe_wcs_create, ensure_output_directory,
                        cleanup_temp_files, initialize_log, write_to_log,
-                       zip_rpp_results_on_exit, save_header_to_fits,
+                       zip_rpp_results_on_exit, save_header_to_txt,
                        fix_header)
 
 from src.pipeline import (solve_with_astrometrynet, cross_match_with_gaia,
@@ -1414,7 +1414,7 @@ if science_file is not None:
                     wcs_header_filename = (
                         f"{st.session_state['base_filename']}_wcs_header"
                     )
-                    wcs_header_file_path = save_header_to_fits(
+                    wcs_header_file_path = save_header_to_txt(
                         science_header, wcs_header_filename
                         )
                     if wcs_header_file_path:
@@ -1476,7 +1476,7 @@ if science_file is not None:
         header_filename = f"{st.session_state['base_filename']}_header"
         header_file_path = os.path.join(output_dir, f"{header_filename}.txt")
 
-        header_file = save_header_to_fits(science_header, header_filename)
+        header_file = save_header_to_txt(science_header, header_filename)
         if header_file:
             write_to_log(log_buffer, f"Saved header to {header_file}")
 

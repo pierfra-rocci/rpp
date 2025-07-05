@@ -4,6 +4,7 @@ import json
 import zipfile
 from io import StringIO
 from datetime import datetime
+from astropy.io import fits
 
 # Third-Party Imports
 import requests
@@ -903,44 +904,44 @@ def zip_rpp_results_on_exit(science_file_obj, outputdir):
             print(f"Warning: Could not remove file {file} after zipping: {e}")
 
 
-# def save_header_to_txt(header, filename):
-#     """
-#     Save a FITS header to a formatted text file.
+def save_header_to_txt(header, filename):
+    """
+    Save a FITS header to a formatted text file.
 
-#     Parameters
-#     ----------
-#     header : dict or astropy.io.fits.Header
-#         FITS header dictionary or object
-#     filename : str
-#         Base filename to use (without extension)
+    Parameters
+    ----------
+    header : dict or astropy.io.fits.Header
+        FITS header dictionary or object
+    filename : str
+        Base filename to use (without extension)
 
-#     Returns
-#     -------
-#     str or None
-#         Full path to the saved file, or None if saving failed
+    Returns
+    -------
+    str or None
+        Full path to the saved file, or None if saving failed
 
-#     Notes
-#     -----
-#     The function formats the header with each keyword-value pair on a separate line,
-#     includes a header section, and saves the file to the current output directory
-#     (retrieved from session state).
-#     """
-#     if header is None:
-#         return None
+    Notes
+    -----
+    The function formats the header with each keyword-value pair on a separate line,
+    includes a header section, and saves the file to the current output directory
+    (retrieved from session state).
+    """
+    if header is None:
+        return None
 
-#     header_txt = "FITS Header\n"
-#     header_txt += "==========\n\n"
+    header_txt = "FITS Header\n"
+    header_txt += "==========\n\n"
 
-#     for key, value in header.items():
-#         header_txt += f"{key:8} = {value}\n"
+    for key, value in header.items():
+        header_txt += f"{key:8} = {value}\n"
 
-#     output_dir = st.session_state.get("output_dir", ".")
-#     output_filename = os.path.join(output_dir, f"{filename}.txt")
+    output_dir = st.session_state.get("output_dir", ".")
+    output_filename = os.path.join(output_dir, f"{filename}.txt")
 
-#     with open(output_filename, "w") as f:
-#         f.write(header_txt)
+    with open(output_filename, "w") as f:
+        f.write(header_txt)
 
-#     return output_filename
+    return output_filename
 
 def save_header_to_fits(header, filename):
     """
@@ -968,9 +969,6 @@ def save_header_to_fits(header, filename):
         return None
 
     try:
-        from astropy.io import fits
-        import streamlit as st
-        
         # Create a minimal primary HDU with the header
         primary_hdu = fits.PrimaryHDU(header=header)
         
