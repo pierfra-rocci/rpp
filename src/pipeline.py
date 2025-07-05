@@ -1365,7 +1365,7 @@ def perform_psf_photometry(
         else:
             st.write(f"All {len(stars)} stars are valid for PSF model.")
 
-        if len(stars) == 0:!
+        if len(stars) == 0:
             raise ValueError("No valid stars for PSF model after filtering.")
     except Exception as e:
         st.error(f"Error filtering stars for PSF model: {e}")
