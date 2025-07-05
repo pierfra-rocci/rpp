@@ -1209,7 +1209,7 @@ def perform_psf_photometry(
         roundness_criteria[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.25
         
         sharpness_criteria = np.zeros_like(valid_sharpness, dtype=bool)
-        sharpness_criteria[valid_sharpness] = np.abs(sharpness[valid_sharpness]) < 0.6
+        sharpness_criteria[valid_sharpness] = np.abs(sharpness[valid_sharpness]) < 0.5
         
         # Edge criteria
         edge_criteria = np.zeros_like(valid_xcentroid, dtype=bool)
@@ -1224,9 +1224,9 @@ def perform_psf_photometry(
         # Combine all criteria with validity checks
         good_stars_mask = (
             valid_all &
-            flux_criteria & 
-            roundness_criteria & 
-            sharpness_criteria & 
+            flux_criteria &
+            roundness_criteria &
+            sharpness_criteria &
             edge_criteria
         )
         
@@ -1243,7 +1243,7 @@ def perform_psf_photometry(
             
             # FIXED: Relax criteria using the same approach
             roundness_criteria_relaxed = np.zeros_like(valid_roundness, dtype=bool)
-            roundness_criteria_relaxed[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.4
+            roundness_criteria_relaxed[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.5
             
             sharpness_criteria_relaxed = np.zeros_like(valid_sharpness, dtype=bool)
             sharpness_criteria_relaxed[valid_sharpness] = np.abs(sharpness[valid_sharpness]) < 1.0
@@ -1291,6 +1291,7 @@ def perform_psf_photometry(
 
     try:
         stars = extract_stars(nddata, stars_table, size=fit_shape)
+
         # FIX: If extract_stars returns a list, convert to EPSFStars
         from photutils.psf import EPSFStars
         if isinstance(stars, list):
@@ -1301,12 +1302,13 @@ def perform_psf_photometry(
         st.write(f"{n_stars} stars extracted for PSF model.")
 
         if hasattr(stars, 'data') and stars.data is not None:
+
             # For EPSFStars, data is a list of individual star arrays
             if isinstance(stars.data, list) and len(stars.data) > 0:
                 st.write(f"Number of star cutouts: {len(stars.data)}")
                 # Check for NaN in all star data
                 has_nan = any(np.isnan(star_data).any() for star_data in stars.data)
-                st.write(f"Any NaN in star data: {has_nan}")
+                st.write(f"NaN in star data: {has_nan}")
             else:
                 st.write("Stars data is empty or not a list")
         else:
@@ -1322,8 +1324,7 @@ def perform_psf_photometry(
         # Remove stars with NaN or all-zero data
         mask_valid = []
         
-        # FIXED: Proper iteration through EPSFStars object
-        # EPSFStars objects have a .data attribute that is a list of star arrays
+        # FIXED: EPSFStars objects have a .data attribute that is a list of star arrays
         if hasattr(stars, 'data') and isinstance(stars.data, list):
             for star_data in stars.data:
                 if np.isnan(star_data).any():
