@@ -1353,13 +1353,19 @@ def perform_psf_photometry(
 
         # Only filter if we have any invalid stars
         if not np.all(mask_valid):
-            stars = stars[mask_valid]  # This returns a new EPSFStars object
+            # Always wrap the result as EPSFStars
+            from photutils.psf import EPSFStars
+            filtered_stars = stars[mask_valid]
+            # If filtered_stars is not EPSFStars, wrap it
+            if not isinstance(filtered_stars, EPSFStars):
+                filtered_stars = EPSFStars(list(filtered_stars))
+            stars = filtered_stars
             n_stars = len(stars)
             st.write(f"{n_stars} valid stars remain for PSF model after filtering invalid data.")
         else:
             st.write(f"All {len(stars)} stars are valid for PSF model.")
 
-        if len(stars) == 0:
+        if len(stars) == 0:!
             raise ValueError("No valid stars for PSF model after filtering.")
     except Exception as e:
         st.error(f"Error filtering stars for PSF model: {e}")
