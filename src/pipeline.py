@@ -1366,6 +1366,7 @@ def perform_psf_photometry(
         raise
 
     try:
+        st.write(type(stars))
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
         epsf, _ = epsf_builder(stars)
 
@@ -1373,7 +1374,7 @@ def perform_psf_photometry(
         st.write(f"Type of epsf: {type(epsf)}")
         if hasattr(epsf, 'data') and epsf.data is not None:
             st.write(f"Shape of epsf.data: {epsf.data.shape}")
-            st.write(f"Any NaN in epsf.data: {np.isnan(epsf.data).any()}")
+            st.write(f"NaN in epsf.data: {np.isnan(epsf.data).any()}")
         else:
             st.write("EPSF has no data attribute or data is None")
             
