@@ -333,7 +333,7 @@ def solve_with_astrometrynet(file_path):
             solved_wcs = astrometry.blind_match_objects(obj_table, **kwargs)
             
             if solved_wcs is not None:
-                st.success("Stdpipe plate solving successful!")
+                st.success("Plate solving successful!")
                 
                 # Update original header with WCS solution
                 updated_header = header.copy()
@@ -373,7 +373,7 @@ def solve_with_astrometrynet(file_path):
                 return solved_wcs, updated_header
                 
             else:
-                st.error("Stdpipe plate solving failed!")
+                st.error("Plate solving failed!")
                 st.error("Possible issues:")
                 st.error("- Not enough stars detected")
                 st.error("- Incorrect pixel scale estimate")
@@ -384,7 +384,7 @@ def solve_with_astrometrynet(file_path):
                 
         except Exception as solve_error:
             st.error(f"Error during stdpipe plate solving: {solve_error}")
-            st.error("Stdpipe requirements:")
+            st.error("Requirements:")
             st.error("- solve-field binary must be in PATH")
             st.error("- Appropriate astrometry.net index files must be installed")
             st.error("- Sufficient sources with good S/N ratio")
