@@ -943,6 +943,7 @@ def save_header_to_txt(header, filename):
 
     return output_filename
 
+
 def save_header_to_fits(header, filename):
     """
     Save a FITS header to a FITS file with an empty primary HDU.
