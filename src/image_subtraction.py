@@ -57,7 +57,6 @@ except ImportError:
             print("Warning: ProperImage not available, will use direct subtraction only")
             PROPERIMAGE_AVAILABLE = False
 from photutils.detection import find_peaks
-from photutils.aperture import CircularAperture
 from reproject import reproject_interp
 import time
 import requests
@@ -231,7 +230,27 @@ class TransientFinder:
                 with fits.open(self.science_fits_path) as hdul:
                     self.sci_data = hdul[0].data
                     self.sci_header = hdul[0].header
-                    self.sci_wcs = WCS(self.sci_header)
+                    try:
+                        self.sci_wcs = WCS(self.sci_header)
+                    except Exception as wcs_error:
+                        print(f"Warning: WCS construction failed: {wcs_error}")
+                        print("Attempting to relax WCS parsing and remove DSS distortion keywords...")
+                        # Try relaxing WCS parsing
+                        try:
+                            self.sci_wcs = WCS(self.sci_header, relax=True)
+                        except Exception:
+                            # Remove DSS-specific distortion keywords and try again
+                            header_copy = self.sci_header.copy()
+                            dss_keys = [k for k in header_copy.keys() if k.startswith('DSS') or k.startswith('DP') or k.startswith('PV')]
+                            for k in dss_keys:
+                                header_copy.remove(k, ignore_missing=True, remove_all=True)
+                            try:
+                                self.sci_wcs = WCS(header_copy, relax=True)
+                                print("WCS loaded after removing DSS/distortion keywords.")
+                                self.sci_header = header_copy
+                            except Exception as final_wcs_error:
+                                print(f"Error: Could not load WCS after all attempts: {final_wcs_error}")
+                                raise
 
             # Validate data
             if self.sci_data is None or self.sci_data.size == 0:
