@@ -1323,7 +1323,7 @@ def perform_psf_photometry(
     try:
         # Remove stars with NaN or all-zero data
         mask_valid = []
-        
+
         # FIXED: EPSFStars objects have a .data attribute that is a list of star arrays
         if hasattr(stars, 'data') and isinstance(stars.data, list):
             for star_data in stars.data:
@@ -1348,9 +1348,9 @@ def perform_psf_photometry(
                 st.warning(f"Could not iterate through stars for validation: {iter_error}")
                 # If we can't validate, assume all stars are valid
                 mask_valid = [True] * len(stars)
-        
+
         mask_valid = np.array(mask_valid)
-        
+
         # Only filter if we have any invalid stars
         if not np.all(mask_valid):
             stars = stars[mask_valid]  # This returns a new EPSFStars object
@@ -1358,7 +1358,7 @@ def perform_psf_photometry(
             st.write(f"{n_stars} valid stars remain for PSF model after filtering invalid data.")
         else:
             st.write(f"All {len(stars)} stars are valid for PSF model.")
-            
+
         if len(stars) == 0:
             raise ValueError("No valid stars for PSF model after filtering.")
     except Exception as e:
@@ -1368,7 +1368,7 @@ def perform_psf_photometry(
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
         epsf, _ = epsf_builder(stars)
-        
+
         # FIXED: Check EPSF properly
         st.write(f"Type of epsf: {type(epsf)}")
         if hasattr(epsf, 'data') and epsf.data is not None:
