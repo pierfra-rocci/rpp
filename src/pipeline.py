@@ -1913,7 +1913,6 @@ def detection_and_photometry(
 
     exposure_time = 1.0
     if (np.max(image_data) - np.min(image_data)) > 1:
-        # Use .get() method to safely access header keywords with fallbacks
         exposure_time = science_header.get("EXPTIME",
                                            science_header.get("EXPOSURE",
                                                               science_header.get("EXP_TIME", 1.0)))
@@ -1939,7 +1938,7 @@ def detection_and_photometry(
     peak_max = 0.99 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=(threshold_sigma+2.) * clipped_std,
+        threshold=(threshold_sigma) * np.median(bkg.background_rms),
         peakmax=peak_max)
 
     sources = daofind(image_sub,
