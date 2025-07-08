@@ -32,7 +32,7 @@ from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
-from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
+from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from photutils.psf import SourceGrouper
 from stdpipe import photometry, astrometry, catalogs
 
@@ -1474,15 +1474,13 @@ def perform_psf_photometry(
         min_separation = 1.9 * fwhm  # Adjust based on your FWHM
         grouper = SourceGrouper(min_separation=min_separation)
 
-        psfphot = IterativePSFPhotometry(
+        psfphot = PSFPhotometry(
             psf_model=epsf,
             fit_shape=fit_shape,
             finder=daostarfind,
             aperture_radius=fit_shape / 2,
-            maxiters=3,
-            grouper=grouper,  # Use the SourceGrouper instance
-            mode='all',
-            progress_bar=False,
+            grouper=grouper,
+            progress_bar=False
         )
 
         # FIXED: Filter out sources that are in masked regions
@@ -1581,8 +1579,7 @@ def refine_astrometry_with_stdpipe(
         problematic_keys = ['HISTORY', 'COMMENT', 'CONTINUE']
         
         # Remove DSS distortion parameters that cause the "coefficient scale is zero" error
-        dss_distortion_keys = [key for key in clean_header.keys() if 
-                              any(pattern in str(key) for pattern in ['DSS', 'CNPIX', 'A_', 'B_', 'AP_', 'BP_'])]
+        dss_distortion_keys = [key for key in clean_header.keys() if any(pattern in str(key) for pattern in ['DSS', 'CNPIX', 'A_', 'B_', 'AP_', 'BP_'])]
         
         if dss_distortion_keys:
             st.info(f"Removing {len(dss_distortion_keys)} problematic distortion parameters")
