@@ -2224,6 +2224,18 @@ if science_file is not None:
                         help="Open ESA Sky with the same target coordinates",
                     )
 
+                    st.link_button(
+                        "SIMBAD",
+                        f"https://simbad.u-strasbg.fr/simbad/sim-coo?Coord={ra_center}+{dec_center}&Radius=5&Radius.unit=arcmin",
+                        help="Open SIMBAD at CDS Strasbourg for these coordinates",
+                    )
+
+                    st.link_button(
+                        "XMatch",
+                        f"https://cdsxmatch.u-strasbg.fr/xmatch?request=doQuery&RA={ra_center}&DEC={dec_center}&radius=5",
+                        help="Open CDS XMatch service for these coordinates",
+                    )
+
                     # Only provide download buttons if processing was completed
                     if final_phot_table is not None:
                         provide_download_buttons(output_dir)
