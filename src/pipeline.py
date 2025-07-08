@@ -963,7 +963,7 @@ def fwhm_fit(
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit, relative_flux
 
     try:
-        peak = 0.98 * np.nanmax(_img)
+        peak = 0.99 * np.nanmax(_img)
         # Show what happens if we exclude bright pixels
         _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
@@ -976,7 +976,7 @@ def fwhm_fit(
             return None, None
 
         flux = sources["flux"]
-        median_flux = np.median(flux)
+        median_flux = np.mean(flux)
         std_flux = np.std(flux)
         mask_flux = (flux > median_flux - std_lo * std_flux) & (
             flux < median_flux + std_hi * std_flux
