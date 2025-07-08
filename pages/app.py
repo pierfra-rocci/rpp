@@ -209,7 +209,7 @@ def load_fits_data(file):
 
 
 def display_catalog_in_aladin(
-    final_table: pd.DataFrame,  # Remove unused 'image' parameter
+    final_table: pd.DataFrame,
     ra_center: float,
     dec_center: float,
     fov: float = 1.5,
@@ -507,30 +507,13 @@ def display_catalog_in_aladin(
                         }}
                         popupContent += '</div>';
                     }}
-                    
-                    // Additional info section
-                    if(source.flux_fit || source.fwhm) {{
-                        popupContent += '<div style="background:#fef5e7; padding:6px; margin:4px 0; border-radius:4px; font-size:12px;">';
-                        popupContent += '<strong>Additional Info:</strong><br/>';
-                        if(source.flux_fit) {{
-                            popupContent += 'PSF Flux: ' + (typeof source.flux_fit === 'number' ? source.flux_fit.toFixed(1) : source.flux_fit) + '<br/>';
-                        }}
-                        if(source.fwhm) {{
-                            popupContent += 'FWHM: ' + (typeof source.fwhm === 'number' ? source.fwhm.toFixed(2) : source.fwhm) + ' px';
-                        }}
-                        popupContent += '</div>';
-                    }}
-                    
-                    popupContent += '</div>';
 
                     // Create source with v3 properties
                     let aladinSource = A.source(
-                        source.ra, 
-                        source.dec, 
-                        {{
-                            popupTitle: 'Source #' + source.source_number, 
+                        source.ra,
+                        source.dec,
+                        {{ 
                             popupDesc: popupContent,
-                            name: 'Source #' + source.source_number
                         }}
                     );
                     aladinSources.push(aladinSource);
