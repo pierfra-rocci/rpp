@@ -1579,7 +1579,8 @@ def refine_astrometry_with_stdpipe(
         problematic_keys = ['HISTORY', 'COMMENT', 'CONTINUE']
         
         # Remove DSS distortion parameters that cause the "coefficient scale is zero" error
-        dss_distortion_keys = [key for key in clean_header.keys() if any(pattern in str(key) for pattern in ['DSS', 'CNPIX', 'A_', 'B_', 'AP_', 'BP_'])]
+        dss_distortion_keys = [key for key in clean_header.keys() if any(pattern in str(key) for pattern in ['DSS', 'CNPIX', 'A_', 'B_', 'AP_', 'AMD',
+                                                                                                             'B_', 'PV', 'SIP', 'DISTORT'])]
         
         if dss_distortion_keys:
             st.info(f"Removing {len(dss_distortion_keys)} problematic distortion parameters")
@@ -1593,13 +1594,12 @@ def refine_astrometry_with_stdpipe(
                 del clean_header[key]
         
         # ADDED: Remove CDELTM1 and CDELTM2 keys that can cause issues with stdpipe
-        cdeltm_keys = ['CDELTM1', 'CDELTM2', 'DSS']
+        cdeltm_keys = ['CDELTM1', 'CDELTM2']
         for key in cdeltm_keys:
             if key in clean_header:
                 del clean_header[key]
                 st.info(f"Removed problematic WCS key: {key}")
 
-        
         # Validate and fix basic WCS parameters
         try:
             # Ensure CTYPE values are valid
