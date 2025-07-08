@@ -1362,6 +1362,8 @@ def perform_psf_photometry(
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=3,
                                    progress_bar=False)
+        st.write(type(stars))
+        st.write(stars)
         epsf, _ = epsf_builder(stars)
 
         if epsf is None:
