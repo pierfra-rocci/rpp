@@ -1362,9 +1362,28 @@ def perform_psf_photometry(
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=3,
                                    progress_bar=False)
-        st.write(type(stars))
-        st.write(stars)
-        epsf, _ = epsf_builder(stars)
+        # Try the EPSF building with error handling
+        try:
+            epsf, fitted_stars = epsf_builder(stars)
+        except Exception as build_error:
+            st.error(f"EPSFBuilder failed: {build_error}")
+            # Try with even more conservative parameters
+            st.write("Retrying with more conservative EPSFBuilder parameters...")
+            try:
+                epsf_builder_conservative = EPSFBuilder(
+                    oversampling=2,  # Lower oversampling
+                    maxiters=2,      # Fewer iterations
+                    progress_bar=False,
+                    smoothing_kernel='quartic',
+                    recentering_maxiters=3,
+                    recentering_boxsize=3
+                )
+                epsf, fitted_stars = epsf_builder_conservative(stars)
+            except Exception as conservative_error:
+                st.error(f"Conservative EPSFBuilder also failed: {conservative_error}")
+                raise
+        
+        st.write("EPSF building completed successfully")
 
         if epsf is None:
             raise ValueError("EPSFBuilder returned None")
