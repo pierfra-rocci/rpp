@@ -11,6 +11,7 @@ import requests
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.wcs import WCS
+from astropy.table import Table
 import streamlit as st  # Keep if directly used, otherwise remove
 
 # Constants
