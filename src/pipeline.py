@@ -1593,7 +1593,7 @@ def refine_astrometry_with_stdpipe(
                 del clean_header[key]
         
         # ADDED: Remove CDELTM1 and CDELTM2 keys that can cause issues with stdpipe
-        cdeltm_keys = ['CDELTM1', 'CDELTM2']
+        cdeltm_keys = ['CDELTM1', 'CDELTM2', 'DSS']
         for key in cdeltm_keys:
             if key in clean_header:
                 del clean_header[key]
