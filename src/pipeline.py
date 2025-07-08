@@ -1661,8 +1661,7 @@ def refine_astrometry_with_stdpipe(
                 aper=1.5 * fwhm_estimate,
                 use_fwhm=True,
                 use_mask_large=True,
-                subtract_bg=True,
-                bg_size=64,
+                subtract_bg=False,
                 verbose=False
             )
             
@@ -1681,8 +1680,7 @@ def refine_astrometry_with_stdpipe(
                     aper=1.5 * fwhm_estimate,
                     use_fwhm=True,
                     use_mask_large=True,
-                    subtract_bg=True,
-                    bg_size=64,
+                    subtract_bg=False,
                     verbose=False
                 )
                 
@@ -1798,11 +1796,11 @@ def refine_astrometry_with_stdpipe(
                 cat,
                 wcs=test_wcs,  # Use the validated test WCS
                 sr=match_radius_deg,
-                order=1,  # Start with first order for stability
+                order=2,
                 cat_col_ra='RA_ICRS',
                 cat_col_dec='DE_ICRS',
                 cat_col_mag=gaia_band,
-                cat_mag_lim=18.5,  # Conservative magnitude limit
+                cat_mag_lim=19,  # Conservative magnitude limit
                 verbose=True
             )
             
@@ -1815,12 +1813,12 @@ def refine_astrometry_with_stdpipe(
                     obj,
                     cat,
                     wcs=test_wcs,
-                    sr=match_radius_deg * 1.0,  # Double the search radius
-                    order=2,
+                    sr=match_radius_deg * 2.0,  # Double the search radius
+                    order=1,
                     cat_col_ra='RA_ICRS',
                     cat_col_dec='DE_ICRS',
                     cat_col_mag=gaia_band,
-                    cat_mag_lim=19.0,
+                    cat_mag_lim=19.,
                     verbose=True
                 )
             except Exception as final_refine_error:
@@ -2027,7 +2025,7 @@ def detection_and_photometry(
     # Check Astrometry option before refinement
     if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
         refined_wcs = refine_astrometry_with_stdpipe(
-            image_data=image_data,
+            image_data=image_sub,
             science_header=science_header,
             wcs=w,
             fwhm_estimate=fwhm_estimate,
