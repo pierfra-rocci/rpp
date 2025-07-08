@@ -1362,19 +1362,30 @@ def perform_psf_photometry(
         raise
 
     try:
-        epsf_builder = EPSFBuilder(oversampling=3, maxiters=5, progress_bar=True)
+        epsf_builder = EPSFBuilder(oversampling=3, maxiters=3,
+                                   progress_bar=False)
         epsf, _ = epsf_builder(stars)
 
-        # FIXED: Check EPSF properly
-        # st.write(f"Type of epsf: {type(epsf)}")
-        if hasattr(epsf, 'data') and epsf.data is not None:
-            st.write(f"Shape of epsf.data: {epsf.data.shape}")
-            st.write(f"NaN in epsf.data: {np.isnan(epsf.data).any()}")
-        else:
-            st.write("EPSF has no data attribute or data is None")
+         # FIXED: Check EPSF properly with explicit validation
+        if epsf is None:
+            raise ValueError("EPSFBuilder returned None")
             
-        if epsf is None or not hasattr(epsf, 'data') or epsf.data is None or epsf.data.size == 0:
-            raise ValueError("EPSFBuilder returned an empty or invalid PSF model. Check star selection and image quality.")
+        if not hasattr(epsf, 'data'):
+            raise ValueError("EPSF has no data attribute")
+            
+        if epsf.data is None:
+            raise ValueError("EPSF data is None")
+            
+        if epsf.data.size == 0:
+            raise ValueError("EPSF data is empty")
+            
+        # Check for NaN values using explicit any()
+        if np.isnan(epsf.data).any():
+            st.warning("EPSF data contains NaN values")
+            
+        st.write(f"Shape of epsf.data: {epsf.data.shape}")
+        st.write(f"NaN in epsf.data: {np.isnan(epsf.data).any()}")
+        
         st.session_state["epsf_model"] = epsf
     except Exception as e:
         st.error(f"Error fitting PSF model: {e}")
