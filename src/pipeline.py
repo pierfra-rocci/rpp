@@ -33,6 +33,7 @@ from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
+from photutils.psf import SourceGrouper
 from stdpipe import photometry, astrometry, catalogs
 
 from src.tools import (FIGURE_SIZES, URL, safe_catalog_query,
@@ -1435,14 +1436,19 @@ def perform_psf_photometry(
         elif error is not None and error.shape != img.shape:
             st.warning("Error array shape mismatch, proceeding without error estimation")
             error = None
-            
+
+        # Create a SourceGrouper with a minimum separation distance
+        # This groups sources that are closer than min_separation pixels
+        min_separation = 1.9 * fwhm  # Adjust based on your FWHM
+        grouper = SourceGrouper(min_separation=min_separation)
+
         psfphot = IterativePSFPhotometry(
             psf_model=epsf,
             fit_shape=fit_shape,
             finder=daostarfind,
             aperture_radius=fit_shape / 2,
             maxiters=3,
-            grouper='',
+            grouper=grouper,  # Use the SourceGrouper instance
             mode='all',
             progress_bar=False,
         )
