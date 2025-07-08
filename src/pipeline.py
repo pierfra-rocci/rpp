@@ -1580,7 +1580,7 @@ def refine_astrometry_with_stdpipe(
         
         # Remove DSS distortion parameters that cause the "coefficient scale is zero" error
         dss_distortion_keys = [key for key in clean_header.keys() if any(pattern in str(key) for pattern in ['DSS', 'CNPIX', 'A_', 'B_', 'AP_', 'AMD',
-                                                                                                             'B_', 'PV', 'SIP', 'DISTORT'])]
+                                                                                                             'BP_', 'B_', 'PV', 'SIP', 'DISTORT'])]
         
         if dss_distortion_keys:
             st.info(f"Removing {len(dss_distortion_keys)} problematic distortion parameters")
