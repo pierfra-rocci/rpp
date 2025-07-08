@@ -1378,12 +1378,24 @@ def perform_psf_photometry(
         if epsf.data.size == 0:
             raise ValueError("EPSF data is empty")
             
-        # Check for NaN values using explicit any()
-        if np.isnan(epsf.data).any():
-            st.warning("EPSF data contains NaN values")
+        # FIXED: More robust NaN checking
+        try:
+            # Ensure epsf.data is a numpy array before checking for NaN
+            epsf_array = np.asarray(epsf.data)
+            if epsf_array.size > 0 and np.isnan(epsf_array).any():
+                st.warning("EPSF data contains NaN values")
+        except Exception as nan_check_error:
+            st.warning(f"Could not check for NaN values in EPSF data: {nan_check_error}")
             
         st.write(f"Shape of epsf.data: {epsf.data.shape}")
-        st.write(f"NaN in epsf.data: {np.isnan(epsf.data).any()}")
+        
+        # FIXED: More robust NaN reporting
+        try:
+            epsf_array = np.asarray(epsf.data)
+            has_nan = np.isnan(epsf_array).any() if epsf_array.size > 0 else False
+            st.write(f"NaN in epsf.data: {has_nan}")
+        except Exception as nan_report_error:
+            st.write(f"Could not check NaN status: {nan_report_error}")
         
         st.session_state["epsf_model"] = epsf
     except Exception as e:
