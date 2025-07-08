@@ -27,7 +27,7 @@ from src.tools import (FIGURE_SIZES, GAIA_BANDS, extract_coordinates,
                        safe_wcs_create, ensure_output_directory,
                        cleanup_temp_files, initialize_log, write_to_log,
                        zip_rpp_results_on_exit, save_header_to_txt,
-                       fix_header)
+                       fix_header, save_catalog_files)
 
 from src.pipeline import (solve_with_astrometrynet, cross_match_with_gaia,
                           calculate_zero_point, detection_and_photometry,
@@ -2072,84 +2072,9 @@ if science_file is not None:
                                                     "Final photometry table is None - cannot perform cross-matching"
                                                 )
 
-                                            # Add safety check before VOTable creation
-                                            if final_table is not None and len(final_table) > 0:
-                                                try:
-                                                    # Clean the DataFrame before conversion to handle problematic columns
-                                                    df_for_votable = final_table.copy()
-                                                    
-                                                    # Remove or fix columns that might cause issues with astropy Table conversion
-                                                    problematic_columns = []
-                                                    for col in df_for_votable.columns:
-                                                        # Check for columns with mixed types or object arrays that might cause issues
-                                                        if df_for_votable[col].dtype == 'object':
-                                                            # Try to convert to string, handling None/NaN values
-                                                            try:
-                                                                df_for_votable[col] = df_for_votable[col].astype(str)
-                                                                df_for_votable[col] = df_for_votable[col].replace('nan', '')
-                                                                df_for_votable[col] = df_for_votable[col].replace('None', '')
-                                                            except:
-                                                                problematic_columns.append(col)
-                                                    
-                                                    # Remove columns that still cause issues
-                                                    if problematic_columns:
-                                                        df_for_votable = df_for_votable.drop(columns=problematic_columns)
-                                                        st.warning(f"Removed problematic columns from VOTable: {problematic_columns}")
-                                                    
-                                                    # Convert pandas DataFrame to astropy Table
-                                                    astropy_table = Table.from_pandas(df_for_votable)
-                                                    
-                                                    # Create VOTable
-                                                    votable = from_table(astropy_table)
-                                                    
-                                                    # Define base_catalog_name here to ensure it's available for both success and fallback
-                                                    base_catalog_name = catalog_name
-                                                    if base_catalog_name.endswith(".csv"):
-                                                        base_catalog_name = base_catalog_name[:-4]
-                                                    filename = f"{base_catalog_name}.xml"  # VOTable extension
+                                            # Call the new function here
+                                            save_catalog_files(final_table, catalog_name, output_dir)
 
-                                                    catalog_path = os.path.join(output_dir, filename)
-
-                                                    # Write VOTable to file
-                                                    writeto(votable, catalog_path)
-                                                        
-                                                    st.success(f"Catalog saved successfully")
-                                                    
-                                                    # Also create CSV buffer for backward compatibility if needed
-                                                    csv_buffer = StringIO()
-                                                    final_table.to_csv(csv_buffer, index=False)
-                                                    csv_data = csv_buffer.getvalue()
-                                                    
-                                                except Exception as e:
-                                                    st.error(f"Error preparing VOTable download: {e}")
-                                                    st.error("final_table status:")
-                                                    st.error(f"  Type: {type(final_table)}")
-                                                    st.error(f"  Length: {len(final_table) if final_table is not None else 'None'}")
-                                                    if final_table is not None:
-                                                        st.error(f"  Columns: {list(final_table.columns)}")
-                                                    
-                                                    # Fallback to CSV format if VOTable creation fails
-                                                    try:
-                                                        st.warning("Falling back to CSV format...")
-                                                        
-                                                        # Define base_catalog_name for fallback (moved here to ensure it's defined)
-                                                        base_catalog_name = catalog_name
-                                                        if base_catalog_name.endswith(".csv"):
-                                                            base_catalog_name = base_catalog_name[:-4]
-                                                        
-                                                        csv_buffer = StringIO()
-                                                        final_table.to_csv(csv_buffer, index=False)
-                                                        csv_data = csv_buffer.getvalue()
-
-                                                        filename_csv = f"{base_catalog_name}.csv"
-                                                        catalog_path_csv = os.path.join(output_dir, filename_csv)
-
-                                                        with open(catalog_path_csv, "w") as f:
-                                                            f.write(csv_data)
-                                                            
-                                                        st.success(f"Catalog saved successfully to {filename_csv} (CSV fallback)")
-                                                    except Exception as fallback_e:
-                                                        st.error(f"Error with CSV fallback: {fallback_e}")
                                             else:
                                                 st.error("Cannot create VOTable: final_table is None or empty")
                                                 if final_table is None:

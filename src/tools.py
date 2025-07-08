@@ -990,3 +990,84 @@ def save_header_to_fits(header, filename):
         if hasattr(st, 'warning'):
             st.warning(f"Failed to save header as FITS file: {str(e)}")
         return None
+
+
+def save_catalog_files(final_table, catalog_name, output_dir):
+    """
+    Save the final photometry table as both VOTable (XML) and CSV files.
+
+    Args:
+        final_table (pd.DataFrame): The photometry results table.
+        catalog_name (str): The base name for the catalog files.
+        output_dir (str): The directory to save the files in.
+
+    Returns:
+        None
+    """
+    # Add safety check before VOTable creation
+    if final_table is not None and len(final_table) > 0:
+        try:
+            # Clean the DataFrame before conversion to handle problematic columns
+            df_for_votable = final_table.copy()
+            
+            # Remove or fix columns that might cause issues with astropy Table conversion
+            problematic_columns = []
+            for col in df_for_votable.columns:
+                # Check for columns with mixed types or object arrays that might cause issues
+                if df_for_votable[col].dtype == 'object':
+                    # Try to convert to string, handling None/NaN values
+                    try:
+                        df_for_votable[col] = df_for_votable[col].astype(str)
+                        df_for_votable[col] = df_for_votable[col].replace('nan', '')
+                        df_for_votable[col] = df_for_votable[col].replace('None', '')
+                    except:
+                        problematic_columns.append(col)
+            
+            # Remove columns that still cause issues
+            if problematic_columns:
+                df_for_votable = df_for_votable.drop(columns=problematic_columns)
+                st.warning(f"Removed problematic columns from VOTable: {problematic_columns}")
+            
+            # Convert pandas DataFrame to astropy Table
+            astropy_table = Table.from_pandas(df_for_votable)
+            
+            # Create VOTable
+            votable = from_table(astropy_table)
+            
+            # Define base_catalog_name here to ensure it's available for both success and fallback
+            base_catalog_name = catalog_name
+            if base_catalog_name.endswith(".csv"):
+                base_catalog_name = base_catalog_name[:-4]
+            filename = f"{base_catalog_name}.xml"  # VOTable extension
+
+            catalog_path = os.path.join(output_dir, filename)
+
+            # Write VOTable to file
+            writeto(votable, catalog_path)
+                
+            st.success(f"Catalog saved successfully")
+            
+            # Also create CSV buffer for backward compatibility if needed
+            csv_buffer = StringIO()
+            final_table.to_csv(csv_buffer, index=False)
+            csv_data = csv_buffer.getvalue()
+
+            # Save CSV file using catalog_name as file name
+            csv_file_path = os.path.join(output_dir, catalog_name)
+            with open(csv_file_path, "w", encoding="utf-8") as f:
+                f.write(csv_data)
+            st.success(f"CSV catalog saved as {catalog_name}")
+            
+        except Exception as e:
+            st.error(f"Error preparing VOTable download: {e}")
+            st.error("final_table status:")
+            st.error(f"  Type: {type(final_table)}")
+            st.error(f"  Length: {len(final_table) if final_table is not None else 'None'}")
+            if final_table is not None:
+                st.error(f"  Columns: {list(final_table.columns)}")
+    else:
+        st.error("Cannot create VOTable: final_table is None or empty")
+        if final_table is None:
+            st.error("final_table is None")
+        else:
+            st.error(f"final_table length: {len(final_table)}")
