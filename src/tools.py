@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from astropy.wcs import WCS
 from astropy.table import Table
 import streamlit as st  # Keep if directly used, otherwise remove
+from astropy.io.votable import from_table, writeto
 
 # Constants
 FIGURE_SIZES = {
@@ -1034,8 +1035,8 @@ def save_catalog_files(final_table, catalog_name, output_dir):
             
             # Create VOTable
             votable = from_table(astropy_table)
-            
-            # Define base_catalog_name here to ensure it's available for both success and fallback
+            # Define base_catalog_name here to ensure it's available for both
+            # success and fallback
             base_catalog_name = catalog_name
             if base_catalog_name.endswith(".csv"):
                 base_catalog_name = base_catalog_name[:-4]
@@ -1045,8 +1046,7 @@ def save_catalog_files(final_table, catalog_name, output_dir):
 
             # Write VOTable to file
             writeto(votable, catalog_path)
-                
-            st.success(f"Catalog saved successfully")
+            st.success(f"VOTable catalog saved as {filename}")
             
             # Also create CSV buffer for backward compatibility if needed
             csv_buffer = StringIO()
