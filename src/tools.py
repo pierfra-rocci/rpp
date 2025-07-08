@@ -309,7 +309,7 @@ def fix_header(header):
                 # Check for singular matrix or invalid values
                 if (abs(determinant) < 1e-15 or 
                     any(not np.isfinite(val) for val in [cd11, cd12, cd21, cd22]) or
-                    any(val == 0 for val in [cd11, cd22])):
+                        any(val == 0 for val in [cd11, cd22])):
                     st.warning("Detected problematic CD matrix - removing all WCS keywords")
                     remove_all_wcs = True
                     
@@ -325,10 +325,10 @@ def fix_header(header):
                 
                 # Check for clearly fake values (exactly 0,0 or out of range)
                 if ((ra == 0.0 and dec == 0.0) or
-                    not (0 <= ra < 360) or
-                    not (-90 <= dec <= 90) or
-                    not np.isfinite(ra) or
-                    not np.isfinite(dec)):
+                        not (0 <= ra < 360) or
+                        not (-90 <= dec <= 90) or
+                        not np.isfinite(ra) or
+                        not np.isfinite(dec)):
                     st.warning(f"Detected fake coordinates (RA={ra}, DEC={dec}) - removing all WCS keywords")
                     remove_all_wcs = True
                     
@@ -358,7 +358,7 @@ def fix_header(header):
                 # If CTYPE is empty or contains obvious placeholder text
                 if (not ctype_val or 
                     ctype_val.lower() in ['', 'none', 'null', 'undefined'] or
-                    len(ctype_val) < 3):
+                        len(ctype_val) < 3):
                     st.warning(f"Detected invalid {ctype_key} value - removing all WCS keywords")
                     remove_all_wcs = True
         
