@@ -963,12 +963,12 @@ def fwhm_fit(
         return fwhm_row, fwhm_col, center_row_fit, center_col_fit, relative_flux
 
     try:
-        peak = 0.99 * np.nanmax(_img)
+        peak = 0.95 * np.nanmax(_img)
         # Show what happens if we exclude bright pixels
         _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
         daofind = DAOStarFinder(
-            fwhm=1.5 * fwhm, threshold=6 * clipped_std, peakmax=peak
+            fwhm=1.6 * fwhm, threshold=7 * clipped_std, peakmax=peak
         )
         sources = daofind(_img, mask=mask)
         if sources is None:
