@@ -1374,7 +1374,7 @@ if science_file is not None:
         
         # Show Force Plate Solving checkbox only when valid WCS exists
         force_plate_solve = st.checkbox(
-            "🔄 Force Re-solve Astrometry",
+            "🔄 Force Plate-Solve",
             value=st.session_state.analysis_parameters.get("force_plate_solve", False),
             help=(
                 "Force plate solving even though a valid WCS is present. "
