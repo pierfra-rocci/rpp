@@ -1938,7 +1938,7 @@ def detection_and_photometry(
     peak_max = 0.99 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=(threshold_sigma) * np.median(bkg.background_rms),
+        threshold=(threshold_sigma+1.) * np.median(bkg.background_rms),
         peakmax=peak_max)
 
     sources = daofind(image_sub,
