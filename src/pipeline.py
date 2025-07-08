@@ -1313,8 +1313,6 @@ def perform_psf_photometry(
     try:
         # Remove stars with NaN or all-zero data
         mask_valid = []
-
-        # FIXED: EPSFStars objects have a .data attribute that is a list of star arrays
         if hasattr(stars, 'data') and isinstance(stars.data, list):
             for star_data in stars.data:
                 if np.isnan(star_data).any():
@@ -1324,7 +1322,6 @@ def perform_psf_photometry(
                 else:
                     mask_valid.append(True)
         else:
-            # Fallback: try to iterate through the EPSFStars object directly
             try:
                 for i in range(len(stars)):
                     star = stars[i]
@@ -1366,7 +1363,6 @@ def perform_psf_photometry(
                                    progress_bar=False)
         epsf, _ = epsf_builder(stars)
 
-         # FIXED: Check EPSF properly with explicit validation
         if epsf is None:
             raise ValueError("EPSFBuilder returned None")
             
@@ -1433,7 +1429,6 @@ def perform_psf_photometry(
 
     # Create PSF photometry object and perform photometry
     try:
-        # FIXED: Validate error array before using it
         if error is not None and not isinstance(error, np.ndarray):
             st.warning("Invalid error array provided, proceeding without error estimation")
             error = None
@@ -1447,8 +1442,9 @@ def perform_psf_photometry(
             finder=daostarfind,
             aperture_radius=fit_shape / 2,
             maxiters=3,
-            mode="new",
-            progress_bar=True,
+            grouper='',
+            mode='all',
+            progress_bar=False,
         )
 
         # Use original photo_table positions for PSF photometry
