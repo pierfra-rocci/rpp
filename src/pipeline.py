@@ -98,7 +98,7 @@ def solve_with_astrometrynet(file_path):
             
         # Estimate background
         st.write("Detecting objects for plate solving using photutils...")
-        bkg, bkg_error = estimate_background(image_data)
+        bkg, bkg_error = estimate_background(image_data, figure=False)
         if bkg is None:
             st.error(f"Failed to estimate background: {bkg_error}")
             return None, None
@@ -131,7 +131,7 @@ def solve_with_astrometrynet(file_path):
 
         # Try standard detection parameters first
         sources = _try_source_detection(
-            image_sub, 
+            image_sub,
             fwhm_estimates=[3.0, 4.0, 5.0],
             threshold_multipliers=[3.0, 4.0, 5.0],
             min_sources=10
@@ -172,7 +172,7 @@ def solve_with_astrometrynet(file_path):
             return None, None
         
         # Prepare sources for astrometry solving
-        st.write(f"Successfully detected {len(sources)} sources using photutils")
+        st.write(f"Successfully detected {len(sources)} sources")
         
         # Filter for best sources if too many
         if len(sources) > 500:
@@ -180,16 +180,6 @@ def solve_with_astrometrynet(file_path):
             sources.reverse()
             sources = sources[:500]
             st.write(f"Using brightest {len(sources)} sources for plate solving")
-        
-        # Show some statistics about detected sources
-        flux_stats = {
-            'min': np.min(sources['flux']),
-            'max': np.max(sources['flux']),
-            'median': np.median(sources['flux']),
-            'std': np.std(sources['flux'])
-        }
-        st.write(f"Source flux statistics: min={flux_stats['min']:.1f}, "
-                f"max={flux_stats['max']:.1f}, median={flux_stats['median']:.1f}")
         
         st.success(f"Ready for plate solving with {len(sources)} sources")
         
@@ -251,7 +241,6 @@ def solve_with_astrometrynet(file_path):
                     if focal_length is not None and pixel_size is not None:
                         # Formula: pixel_scale = 206 * (pixel_size_microns) / (focal_length_mm)
                         pixel_scale_estimate = 206 * pixel_size / focal_length
-                        st.write(f"Calculated pixel scale using formula: 206 × {pixel_size} µm / {focal_length} mm = {pixel_scale_estimate:.2f} arcsec/pixel")
                         
                         # Sanity check - typical astronomical pixel scales
                         if not (0.1 <= pixel_scale_estimate <= 30.0):
@@ -555,7 +544,7 @@ def make_border_mask(
     return ~mask if invert else mask
 
 
-def estimate_background(image_data, box_size=128, filter_size=7):
+def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
     """
     Estimate the background and background RMS of an astronomical image.
 
@@ -596,7 +585,7 @@ def estimate_background(image_data, box_size=128, filter_size=7):
         return None, f"Image must be 2D, got shape {image_data.shape}"
 
     height, width = image_data.shape
-    adjusted_box_size = min(box_size, height // 4, width // 4)
+    adjusted_box_size = max(box_size, min(height // 10, width // 10, 128))
     adjusted_filter_size = min(filter_size, adjusted_box_size // 2)
 
     if adjusted_box_size < 10:
@@ -615,62 +604,63 @@ def estimate_background(image_data, box_size=128, filter_size=7):
         )
 
         # Plot the background model with ZScale and save as FITS
-        fig_bkg = None
-        try:
-            # Create a figure with two subplots side by side for background/RMS
-            fig_bkg, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        if figure:
+            fig_bkg = None
+            try:
+                # Create a figure with two subplots side by side for background/RMS
+                fig_bkg, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+                
+                # Use ZScaleInterval for better visualization
+                zscale = ZScaleInterval()
+                vmin, vmax = zscale.get_limits(bkg.background)
+                
+                # Plot the background model
+                im1 = ax1.imshow(bkg.background, origin='lower', cmap='viridis',
+                                vmin=vmin, vmax=vmax)
+                ax1.set_title('Estimated Background')
+                fig_bkg.colorbar(im1, ax=ax1, label='Flux')
+                
+                # Plot the background RMS
+                vmin_rms, vmax_rms = zscale.get_limits(bkg.background_rms)
+                im2 = ax2.imshow(bkg.background_rms, origin='lower', cmap='viridis',
+                                vmin=vmin_rms, vmax=vmax_rms)
+                ax2.set_title('Background RMS')
+                fig_bkg.colorbar(im2, ax=ax2, label='Flux')
+                
+                fig_bkg.tight_layout()
+                st.pyplot(fig_bkg)
+                
+                # Save background as FITS file
+                base_filename = st.session_state.get("base_filename", "photometry")
+                username = st.session_state.get("username", "anonymous")
+                output_dir = ensure_output_directory(f"{username}_rpp_results")
+                bkg_filename = f"{base_filename}_bkg.fits"
+                bkg_filepath = os.path.join(output_dir, bkg_filename)
+                
+                # Create FITS HDU and save background model
+                hdu_bkg = fits.PrimaryHDU(data=bkg.background)
+                hdu_bkg.header['COMMENT'] = 'Background model created with photutils.Background2D'
+                hdu_bkg.header['BOXSIZE'] = (adjusted_box_size, 'Box size for background estimation')
+                hdu_bkg.header['FILTSIZE'] = (adjusted_filter_size, 'Filter size for background smoothing')
+                
+                # Add RMS as extension
+                hdu_rms = fits.ImageHDU(data=bkg.background_rms)
+                hdu_rms.header['EXTNAME'] = 'BACKGROUND_RMS'
+                
+                hdul = fits.HDUList([hdu_bkg, hdu_rms])
+                hdul.writeto(bkg_filepath, overwrite=True)
+                
+                # Write to log if available
+                log_buffer = st.session_state.get("log_buffer")
+                if log_buffer is not None:
+                    write_to_log(log_buffer, f"Background model saved to {bkg_filename}")
             
-            # Use ZScaleInterval for better visualization
-            zscale = ZScaleInterval()
-            vmin, vmax = zscale.get_limits(bkg.background)
-            
-            # Plot the background model
-            im1 = ax1.imshow(bkg.background, origin='lower', cmap='viridis',
-                             vmin=vmin, vmax=vmax)
-            ax1.set_title('Estimated Background')
-            fig_bkg.colorbar(im1, ax=ax1, label='Flux')
-            
-            # Plot the background RMS
-            vmin_rms, vmax_rms = zscale.get_limits(bkg.background_rms)
-            im2 = ax2.imshow(bkg.background_rms, origin='lower', cmap='viridis',
-                             vmin=vmin_rms, vmax=vmax_rms)
-            ax2.set_title('Background RMS')
-            fig_bkg.colorbar(im2, ax=ax2, label='Flux')
-            
-            fig_bkg.tight_layout()
-            st.pyplot(fig_bkg)
-            
-            # Save background as FITS file
-            base_filename = st.session_state.get("base_filename", "photometry")
-            username = st.session_state.get("username", "anonymous")
-            output_dir = ensure_output_directory(f"{username}_rpp_results")
-            bkg_filename = f"{base_filename}_bkg.fits"
-            bkg_filepath = os.path.join(output_dir, bkg_filename)
-            
-            # Create FITS HDU and save background model
-            hdu_bkg = fits.PrimaryHDU(data=bkg.background)
-            hdu_bkg.header['COMMENT'] = 'Background model created with photutils.Background2D'
-            hdu_bkg.header['BOXSIZE'] = (adjusted_box_size, 'Box size for background estimation')
-            hdu_bkg.header['FILTSIZE'] = (adjusted_filter_size, 'Filter size for background smoothing')
-            
-            # Add RMS as extension
-            hdu_rms = fits.ImageHDU(data=bkg.background_rms)
-            hdu_rms.header['EXTNAME'] = 'BACKGROUND_RMS'
-            
-            hdul = fits.HDUList([hdu_bkg, hdu_rms])
-            hdul.writeto(bkg_filepath, overwrite=True)
-            
-            # Write to log if available
-            log_buffer = st.session_state.get("log_buffer")
-            if log_buffer is not None:
-                write_to_log(log_buffer, f"Background model saved to {bkg_filename}")
-            
-        except Exception as e:
-            st.warning(f"Error creating or saving background plot: {str(e)}")
-        finally:
-            # Clean up matplotlib figure to prevent memory leaks
-            if fig_bkg is not None:
-                plt.close(fig_bkg)
+            except Exception as e:
+                st.warning(f"Error creating or saving background plot: {str(e)}")
+            finally:
+                # Clean up matplotlib figure to prevent memory leaks
+                if fig_bkg is not None:
+                    plt.close(fig_bkg)
 
         return bkg, None
     except Exception as e:
@@ -1592,10 +1582,9 @@ def refine_astrometry_with_stdpipe(
             obj = photometry.get_objects_sep(
                 image_data,
                 header=clean_header,
-                thresh=2.5,
+                thresh=3,
                 minarea=5,
                 aper=1.5 * fwhm_estimate,
-                gain=1.0,
                 use_fwhm=True,
                 use_mask_large=True,
                 subtract_bg=True,
@@ -1613,10 +1602,9 @@ def refine_astrometry_with_stdpipe(
                 obj = photometry.get_objects_sep(
                     image_data,
                     header=clean_header,
-                    thresh=1.5,  # Lower threshold
+                    thresh=1.5,
                     minarea=5,
-                    aper=2.0 * fwhm_estimate,
-                    gain=1.0,
+                    aper=1.5 * fwhm_estimate,
                     use_fwhm=True,
                     use_mask_large=True,
                     subtract_bg=True,
@@ -1753,12 +1741,12 @@ def refine_astrometry_with_stdpipe(
                     obj,
                     cat,
                     wcs=test_wcs,
-                    sr=match_radius_deg * 2.0,  # Double the search radius
-                    order=0,  # Zero order (shift only)
+                    sr=match_radius_deg * 1.0,  # Double the search radius
+                    order=2,
                     cat_col_ra='RA_ICRS',
                     cat_col_dec='DE_ICRS',
                     cat_col_mag=gaia_band,
-                    cat_mag_lim=17.0,  # Bright stars only
+                    cat_mag_lim=19.0,
                     verbose=True
                 )
             except Exception as final_refine_error:
@@ -1904,13 +1892,9 @@ def detection_and_photometry(
         science_header.get("PIXSIZE", science_header.get("PIXELSCAL", 1.0)),
     )
 
-    height, width = image_data.shape
-    adaptive_box_size = max(64, min(height // 10, width // 10, 128))
-    adaptive_filter_size = min(9, adaptive_box_size // 2)
-
     bkg, bkg_error = estimate_background(
-        image_data, box_size=adaptive_box_size,
-        filter_size=adaptive_filter_size
+        image_data, box_size=64,
+        filter_size=9
     )
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
@@ -1924,15 +1908,16 @@ def detection_and_photometry(
     show_subtracted_image(image_sub)
 
     # Ensure bkg_error is also float64
-    bkg_error = np.full_like(image_sub, bkg.background_rms.astype(np.float64), dtype=np.float64)
+    bkg_error = np.full_like(image_sub, bkg.background_rms.astype(np.float64),
+                             dtype=np.float64)
 
     exposure_time = 1.0
-    if (np.max(image_data) - np.min(image_data)) > 10:
-        # Use .get() method to safely access header keywords with fallbacks
-        exposure_time = science_header.get("EXPTIME",
-                                           science_header.get("EXPOSURE",
-                                                              science_header.get("EXP_TIME",
-                                                                                 1.0)))
+    # if (np.max(image_data) - np.min(image_data)) > 10:
+    #     # Use .get() method to safely access header keywords with fallbacks
+    #     exposure_time = science_header.get("EXPTIME",
+    #                                        science_header.get("EXPOSURE",
+    #                                                           science_header.get("EXP_TIME",
+    #                                                                              1.0)))
 
     # Ensure effective_gain is float64
     effective_gain = np.float64(2.5/np.std(image_data) * exposure_time)
@@ -1989,17 +1974,18 @@ def detection_and_photometry(
         st.info("Refine Astrometry is disabled. Skipping astrometry refinement.")
 
     # Create multiple circular apertures with different radii
-    aperture_radii = [1.5, 2.0, 2.5, 3.0]
-    apertures = [CircularAperture(positions, r=radius * fwhm_estimate) 
+    aperture_radii = [1.5, 2.0, 2.5]
+    apertures = [CircularAperture(positions, r=radius * fwhm_estimate)
                  for radius in aperture_radii]
-    
+
     # Create circular annulus apertures for background estimation
     from photutils.aperture import CircularAnnulus
     annulus_apertures = []
     for radius in aperture_radii:
-        r_in = 2.0 * radius * fwhm_estimate
-        r_out = 2.5 * radius * fwhm_estimate
-        annulus_apertures.append(CircularAnnulus(positions, r_in=r_in, r_out=r_out))
+        r_in = 1.5 * radius * fwhm_estimate
+        r_out = 2.0 * radius * fwhm_estimate
+        annulus_apertures.append(CircularAnnulus(positions,
+                                                 r_in=r_in, r_out=r_out))
 
     try:
         wcs_obj = None
