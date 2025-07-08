@@ -1592,6 +1592,14 @@ def refine_astrometry_with_stdpipe(
             if key in clean_header:
                 del clean_header[key]
         
+        # ADDED: Remove CDELTM1 and CDELTM2 keys that can cause issues with stdpipe
+        cdeltm_keys = ['CDELTM1', 'CDELTM2']
+        for key in cdeltm_keys:
+            if key in clean_header:
+                del clean_header[key]
+                st.info(f"Removed problematic WCS key: {key}")
+
+        
         # Validate and fix basic WCS parameters
         try:
             # Ensure CTYPE values are valid
@@ -1657,7 +1665,7 @@ def refine_astrometry_with_stdpipe(
                 image_data,
                 header=clean_header,
                 thresh=3,
-                minarea=5,
+                minarea=7,
                 aper=1.5 * fwhm_estimate,
                 use_fwhm=True,
                 use_mask_large=True,
@@ -1676,7 +1684,7 @@ def refine_astrometry_with_stdpipe(
                     image_data,
                     header=clean_header,
                     thresh=1.5,
-                    minarea=5,
+                    minarea=7,
                     aper=1.5 * fwhm_estimate,
                     use_fwhm=True,
                     use_mask_large=True,
