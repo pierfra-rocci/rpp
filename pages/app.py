@@ -2075,12 +2075,6 @@ if science_file is not None:
                                             # Call the new function here
                                             save_catalog_files(final_table, catalog_name, output_dir)
 
-                                            else:
-                                                st.error("Cannot create VOTable: final_table is None or empty")
-                                                if final_table is None:
-                                                    st.error("final_table is None")
-                                                else:
-                                                    st.error(f"final_table length: {len(final_table)}")
                                         except Exception as e:
                                             st.error(f"{e}")
                                 else:
