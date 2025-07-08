@@ -547,6 +547,7 @@ def display_catalog_in_aladin(
     </script>
 </body>
 </html>
+"""
 
             components.html(
                 html_content,
