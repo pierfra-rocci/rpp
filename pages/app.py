@@ -1427,13 +1427,6 @@ if science_file is not None:
                     st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
                     st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
                     
-                    st.write("Updated pixel scale and seeing after plate solving:")
-                    st.metric(
-                        "Updated Pixel Scale (arcsec/pixel)",
-                        f"{pixel_size_arcsec:.2f}",
-                    )
-                    st.metric("Updated FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
-                    
                     write_to_log(
                         log_buffer,
                         f"Updated pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
@@ -1509,7 +1502,7 @@ if science_file is not None:
                     im2 = ax2.imshow(data_scaled, origin="lower", cmap="viridis")
                     fig.colorbar(im2, ax=ax2, label="Normalized Value")
                     ax2.axis("off")
-                    # Add small histogram inset
+
                     ax_inset = fig.add_axes([0.65, 0.15, 0.15, 0.25])
                     ax_inset.hist(data_scaled.flatten(), bins=50, color='skyblue', alpha=0.8)
                     ax_inset.set_title('Pixel Distribution', fontsize=8)
@@ -2110,7 +2103,7 @@ if science_file is not None:
                                                     # Write VOTable to file
                                                     writeto(votable, catalog_path)
                                                         
-                                                    st.success(f"Catalog saved successfully to {filename} (VOTable format)")
+                                                    st.success(f"Catalog saved successfully")
                                                     
                                                     # Also create CSV buffer for backward compatibility if needed
                                                     csv_buffer = StringIO()
