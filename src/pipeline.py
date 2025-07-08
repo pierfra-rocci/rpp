@@ -1916,8 +1916,7 @@ def detection_and_photometry(
         # Use .get() method to safely access header keywords with fallbacks
         exposure_time = science_header.get("EXPTIME",
                                            science_header.get("EXPOSURE",
-                                                              science_header.get("EXP_TIME",
-                                                                                 1.0)))
+                                                              science_header.get("EXP_TIME", 1.0)))
 
     # Ensure effective_gain is float64
     effective_gain = np.float64(2.5/np.std(image_data) * exposure_time)
