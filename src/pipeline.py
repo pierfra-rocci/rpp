@@ -850,8 +850,8 @@ def fwhm_fit(
     _img: np.ndarray,
     fwhm: float,
     mask: Optional[np.ndarray] = None,
-    std_lo: float = 1.0,
-    std_hi: float = 1.0,
+    std_lo: float = 0.5,
+    std_hi: float = 0.5,
 ) -> Optional[float]:
     """
     Estimate the Full Width at Half Maximum (FWHM) of stars in an astronomical image.
