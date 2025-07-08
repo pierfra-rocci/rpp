@@ -1384,7 +1384,7 @@ if science_file is not None:
         )
         
         if force_plate_solve:
-            st.info("🔄 Force plate solving enabled - will re-solve astrometry")
+            st.info("🔄 Force plate solve enabled - will re-solve astrometry")
             use_astrometry = True
             wcs_obj = None  # Reset to trigger plate solving
         else:
@@ -1422,7 +1422,7 @@ if science_file is not None:
                 log_buffer = st.session_state["log_buffer"]
 
                 if wcs_obj is not None:
-                    solve_type = "Forced re-solve" if force_plate_solve else "Initial solve"
+                    solve_type = "Forced plate-solve" if force_plate_solve else "Initial solve"
                     st.success(f"✅ {solve_type} successful!")
                     write_to_log(log_buffer, f"Plate solving completed ({plate_solve_reason})")
                     
