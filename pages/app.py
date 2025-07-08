@@ -440,19 +440,12 @@ def display_catalog_in_aladin(
                 let aladinSources = [];
 
                 sourcesData.forEach(function(source) {{
-                    let escapedName = (source.name || '').replace(/[<>&"']/g, function(m) {{
-                        return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
-                    }});
-                    
                     // Build comprehensive popup content
                     let popupContent = '<div style="padding:8px; max-width:300px; font-family:Arial,sans-serif;">';
                     
-                    // Header with source name and number
-                    if(escapedName) {{
-                        popupContent += '<h4 style="margin:0 0 8px 0; color:#2c5282;">' + escapedName + '</h4>';
-                    }}
+                    // Header with source number
                     if(source.source_number) {{
-                        popupContent += '<p style="margin:0 0 8px 0; font-weight:bold; color:#1a365d;">Source #' + source.source_number + '</p>';
+                        popupContent += '<h4 style="margin:0 0 8px 0; color:#2c5282;">Source #' + source.source_number + '</h4>';
                     }}
                     
                     // Coordinates section
@@ -462,16 +455,27 @@ def display_catalog_in_aladin(
                     popupContent += 'Dec: ' + (typeof source.dec === 'number' ? source.dec.toFixed(6) : source.dec) + '°';
                     popupContent += '</div>';
 
-                    // Photometry section
+                    // Photometry section - handle both PSF and aperture magnitudes
                     if(source.psf_mag || source.aperture_mag) {{
                         popupContent += '<div style="background:#edf2f7; padding:6px; margin:4px 0; border-radius:4px;">';
                         popupContent += '<strong>Photometry:</strong><br/>';
-                        if(source.psf_mag) {{
+                        
+                        // Show PSF magnitude if available
+                        if(source.psf_mag && source.psf_mag !== null && source.psf_mag !== undefined) {{
                             popupContent += 'PSF Mag: ' + (typeof source.psf_mag === 'number' ? source.psf_mag.toFixed(2) : source.psf_mag) + '<br/>';
                         }}
-                        if(source.aperture_mag) {{
+                        
+                        // Show aperture magnitude if available
+                        if(source.aperture_mag && source.aperture_mag !== null && source.aperture_mag !== undefined) {{
                             popupContent += 'Aperture Mag: ' + (typeof source.aperture_mag === 'number' ? source.aperture_mag.toFixed(2) : source.aperture_mag) + '<br/>';
                         }}
+                        
+                        // If only aperture_mag is available and psf_mag is not, show it prominently
+                        if(!source.psf_mag && source.aperture_mag) {{
+                            popupContent += '<em style="color:#2d3748;">Primary magnitude: Aperture</em><br/>';
+                        }}
+                        
+                        // Signal-to-noise ratio if available
                         if(source.snr) {{
                             popupContent += 'S/N: ' + (typeof source.snr === 'number' ? source.snr.toFixed(1) : source.snr);
                         }}
@@ -479,17 +483,26 @@ def display_catalog_in_aladin(
                     }}
                     
                     // Catalog matches section
-                    if(source.catalog_matches && Object.keys(source.catalog_matches).length > 0) {{
-                        popupContent += '<div style="background:#e6fffa; padding:6px; margin:4px 0; border-radius:4px;">';
+                    if(source.catalog_matches && 
+                       Object.keys(source.catalog_matches).length > 0) {{
+                        popupContent += '<div style="background:#e6fffa; ' +
+                                       'padding:6px; margin:4px 0; border-radius:4px;">';
                         popupContent += '<strong>Catalog Matches:</strong><br/>';
                         for(let catalog in source.catalog_matches) {{
                             let catalogValue = source.catalog_matches[catalog];
-                            if(catalogValue && catalogValue !== '' && catalogValue !== 'nan') {{
-                                let escapedCatalogValue = catalogValue.toString().replace(/[<>&"']/g, function(m) {{
-                                    return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', '"':'&quot;', "'":"&#39;"}}[m];
+                            if(catalogValue && catalogValue !== '' && 
+                               catalogValue !== 'nan') {{
+                                let escapedCatalogValue = catalogValue.toString()
+                                    .replace(/[<>&"']/g, function(m) {{
+                                    return {{'<':'&lt;', '>':'&gt;', '&':'&amp;', 
+                                            '"':'&quot;', "'":"&#39;"}}[m];
                                 }});
-                                popupContent += '<span style="display:inline-block; background:#81e6d9; color:#234e52; padding:2px 6px; margin:1px; border-radius:3px; font-size:11px;">';
-                                popupContent += catalog + ': ' + escapedCatalogValue + '</span><br/>';
+                                popupContent += '<span style="display:inline-block; ' +
+                                               'background:#81e6d9; color:#234e52; ' +
+                                               'padding:2px 6px; margin:1px; ' +
+                                               'border-radius:3px; font-size:11px;">';
+                                popupContent += catalog + ': ' + escapedCatalogValue + 
+                                               '</span><br/>';
                             }}
                         }}
                         popupContent += '</div>';
@@ -515,9 +528,9 @@ def display_catalog_in_aladin(
                         source.ra, 
                         source.dec, 
                         {{
-                            popupTitle: escapedName || ('Source #' + source.source_number), 
+                            popupTitle: 'Source #' + source.source_number, 
                             popupDesc: popupContent,
-                            name: escapedName || ('Source #' + source.source_number)
+                            name: 'Source #' + source.source_number
                         }}
                     );
                     aladinSources.push(aladinSource);
