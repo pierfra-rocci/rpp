@@ -359,9 +359,16 @@ def display_catalog_in_aladin(
             
             source["catalog_matches"] = catalog_matches
 
-            # Handle source identification with priority
-            source_id = f"{fallback_id_prefix} {idx + 1}"
-            if id_cols:
+            # FIXED: Handle source identification - prioritize the real "id" column first
+            source_id = f"{fallback_id_prefix} {idx + 1}"  # Default fallback
+            
+            # First, check if there's an "id" column in the table (the real catalog ID)
+            if "id" in final_table.columns and pd.notna(row.get("id")):
+                id_value = str(row["id"]).strip()
+                if id_value and id_value not in ["nan", "None", ""]:
+                    source_id = f"ID: {id_value}"
+            # Only if no "id" column exists, fall back to other catalog identifiers
+            elif id_cols:
                 for id_col in id_cols:
                     if id_col in present_optional_cols and pd.notna(row[id_col]):
                         id_value = str(row[id_col]).strip()
@@ -371,6 +378,12 @@ def display_catalog_in_aladin(
             
             source["name"] = source_id
             source["source_number"] = idx + 1
+
+            # Add the raw ID value separately for display in popup
+            if "id" in final_table.columns and pd.notna(row.get("id")):
+                source["catalog_id"] = str(row["id"])
+
+            # ... rest of existing code ...
 
             # Add additional useful information
             for info_col in ["snr", "flux_fit", "fwhm"]:
@@ -417,7 +430,7 @@ def display_catalog_in_aladin(
                     target: '{ra_center} {dec_center}',
                     fov: {fov},
                     survey: '{survey}',
-                    reticleSize: 0,  // v3 uses reticleSize instead of showReticle
+                    reticleSize: 0,
                     showZoomControl: true,
                     showFullscreenControl: true,
                     showLayersControl: true,
@@ -431,7 +444,7 @@ def display_catalog_in_aladin(
                     sourceSize: 12,
                     shape: 'circle',
                     color: '#00ff88',
-                    onClick: 'showPopup'  // v3 enhancement for popup handling
+                    onClick: 'showPopup'
                 }});
                 aladin.addCatalog(cat);
                 
@@ -443,8 +456,10 @@ def display_catalog_in_aladin(
                     // Build comprehensive popup content
                     let popupContent = '<div style="padding:8px; max-width:300px; font-family:Arial,sans-serif;">';
                     
-                    // Header with source number
-                    if(source.source_number) {{
+                    // Header with catalog ID if available, otherwise source number
+                    if(source.catalog_id) {{
+                        popupContent += '<h4 style="margin:0 0 8px 0; color:#2c5282;">Source ID: ' + source.catalog_id + '</h4>';
+                    }} else if(source.source_number) {{
                         popupContent += '<h4 style="margin:0 0 8px 0; color:#2c5282;">Source #' + source.source_number + '</h4>';
                     }}
                     
@@ -522,8 +537,6 @@ def display_catalog_in_aladin(
                 // Add sources to catalog
                 if (aladinSources.length > 0) {{
                     cat.addSources(aladinSources);
-                    
-                    // v3 enhancement: draw the sources immediately
                     cat.updateShape();
                 }}
             }} catch (error) {{
@@ -534,7 +547,6 @@ def display_catalog_in_aladin(
     </script>
 </body>
 </html>
-"""
 
             components.html(
                 html_content,
