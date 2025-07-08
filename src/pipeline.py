@@ -1485,11 +1485,43 @@ def perform_psf_photometry(
             progress_bar=False,
         )
 
-        # Use original photo_table positions for PSF photometry
-        # FIXED: Create initial guess table with correct parameter name
+        # FIXED: Filter out sources that are in masked regions
+        # Create initial guess table with correct parameter name
         initial_params = Table()
         initial_params['x_0'] = photo_table["xcentroid"]
         initial_params['y_0'] = photo_table["ycentroid"]
+        
+        # Filter out sources that fall in masked regions
+        if mask is not None:
+            # Convert coordinates to integers for mask indexing
+            x_int = np.round(initial_params['x_0']).astype(int)
+            y_int = np.round(initial_params['y_0']).astype(int)
+            
+            # Check bounds
+            valid_bounds = (
+                (x_int >= 0) & (x_int < img.shape[1]) &
+                (y_int >= 0) & (y_int < img.shape[0])
+            )
+            
+            # Check if sources are not in masked regions
+            # mask=True means masked (bad) pixels, so we want mask=False
+            valid_mask = np.ones(len(initial_params), dtype=bool)
+            valid_mask[valid_bounds] = ~mask[y_int[valid_bounds], x_int[valid_bounds]]
+            
+            # Filter the initial parameters
+            initial_params_filtered = initial_params[valid_mask]
+            
+            st.write(f"Filtered out {len(initial_params) - len(initial_params_filtered)} "
+                    f"sources that fall in masked regions")
+            st.write(f"Proceeding with {len(initial_params_filtered)} sources for PSF photometry")
+            
+            if len(initial_params_filtered) == 0:
+                st.error("All sources fall in masked regions. Cannot perform PSF photometry.")
+                return None, epsf
+                
+            initial_params = initial_params_filtered
+        else:
+            st.write("No mask provided, using all sources for PSF photometry")
 
         st.write("Performing PSF photometry on all sources...")
         phot_epsf_result = psfphot(img, init_params=initial_params, mask=mask, error=error)
