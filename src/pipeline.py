@@ -1377,8 +1377,7 @@ def perform_psf_photometry(
             
         if epsf.data.size == 0:
             raise ValueError("EPSF data is empty")
-            
-        # FIXED: More robust NaN checking
+        
         try:
             # Ensure epsf.data is a numpy array before checking for NaN
             epsf_array = np.asarray(epsf.data)
