@@ -2609,18 +2609,6 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         )
 
         # Left plot: Zero point calibration
-        # Create bins for magnitude ranges
-        bin_width = 0.5  # 0.5 magnitude width bins
-        min_mag = _matched_table[filter_band].min()
-        max_mag = _matched_table[filter_band].max()
-        bins = np.arange(np.floor(min_mag), np.ceil(max_mag) + bin_width, bin_width)
-
-        # Group data by magnitude bins
-        grouped = _matched_table.groupby(pd.cut(_matched_table[filter_band], bins))
-        bin_centers = [(bin.left + bin.right) / 2 for bin in grouped.groups.keys()]
-        bin_means = grouped["calib_mag"].mean().values
-        bin_stds = grouped["calib_mag"].std().values
-
         # Plot individual points
         ax.scatter(
             _matched_table[filter_band],
@@ -2630,16 +2618,38 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             color="blue",
         )
 
-        # Plot binned means with error bars showing standard deviation
-        valid_bins = ~np.isnan(bin_means) & ~np.isnan(bin_stds)
-        ax.errorbar(
-            np.array(bin_centers)[valid_bins],
-            bin_means[valid_bins],
-            yerr=bin_stds[valid_bins],
-            fmt="ro-",
-            label="Mean ± StdDev (binned)",
-            capsize=5,
-        )
+        # Calculate and plot regression line with variance
+        x_data = _matched_table[filter_band].values
+        y_data = _matched_table["calib_mag"].values
+        
+        # Remove any NaN values for regression
+        valid_mask = np.isfinite(x_data) & np.isfinite(y_data)
+        x_clean = x_data[valid_mask]
+        y_clean = y_data[valid_mask]
+        
+        if len(x_clean) > 1:
+            # Calculate linear regression
+            coeffs = np.polyfit(x_clean, y_clean, 1)
+            slope, intercept = coeffs
+            
+            # Create regression line points
+            x_reg = np.linspace(x_clean.min(), x_clean.max(), 100)
+            y_reg = slope * x_reg + intercept
+            
+            # Calculate residuals and standard deviation
+            y_pred = slope * x_clean + intercept
+            residuals = y_clean - y_pred
+            std_residuals = np.std(residuals)
+            
+            # Plot regression line
+            ax.plot(x_reg, y_reg, 'r-', linewidth=2,
+                    label=f'Regression (slope={slope:.3f})')
+            
+            # Plot variance bands (±1σ and ±2σ)
+            ax.fill_between(x_reg, y_reg - std_residuals, y_reg + std_residuals,
+                            alpha=0.3, color='red', label=f'±1σ ({std_residuals:.3f} mag)')
+            ax.fill_between(x_reg, y_reg - 2*std_residuals, y_reg + 2*std_residuals,
+                            alpha=0.15, color='red', label=f'±2σ ({2*std_residuals:.3f} mag)')
 
         # Add a diagonal line for reference
         # Create ideal y=x reference line spanning the full range of magnitudes

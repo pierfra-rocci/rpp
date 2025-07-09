@@ -1962,8 +1962,6 @@ if science_file is not None:
                                                     "match_id", axis=1, inplace=True
                                                 )
 
-                                            csv_buffer = StringIO()
-
                                             cols_to_drop = []
                                             for col_name in [
                                                 "ra_x",
