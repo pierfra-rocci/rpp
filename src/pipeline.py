@@ -3114,8 +3114,6 @@ def enhance_catalog(
     except Exception as e:
         st.error(f"SIMBAD query execution failed: {str(e)}")
 
-    status_text.write("Querying SkyBoT for solar system objects...")
-
     try:
         if field_center_ra is not None and field_center_dec is not None:
             if "DATE-OBS" in header:

@@ -7,7 +7,7 @@ import json
 import tempfile
 import warnings
 from datetime import datetime
-from io import StringIO, BytesIO
+from io import BytesIO
 
 # Third-Party Imports
 import streamlit as st
@@ -17,8 +17,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from astropy.io import fits
-from astropy.io.votable import from_table, writeto
-from astropy.table import Table
 from astropy.visualization import (ZScaleInterval, ImageNormalize)
 
 # Local Application Imports
@@ -409,7 +407,7 @@ def display_catalog_in_aladin(
                 st.error(f"Failed to encode catalog data: {str(e)}")
                 return
 
-            # Fix JavaScript error handling structure - Use Aladin Lite v2 for better Firefox compatibility
+            # Fix JavaScript error handling structure
             html_content = f"""
 <!DOCTYPE html>
 <html>
@@ -528,7 +526,7 @@ def display_catalog_in_aladin(
                         source.ra,
                         source.dec,
                         {{ 
-                            popupDesc: popupContent,
+                            data: popupContent,
                         }}
                     );
                     aladinSources.push(aladinSource);
