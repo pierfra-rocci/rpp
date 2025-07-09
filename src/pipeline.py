@@ -2015,10 +2015,10 @@ def detection_and_photometry(
         fwhm_estimate = mean_fwhm_pixel
 
     # median_bkg_rms = np.median(bkg.background_rms)
-    peak_max = 0.99 * np.max(image_sub)
+    peak_max = 0.95 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=(threshold_sigma+1.) * np.median(bkg.background_rms),
+        threshold=(threshold_sigma) * clipped_std,
         peakmax=peak_max)
 
     sources = daofind(image_sub,
