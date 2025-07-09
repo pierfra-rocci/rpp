@@ -235,31 +235,30 @@ This project is open source. Please check the license file for details.
 
 ## Citation
 
-If you use this pipeline in your research, please cites it.
+If you use this pipeline, please cites it.
 
 ## Support
 
 For support and questions:
+
 - Create an issue on the project repository
-- Check the troubleshooting section above
 - Review the detailed log files for error diagnosis
-- **User Feedback**: Clear error messages and recovery suggestions
 
 ### Common Issues
+
 - **WCS Problems**: Automatic header fixing and plate solving fallback
 - **Network Timeouts**: Retry mechanisms for catalog queries
-- **Memory Limitations**: Efficient image processing algorithms
 - **File Permissions**: Secure temporary file handling
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) for details.
 The MIT License allows you to use, modify, and distribute this software, provided you include the original copyright notice and disclaimer.
 
 ## Acknowledgements
 
 ### Core Dependencies
+
 - [Astropy](https://www.astropy.org/) - Core astronomical functionality
 - [Photutils](https://photutils.readthedocs.io/) - Photometry algorithms
 - [Astroquery](https://astroquery.readthedocs.io/) - Astronomical database access
@@ -268,9 +267,9 @@ The MIT License allows you to use, modify, and distribute this software, provide
 - [astroscrappy](https://github.com/astropy/astroscrappy) - Cosmic ray removal
 
 ### External Services
+
 - [RAPAS](https://rapas.imcce.fr/) - Project support and feedback
 - [Astro-Colibri](https://astro-colibri.science/) - Transient event data API
-- [SIRIL](https://siril.org/) - Plate solving functionality
 - [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) - Stellar catalog
 - [SIMBAD](http://simbad.u-strasbg.fr/simbad/) - Astronomical database
 - [VizieR](https://vizier.u-strasbg.fr/) - Catalog service
@@ -299,5 +298,3 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
    - Click the shield icon in address bar → Toggle off protection
 5. **Alternative browsers**: Use Chrome, Edge, or Safari for best Aladin Lite compatibility
 6. **Check browser console**: Press F12 and look for specific error messages
-
-If Aladin Lite still doesn't work, the application provides a fallback table view of the catalog data.
