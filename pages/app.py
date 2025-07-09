@@ -1051,7 +1051,11 @@ if not st.session_state.logged_in:
     st.switch_page("pages/login.py")
 
 # Add application version to the sidebar
-st.title("🔭 RAPAS Photometry Pipeline")
+# st.title("🔭 RAPAS Photometry Pipeline")
+st.markdown(
+    '[🔭 **RAPAS Photometry Pipeline**](https://rapas.imcce.fr/)',
+    unsafe_allow_html=True
+)
 st.sidebar.markdown(f"**App Version:** _{version}_")
 
 with st.sidebar.expander("🔭 Observatory Data", expanded=False):
