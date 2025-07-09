@@ -1980,11 +1980,11 @@ if science_file is not None:
                                                 "calib_mag",
                                                 "instrumental_mag",
                                                 "snr",
-                                                "merge",
-                                                "flag",
+                                                "_merge",
+                                                "flags",
                                                 "qfit",
                                                 "cfit",
-                                                "match_id"
+                                                "match_id",
                                             ]:
                                                 if col_name in final_table.columns:
                                                     cols_to_drop.append(col_name)
