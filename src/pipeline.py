@@ -19,7 +19,8 @@ from astropy.stats import sigma_clipped_stats
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from astropy.time import Time
 # from astropy.modeling import models, fitting
-from photutils.psf import (CircularGaussianPRF, fit_fwhm)
+from photutils.background import LocalBackground, MMMBackground
+from photutils.psf import fit_fwhm
 from astropy.nddata import NDData
 from astropy.visualization import (ZScaleInterval, simple_norm)
 
@@ -1479,6 +1480,8 @@ def perform_psf_photometry(
         # This groups sources that are closer than min_separation pixels
         min_separation = 1.9 * fwhm  # Adjust based on your FWHM
         grouper = SourceGrouper(min_separation=min_separation)
+        bkgstat = MMMBackground()
+        localbkg_estimator = LocalBackground(2.1*fwhm, 2.5*fwhm, bkgstat)
 
         psfphot = PSFPhotometry(
             psf_model=epsf,
@@ -1486,6 +1489,7 @@ def perform_psf_photometry(
             finder=daostarfind,
             aperture_radius=fit_shape / 2,
             grouper=grouper,
+            localbkg_estimator=localbkg_estimator,
             progress_bar=False
         )
 
