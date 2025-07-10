@@ -999,9 +999,9 @@ def fwhm_fit(
         if box_size % 2 == 0:
             box_size += 1
         
-        model = CircularGaussianPRF()
-        xypos = list(zip(filtered_sources['x_center'], filtered_sources['y_center']))
-        fwhms = fit_fwhm(_img, xypos=xypos, fit_shape=box_size) 
+        xypos = list(zip(filtered_sources['x_center'],
+                         filtered_sources['y_center']))
+        fwhms = fit_fwhm(_img, xypos=xypos, fit_shape=box_size)
 
         # fwhm_values = []
         # relative_fluxes = []
