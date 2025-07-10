@@ -1048,16 +1048,17 @@ def fwhm_fit(
 
         # Plot histogram of FWHM
         fig_fwhm, ax_fwhm = plt.subplots(figsize=FIGURE_SIZES["medium"])
-        ax_fwhm.scatter(fwhms, color='skyblue', edgecolor='black', alpha=0.7,
-                        s=18)
+        ax_fwhm.hist(fwhms, bins=20, color='skyblue', edgecolor='black', alpha=0.7)
         ax_fwhm.set_xlabel('FWHM (pixels)')
-        ax_fwhm.set_title('FWHM')
+        ax_fwhm.set_ylabel('Number of sources')
+        ax_fwhm.set_title('FWHM Distribution')
         ax_fwhm.grid(True, alpha=0.3)
 
         # Add median FWHM line in red
         median_fwhm = np.median(fwhms)
         ax_fwhm.axvline(median_fwhm, color='red', linestyle='--',
-                        linewidth=2, label=f"Median FWHM = {median_fwhm:.2f}")
+                        linewidth=2,
+                        label=f"Median FWHM = {median_fwhm:.2f}")
         ax_fwhm.legend()
 
         st.pyplot(fig_fwhm)
