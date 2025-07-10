@@ -18,7 +18,6 @@ from astropy.stats import sigma_clip, SigmaClip
 from astropy.stats import sigma_clipped_stats
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from astropy.time import Time
-# from astropy.modeling import models, fitting
 from photutils.background import LocalBackground, MMMBackground
 from photutils.psf import fit_fwhm
 from astropy.nddata import NDData
@@ -32,7 +31,8 @@ from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
-from photutils.aperture import CircularAperture, aperture_photometry
+from photutils.aperture import (CircularAperture, CircularAnnulus,
+                                aperture_photometry)
 from photutils.background import Background2D, SExtractorBackground
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from photutils.psf import SourceGrouper
