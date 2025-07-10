@@ -900,7 +900,7 @@ def fwhm_fit(
         _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
         daofind = DAOStarFinder(
-            fwhm=1.6 * fwhm, threshold=7 * clipped_std, peakmax=peak
+            fwhm=1.6 * fwhm, threshold=8 * clipped_std, peakmax=peak
         )
         sources = daofind(_img, mask=mask)
         if sources is None:
