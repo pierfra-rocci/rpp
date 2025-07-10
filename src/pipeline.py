@@ -897,7 +897,6 @@ def fwhm_fit(
     """
     try:
         peak = 0.95 * np.nanmax(_img)
-        # Show what happens if we exclude bright pixels
         _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
         daofind = DAOStarFinder(
