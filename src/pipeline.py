@@ -622,14 +622,14 @@ def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
                 
                 # Plot the background model
                 im1 = ax1.imshow(bkg.background, origin='lower', cmap='viridis',
-                                vmin=vmin, vmax=vmax)
+                                 vmin=vmin, vmax=vmax)
                 ax1.set_title('Estimated Background')
                 fig_bkg.colorbar(im1, ax=ax1, label='Flux')
                 
                 # Plot the background RMS
                 vmin_rms, vmax_rms = zscale.get_limits(bkg.background_rms)
                 im2 = ax2.imshow(bkg.background_rms, origin='lower', cmap='viridis',
-                                vmin=vmin_rms, vmax=vmax_rms)
+                                 vmin=vmin_rms, vmax=vmax_rms)
                 ax2.set_title('Background RMS')
                 fig_bkg.colorbar(im2, ax=ax2, label='Flux')
                 
@@ -637,7 +637,8 @@ def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
                 st.pyplot(fig_bkg)
                 
                 # Save background as FITS file
-                base_filename = st.session_state.get("base_filename", "photometry")
+                base_filename = st.session_state.get("base_filename",
+                                                     "photometry")
                 username = st.session_state.get("username", "anonymous")
                 output_dir = ensure_output_directory(f"{username}_rpp_results")
                 bkg_filename = f"{base_filename}_bkg.fits"
@@ -1167,7 +1168,7 @@ def perform_psf_photometry(
         
         # Ensure all arrays are numpy arrays and handle NaN values first
         flux = np.asarray(photo_table["flux"])
-        roundness1 = np.asarray(photo_table["roundness1"]) 
+        roundness2 = np.asarray(photo_table["roundness2"])
         sharpness = np.asarray(photo_table["sharpness"])
         xcentroid = np.asarray(photo_table["xcentroid"])
         ycentroid = np.asarray(photo_table["ycentroid"])
@@ -1186,7 +1187,7 @@ def perform_psf_photometry(
         
         # Create individual boolean masks with explicit NaN handling
         valid_flux = np.isfinite(flux)
-        valid_roundness = np.isfinite(roundness1)
+        valid_roundness = np.isfinite(roundness2)
         valid_sharpness = np.isfinite(sharpness)
         valid_xcentroid = np.isfinite(xcentroid)
         valid_ycentroid = np.isfinite(ycentroid)
@@ -1197,17 +1198,15 @@ def perform_psf_photometry(
         
         if not np.any(valid_all):
             raise ValueError("No sources with all valid parameters found")
-        
-        # FIXED: Apply criteria using boolean indexing instead of np.where
-        # This avoids the ambiguous truth value error
+
         flux_criteria = np.zeros_like(valid_flux, dtype=bool)
         flux_criteria[valid_flux] = (flux[valid_flux] >= flux_min) & (flux[valid_flux] <= flux_max)
         
         roundness_criteria = np.zeros_like(valid_roundness, dtype=bool)
-        roundness_criteria[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.25
+        roundness_criteria[valid_roundness] = np.abs(roundness2[valid_roundness]) < 0.25
         
         sharpness_criteria = np.zeros_like(valid_sharpness, dtype=bool)
-        sharpness_criteria[valid_sharpness] = np.abs(sharpness[valid_sharpness]) < 0.5
+        sharpness_criteria[valid_sharpness] = np.abs(sharpness[valid_sharpness]) > 0.5
         
         # Edge criteria
         edge_criteria = np.zeros_like(valid_xcentroid, dtype=bool)
