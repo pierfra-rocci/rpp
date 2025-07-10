@@ -1017,7 +1017,7 @@ def perform_psf_photometry(
         
         # Ensure all arrays are numpy arrays and handle NaN values first
         flux = np.asarray(photo_table["flux"])
-        roundness2 = np.asarray(photo_table["roundness2"])
+        roundness1 = np.asarray(photo_table["roundness1"])
         sharpness = np.asarray(photo_table["sharpness"])
         xcentroid = np.asarray(photo_table["xcentroid"])
         ycentroid = np.asarray(photo_table["ycentroid"])
@@ -1036,7 +1036,7 @@ def perform_psf_photometry(
         
         # Create individual boolean masks with explicit NaN handling
         valid_flux = np.isfinite(flux)
-        valid_roundness = np.isfinite(roundness2)
+        valid_roundness = np.isfinite(roundness1)
         valid_sharpness = np.isfinite(sharpness)
         valid_xcentroid = np.isfinite(xcentroid)
         valid_ycentroid = np.isfinite(ycentroid)
@@ -1052,7 +1052,7 @@ def perform_psf_photometry(
         flux_criteria[valid_flux] = (flux[valid_flux] >= flux_min) & (flux[valid_flux] <= flux_max)
         
         roundness_criteria = np.zeros_like(valid_roundness, dtype=bool)
-        roundness_criteria[valid_roundness] = roundness2[valid_roundness] < 0.3
+        roundness_criteria[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.25
         
         sharpness_criteria = np.zeros_like(valid_sharpness, dtype=bool)
         sharpness_criteria[valid_sharpness] = sharpness[valid_sharpness] > 0.5
