@@ -18,7 +18,8 @@ from astropy.stats import sigma_clip, SigmaClip
 from astropy.stats import sigma_clipped_stats
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from astropy.time import Time
-from astropy.modeling import models, fitting
+# from astropy.modeling import models, fitting
+from photutils.psf import (CircularGaussianPRF, fit_fwhm)
 from astropy.nddata import NDData
 from astropy.visualization import (ZScaleInterval, simple_norm)
 
@@ -107,7 +108,8 @@ def solve_with_astrometrynet(file_path):
         image_sub = image_data - bkg.background
         
         # Helper function to try different detection parameters
-        def _try_source_detection(image_sub, fwhm_estimates, threshold_multipliers, min_sources=10):
+        def _try_source_detection(image_sub, fwhm_estimates,
+                                  threshold_multipliers, min_sources=10):
             """Helper function to try different detection parameters."""
             for fwhm_est in fwhm_estimates:
                 for thresh_mult in threshold_multipliers:
@@ -159,10 +161,12 @@ def solve_with_astrometrynet(file_path):
             # Show a small region of the image for inspection
             try:
                 center_y, center_x = image_data.shape[0] // 2, image_data.shape[1] // 2
-                sample_region = image_data[center_y-50:center_y+50, center_x-50:center_x+50]
+                sample_region = image_data[center_y-50:center_y+50,
+                                           center_x-50:center_x+50]
                 
                 fig_sample, ax_sample = plt.subplots(figsize=(6, 6))
-                im = ax_sample.imshow(sample_region, origin='lower', cmap='gray')
+                im = ax_sample.imshow(sample_region, origin='lower',
+                                      cmap='gray')
                 ax_sample.set_title('Central 100x100 pixel region')
                 plt.colorbar(im, ax=ax_sample)
                 st.pyplot(fig_sample)
@@ -240,7 +244,6 @@ def solve_with_astrometrynet(file_path):
                     
                     # Calculate pixel scale using the formula from the guide scope reference
                     if focal_length is not None and pixel_size is not None:
-                        # Formula: pixel_scale = 206 * (pixel_size_microns) / (focal_length_mm)
                         pixel_scale_estimate = 206 * pixel_size / focal_length
                         
                         # Sanity check - typical astronomical pixel scales
@@ -261,7 +264,8 @@ def solve_with_astrometrynet(file_path):
             # If not found, try to calculate from CD matrix
             if pixel_scale_estimate is None:
                 try:
-                    cd_values = [header.get(f'CD{i}_{j}', 0) for i in [1, 2] for j in [1, 2]]
+                    cd_values = [header.get(f'CD{i}_{j}', 0)
+                                 for i in [1, 2] for j in [1, 2]]
                     if any(x != 0 for x in cd_values):
                         cd11, cd12, cd21, cd22 = cd_values
                         det = abs(cd11 * cd22 - cd12 * cd21)
@@ -274,7 +278,7 @@ def solve_with_astrometrynet(file_path):
         kwargs = {
             'order': 2,  # SIP distortion order
             'update': False,  # Don't update object list in place
-            'sn': 5,  # Minimum S/N ratio for sources
+            'sn': 5,
             'get_header': False,  # Return WCS object, not header
             'width': image_data.shape[1],
             'height': image_data.shape[0],
@@ -889,9 +893,6 @@ def fwhm_fit(
 
     Progress updates and error messages are displayed using Streamlit.
     """
-    from photutils.psf import (CircularGaussianPRF, fit_fwhm,
-    make_psf_model_image)
-
     # def compute_fwhm_marginal_sums(image_data, center_row, center_col, box_size):
     #     half_box = box_size // 2
 
