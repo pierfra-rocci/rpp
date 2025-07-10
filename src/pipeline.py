@@ -1001,8 +1001,8 @@ def fwhm_fit(
         if box_size % 2 == 0:
             box_size += 1
         
-        xypos = list(zip(filtered_sources['x_center'],
-                         filtered_sources['y_center']))
+        xypos = list(zip(filtered_sources['xcentroid'],
+                         filtered_sources['ycentroid']))
         fwhms = fit_fwhm(_img, xypos=xypos, fit_shape=box_size)
 
         # fwhm_values = []
