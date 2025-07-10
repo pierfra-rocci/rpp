@@ -1052,10 +1052,10 @@ def perform_psf_photometry(
         flux_criteria[valid_flux] = (flux[valid_flux] >= flux_min) & (flux[valid_flux] <= flux_max)
         
         roundness_criteria = np.zeros_like(valid_roundness, dtype=bool)
-        roundness_criteria[valid_roundness] = np.abs(roundness2[valid_roundness]) < 0.25
+        roundness_criteria[valid_roundness] = roundness2[valid_roundness] < 0.3
         
         sharpness_criteria = np.zeros_like(valid_sharpness, dtype=bool)
-        sharpness_criteria[valid_sharpness] = np.abs(sharpness[valid_sharpness]) > 0.5
+        sharpness_criteria[valid_sharpness] = sharpness[valid_sharpness] > 0.5
         
         # Edge criteria
         edge_criteria = np.zeros_like(valid_xcentroid, dtype=bool)
