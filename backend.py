@@ -51,14 +51,15 @@ def init_db():
         print(f"Database initialization error: {e}")
         raise
 
+
 init_db()
 
 
-# Helper to send email (configure SMTP as needed)
+# Helper send email (configure SMTP as needed)
 def send_email(to_email, subject, body):
-    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", 587))
-    smtp_user = os.environ.get("pierfrancesco.rocci@gmail.com")
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 587
+    smtp_user = os.environ.get("SMTP_USER")
     smtp_pass_encoded = os.environ.get("SMTP_PASS_ENCODED")
     smtp_pass = base64.b64decode(smtp_pass_encoded).decode() if smtp_pass_encoded else None
     if not smtp_user or not smtp_pass:
