@@ -403,13 +403,6 @@ class TransientFinder:
 
         print(f"Using SkyView for {survey_name} (field size: {field_size_deg:.3f}°)...")
 
-        # Set astroquery timeout globally
-        try:
-            from astroquery import utils as astroquery_utils
-            astroquery_utils.TIMEOUT = self.config.REQUEST_TIMEOUT
-        except Exception:
-            pass  # If astroquery version does not support this, ignore
-
         try:
             print("Calling SkyView.get_images ...")  # Debug print
             imgs = SkyView.get_images(
@@ -418,7 +411,8 @@ class TransientFinder:
                 coordinates='J2000',
                 height=field_size_deg * u.deg,
                 width=field_size_deg * u.deg,
-                pixels=[self.nx, self.ny]
+                pixels=[self.nx, self.ny],
+                timeout=self.config.REQUEST_TIMEOUT  # <-- add timeout here
             )
             print("SkyView.get_images returned.")  # Debug print
         except Exception as e:
@@ -962,6 +956,12 @@ def main():
     else:
         print("Temporary files kept as requested.")
 
+    print("Transient detection complete.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
     print("Transient detection complete.")
     return 0
 
