@@ -350,20 +350,37 @@ class TransientFinder:
         hips_id = hips_mapping[filter_band.lower()]
         print(f"Retrieving PanSTARRS {filter_band}-band image...")
 
-        result = hips2fits.query_with_wcs(hips=hips_id, wcs=self.sci_wcs)
+        # Add robust error handling for hips2fits and network request
+        try:
+            result = hips2fits.query_with_wcs(hips=hips_id, wcs=self.sci_wcs)
+        except Exception as e:
+            print(f"Error querying hips2fits for PanSTARRS: {e}")
+            return False
         
         if isinstance(result, str):
-            response = requests.get(result, timeout=self.config.REQUEST_TIMEOUT)
-            response.raise_for_status()
-            from io import BytesIO
-            fits_data = BytesIO(response.content)
-            with fits.open(fits_data) as hdul:
-                self.ref_data = hdul[0].data
-                self.ref_header = hdul[0].header
+            # result is a URL, download the FITS file
+            try:
+                response = requests.get(result, timeout=self.config.REQUEST_TIMEOUT)
+                if response.status_code != 200:
+                    print(f"Error: HTTP {response.status_code} when downloading PanSTARRS FITS from {result}")
+                    return False
+                from io import BytesIO
+                fits_data = BytesIO(response.content)
+                with fits.open(fits_data) as hdul:
+                    self.ref_data = hdul[0].data
+                    self.ref_header = hdul[0].header
+            except Exception as e:
+                print(f"Error downloading PanSTARRS FITS file: {e}")
+                return False
         else:
-            with fits.open(result) as hdul:
-                self.ref_data = hdul[0].data
-                self.ref_header = hdul[0].header
+            # result is a local file path
+            try:
+                with fits.open(result) as hdul:
+                    self.ref_data = hdul[0].data
+                    self.ref_header = hdul[0].header
+            except Exception as e:
+                print(f"Error opening PanSTARRS FITS file: {e}")
+                return False
 
         self.ref_wcs = self.sci_wcs
         return self._save_reference_image()
@@ -386,21 +403,31 @@ class TransientFinder:
 
         print(f"Using SkyView for {survey_name} (field size: {field_size_deg:.3f}°)...")
 
-        imgs = SkyView.get_images(
-            position=self.center_coord,
-            survey=[survey_name],
-            coordinates='J2000',
-            height=field_size_deg * u.deg,
-            width=field_size_deg * u.deg,
-            pixels=[self.nx, self.ny]
-        )
+        try:
+            imgs = SkyView.get_images(
+                position=self.center_coord,
+                survey=[survey_name],
+                coordinates='J2000',
+                height=field_size_deg * u.deg,
+                width=field_size_deg * u.deg,
+                pixels=[self.nx, self.ny]
+            )
+        except Exception as e:
+            print(f"Error querying SkyView: {e}")
+            return False
         
         if not imgs or not imgs[0]:
-            raise ValueError("No reference image returned from SkyView.")
+            print("No reference image returned from SkyView (empty response).")
+            return False
         
-        self.ref_data = imgs[0][0].data
-        self.ref_header = imgs[0][0].header
-        self.ref_wcs = WCS(self.ref_header)
+        try:
+            self.ref_data = imgs[0][0].data
+            self.ref_header = imgs[0][0].header
+            self.ref_wcs = WCS(self.ref_header)
+        except Exception as e:
+            print(f"Error extracting data from SkyView FITS: {e}")
+            return False
+
         return self._save_reference_image()
 
     def _save_reference_image(self):
