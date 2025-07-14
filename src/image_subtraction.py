@@ -411,8 +411,7 @@ class TransientFinder:
                 coordinates='J2000',
                 height=field_size_deg * u.deg,
                 width=field_size_deg * u.deg,
-                pixels=[self.nx, self.ny],
-                timeout=self.config.REQUEST_TIMEOUT  # <-- add timeout here
+                pixels=[self.nx, self.ny]
             )
             print("SkyView.get_images returned.")  # Debug print
         except Exception as e:
