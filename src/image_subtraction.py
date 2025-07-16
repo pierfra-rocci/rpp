@@ -425,7 +425,7 @@ class TransientFinder:
 
     def align_images(self):
         """
-        Align the reference image to match the science image WCS.
+        Align the reference image to match the science image WCS using translation and rotation.
 
         Returns
         -------
@@ -437,7 +437,8 @@ class TransientFinder:
             return False
 
         try:
-            print("Aligning reference image to science image WCS...")
+            print("Aligning reference image to science image WCS (translation + rotation)...")
+            # Step 1: Reproject reference image to science WCS (as before)
             aligned_ref, _ = reproject_interp((self.ref_data, self.ref_wcs),
                                               self.sci_wcs,
                                               shape_out=self.sci_data.shape)
@@ -446,11 +447,45 @@ class TransientFinder:
             median_ref = np.nanmedian(aligned_ref)
             aligned_ref = np.where(np.isnan(aligned_ref), median_ref, aligned_ref)
 
+            # Step 2: Estimate translation and rotation using cross-correlation
+            from scipy.signal import correlate2d
+            from scipy.ndimage import fourier_shift, rotate, affine_transform
+
+            # Normalize images for cross-correlation
+            sci_norm = (self.sci_data - np.nanmedian(self.sci_data)) / (np.nanstd(self.sci_data) + 1e-8)
+            ref_norm = (aligned_ref - np.nanmedian(aligned_ref)) / (np.nanstd(aligned_ref) + 1e-8)
+
+            # Estimate translation using cross-correlation
+            corr = correlate2d(sci_norm, ref_norm, mode='same')
+            y0, x0 = np.unravel_index(np.argmax(corr), corr.shape)
+            center_y, center_x = np.array(corr.shape) // 2
+            shift_y = y0 - center_y
+            shift_x = x0 - center_x
+            print(f"Estimated translation: dx={shift_x}, dy={shift_y}")
+
+            # Estimate rotation using phase correlation (brute-force small angles)
+            best_angle = 0
+            best_score = -np.inf
+            for angle in np.arange(-3, 3.1, 0.5):  # Try small angles, -3 to +3 deg
+                rotated = rotate(ref_norm, angle, reshape=False, order=1, mode='nearest')
+                corr_angle = correlate2d(sci_norm, rotated, mode='same')
+                score = np.max(corr_angle)
+                if score > best_score:
+                    best_score = score
+                    best_angle = angle
+            print(f"Estimated rotation: {best_angle:.2f} deg")
+
+            # Apply rotation and translation to aligned_ref
+            aligned_ref_rot = rotate(aligned_ref, best_angle, reshape=False, order=1, mode='nearest')
+            # Apply translation (subpixel)
+            from scipy.ndimage import shift
+            aligned_ref_final = shift(aligned_ref_rot, shift=(shift_y, shift_x), order=1, mode='nearest')
+
             # Update reference data and WCS
-            self.ref_data = aligned_ref
+            self.ref_data = aligned_ref_final
             self.ref_wcs = self.sci_wcs
             self.ref_header = self.sci_header.copy()
-            self.ref_header['HISTORY'] = 'Reference image aligned to science image WCS'
+            self.ref_header['HISTORY'] = f'Reference image aligned (dx={shift_x}, dy={shift_y}, rot={best_angle:.2f} deg)'
 
             # Save aligned reference image
             aligned_ref_path = os.path.join(self.output_dir, "aligned_reference.fits")
