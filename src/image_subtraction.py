@@ -855,6 +855,120 @@ class TransientFinder:
             traceback.print_exc()
             return None
 
+    def plot_transient_cutouts(self, cutout_size=40, max_sources=10, show=True):
+        """
+        Plot cutouts around each detected transient (positive and negative).
+        Each cutout shows science, reference, and difference images, all rotated to the same orientation
+        as the aligned reference image.
+
+        Parameters
+        ----------
+        cutout_size : int
+            Size of the square cutout in pixels (centered on detection).
+        max_sources : int
+            Maximum number of sources to plot (for brevity).
+        show : bool
+            Whether to show the plot interactively.
+
+        Returns
+        -------
+        list of str
+            Paths to the saved cutout plot images (one per transient).
+        """
+        if self.transient_table is None or len(self.transient_table) == 0:
+            print("No transients to plot cutouts for.")
+            return None
+
+        from astropy.nddata import Cutout2D
+
+        n_sources = min(len(self.transient_table), max_sources)
+        print(f"Plotting cutouts for {n_sources} transient(s)...")
+
+        # Ensure reference image is aligned to science image WCS for consistent orientation
+        aligned_ref = self.ref_data
+        aligned_ref_wcs = self.ref_wcs
+        # If not already aligned, align now (should be after align_images, but double-check)
+        if not np.allclose(self.ref_wcs.wcs.cd, self.sci_wcs.wcs.cd, atol=1e-8):
+            try:
+                aligned_ref, _ = reproject_interp((self.ref_data, self.ref_wcs), self.sci_wcs, shape_out=self.sci_data.shape)
+                aligned_ref_wcs = self.sci_wcs
+            except Exception as e:
+                print(f"Warning: Could not align reference image for cutouts: {e}")
+                aligned_ref = self.ref_data
+                aligned_ref_wcs = self.ref_wcs
+
+        saved_paths = []
+        for idx, transient in enumerate(self.transient_table[:n_sources]):
+            x, y = transient['x_peak'], transient['y_peak']
+            peak_type = transient['peak_type']
+            significance = transient['significance']
+
+            # Prepare cutouts using the aligned reference image as the orientation reference
+            try:
+                cutout_center = (x, y)
+                cutout_ref = Cutout2D(aligned_ref, cutout_center, cutout_size, wcs=aligned_ref_wcs)
+                cutout_sci = Cutout2D(self.sci_data, cutout_center, cutout_size, wcs=self.sci_wcs)
+                cutout_diff = Cutout2D(self.diff_data, cutout_center, cutout_size, wcs=self.sci_wcs)
+            except Exception as e:
+                print(f"Could not create cutout for transient {idx+1}: {e}")
+                continue
+
+            # Rotate science and difference cutouts to match the orientation of the aligned reference
+            from scipy.ndimage import rotate
+
+            def get_rotation_angle(wcs_from, wcs_to):
+                # Compute the rotation angle (in degrees) needed to align wcs_from to wcs_to
+                # Use the CD matrix if available, else PC
+                try:
+                    cd1 = wcs_from.wcs.cd if wcs_from.wcs.has_cd() else wcs_from.wcs.pc
+                    cd2 = wcs_to.wcs.cd if wcs_to.wcs.has_cd() else wcs_to.wcs.pc
+                    # Angle of x-axis (CD1_1, CD2_1) in each WCS
+                    angle1 = np.degrees(np.arctan2(cd1[1, 0], cd1[0, 0]))
+                    angle2 = np.degrees(np.arctan2(cd2[1, 0], cd2[0, 0]))
+                    return angle2 - angle1
+                except Exception:
+                    return 0.0
+
+            rot_angle_sci = get_rotation_angle(self.sci_wcs, aligned_ref_wcs)
+            rot_angle_diff = get_rotation_angle(self.sci_wcs, aligned_ref_wcs)
+
+            sci_rot = rotate(cutout_sci.data, rot_angle_sci, reshape=False, order=1, mode='nearest')
+            diff_rot = rotate(cutout_diff.data, rot_angle_diff, reshape=False, order=1, mode='nearest')
+            ref_rot = cutout_ref.data  # already in aligned orientation
+
+            # Plot and save each cutout as a separate file
+            fig, axes = plt.subplots(1, 3, figsize=(10, 3))
+            # Science image
+            vmin, vmax = np.nanpercentile(sci_rot, [5, 99])
+            axes[0].imshow(sci_rot, origin='lower', cmap='gray', vmin=vmin, vmax=vmax)
+            axes[0].set_title(f"Science\n({peak_type}, σ={significance:.1f})")
+            axes[0].axis('off')
+            # Reference image
+            vmin, vmax = np.nanpercentile(ref_rot, [5, 99])
+            axes[1].imshow(ref_rot, origin='lower', cmap='gray', vmin=vmin, vmax=vmax)
+            axes[1].set_title("Reference (aligned)")
+            axes[1].axis('off')
+            # Difference image
+            vlim = np.nanmax(np.abs(np.nanpercentile(diff_rot, [1, 99])))
+            axes[2].imshow(diff_rot, origin='lower', cmap='coolwarm', vmin=-vlim, vmax=+vlim)
+            axes[2].set_title("Difference")
+            axes[2].axis('off')
+
+            plt.tight_layout()
+            cutout_plot_path = os.path.join(
+                self.output_dir,
+                f"transient_cutout_{idx+1}_{peak_type}_sig{significance:.1f}.png"
+            )
+            plt.savefig(cutout_plot_path, dpi=200, bbox_inches='tight')
+            if show:
+                plt.show()
+            else:
+                plt.close()
+            print(f"Transient cutout plot saved to: {cutout_plot_path}")
+            saved_paths.append(cutout_plot_path)
+
+        return saved_paths
+
     def cleanup_temp_files(self):
         """Clean up temporary and reference files, keeping only catalog and plot."""
         files_to_remove = [
@@ -926,6 +1040,8 @@ def main():
     # Plot results unless --no-plot is specified
     if not args.no_plot:
         finder.plot_results(show=True)
+        # Also plot cutouts for each transient
+        finder.plot_transient_cutouts(show=True)
 
     # Clean up temporary files unless --keep-temp is specified
     if not args.keep_temp:
