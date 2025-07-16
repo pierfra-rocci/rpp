@@ -613,84 +613,43 @@ class TransientFinder:
             return False
 
     def _perform_proper_subtraction(self):
-        """Perform ProperImage subtraction using SingleImage class approach."""
+        """Perform ProperImage subtraction using the subtract function with automatic flux scaling."""
         if not PROPERIMAGE_AVAILABLE:
             print("ProperImage not available, falling back to direct subtraction...")
             self.diff_data = self.sci_data - self.ref_data
             return self._save_difference_image()
 
-        print("Performing ProperImage subtraction using SingleImage approach...")
-
-        # Ensure arrays have native byte order for ProperImage
-        sci_data_native = self.sci_data.astype(self.sci_data.dtype.newbyteorder('='))
-        ref_data_native = self.ref_data.astype(self.ref_data.dtype.newbyteorder('='))
+        print("Performing ProperImage subtraction using subtract() with beta=True (auto flux scaling)...")
 
         try:
-            # Create SingleImage objects directly
-            print("Creating ProperImage SingleImage objects...")
-            
-            # Create reference SingleImage - use just the image data
-            ref_image = SingleImage(ref_data_native)
-            
-            # Create science SingleImage  
-            sci_image = SingleImage(sci_data_native)
-            
-            print("Performing optimal subtraction...")
-            
-            # Try different ProperImage subtraction approaches
-            try:
-                # Method 1: Try using subtract_images if available
-                if 'subtract_images' in globals():
-                    diff_result = subtract_images(sci_image, ref_image)
-                else:
-                    raise AttributeError("subtract_images not available")
-            except (AttributeError, NameError):
-                try:
-                    # Method 2: Try using - operator if overloaded
-                    diff_result = sci_image - ref_image
-                except:
-                    # Method 3: Try accessing the image data and doing manual subtraction with PSF matching
-                    print("Using manual PSF-matched subtraction...")
-                    
-                    # Get the actual image data from SingleImage objects
-                    if hasattr(sci_image, 'pixeldata'):
-                        sci_data = sci_image.pixeldata
-                    elif hasattr(sci_image, 'data'):
-                        sci_data = sci_image.data
-                    else:
-                        sci_data = sci_data_native
-                        
-                    if hasattr(ref_image, 'pixeldata'):
-                        ref_data = ref_image.pixeldata
-                    elif hasattr(ref_image, 'data'):
-                        ref_data = ref_image.data
-                    else:
-                        ref_data = ref_data_native
-                    
-                    # Simple difference for now (could be enhanced with PSF matching)
-                    diff_result = sci_data - ref_data
-                    self.diff_data = diff_result
-                    print(f"Manual ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
-                    return self._save_difference_image()
-            
-            # Extract the difference data from the result
-            if hasattr(diff_result, 'pixeldata'):
-                self.diff_data = diff_result.pixeldata.copy()
-            elif hasattr(diff_result, 'data'):
-                self.diff_data = diff_result.data.copy()
-            elif hasattr(diff_result, '_data'):
-                self.diff_data = diff_result._data.copy()
+            from properimage.operations import subtract
+            # Use the aligned reference and science image arrays
+            # beta=True enables automatic flux scaling
+            # You can also set iterative=True and shift=True for robustness
+            result = subtract(
+                ref=self.ref_data,
+                new=self.sci_data,
+                smooth_psf=False,
+                fitted_psf=True,
+                align=False,
+                iterative=False,
+                beta=True,
+                shift=True
+            )
+            # result[0] is the difference image (D)
+            D = result[0]
+            mask = result[3] if len(result) > 3 else None
+            # If mask is present, fill masked pixels with 0
+            if mask is not None:
+                self.diff_data = np.ma.MaskedArray(D.real, mask=mask).filled(0)
             else:
-                # If it's already an array
-                self.diff_data = np.array(diff_result)
-            
+                self.diff_data = D.real
             print(f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
             return self._save_difference_image()
-            
         except Exception as proper_error:
-            print(f"ProperImage SingleImage approach failed: {proper_error}")
+            print(f"ProperImage subtract() failed: {proper_error}")
             print("Falling back to direct subtraction...")
-            self.diff_data = sci_data_native - ref_data_native
+            self.diff_data = self.sci_data - self.ref_data
             return self._save_difference_image()
 
     def _save_difference_image(self):
@@ -1130,6 +1089,47 @@ def main():
     parser.add_argument('--keep-temp', action='store_true', help='Keep temporary files (reference, difference images)')
 
     args = parser.parse_args()
+
+    # Load configuration
+    config = Config.from_file(args.config) if args.config else Config()
+
+    # Create TransientFinder with science image
+    finder = TransientFinder(args.science_image, output_dir=args.output,
+                             config=config)
+
+    # Get reference image from specified survey
+    if not finder.get_reference_image(survey=args.survey, filter_band=args.filter_band):
+        print("Failed to get reference image. Exiting.")
+        return 1
+
+    # Perform image subtraction
+    if not finder.perform_subtraction(method=args.method):
+        print("Image subtraction failed. Exiting.")
+        return 1
+
+    # Detect transient sources
+    transients = finder.detect_transients(threshold=args.threshold)
+
+    # Plot results unless --no-plot is specified
+    if not args.no_plot:
+        finder.plot_results(show=True)
+        # Also plot cutouts for each transient
+        finder.plot_transient_cutouts(show=True)
+
+    # Clean up temporary files unless --keep-temp is specified
+    if not args.keep_temp:
+        finder.cleanup_temp_files()
+        print("Cleanup complete. Kept: transients.csv and transient_detection_plot.png")
+    else:
+        print("Temporary files kept as requested.")
+
+    print("Transient detection complete.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+    print("Transient detection complete.")
 
     # Load configuration
     config = Config.from_file(args.config) if args.config else Config()
