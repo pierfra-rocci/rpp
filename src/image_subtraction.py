@@ -449,7 +449,8 @@ class TransientFinder:
 
             # Step 2: Estimate translation and rotation using cross-correlation
             from scipy.signal import correlate2d
-            from scipy.ndimage import fourier_shift, rotate, affine_transform
+            from scipy.ndimage import rotate, shift
+            import time
 
             # Normalize images for cross-correlation
             sci_norm = (self.sci_data - np.nanmedian(self.sci_data)) / (np.nanstd(self.sci_data) + 1e-8)
@@ -461,12 +462,23 @@ class TransientFinder:
             center_y, center_x = np.array(corr.shape) // 2
             shift_y = y0 - center_y
             shift_x = x0 - center_x
+
+            # Limit maximum allowed shift to avoid pathological results
+            max_shift = min(self.sci_data.shape) // 4
+            if abs(shift_x) > max_shift or abs(shift_y) > max_shift:
+                print(f"Warning: Estimated shift ({shift_x},{shift_y}) too large, resetting to (0,0).")
+                shift_x, shift_y = 0, 0
             print(f"Estimated translation: dx={shift_x}, dy={shift_y}")
 
-            # Estimate rotation using phase correlation (brute-force small angles)
+            # Estimate rotation using brute-force (coarse grid, timeout)
             best_angle = 0
             best_score = -np.inf
-            for angle in np.arange(-3, 3.1, 0.5):  # Try small angles, -3 to +3 deg
+            start_time = time.time()
+            max_seconds = 5  # Limit rotation search to 5 seconds
+            for angle in np.arange(-3, 3.1, 1.0):  # Try -3 to +3 deg, step 1 deg
+                if time.time() - start_time > max_seconds:
+                    print("Rotation search timeout, using best found so far.")
+                    break
                 rotated = rotate(ref_norm, angle, reshape=False, order=1, mode='nearest')
                 corr_angle = correlate2d(sci_norm, rotated, mode='same')
                 score = np.max(corr_angle)
@@ -477,8 +489,6 @@ class TransientFinder:
 
             # Apply rotation and translation to aligned_ref
             aligned_ref_rot = rotate(aligned_ref, best_angle, reshape=False, order=1, mode='nearest')
-            # Apply translation (subpixel)
-            from scipy.ndimage import shift
             aligned_ref_final = shift(aligned_ref_rot, shift=(shift_y, shift_x), order=1, mode='nearest')
 
             # Update reference data and WCS
