@@ -280,7 +280,7 @@ class TransientFinder:
 
     def get_reference_image(self, survey="DSS2 Red", filter_band="r"):
         """
-        Retrieve a reference image from an online survey.
+        Retrieve a reference image from an online survey using hips2fits only.
 
         Parameters
         ----------
@@ -309,127 +309,94 @@ class TransientFinder:
             survey = "DSS2"
             filter_band = "red"
 
-        # Try primary survey first, then fallback
-        surveys_to_try = [(survey, filter_band)]
-        if survey.lower() == "panstarrs":
-            surveys_to_try.append(("DSS2", "red"))
-        
-        for current_survey, current_filter in surveys_to_try:
-            if self._try_get_reference(current_survey, current_filter):
-                return True
-        
-        print("Failed to retrieve reference image from all available surveys.")
-        return False
+        # Only try the requested survey (no fallback to SkyView)
+        return self._try_get_reference(survey, filter_band)
 
     def _try_get_reference(self, survey, filter_band):
-        """Try to get reference image from a specific survey."""
+        """Try to get reference image from a specific survey using hips2fits."""
         for attempt in range(self.config.MAX_RETRIES):
             try:
-                if survey.lower() == "panstarrs":
-                    return self._get_panstarrs_image(filter_band)
-                else:
-                    return self._get_skyview_image(survey, filter_band)
+                return self._get_hips2fits_image(survey, filter_band)
             except Exception as e:
                 print(f"Attempt {attempt + 1}/{self.config.MAX_RETRIES} failed: {e}")
                 if attempt < self.config.MAX_RETRIES - 1:
                     time.sleep(self.config.RETRY_DELAY)
         return False
 
-    def _get_panstarrs_image(self, filter_band):
-        """Get reference image from PanSTARRS using HiPS2FITS."""
-        hips_mapping = {
-            'g': "CDS/P/PanSTARRS/DR1/g",
-            'r': "CDS/P/PanSTARRS/DR1/r",
-            'i': "CDS/P/PanSTARRS/DR1/i"
+    def _get_hips2fits_image(self, survey, filter_band):
+        """Get reference image from HiPS2FITS using correct HiPS names."""
+        hips_names = {
+            'panstarrs': {
+                'g': "CDS/P/PanSTARRS/DR1/g",
+                'r': "CDS/P/PanSTARRS/DR1/r",
+                'i': "CDS/P/PanSTARRS/DR1/i"
+            },
+            'dss2': {
+                'blue': "CDS/P/DSS2/Blue",
+                'b': "CDS/P/DSS2/Blue",
+                'red': "CDS/P/DSS2/Red",
+                'r': "CDS/P/DSS2/Red"
+            }
         }
-        
-        if filter_band.lower() not in hips_mapping:
-            print(f"Warning: Filter '{filter_band}' not available for PanSTARRS. Using 'r' band.")
-            filter_band = 'r'
-        
-        hips_id = hips_mapping[filter_band.lower()]
-        print(f"Retrieving PanSTARRS {filter_band}-band image...")
 
-        # Add robust error handling for hips2fits and network request
-        try:
-            result = hips2fits.query_with_wcs(hips=hips_id, wcs=self.sci_wcs)
-        except Exception as e:
-            print(f"Error querying hips2fits for PanSTARRS: {e}")
+        survey_key = survey.lower()
+        filter_key = filter_band.lower()
+        if survey_key not in hips_names:
+            print(f"Survey '{survey}' not supported for HiPS2FITS.")
             return False
-        
-        if isinstance(result, str):
-            # result is a URL, download the FITS file
-            try:
-                response = requests.get(result, timeout=self.config.REQUEST_TIMEOUT)
-                if response.status_code != 200:
-                    print(f"Error: HTTP {response.status_code} when downloading PanSTARRS FITS from {result}")
-                    return False
+
+        hips_id = hips_names[survey_key].get(filter_key)
+        if hips_id is None:
+            # Use default band for survey
+            hips_id = list(hips_names[survey_key].values())[0]
+            print(f"Warning: Filter '{filter_band}' not available for {survey}. Using default.")
+
+        print(f"Retrieving {survey} {filter_band}-band image from HiPS2FITS ({hips_id})...")
+
+        try:
+            # Use hips2fits.query_with_wcs to get the FITS cutout
+            result = hips2fits.query_with_wcs(
+                hips=hips_id,
+                wcs=self.sci_wcs,
+                get_query_payload=False,
+                format='fits'
+            )
+        except Exception as e:
+            print(f"Error querying hips2fits for {survey}: {e}")
+            return False
+
+        # result is a FITS HDUList or a file-like object
+        try:
+            if hasattr(result, 'read') or isinstance(result, (str, bytes)):
+                # If result is a file-like object or URL, open as FITS
                 from io import BytesIO
-                fits_data = BytesIO(response.content)
+                if isinstance(result, str) and result.startswith('http'):
+                    response = requests.get(result, timeout=self.config.REQUEST_TIMEOUT)
+                    if response.status_code != 200:
+                        print(f"Error: HTTP {response.status_code} when downloading FITS from {result}")
+                        return False
+                    fits_data = BytesIO(response.content)
+                else:
+                    fits_data = result if hasattr(result, 'read') else BytesIO(result)
                 with fits.open(fits_data) as hdul:
                     self.ref_data = hdul[0].data
                     self.ref_header = hdul[0].header
-            except Exception as e:
-                print(f"Error downloading PanSTARRS FITS file: {e}")
-                return False
-        else:
-            # result is a local file path
-            try:
-                with fits.open(result) as hdul:
-                    self.ref_data = hdul[0].data
-                    self.ref_header = hdul[0].header
-            except Exception as e:
-                print(f"Error opening PanSTARRS FITS file: {e}")
-                return False
+            else:
+                # If result is already an HDUList or ndarray
+                if hasattr(result, 'data') and hasattr(result, 'header'):
+                    self.ref_data = result.data
+                    self.ref_header = result.header
+                elif isinstance(result, np.ndarray):
+                    self.ref_data = result
+                    self.ref_header = self.sci_header.copy()
+                else:
+                    print("Unknown result type from hips2fits.")
+                    return False
+        except Exception as e:
+            print(f"Error loading FITS from hips2fits result: {e}")
+            return False
 
         self.ref_wcs = self.sci_wcs
-        return self._save_reference_image()
-
-    def _get_skyview_image(self, survey, filter_band):
-        """Get reference image from SkyView."""
-        if survey.lower() == "dss2":
-            dss2_mapping = {
-                'blue': "DSS2 Blue", 'b': "DSS2 Blue",
-                'red': "DSS2 Red", 'r': "DSS2 Red"
-            }
-            survey_name = dss2_mapping.get(filter_band.lower(), "DSS2 Red")
-        else:
-            survey_name = survey
-
-        # Ensure field size has proper units and limits
-        field_size_deg = self.field_size.to_value(u.deg)
-        field_size_deg = min(field_size_deg, self.config.MAX_FIELD_SIZE_DSS2)
-        field_size_deg = max(field_size_deg, self.config.MIN_FIELD_SIZE)
-
-        print(f"Using SkyView for {survey_name} (field size: {field_size_deg:.3f}°)...")
-
-        try:
-            print("Calling SkyView.get_images ...")  # Debug print
-            imgs = SkyView.get_images(
-                position=self.center_coord,
-                survey=[survey_name],
-                coordinates='J2000',
-                height=field_size_deg * u.deg,
-                width=field_size_deg * u.deg,
-                pixels=[self.nx, self.ny]
-            )
-            print("SkyView.get_images returned.")  # Debug print
-        except Exception as e:
-            print(f"Error querying SkyView: {e}")
-            return False
-        
-        if not imgs or not imgs[0]:
-            print("No reference image returned from SkyView (empty response).")
-            return False
-        
-        try:
-            self.ref_data = imgs[0][0].data
-            self.ref_header = imgs[0][0].header
-            self.ref_wcs = WCS(self.ref_header)
-        except Exception as e:
-            print(f"Error extracting data from SkyView FITS: {e}")
-            return False
-
         return self._save_reference_image()
 
     def _save_reference_image(self):
