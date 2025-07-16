@@ -38,7 +38,6 @@ import astropy.units as u
 from astropy.visualization import ZScaleInterval, ImageNormalize
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
-from astroquery.skyview import SkyView
 from astroquery.hips2fits import hips2fits
 # Change ProperImage import strategy
 try:
@@ -425,7 +424,7 @@ class TransientFinder:
 
     def align_images(self):
         """
-        Align the reference image to match the science image WCS using translation and rotation.
+        Align the reference image to match the science image WCS using astroalign if available.
 
         Returns
         -------
@@ -437,7 +436,8 @@ class TransientFinder:
             return False
 
         try:
-            print("Aligning reference image to science image WCS (translation + rotation)...")
+            print("Aligning reference image to science image WCS using astroalign...")
+
             # Step 1: Reproject reference image to science WCS (as before)
             aligned_ref, _ = reproject_interp((self.ref_data, self.ref_wcs),
                                               self.sci_wcs,
@@ -447,55 +447,21 @@ class TransientFinder:
             median_ref = np.nanmedian(aligned_ref)
             aligned_ref = np.where(np.isnan(aligned_ref), median_ref, aligned_ref)
 
-            # Step 2: Estimate translation and rotation using cross-correlation
-            from scipy.signal import correlate2d
-            from scipy.ndimage import rotate, shift
-            import time
-
-            # Normalize images for cross-correlation
-            sci_norm = (self.sci_data - np.nanmedian(self.sci_data)) / (np.nanstd(self.sci_data) + 1e-8)
-            ref_norm = (aligned_ref - np.nanmedian(aligned_ref)) / (np.nanstd(aligned_ref) + 1e-8)
-
-            # Estimate translation using cross-correlation
-            corr = correlate2d(sci_norm, ref_norm, mode='same')
-            y0, x0 = np.unravel_index(np.argmax(corr), corr.shape)
-            center_y, center_x = np.array(corr.shape) // 2
-            shift_y = y0 - center_y
-            shift_x = x0 - center_x
-
-            # Limit maximum allowed shift to avoid pathological results
-            max_shift = min(self.sci_data.shape) // 4
-            if abs(shift_x) > max_shift or abs(shift_y) > max_shift:
-                print(f"Warning: Estimated shift ({shift_x},{shift_y}) too large, resetting to (0,0).")
-                shift_x, shift_y = 0, 0
-            print(f"Estimated translation: dx={shift_x}, dy={shift_y}")
-
-            # Estimate rotation using brute-force (coarse grid, timeout)
-            best_angle = 0
-            best_score = -np.inf
-            start_time = time.time()
-            max_seconds = 5  # Limit rotation search to 5 seconds
-            for angle in np.arange(-3, 3.1, 1.0):  # Try -3 to +3 deg, step 1 deg
-                if time.time() - start_time > max_seconds:
-                    print("Rotation search timeout, using best found so far.")
-                    break
-                rotated = rotate(ref_norm, angle, reshape=False, order=1, mode='nearest')
-                corr_angle = correlate2d(sci_norm, rotated, mode='same')
-                score = np.max(corr_angle)
-                if score > best_score:
-                    best_score = score
-                    best_angle = angle
-            print(f"Estimated rotation: {best_angle:.2f} deg")
-
-            # Apply rotation and translation to aligned_ref
-            aligned_ref_rot = rotate(aligned_ref, best_angle, reshape=False, order=1, mode='nearest')
-            aligned_ref_final = shift(aligned_ref_rot, shift=(shift_y, shift_x), order=1, mode='nearest')
-
-            # Update reference data and WCS
-            self.ref_data = aligned_ref_final
-            self.ref_wcs = self.sci_wcs
-            self.ref_header = self.sci_header.copy()
-            self.ref_header['HISTORY'] = f'Reference image aligned (dx={shift_x}, dy={shift_y}, rot={best_angle:.2f} deg)'
+            # Try astroalign
+            try:
+                import astroalign as aa
+                aligned_ref_aa, _ = aa.register(aligned_ref, self.sci_data)
+                self.ref_data = aligned_ref_aa
+                self.ref_wcs = self.sci_wcs
+                self.ref_header = self.sci_header.copy()
+                self.ref_header['HISTORY'] = 'Reference image aligned using astroalign'
+                print("Astroalign alignment successful.")
+            except ImportError:
+                print("astroalign not installed, falling back to cross-correlation alignment.")
+                raise
+            except Exception as e:
+                print(f"astroalign alignment failed: {e}")
+                raise
 
             # Save aligned reference image
             aligned_ref_path = os.path.join(self.output_dir, "aligned_reference.fits")
@@ -505,9 +471,60 @@ class TransientFinder:
 
             return True
 
-        except Exception as e:
-            print(f"Error during image alignment: {e}")
-            return False
+        except Exception:
+            # Fallback: cross-correlation with rotation search
+            print("Falling back to cross-correlation alignment (translation + rotation)...")
+            try:
+                from scipy.signal import correlate2d
+                from scipy.ndimage import rotate, shift
+                import time
+
+                sci_norm = (self.sci_data - np.nanmedian(self.sci_data)) / (np.nanstd(self.sci_data) + 1e-8)
+                ref_norm = (aligned_ref - np.nanmedian(aligned_ref)) / (np.nanstd(aligned_ref) + 1e-8)
+
+                # Estimate translation using cross-correlation
+                corr = correlate2d(sci_norm, ref_norm, mode='same')
+                y0, x0 = np.unravel_index(np.argmax(corr), corr.shape)
+                center_y, center_x = np.array(corr.shape) // 2
+                shift_y = y0 - center_y
+                shift_x = x0 - center_x
+
+                max_shift = min(self.sci_data.shape) // 4
+                if abs(shift_x) > max_shift or abs(shift_y) > max_shift:
+                    print(f"Warning: Estimated shift ({shift_x},{shift_y}) too large, resetting to (0,0).")
+                    shift_x, shift_y = 0, 0
+                print(f"Estimated translation: dx={shift_x}, dy={shift_y}")
+
+                # Try a range of angles: -5, -2, -1, 0, 1, 2, 5 degrees
+                best_angle = 0
+                best_score = -np.inf
+                angles = [-5, -2, -1, 0, 1, 2, 5]
+                for angle in angles:
+                    rotated = rotate(ref_norm, angle, reshape=False, order=1, mode='nearest')
+                    corr_angle = correlate2d(sci_norm, rotated, mode='same')
+                    score = np.max(corr_angle)
+                    if score > best_score:
+                        best_score = score
+                        best_angle = angle
+                print(f"Estimated rotation: {best_angle:.2f} deg")
+
+                aligned_ref_rot = rotate(aligned_ref, best_angle, reshape=False, order=1, mode='nearest')
+                aligned_ref_final = shift(aligned_ref_rot, shift=(shift_y, shift_x), order=1, mode='nearest')
+
+                self.ref_data = aligned_ref_final
+                self.ref_wcs = self.sci_wcs
+                self.ref_header = self.sci_header.copy()
+                self.ref_header['HISTORY'] = f'Reference image aligned (dx={shift_x}, dy={shift_y}, rot={best_angle:.2f} deg)'
+
+                aligned_ref_path = os.path.join(self.output_dir, "aligned_reference.fits")
+                fits.writeto(aligned_ref_path, self.ref_data, self.ref_header, overwrite=True)
+                print(f"Aligned reference image saved to: {aligned_ref_path}")
+                print(f"Aligned reference shape: {self.ref_data.shape}")
+
+                return True
+            except Exception as e:
+                print(f"Error during fallback image alignment: {e}")
+                return False
 
     def perform_subtraction(self, method="proper"):
         """
