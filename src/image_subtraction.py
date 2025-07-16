@@ -529,7 +529,6 @@ class TransientFinder:
             try:
                 from scipy.signal import correlate2d
                 from scipy.ndimage import rotate, shift
-                import time
 
                 sci_norm = (self.sci_data - np.nanmedian(self.sci_data)) / (np.nanstd(self.sci_data) + 1e-8)
                 ref_norm = (aligned_ref - np.nanmedian(aligned_ref)) / (np.nanstd(aligned_ref) + 1e-8)
@@ -613,7 +612,7 @@ class TransientFinder:
             return False
 
     def _perform_proper_subtraction(self):
-        """Perform ProperImage subtraction using the subtract function with automatic flux scaling."""
+        """Perform ProperImage subtraction using the subtract function with automatic flux scaling and masking."""
         if not PROPERIMAGE_AVAILABLE:
             print("ProperImage not available, falling back to direct subtraction...")
             self.diff_data = self.sci_data - self.ref_data
@@ -623,9 +622,17 @@ class TransientFinder:
 
         try:
             from properimage.operations import subtract
+            # Sigma-clipping masks for artefact removal
+            from astropy.stats import sigma_clip
+
+            # Mask science image
+            sci_mask = sigma_clip(self.sci_data, sigma=3, maxiters=2, masked=True).mask
+            # Mask reference image
+            ref_mask = sigma_clip(self.ref_data, sigma=3, maxiters=2, masked=True).mask
+            # Union of both masks
+            union_mask = np.logical_or(sci_mask, ref_mask)
+
             # Use the aligned reference and science image arrays
-            # beta=True enables automatic flux scaling
-            # You can also set iterative=True and shift=True for robustness
             result = subtract(
                 ref=self.ref_data,
                 new=self.sci_data,
@@ -634,16 +641,17 @@ class TransientFinder:
                 align=False,
                 iterative=False,
                 beta=True,
-                shift=True
+                shift=True,
+                mask=union_mask
             )
-            # result[0] is the difference image (D)
             D = result[0]
             mask = result[3] if len(result) > 3 else None
-            # If mask is present, fill masked pixels with 0
+            # Combine with union_mask
             if mask is not None:
-                self.diff_data = np.ma.MaskedArray(D.real, mask=mask).filled(0)
+                final_mask = np.logical_or(mask, union_mask)
+                self.diff_data = np.ma.MaskedArray(D.real, mask=final_mask).filled(0)
             else:
-                self.diff_data = D.real
+                self.diff_data = np.ma.MaskedArray(D.real, mask=union_mask).filled(0)
             print(f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
             return self._save_difference_image()
         except Exception as proper_error:
