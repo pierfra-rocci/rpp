@@ -1129,46 +1129,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-    print("Transient detection complete.")
-
-    # Load configuration
-    config = Config.from_file(args.config) if args.config else Config()
-
-    # Create TransientFinder with science image
-    finder = TransientFinder(args.science_image, output_dir=args.output,
-                             config=config)
-
-    # Get reference image from specified survey
-    if not finder.get_reference_image(survey=args.survey, filter_band=args.filter_band):
-        print("Failed to get reference image. Exiting.")
-        return 1
-
-    # Perform image subtraction
-    if not finder.perform_subtraction(method=args.method):
-        print("Image subtraction failed. Exiting.")
-        return 1
-
-    # Detect transient sources
-    transients = finder.detect_transients(threshold=args.threshold)
-
-    # Plot results unless --no-plot is specified
-    if not args.no_plot:
-        finder.plot_results(show=True)
-        # Also plot cutouts for each transient
-        finder.plot_transient_cutouts(show=True)
-
-    # Clean up temporary files unless --keep-temp is specified
-    if not args.keep_temp:
-        finder.cleanup_temp_files()
-        print("Cleanup complete. Kept: transients.csv and transient_detection_plot.png")
-    else:
-        print("Temporary files kept as requested.")
-
-    print("Transient detection complete.")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-    print("Transient detection complete.")
 
