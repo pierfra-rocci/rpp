@@ -447,15 +447,53 @@ class TransientFinder:
             median_ref = np.nanmedian(aligned_ref)
             aligned_ref = np.where(np.isnan(aligned_ref), median_ref, aligned_ref)
 
-            # Try astroalign
+            # Try astroalign with fallback to star coordinates if needed
             try:
                 import astroalign as aa
-                aligned_ref_aa, _ = aa.register(aligned_ref, self.sci_data)
-                self.ref_data = aligned_ref_aa
-                self.ref_wcs = self.sci_wcs
-                self.ref_header = self.sci_header.copy()
-                self.ref_header['HISTORY'] = 'Reference image aligned using astroalign'
-                print("Astroalign alignment successful.")
+                try:
+                    # Try direct image registration first
+                    aligned_ref_aa, _ = aa.register(aligned_ref, self.sci_data)
+                    self.ref_data = aligned_ref_aa
+                    self.ref_wcs = self.sci_wcs
+                    self.ref_header = self.sci_header.copy()
+                    self.ref_header['HISTORY'] = 'Reference image aligned using astroalign (image mode)'
+                    print("Astroalign alignment successful (image mode).")
+                except Exception as e_img:
+                    print(f"Astroalign image mode failed: {e_img}")
+                    print("Trying astroalign with star coordinates...")
+
+                    # Use photutils to detect stars in both images
+                    from photutils.detection import DAOStarFinder
+                    from astropy.stats import sigma_clipped_stats
+
+                    # Science image stars
+                    mean_s, median_s, std_s = sigma_clipped_stats(self.sci_data, sigma=3.0)
+                    daofind_s = DAOStarFinder(fwhm=3.0, threshold=5.*std_s)
+                    sources_s = daofind_s(self.sci_data - median_s)
+                    if sources_s is None or len(sources_s) < 3:
+                        raise RuntimeError("Not enough stars found in science image for astroalign.")
+
+                    coords_s = np.transpose((sources_s['xcentroid'], sources_s['ycentroid']))
+
+                    # Reference image stars
+                    mean_r, median_r, std_r = sigma_clipped_stats(aligned_ref, sigma=3.0)
+                    daofind_r = DAOStarFinder(fwhm=3.0, threshold=5.*std_r)
+                    sources_r = daofind_r(aligned_ref - median_r)
+                    if sources_r is None or len(sources_r) < 3:
+                        raise RuntimeError("Not enough stars found in reference image for astroalign.")
+
+                    coords_r = np.transpose((sources_r['xcentroid'], sources_r['ycentroid']))
+
+                    # Find transform and apply
+                    transf, (src_list, tgt_list) = aa.find_transform(coords_r, coords_s)
+                    from skimage.transform import warp
+                    aligned_ref_aa = warp(aligned_ref, transf.inverse, output_shape=self.sci_data.shape, order=3, mode='edge', preserve_range=True)
+                    self.ref_data = aligned_ref_aa.astype(aligned_ref.dtype)
+                    self.ref_wcs = self.sci_wcs
+                    self.ref_header = self.sci_header.copy()
+                    self.ref_header['HISTORY'] = 'Reference image aligned using astroalign (star mode)'
+                    print("Astroalign alignment successful (star mode).")
+
             except ImportError:
                 print("astroalign not installed, falling back to cross-correlation alignment.")
                 raise
