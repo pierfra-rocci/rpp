@@ -365,33 +365,45 @@ class TransientFinder:
             print(f"Error querying hips2fits for {survey}: {e}")
             return False
 
-        # result is a FITS HDUList or a file-like object
+        # Handle all possible result types from hips2fits
         try:
-            if hasattr(result, 'read') or isinstance(result, (str, bytes)):
-                # If result is a file-like object or URL, open as FITS
-                from io import BytesIO
-                if isinstance(result, str) and result.startswith('http'):
+            from astropy.io.fits.hdu.image import PrimaryHDU, ImageHDU
+            from astropy.io.fits.hdu.hdulist import HDUList
+
+            if isinstance(result, np.ndarray):
+                # If result is a numpy array, create a minimal header from WCS
+                self.ref_data = result
+                self.ref_header = self.sci_wcs.to_header()
+            elif isinstance(result, HDUList):
+                self.ref_data = result[0].data
+                self.ref_header = result[0].header
+            elif isinstance(result, (PrimaryHDU, ImageHDU)):
+                self.ref_data = result.data
+                self.ref_header = result.header
+            elif isinstance(result, str):
+                # If result is a file path or URL
+                if result.startswith('http'):
                     response = requests.get(result, timeout=self.config.REQUEST_TIMEOUT)
                     if response.status_code != 200:
                         print(f"Error: HTTP {response.status_code} when downloading FITS from {result}")
                         return False
+                    from io import BytesIO
                     fits_data = BytesIO(response.content)
+                    with fits.open(fits_data) as hdul:
+                        self.ref_data = hdul[0].data
+                        self.ref_header = hdul[0].header
                 else:
-                    fits_data = result if hasattr(result, 'read') else BytesIO(result)
-                with fits.open(fits_data) as hdul:
+                    with fits.open(result) as hdul:
+                        self.ref_data = hdul[0].data
+                        self.ref_header = hdul[0].header
+            elif hasattr(result, 'read'):
+                # File-like object
+                with fits.open(result) as hdul:
                     self.ref_data = hdul[0].data
                     self.ref_header = hdul[0].header
             else:
-                # If result is already an HDUList or ndarray
-                if hasattr(result, 'data') and hasattr(result, 'header'):
-                    self.ref_data = result.data
-                    self.ref_header = result.header
-                elif isinstance(result, np.ndarray):
-                    self.ref_data = result
-                    self.ref_header = self.sci_header.copy()
-                else:
-                    print("Unknown result type from hips2fits.")
-                    return False
+                print(f"Unknown result type from hips2fits: {type(result)}")
+                return False
         except Exception as e:
             print(f"Error loading FITS from hips2fits result: {e}")
             return False
