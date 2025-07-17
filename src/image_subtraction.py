@@ -594,7 +594,8 @@ class TransientFinder:
                 fitted_psf=True,
                 align=True,
                 beta=True,
-                iterative=True,
+                iterative=False,  # <-- disable slow iterative optimization
+                shift=False,      # <-- disable shift optimization
             )
             D = result[0]
             mask = result[3] if len(result) > 3 else None
