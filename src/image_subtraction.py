@@ -636,13 +636,12 @@ class TransientFinder:
             result = subtract(
                 ref=self.ref_data,
                 new=self.sci_data,
-                smooth_psf=False,
+                smooth_psf=True,
                 fitted_psf=True,
                 align=False,
-                iterative=False,
+                iterative=True,
                 beta=True,
                 shift=True,
-                mask=union_mask
             )
             D = result[0]
             mask = result[3] if len(result) > 3 else None
