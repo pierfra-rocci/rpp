@@ -578,10 +578,11 @@ class TransientFinder:
             result = subtract(
                 ref=np.array(self.ref_data, dtype=np.float32),
                 new=np.array(self.sci_data, dtype=np.float32),
-                smooth_psf=True,
+                smooth_psf=False,
                 fitted_psf=True,
-                align=False,
+                align=True,
                 beta=True,
+                iterative=True,
             )
             D = result[0]
             mask = result[3] if len(result) > 3 else None
@@ -604,7 +605,8 @@ class TransientFinder:
         diff_fits_path = os.path.join(self.output_dir, "difference_image.fits")
         diff_header = self.sci_header.copy()
         diff_header['HISTORY'] = 'Image differencing performed with TransientFinder'
-        fits.writeto(diff_fits_path, self.diff_data, diff_header, overwrite=True)
+        fits.writeto(diff_fits_path, self.diff_data, diff_header,
+                     overwrite=True)
         print(f"Difference image saved to: {diff_fits_path}")
         return True
 
@@ -639,10 +641,10 @@ class TransientFinder:
             # Find positive peaks (new/brightening sources)
             threshold_positive = median + (threshold * std)
             positive_peaks = find_peaks(
-                self.diff_data, 
-                threshold_positive, 
+                self.diff_data,
+                threshold_positive,
                 box_size=self.config.BOX_SIZE,
-                npeaks=self.config.MAX_PEAKS, 
+                npeaks=self.config.MAX_PEAKS,
                 centroid_func=None
             )
 
@@ -651,14 +653,14 @@ class TransientFinder:
             inverted_diff = -self.diff_data
             threshold_negative = -median + (threshold * std)  # This becomes positive after inversion
             negative_peaks = find_peaks(
-                inverted_diff, 
-                threshold_negative, 
+                inverted_diff,
+                threshold_negative,
                 box_size=self.config.BOX_SIZE,
-                npeaks=self.config.MAX_PEAKS, 
+                npeaks=self.config.MAX_PEAKS,
                 centroid_func=None
             )
 
-            # Combine results - create new rows instead of modifying existing ones
+            # Combine results
             all_rows = []
 
             # Process positive transients
