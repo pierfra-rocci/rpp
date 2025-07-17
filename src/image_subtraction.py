@@ -39,22 +39,9 @@ from astropy.visualization import ZScaleInterval, ImageNormalize
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 from astroquery.hips2fits import hips2fits
-# Change ProperImage import strategy
-try:
-    from properimage import SingleImage, subtract_images
-    PROPERIMAGE_AVAILABLE = True
-except ImportError:
-    try:
-        from properimage import SingleImage
-        from properimage.operations import subtract_images
-        PROPERIMAGE_AVAILABLE = True
-    except ImportError:
-        try:
-            from properimage import SingleImage
-            PROPERIMAGE_AVAILABLE = True
-        except ImportError:
-            print("Warning: ProperImage not available, will use direct subtraction only")
-            PROPERIMAGE_AVAILABLE = False
+
+from properimage import SingleImage
+
 from photutils.detection import find_peaks
 from reproject import reproject_interp
 import time
@@ -72,7 +59,6 @@ warnings.filterwarnings('ignore', message='.*FITSFixedWarning.*')
 
 class Config:
     """Configuration class for TransientFinder with default parameters."""
-    
     # Survey and image retrieval settings
     MAX_RETRIES = 2
     RETRY_DELAY = 2
@@ -80,27 +66,27 @@ class Config:
     MAX_FIELD_SIZE_PANSTARRS = 60.0  # arcmin
     MAX_FIELD_SIZE_DSS2 = 60.0       # degrees
     MIN_FIELD_SIZE = 0.1             # degrees
-    
+
     # Detection parameters
     SIGMA_CLIP = 3.0
     BOX_SIZE = 5
     MAX_PEAKS = 50
     APERTURE_RADIUS = 10
-    
+
     # File management
     CLEANUP_TEMP_FILES = True
-    
+
     # Plot settings
     DEFAULT_FIGSIZE = (15, 5)
     PLOT_DPI = 200
-    
+
     @classmethod
     def from_file(cls, config_path):
         """Load configuration from JSON file."""
         try:
             with open(config_path, 'r') as f:
                 config_dict = json.load(f)
-            
+
             config = cls()
             for key, value in config_dict.items():
                 if hasattr(config, key.upper()):
@@ -260,12 +246,14 @@ class TransientFinder:
 
             # Get central coordinates
             central_x, central_y = self.nx // 2, self.ny // 2
-            ra, dec = self.sci_wcs.all_pix2world(central_x, central_y, 0)
+            ra, dec = self.sci_wcs.all_pix2world(central_x,
+                                                 central_y, 0)
             self.center_coord = SkyCoord(ra, dec, unit='deg')
 
             # Get image size in degrees
             corner_x, corner_y = self.nx - 1, self.ny - 1
-            ra_corner, dec_corner = self.sci_wcs.all_pix2world(corner_x, corner_y, 0)
+            ra_corner, dec_corner = self.sci_wcs.all_pix2world(corner_x,
+                                                               corner_y, 0)
             corner_coord = SkyCoord(ra_corner, dec_corner, unit='deg')
             self.field_size = self.center_coord.separation(corner_coord) * 2
 
@@ -450,37 +438,47 @@ class TransientFinder:
             # Try astroalign with fallback to star coordinates if needed
             try:
                 import astroalign as aa
+                print("astroalign is available, attempting to align images...")
+
                 def try_astroalign(ref_img, sci_img):
                     # Try direct image registration first
                     try:
                         aligned_ref_aa, _ = aa.register(ref_img, sci_img)
                         return aligned_ref_aa, 'image'
-                    except Exception as e_img:
+                    except Exception:
                         # Try with star coordinates
                         from photutils.detection import DAOStarFinder
                         from astropy.stats import sigma_clipped_stats
                         # Science image stars
-                        mean_s, median_s, std_s = sigma_clipped_stats(sci_img, sigma=3.0)
+                        _, median_s, std_s = sigma_clipped_stats(sci_img,
+                                                                 sigma=3.0)
                         daofind_s = DAOStarFinder(fwhm=3.0, threshold=5.*std_s)
                         sources_s = daofind_s(sci_img - median_s)
                         if sources_s is None or len(sources_s) < 3:
                             raise RuntimeError("Not enough stars found in science image for astroalign.")
-                        coords_s = np.transpose((sources_s['xcentroid'], sources_s['ycentroid']))
+                        coords_s = np.transpose((sources_s['xcentroid'],
+                                                 sources_s['ycentroid']))
                         # Reference image stars
-                        mean_r, median_r, std_r = sigma_clipped_stats(ref_img, sigma=3.0)
+                        _, median_r, std_r = sigma_clipped_stats(ref_img,
+                                                                 sigma=3.0)
                         daofind_r = DAOStarFinder(fwhm=3.0, threshold=5.*std_r)
                         sources_r = daofind_r(ref_img - median_r)
                         if sources_r is None or len(sources_r) < 3:
                             raise RuntimeError("Not enough stars found in reference image for astroalign.")
-                        coords_r = np.transpose((sources_r['xcentroid'], sources_r['ycentroid']))
+                        coords_r = np.transpose((sources_r['xcentroid'],
+                                                 sources_r['ycentroid']))
                         # Find transform and apply
-                        transf, (src_list, tgt_list) = aa.find_transform(coords_r, coords_s)
+                        transf, (_, _) = aa.find_transform(coords_r,
+                                                                         coords_s)
                         from skimage.transform import warp
-                        aligned_ref_aa = warp(ref_img, transf.inverse, output_shape=sci_img.shape, order=3, mode='edge', preserve_range=True)
+                        aligned_ref_aa = warp(ref_img, transf.inverse,
+                                              output_shape=sci_img.shape,
+                                              order=3, mode='edge', preserve_range=True)
                         return aligned_ref_aa.astype(ref_img.dtype), 'star'
                 # Try normal orientation
                 try:
-                    aligned_ref_aa, mode = try_astroalign(aligned_ref, self.sci_data)
+                    aligned_ref_aa, mode = try_astroalign(aligned_ref,
+                                                          self.sci_data)
                     self.ref_data = aligned_ref_aa
                     self.ref_wcs = self.sci_wcs
                     self.ref_header = self.sci_header.copy()
@@ -523,59 +521,9 @@ class TransientFinder:
 
             return True
 
-        except Exception:
-            # Fallback: cross-correlation with rotation search
-            print("Falling back to cross-correlation alignment (translation + rotation)...")
-            try:
-                from scipy.signal import correlate2d
-                from scipy.ndimage import rotate, shift
-
-                sci_norm = (self.sci_data - np.nanmedian(self.sci_data)) / (np.nanstd(self.sci_data) + 1e-8)
-                ref_norm = (aligned_ref - np.nanmedian(aligned_ref)) / (np.nanstd(aligned_ref) + 1e-8)
-
-                # Estimate translation using cross-correlation
-                corr = correlate2d(sci_norm, ref_norm, mode='same')
-                y0, x0 = np.unravel_index(np.argmax(corr), corr.shape)
-                center_y, center_x = np.array(corr.shape) // 2
-                shift_y = y0 - center_y
-                shift_x = x0 - center_x
-
-                max_shift = min(self.sci_data.shape) // 4
-                if abs(shift_x) > max_shift or abs(shift_y) > max_shift:
-                    print(f"Warning: Estimated shift ({shift_x},{shift_y}) too large, resetting to (0,0).")
-                    shift_x, shift_y = 0, 0
-                print(f"Estimated translation: dx={shift_x}, dy={shift_y}")
-
-                # Try a range of angles: -5, -2, -1, 0, 1, 2, 5 degrees
-                best_angle = 0
-                best_score = -np.inf
-                angles = [-5, -2, -1, 0, 1, 2, 5]
-                for angle in angles:
-                    rotated = rotate(ref_norm, angle, reshape=False, order=1, mode='nearest')
-                    corr_angle = correlate2d(sci_norm, rotated, mode='same')
-                    score = np.max(corr_angle)
-                    if score > best_score:
-                        best_score = score
-                        best_angle = angle
-                print(f"Estimated rotation: {best_angle:.2f} deg")
-
-                aligned_ref_rot = rotate(aligned_ref, best_angle, reshape=False, order=1, mode='nearest')
-                aligned_ref_final = shift(aligned_ref_rot, shift=(shift_y, shift_x), order=1, mode='nearest')
-
-                self.ref_data = aligned_ref_final
-                self.ref_wcs = self.sci_wcs
-                self.ref_header = self.sci_header.copy()
-                self.ref_header['HISTORY'] = f'Reference image aligned (dx={shift_x}, dy={shift_y}, rot={best_angle:.2f} deg)'
-
-                aligned_ref_path = os.path.join(self.output_dir, "aligned_reference.fits")
-                fits.writeto(aligned_ref_path, self.ref_data, self.ref_header, overwrite=True)
-                print(f"Aligned reference image saved to: {aligned_ref_path}")
-                print(f"Aligned reference shape: {self.ref_data.shape}")
-
-                return True
-            except Exception as e:
-                print(f"Error during fallback image alignment: {e}")
-                return False
+        except Exception as e:
+            print(f"Error during image alignment: {e}")
+            return False
 
     def perform_subtraction(self, method="proper"):
         """
@@ -613,11 +561,6 @@ class TransientFinder:
 
     def _perform_proper_subtraction(self):
         """Perform ProperImage subtraction using the subtract function with automatic flux scaling and masking."""
-        if not PROPERIMAGE_AVAILABLE:
-            print("ProperImage not available, falling back to direct subtraction...")
-            self.diff_data = self.sci_data - self.ref_data
-            return self._save_difference_image()
-
         print("Performing ProperImage subtraction using subtract() with beta=True (auto flux scaling)...")
 
         try:
@@ -829,7 +772,7 @@ class TransientFinder:
 
         try:
             # Create figure with three subplots
-            fig, axes = plt.subplots(1, 3, figsize=figsize)
+            _, axes = plt.subplots(1, 3, figsize=figsize)
 
             # Define z-scale normalization for better visualization
             zscale = ZScaleInterval()
@@ -886,37 +829,39 @@ class TransientFinder:
                         color = 'red'
                         edge_color = 'darkred'
                         negative_plotted = True
-                    
+
                     # Draw circle marker only (no text labels)
-                    circle = plt.Circle((x, y), radius=self.config.APERTURE_RADIUS, 
-                                      fill=False, color=color, linewidth=2, 
-                                      edgecolor=edge_color)
+                    circle = plt.Circle((x, y), radius=self.config.APERTURE_RADIUS,
+                                        fill=False, color=color, linewidth=2,
+                                        edgecolor=edge_color)
                     axes[2].add_patch(circle)
-                
+
                 # Create custom legend
                 legend_elements = []
                 if positive_plotted:
                     legend_elements.append(
-                        plt.Line2D([0], [0], marker='o', color='w', 
-                                  markerfacecolor='lime', markeredgecolor='darkgreen',
-                                  markersize=10, linewidth=0, label='Positive (new/bright)')
+                        plt.Line2D([0], [0], marker='o', color='w',
+                                   markerfacecolor='lime', markeredgecolor='darkgreen',
+                                   markersize=10, linewidth=0, label='Positive (new/bright)')
                     )
                 if negative_plotted:
                     legend_elements.append(
-                        plt.Line2D([0], [0], marker='o', color='w', 
-                                  markerfacecolor='red', markeredgecolor='darkred',
-                                  markersize=10, linewidth=0, label='Negative (dim/gone)')
+                        plt.Line2D([0], [0], marker='o', color='w',
+                                   markerfacecolor='red', markeredgecolor='darkred',
+                                   markersize=10, linewidth=0, label='Negative (dim/gone)')
                     )
-                
+
                 if legend_elements:
-                    axes[2].legend(handles=legend_elements, loc='upper right', 
-                                  fontsize=10, framealpha=0.9, fancybox=True, shadow=True)
+                    axes[2].legend(handles=legend_elements, loc='upper right',
+                                   fontsize=10, framealpha=0.9, fancybox=True, shadow=True)
             else:
                 print("No transients to plot.")
 
             plt.tight_layout()
-            plot_path = os.path.join(self.output_dir, "transient_detection_plot.png")
-            plt.savefig(plot_path, dpi=self.config.PLOT_DPI, bbox_inches='tight')
+            plot_path = os.path.join(self.output_dir,
+                                     "transient_detection_plot.png")
+            plt.savefig(plot_path, dpi=self.config.PLOT_DPI,
+                        bbox_inches='tight')
 
             if show:
                 plt.show()
@@ -1050,7 +995,7 @@ class TransientFinder:
         """Clean up temporary and reference files, keeping only catalog and plot."""
         files_to_remove = [
             "reference_image.fits",
-            "aligned_reference.fits", 
+            "aligned_reference.fits",
             "difference_image.fits"
         ]
         
@@ -1077,20 +1022,28 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description='Find transient sources in astronomical images.')
-    parser.add_argument('science_image', help='Path to the science FITS image')
+    parser.add_argument('science_image',
+                        help='Path to the science FITS image')
     parser.add_argument('--survey', choices=['PanSTARRS', 'DSS2'],
-                        default='DSS2', help='Survey to use for reference image')
+                        default='DSS2',
+                        help='Survey to use for reference image')
     parser.add_argument('--filter', dest='filter_band',
                         choices=['g', 'r', 'i', 'blue', 'red', 'Blue', 'Red'],
-                        default='r', help='Filter/band: g,r,i for PanSTARRS; blue,red for DSS2')
-    parser.add_argument('--output', help='Output directory for results')
+                        default='r',
+                        help='Filter/band: g,r,i for PanSTARRS; blue,red for DSS2')
+    parser.add_argument('--output',
+                        help='Output directory for results')
     parser.add_argument('--threshold', type=float, default=5.0,
                         help='Detection threshold in sigma units')
-    parser.add_argument('--method', choices=['proper', 'direct'],
-                        default='proper', help='Image subtraction method')
-    parser.add_argument('--no-plot', action='store_true', help='Skip plotting')
-    parser.add_argument('--config', help='Path to JSON configuration file')
-    parser.add_argument('--keep-temp', action='store_true', help='Keep temporary files (reference, difference images)')
+    parser.add_argument('--method', choices=['proper'],
+                        default='proper',
+                        help='Image subtraction method')
+    parser.add_argument('--no-plot',
+                        action='store_true', help='Skip plotting')
+    parser.add_argument('--config',
+                        help='Path to JSON configuration file')
+    parser.add_argument('--keep-temp', action='store_true',
+                        help='Keep temporary files (reference, difference images)')
 
     args = parser.parse_args()
 
@@ -1102,7 +1055,8 @@ def main():
                              config=config)
 
     # Get reference image from specified survey
-    if not finder.get_reference_image(survey=args.survey, filter_band=args.filter_band):
+    if not finder.get_reference_image(survey=args.survey,
+                                      filter_band=args.filter_band):
         print("Failed to get reference image. Exiting.")
         return 1
 
@@ -1112,7 +1066,7 @@ def main():
         return 1
 
     # Detect transient sources
-    transients = finder.detect_transients(threshold=args.threshold)
+    _ = finder.detect_transients(threshold=args.threshold)
 
     # Plot results unless --no-plot is specified
     if not args.no_plot:
@@ -1133,4 +1087,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
