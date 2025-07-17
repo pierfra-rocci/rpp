@@ -581,8 +581,10 @@ class TransientFinder:
             # Ensure arrays are float32 and NaNs replaced with median
             sci_data = np.array(self.sci_data, dtype=np.float32)
             ref_data = np.array(self.ref_data, dtype=np.float32)
-            sci_data = np.where(np.isnan(sci_data), np.nanmedian(sci_data), sci_data)
-            ref_data = np.where(np.isnan(ref_data), np.nanmedian(ref_data), ref_data)
+            sci_data = np.where(np.isnan(sci_data), np.nanmedian(sci_data),
+                                sci_data)
+            ref_data = np.where(np.isnan(ref_data), np.nanmedian(ref_data),
+                                ref_data)
 
             # Workaround for header bug: pass arrays, not SingleImage objects
             result = subtract(
