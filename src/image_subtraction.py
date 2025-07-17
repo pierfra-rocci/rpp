@@ -568,9 +568,11 @@ class TransientFinder:
             from astropy.stats import sigma_clip
 
             # Mask science image
-            sci_mask = sigma_clip(self.sci_data, sigma=3, maxiters=2, masked=True).mask
+            sci_mask = sigma_clip(self.sci_data, sigma=3, maxiters=2,
+                                  masked=True).mask
             # Mask reference image
-            ref_mask = sigma_clip(self.ref_data, sigma=3, maxiters=2, masked=True).mask
+            ref_mask = sigma_clip(self.ref_data, sigma=3, maxiters=2,
+                                  masked=True).mask
             # Union of both masks
             union_mask = np.logical_or(sci_mask, ref_mask)
 
@@ -589,9 +591,11 @@ class TransientFinder:
             # Combine with union_mask
             if mask is not None:
                 final_mask = np.logical_or(mask, union_mask)
-                self.diff_data = np.ma.MaskedArray(D.real, mask=final_mask).filled(0)
+                self.diff_data = np.ma.MaskedArray(D.real,
+                                                   mask=final_mask).filled(0)
             else:
-                self.diff_data = np.ma.MaskedArray(D.real, mask=union_mask).filled(0)
+                self.diff_data = np.ma.MaskedArray(D.real,
+                                                   mask=union_mask).filled(0)
             print(f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
             return self._save_difference_image()
         except Exception as proper_error:
