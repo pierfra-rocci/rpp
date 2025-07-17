@@ -26,7 +26,6 @@ Requirements:
     - reproject
     - requests
 """
-
 import os
 import sys
 import numpy as np
@@ -39,9 +38,7 @@ from astropy.visualization import ZScaleInterval, ImageNormalize
 from astropy.stats import sigma_clipped_stats
 from astropy.table import Table
 from astroquery.hips2fits import hips2fits
-
-from properimage import SingleImage
-
+import astroalign as aa
 from photutils.detection import find_peaks
 from reproject import reproject_interp
 import time
@@ -228,7 +225,8 @@ class TransientFinder:
                             header_copy = self.sci_header.copy()
                             dss_keys = [k for k in header_copy.keys() if k.startswith('DSS') or k.startswith('DP') or k.startswith('PV')]
                             for k in dss_keys:
-                                header_copy.remove(k, ignore_missing=True, remove_all=True)
+                                header_copy.remove(k, ignore_missing=True,
+                                                   remove_all=True)
                             try:
                                 self.sci_wcs = WCS(header_copy, relax=True)
                                 print("WCS loaded after removing DSS/distortion keywords.")
@@ -370,7 +368,8 @@ class TransientFinder:
             elif isinstance(result, str):
                 # If result is a file path or URL
                 if result.startswith('http'):
-                    response = requests.get(result, timeout=self.config.REQUEST_TIMEOUT)
+                    response = requests.get(result,
+                                            timeout=self.config.REQUEST_TIMEOUT)
                     if response.status_code != 200:
                         print(f"Error: HTTP {response.status_code} when downloading FITS from {result}")
                         return False
@@ -405,7 +404,8 @@ class TransientFinder:
             return False
 
         ref_fits_path = os.path.join(self.output_dir, "reference_image.fits")
-        fits.writeto(ref_fits_path, self.ref_data, self.ref_header, overwrite=True)
+        fits.writeto(ref_fits_path, self.ref_data, self.ref_header,
+                     overwrite=True)
         print(f"Reference image saved to: {ref_fits_path}")
         print(f"Reference image shape: {self.ref_data.shape}")
         return True
@@ -437,7 +437,6 @@ class TransientFinder:
 
             # Try astroalign with fallback to star coordinates if needed
             try:
-                import astroalign as aa
                 print("astroalign is available, attempting to align images...")
 
                 def try_astroalign(ref_img, sci_img):
@@ -486,6 +485,7 @@ class TransientFinder:
                     print(f"Astroalign alignment successful ({mode} mode).")
                 except Exception as e1:
                     print(f"Astroalign normal orientation failed: {e1}")
+                    
                     # Try flipped images
                     flips = [
                         ('vertical', np.flipud(aligned_ref)),
@@ -495,12 +495,13 @@ class TransientFinder:
                     for flip_name, ref_flip in flips:
                         try:
                             print(f"Trying astroalign with {flip_name} flip...")
-                            aligned_ref_aa, mode = try_astroalign(ref_flip, self.sci_data)
+                            aligned_ref_aa, mode = try_astroalign(ref_flip,
+                                                                  self.sci_data)
                             self.ref_data = aligned_ref_aa
                             self.ref_wcs = self.sci_wcs
                             self.ref_header = self.sci_header.copy()
                             self.ref_header['HISTORY'] = f'Reference image aligned using astroalign ({mode} mode, {flip_name} flip)'
-                            print(f"Astroalign alignment successful ({mode} mode, {flip_name} flip).")
+                            print(f"Astroalign alignment successful ({mode} mode,{flip_name} flip).")
                             break
                         except Exception as e2:
                             print(f"Astroalign {flip_name} flip failed: {e2}")
@@ -514,7 +515,8 @@ class TransientFinder:
                 raise
 
             # Save aligned reference image
-            aligned_ref_path = os.path.join(self.output_dir, "aligned_reference.fits")
+            aligned_ref_path = os.path.join(self.output_dir,
+                                            "aligned_reference.fits")
             fits.writeto(aligned_ref_path, self.ref_data, self.ref_header, overwrite=True)
             print(f"Aligned reference image saved to: {aligned_ref_path}")
             print(f"Aligned reference shape: {self.ref_data.shape}")
