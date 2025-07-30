@@ -1051,7 +1051,7 @@ if not st.session_state.logged_in:
 # Add application version to the sidebar
 st.title("🔭 RAPAS Photometry Pipeline")
 st.markdown(
-    '[(*link*)](https://rapas.imcce.fr/)',
+    '[(*RAPAS Home*)](https://rapas.imcce.fr/)',
     unsafe_allow_html=True
 )
 st.sidebar.markdown(f"**App Version:** _{version}_")
