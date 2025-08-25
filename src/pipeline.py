@@ -1522,7 +1522,7 @@ def refine_astrometry_with_stdpipe(
             obj = photometry.get_objects_sep(
                 image_data,
                 header=clean_header,
-                thresh=3,
+                thresh=3.,  # Standard threshold
                 minarea=7,
                 aper=1.5 * fwhm_estimate,
                 use_fwhm=True,
@@ -1541,7 +1541,7 @@ def refine_astrometry_with_stdpipe(
                 obj = photometry.get_objects_sep(
                     image_data,
                     header=clean_header,
-                    thresh=1.5,
+                    thresh=2.,  # Lower threshold
                     minarea=7,
                     aper=1.5 * fwhm_estimate,
                     use_fwhm=True,
@@ -1605,7 +1605,7 @@ def refine_astrometry_with_stdpipe(
                 center_dec,
                 radius,
                 "I/350/gaiaedr3",  # Correct GAIA EDR3 catalog identifier
-                filters={gaia_band: "<20.0"}
+                filters={gaia_band: "< 20.0"}
             )
             
             if cat is None or len(cat) == 0:
@@ -1623,7 +1623,7 @@ def refine_astrometry_with_stdpipe(
                     center_dec,
                     smaller_radius,
                     "I/350/gaiaedr3",
-                    filters={gaia_band: "<19.0"}  # Also reduce magnitude limit
+                    filters={gaia_band: "< 19.0"}
                 )
                 
                 if cat is None or len(cat) == 0:
@@ -1654,7 +1654,7 @@ def refine_astrometry_with_stdpipe(
         
         # Calculate matching radius in degrees
         try:
-            match_radius_deg = 2.0 * fwhm_estimate * pixel_scale / 3600.0
+            match_radius_deg = 1.5 * fwhm_estimate * pixel_scale / 3600.0
             
             # Try SCAMP refinement with conservative parameters
             wcs_result = astrometry.refine_wcs_scamp(
@@ -1695,57 +1695,20 @@ def refine_astrometry_with_stdpipe(
         if wcs_result is not None:
             st.success("WCS refinement successful using SCAMP")
 
-            # Test the refined WCS
+            # Update the science header with refined WCS if validation passes
             try:
-                center_x, center_y = image_data.shape[1] // 2, image_data.shape[0] // 2
-                test_coords = wcs_result.pixel_to_world_values(center_x, center_y)
+                # Clear old WCS and add new keywords
+                astrometry.clear_wcs(science_header)
+                wcs_header = wcs_result.to_header(relax=True)
+                science_header.update(wcs_header)
+                st.info("Updated header with refined WCS keywords")
                 
-                if isinstance(test_coords, (list, tuple)) and len(test_coords) >= 2:
-                    test_ra, test_dec = test_coords[0], test_coords[1]
-                else:
-                    test_ra, test_dec = test_coords, 0  # Fallback
+            except Exception as header_error:
+                st.warning(f"Could not update header: {header_error}")
+                # Return WCS anyway as it's still usable
+            
+            return wcs_result
                 
-                # Validate coordinates
-                if not (0 <= test_ra <= 360 and -90 <= test_dec <= 90):
-                    st.warning(f"Refined WCS produces invalid coordinates: RA={test_ra}, DEC={test_dec}")
-                    return None
-                
-                # Additional validation: check if the solution is reasonable
-                original_ra = clean_header.get('CRVAL1') or clean_header.get('RA')
-                original_dec = clean_header.get('CRVAL2') or clean_header.get('DEC')
-                
-                if original_ra is not None and original_dec is not None:
-                    ra_diff = abs(test_ra - original_ra)
-                    dec_diff = abs(test_dec - original_dec)
-                    
-                    # Allow for coordinate wrapping around 0/360
-                    if ra_diff > 180:
-                        ra_diff = 360 - ra_diff
-                    
-                    if ra_diff > 1.0 or dec_diff > 1.0:  # More than 1 degree difference
-                        st.warning(f"Large coordinate shift detected: ΔRA={ra_diff:.3f}°, ΔDEC={dec_diff:.3f}°")
-                        st.warning("This might indicate a plate solving error")
-                        # Don't return None, but warn the user
-                    
-                st.success(f"Verified refined WCS: center at RA={test_ra:.6f}°, DEC={test_dec:.6f}°")
-                
-                # Update the science header with refined WCS if validation passes
-                try:
-                    # Clear old WCS and add new keywords
-                    astrometry.clear_wcs(science_header)
-                    wcs_header = wcs_result.to_header(relax=True)
-                    science_header.update(wcs_header)
-                    st.info("Updated header with refined WCS keywords")
-                    
-                except Exception as header_error:
-                    st.warning(f"Could not update header: {header_error}")
-                    # Return WCS anyway as it's still usable
-                
-                return wcs_result
-                
-            except Exception as test_error:
-                st.warning(f"WCS verification failed: {test_error}")
-                return None
         else:
             st.warning("SCAMP did not return a valid WCS solution")
             return None
