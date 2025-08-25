@@ -1054,6 +1054,15 @@ st.markdown(
     '[(*RAPAS Home*)](https://rapas.imcce.fr/)',
     unsafe_allow_html=True
 )
+
+# Added: Quick Start Tutorial link (opens the local markdown file in a new tab if the browser allows)
+st.markdown(
+    '<a href="./doc/TUTORIAL.md" target="_blank" rel="noopener noreferrer" '
+    'style="text-decoration:none; font-weight:600;">📘 Quick Start Tutorial</a> '
+    '<span style="color:var(--secondary-text-color);">— A short guide on how to use this app</span>',
+    unsafe_allow_html=True,
+)
+
 st.sidebar.markdown(f"**App Version:** _{version}_")
 
 with st.sidebar.expander("🔭 Observatory Data", expanded=False):
