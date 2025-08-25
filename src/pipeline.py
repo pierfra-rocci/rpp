@@ -927,7 +927,7 @@ def fwhm_fit(
         box_size = int(6 * round(fwhm))
         if box_size % 2 == 0:
             box_size += 1
-        
+
         xypos = list(zip(filtered_sources['xcentroid'],
                          filtered_sources['ycentroid']))
         fwhms = fit_fwhm(_img, xypos=xypos, fit_shape=box_size)
@@ -977,15 +977,6 @@ def perform_psf_photometry(
     Tuple[astropy.table.Table, photutils.psf.EPSFModel]
         - phot_epsf_result : Table containing PSF photometry results, including fitted fluxes and positions
         - epsf : The fitted EPSF model used for photometry
-
-    Notes
-    -----
-    The function displays the extracted stars used for PSF model building and the
-    resulting PSF model in the Streamlit interface. It also saves the PSF model
-    as a FITS file in the output directory.
-
-    If successful, the photometry results are also stored in the Streamlit session state
-    under 'epsf_photometry_result'.
     """
     # Initial validation
     try:
@@ -1006,7 +997,14 @@ def perform_psf_photometry(
                 "The 'finder' parameter must be a callable star finder, such as DAOStarFinder."
             )
 
-        nddata = NDData(data=img)
+        # build NDData including mask/uncertainty when available (improves extract_stars)
+        try:
+            from astropy.nddata import StdDevUncertainty
+            nd_unc = StdDevUncertainty(error) if (error is not None) else None
+        except Exception:
+            nd_unc = None
+
+        nddata = NDData(data=img, mask=mask if mask is not None else None, uncertainty=nd_unc)
     except Exception as e:
         st.error(f"Error in initial validation: {e}")
         raise
@@ -1017,8 +1015,8 @@ def perform_psf_photometry(
         
         # Ensure all arrays are numpy arrays and handle NaN values first
         flux = np.asarray(photo_table["flux"])
-        roundness1 = np.asarray(photo_table["roundness1"])
-        sharpness = np.asarray(photo_table["sharpness"])
+        roundness1 = np.asarray(photo_table.get("roundness1", np.full(len(photo_table), np.nan)))
+        sharpness = np.asarray(photo_table.get("sharpness", np.full(len(photo_table), np.nan)))
         xcentroid = np.asarray(photo_table["xcentroid"])
         ycentroid = np.asarray(photo_table["ycentroid"])
         
@@ -1046,7 +1044,10 @@ def perform_psf_photometry(
                      valid_xcentroid & valid_ycentroid)
         
         if not np.any(valid_all):
-            raise ValueError("No sources with all valid parameters found")
+            # relax: accept stars where position and flux are valid at least
+            valid_all = valid_flux & valid_xcentroid & valid_ycentroid
+            if not np.any(valid_all):
+                raise ValueError("No sources with required valid parameters found")
 
         flux_criteria = np.zeros_like(valid_flux, dtype=bool)
         flux_criteria[valid_flux] = (flux[valid_flux] >= flux_min) & (flux[valid_flux] <= flux_max)
@@ -1087,7 +1088,7 @@ def perform_psf_photometry(
         if len(filtered_photo_table) < 10:
             st.warning(f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria...")
             
-            # FIXED: Relax criteria using the same approach
+            # Relax criteria
             roundness_criteria_relaxed = np.zeros_like(valid_roundness, dtype=bool)
             roundness_criteria_relaxed[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.5
             
@@ -1101,7 +1102,7 @@ def perform_psf_photometry(
             )
             
             good_stars_mask = (
-                valid_all &
+                (valid_flux & valid_xcentroid & valid_ycentroid) &
                 flux_criteria_relaxed &
                 roundness_criteria_relaxed &
                 sharpness_criteria_relaxed &
@@ -1121,6 +1122,7 @@ def perform_psf_photometry(
 
     try:
         stars_table = Table()
+        # extract_stars expects 'x' and 'y' column names
         stars_table["x"] = filtered_photo_table["xcentroid"]
         stars_table["y"] = filtered_photo_table["ycentroid"]
         st.write("Star positions table prepared from filtered sources.")
@@ -1129,7 +1131,10 @@ def perform_psf_photometry(
         raise
 
     try:
-        fit_shape = 2 * round(fwhm) + 1
+        # ensure fit_shape is odd and reasonably large (small FWHM can produce too small boxes)
+        fit_shape = max(9, 2 * int(round(fwhm)) + 1)
+        if fit_shape % 2 == 0:
+            fit_shape += 1
         st.write(f"Fitting shape: {fit_shape} pixels.")
     except Exception as e:
         st.error(f"Error calculating fitting shape: {e}")
@@ -1138,7 +1143,7 @@ def perform_psf_photometry(
     try:
         stars = extract_stars(nddata, stars_table, size=fit_shape)
 
-        # FIX: If extract_stars returns a list, convert to EPSFStars
+        # If extract_stars returns list or EPSFStars; ensure a consistent EPSFStars object
         from photutils.psf import EPSFStars
         if isinstance(stars, list):
             if len(stars) == 0:
@@ -1147,12 +1152,9 @@ def perform_psf_photometry(
         n_stars = len(stars)
         st.write(f"{n_stars} stars extracted for PSF model.")
 
+        # basic inspection of cutouts for NaN/all-zero
         if hasattr(stars, 'data') and stars.data is not None:
-
-            # For EPSFStars, data is a list of individual star arrays
             if isinstance(stars.data, list) and len(stars.data) > 0:
-                st.write(f"Number of star cutouts: {len(stars.data)}")
-                # Check for NaN in all star data
                 has_nan = any(np.isnan(star_data).any() for star_data in stars.data)
                 st.write(f"NaN in star data: {has_nan}")
             else:
@@ -1189,17 +1191,14 @@ def perform_psf_photometry(
                         mask_valid.append(True)
             except Exception as iter_error:
                 st.warning(f"Could not iterate through stars for validation: {iter_error}")
-                # If we can't validate, assume all stars are valid
                 mask_valid = [True] * len(stars)
 
         mask_valid = np.array(mask_valid)
 
         # Only filter if we have any invalid stars
         if not np.all(mask_valid):
-            # Always wrap the result as EPSFStars
             from photutils.psf import EPSFStars
             filtered_stars = stars[mask_valid]
-            # If filtered_stars is not EPSFStars, wrap it
             if not isinstance(filtered_stars, EPSFStars):
                 filtered_stars = EPSFStars(list(filtered_stars))
             stars = filtered_stars
@@ -1215,23 +1214,17 @@ def perform_psf_photometry(
         raise
 
     try:
-        epsf_builder = EPSFBuilder(oversampling=3, maxiters=3,
-                                   progress_bar=False)
-        # Try the EPSF building with error handling
+        epsf_builder = EPSFBuilder(oversampling=3, maxiters=3, progress_bar=False)
         try:
             epsf, fitted_stars = epsf_builder(stars)
         except Exception as build_error:
             st.error(f"EPSFBuilder failed: {build_error}")
-            # Try with even more conservative parameters
             st.write("Retrying with more conservative EPSFBuilder parameters...")
             try:
                 epsf_builder_conservative = EPSFBuilder(
-                    oversampling=2,  # Lower oversampling
-                    maxiters=2,      # Fewer iterations
-                    progress_bar=False,
-                    smoothing_kernel='quartic',
-                    recentering_maxiters=3,
-                    recentering_boxsize=3
+                    oversampling=2,
+                    maxiters=2,
+                    progress_bar=False
                 )
                 epsf, fitted_stars = epsf_builder_conservative(stars)
             except Exception as conservative_error:
@@ -1242,78 +1235,55 @@ def perform_psf_photometry(
 
         if epsf is None:
             raise ValueError("EPSFBuilder returned None")
-            
-        if not hasattr(epsf, 'data'):
-            raise ValueError("EPSF has no data attribute")
-            
-        if epsf.data is None:
-            raise ValueError("EPSF data is None")
-            
-        if epsf.data.size == 0:
-            raise ValueError("EPSF data is empty")
-        
-        try:
-            # Ensure epsf.data is a numpy array before checking for NaN
-            epsf_array = np.asarray(epsf.data)
-            if epsf_array.size > 0 and np.isnan(epsf_array).any():
-                st.warning("EPSF data contains NaN values")
-        except Exception as nan_check_error:
-            st.warning(f"Could not check for NaN values in EPSF data: {nan_check_error}")
-            
-        st.write(f"Shape of epsf.data: {epsf.data.shape}")
-        
-        # FIXED: More robust NaN reporting
-        try:
-            epsf_array = np.asarray(epsf.data)
-            has_nan = np.isnan(epsf_array).any() if epsf_array.size > 0 else False
-            st.write(f"NaN in epsf.data: {has_nan}")
-        except Exception as nan_report_error:
-            st.write(f"Could not check NaN status: {nan_report_error}")
-        
+        if not hasattr(epsf, 'data') or epsf.data is None or np.asarray(epsf.data).size == 0:
+            raise ValueError("EPSF data is invalid or empty")
+
+        # check for NaNs but continue (could still be usable)
+        epsf_array = np.asarray(epsf.data)
+        if epsf_array.size > 0 and np.isnan(epsf_array).any():
+            st.warning("EPSF data contains NaN values")
+
+        st.write(f"Shape of epsf.data: {epsf_array.shape}")
         st.session_state["epsf_model"] = epsf
     except Exception as e:
         st.error(f"Error fitting PSF model: {e}")
         raise
 
-    # Check for valid PSF
-    if epsf is not None and hasattr(epsf, 'data') and epsf.data is not None and epsf.data.size > 0:
+    # Ensure we have a usable PSF model for PSFPhotometry
+    try:
+        # Try to wrap the EPSF into an ImagePSF (preferred for PSFPhotometry compatibility)
         try:
-            hdu = fits.PrimaryHDU(data=epsf.data)
+            from photutils.psf import ImagePSF
+            psf_for_phot = ImagePSF(np.asarray(epsf.data))
+        except Exception:
+            # fallback to epsf object (works on newer photutils versions)
+            psf_for_phot = epsf
 
+        # Save / display epsf as FITS and figure (best-effort)
+        try:
+            hdu = fits.PrimaryHDU(data=np.asarray(epsf.data))
             hdu.header["COMMENT"] = "PSF model created with photutils.EPSFBuilder"
             hdu.header["FWHMPIX"] = (fwhm, "FWHM in pixels used for extraction")
-            hdu.header["OVERSAMP"] = (3, "Oversampling factor")
+            hdu.header["OVERSAMP"] = (getattr(epsf, 'oversampling', 3), "Oversampling factor")
             hdu.header["NSTARS"] = (len(filtered_photo_table), "Number of stars used for PSF model")
 
-            psf_filename = (
-                f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
-            )
+            psf_filename = f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
             username = st.session_state.get("username", "anonymous")
-            psf_filepath = os.path.join(
-                ensure_output_directory(f"{username}_rpp_results"), psf_filename
-            )
-
+            psf_filepath = os.path.join(ensure_output_directory(f"{username}_rpp_results"), psf_filename)
             hdu.writeto(psf_filepath, overwrite=True)
             st.write("PSF model saved as FITS file")
 
             norm_epsf = simple_norm(epsf.data, "log", percent=99.0)
-            fig_epsf_model, ax_epsf_model = plt.subplots(
-                figsize=FIGURE_SIZES["medium"], dpi=120
-            )
-            ax_epsf_model.imshow(
-                epsf.data,
-                norm=norm_epsf,
-                origin="lower",
-                cmap="viridis",
-                interpolation="nearest",
-            )
+            fig_epsf_model, ax_epsf_model = plt.subplots(figsize=FIGURE_SIZES["medium"], dpi=120)
+            ax_epsf_model.imshow(epsf.data, norm=norm_epsf, origin="lower", cmap="viridis", interpolation="nearest")
             ax_epsf_model.set_title(f"Fitted PSF Model ({len(filtered_photo_table)} stars)")
             st.pyplot(fig_epsf_model)
         except Exception as e:
-            st.warning(f"Error working with PSF model: {e}")
-    else:
-        st.warning("EPSF data is empty or invalid. Cannot display the PSF model.")
-        raise ValueError("EPSF model creation failed - no valid PSF data")
+            st.warning(f"Error working with PSF model display/save: {e}")
+
+    except Exception as e:
+        st.warning(f"PSF wrapping failed: {e}")
+        raise ValueError("EPSF model creation failed - cannot prepare psf_model for photometry")
 
     # Create PSF photometry object and perform photometry
     try:
@@ -1324,68 +1294,69 @@ def perform_psf_photometry(
             st.warning("Error array shape mismatch, proceeding without error estimation")
             error = None
 
-        # Create a SourceGrouper with a minimum separation distance
-        # This groups sources that are closer than min_separation pixels
-        min_separation = 1.9 * fwhm  # Adjust based on your FWHM
+        # Create a SourceGrouper
+        min_separation = 1.9 * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
         bkgstat = MMMBackground()
         localbkg_estimator = LocalBackground(2.1*fwhm, 2.5*fwhm, bkgstat)
 
         psfphot = PSFPhotometry(
-            psf_model=epsf,
+            psf_model=psf_for_phot,
             fit_shape=fit_shape,
             finder=daostarfind,
-            aperture_radius=fit_shape / 2,
+            aperture_radius=float(fit_shape) / 2.0,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
             progress_bar=False
         )
 
-        # FIXED: Filter out sources that are in masked regions
-        # Create initial guess table with correct parameter name
+        # Prepare initial parameters (use 'x' and 'y' to be compatible with PSFPhotometry)
         initial_params = Table()
-        initial_params['x_0'] = photo_table["xcentroid"]
-        initial_params['y_0'] = photo_table["ycentroid"]
-        
-        # Filter out sources that fall in masked regions
+        initial_params['x'] = photo_table["xcentroid"]
+        initial_params['y'] = photo_table["ycentroid"]
+        if "flux" in photo_table.colnames:
+            initial_params["flux"] = photo_table["flux"]
+        # also provide legacy names for compatibility
+        initial_params['x_0'] = initial_params['x']
+        initial_params['y_0'] = initial_params['y']
+
+        # Filter out sources that fall in masked regions (robust)
+        mask_bool = None
         if mask is not None:
-            # Convert coordinates to integers for mask indexing
-            x_int = np.round(initial_params['x_0']).astype(int)
-            y_int = np.round(initial_params['y_0']).astype(int)
-            
-            # Check bounds
+            mask_bool = np.asarray(mask, dtype=bool)
+        if mask_bool is not None:
+            # compute rounded indices with clipping
+            x_int = np.clip(np.round(initial_params['x']).astype(int), 0, img.shape[1]-1)
+            y_int = np.clip(np.round(initial_params['y']).astype(int), 0, img.shape[0]-1)
+
             valid_bounds = (
-                (x_int >= 0) & (x_int < img.shape[1]) &
-                (y_int >= 0) & (y_int < img.shape[0])
+                (initial_params['x'] >= 0) & (initial_params['x'] < img.shape[1]) &
+                (initial_params['y'] >= 0) & (initial_params['y'] < img.shape[0])
             )
-            
-            # Check if sources are not in masked regions
-            # mask=True means masked (bad) pixels, so we want mask=False
+
             valid_mask = np.ones(len(initial_params), dtype=bool)
-            valid_mask[valid_bounds] = ~mask[y_int[valid_bounds], x_int[valid_bounds]]
-            
-            # Filter the initial parameters
+            valid_mask[valid_bounds] = ~mask_bool[y_int[valid_bounds], x_int[valid_bounds]]
+
             initial_params_filtered = initial_params[valid_mask]
-            
-            st.write(f"Filtered out {len(initial_params) - len(initial_params_filtered)} "
-                    f"sources that fall in masked regions")
+
+            st.write(f"Filtered out {len(initial_params) - len(initial_params_filtered)} sources that fall in masked regions")
             st.write(f"Proceeding with {len(initial_params_filtered)} sources for PSF photometry")
-            
+
             if len(initial_params_filtered) == 0:
                 st.error("All sources fall in masked regions. Cannot perform PSF photometry.")
                 return None, epsf
-                
+
             initial_params = initial_params_filtered
         else:
             st.write("No mask provided, using all sources for PSF photometry")
 
-        st.write("Performing PSF photometry on all sources...")
-        phot_epsf_result = psfphot(img, init_params=initial_params, mask=mask, error=error)
+        st.write("Performing PSF photometry on sources...")
+        # call PSFPhotometry: data first
+        phot_epsf_result = psfphot(img, init_params=initial_params, mask=mask_bool, error=error)
         st.session_state["epsf_photometry_result"] = phot_epsf_result
         st.write("PSF photometry completed successfully.")
-        
         return phot_epsf_result, epsf
-        
+
     except Exception as e:
         st.error(f"Error executing PSF photometry: {e}")
         raise
