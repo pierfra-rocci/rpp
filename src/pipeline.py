@@ -1282,27 +1282,51 @@ def perform_psf_photometry(
         try:
             hdu = fits.PrimaryHDU(data=np.asarray(epsf.data))
             hdu.header["COMMENT"] = "PSF model created with photutils.EPSFBuilder"
-            hdu.header["FWHMPIX"] = (fwhm, "FWHM in pixels used for extraction")
-            hdu.header["OVERSAMP"] = (getattr(epsf, 'oversampling', 3), "Oversampling factor")
-            hdu.header["NSTARS"] = (len(filtered_photo_table), "Number of stars used for PSF model")
-
+            # Ensure FWHM written as a scalar
+            try:
+                if np is not None and (hasattr(fwhm, "__len__") and not np.isscalar(fwhm)):
+                    fwhm_val = float(np.asarray(fwhm).mean())
+                else:
+                    fwhm_val = float(fwhm)
+            except Exception:
+                fwhm_val = float(getattr(epsf, "fwhm", 0.0) or 0.0)
+            hdu.header["FWHMPIX"] = (fwhm_val, "FWHM in pixels used for extraction")
+            
+            # OVERSAMP may be tuple/list/array; convert to safe FITS-friendly value
+            oversamp = getattr(epsf, "oversampling", 3)
+            try:
+                if isinstance(oversamp, (list, tuple, np.ndarray)):
+                    # store as comma-separated string to avoid illegal array header values
+                    oversamp_val = ",".join(str(int(x)) for x in np.asarray(oversamp).ravel())
+                else:
+                    oversamp_val = int(oversamp)
+            except Exception:
+                oversamp_val = 3
+            hdu.header["OVERSAMP"] = (str(oversamp_val), "Oversampling factor(s)")
+            
+            # Number of stars used - ensure scalar int
+            try:
+                nstars_val = int(len(filtered_photo_table))
+            except Exception:
+                nstars_val = 0
+            hdu.header["NSTARS"] = (nstars_val, "Number of stars used for PSF model")
+            
             psf_filename = f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
             username = st.session_state.get("username", "anonymous")
             psf_filepath = os.path.join(ensure_output_directory(f"{username}_rpp_results"), psf_filename)
             hdu.writeto(psf_filepath, overwrite=True)
             st.write("PSF model saved as FITS file")
-
+            
             norm_epsf = simple_norm(epsf.data, "log", percent=99.0)
             fig_epsf_model, ax_epsf_model = plt.subplots(figsize=FIGURE_SIZES["medium"], dpi=120)
             ax_epsf_model.imshow(epsf.data, norm=norm_epsf, origin="lower", cmap="viridis", interpolation="nearest")
-            ax_epsf_model.set_title(f"Fitted PSF Model ({len(filtered_photo_table)} stars)")
+            ax_epsf_model.set_title(f"Fitted PSF Model ({nstars_val} stars)")
             st.pyplot(fig_epsf_model)
         except Exception as e:
             st.warning(f"Error working with PSF model display/save: {e}")
-
     except Exception as e:
-        st.warning(f"PSF wrapping failed: {e}")
-        raise ValueError("EPSF model creation failed - cannot prepare psf_model for photometry")
+        st.error(f"Error preparing PSF model for photometry: {e}")
+        raise
 
     # Create PSF photometry object and perform photometry
     try:
@@ -1769,7 +1793,7 @@ def detection_and_photometry(
     daofind = None
 
     try:
-        w, wcs_error = safe_wcs_create(science_header)
+               w, wcs_error = safe_wcs_create(science_header)
         if w is None:
             st.error(f"Error creating WCS: {wcs_error}")
             return None, None, daofind, None, None
@@ -3147,10 +3171,9 @@ def enhance_catalog(
                             original_idx = valid_indices[i]
                             enhanced_table.loc[original_idx, "aavso_Name"] = vsx_table["Name"][match_idx]
                             enhanced_table.loc[original_idx, "aavso_Type"] = vsx_table["Type"][match_idx]
-                            if "Period" in vsx_table.colnames:
-                                enhanced_table.loc[original_idx, "aavso_Period"] = vsx_table["Period"][
-                                    match_idx
-                                ]
+                            enhanced_table.loc[original_idx, "aavso_Period"] = vsx_table["Period"][
+                                match_idx
+                            ]
 
                     st.success(f"Found {sum(matches)} variable stars in field.")
                 else:
