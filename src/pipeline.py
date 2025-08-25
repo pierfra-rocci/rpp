@@ -1528,48 +1528,115 @@ def refine_astrometry_with_stdpipe(
             return None
 
         # Get objects using stdpipe with corrected parameters
-        try:
-            # Use correct parameter names based on stdpipe documentation
-            obj = photometry.get_objects_sep(
-                image_data,
-                header=clean_header,
-                thresh=3.,  # Standard threshold
-                minarea=7,
-                aper=1.5 * fwhm_estimate,
-                use_fwhm=True,
-                use_mask_large=True,
-                subtract_bg=False,
-                verbose=False
-            )
-            
-            if obj is None or len(obj) == 0:
-                raise ValueError("No objects detected")
-                
-        except Exception as obj_error:
-            # Try with more conservative parameters
-            st.warning(f"Standard detection failed: {obj_error}. Trying with relaxed parameters...")
-            try:
-                obj = photometry.get_objects_sep(
-                    image_data,
-                    header=clean_header,
-                    thresh=2.,  # Lower threshold
-                    minarea=7,
-                    aper=1.5 * fwhm_estimate,
-                    use_fwhm=True,
-                    use_mask_large=True,
-                    subtract_bg=False,
-                    verbose=False
-                )
-                
-                if obj is None or len(obj) == 0:
-                    raise ValueError("No objects detected with relaxed parameters")
-                    
-            except Exception as final_error:
-                st.error(f"Failed to extract objects: {final_error}")
-                return None
+        # Robust multi-strategy detection: try several parameter sets with stdpipe SEP wrapper,
+        # then fall back to SExtractor wrapper if SEP fails. Also try local background subtraction.
+        def _ensure_native_byteorder(arr: np.ndarray) -> np.ndarray:
+            # SEP requires native byteorder arrays (see SEP docs)
+            if not arr.dtype.isnative:
+                try:
+                    return arr.byteswap().newbyteorder()
+                except Exception:
+                    return arr.astype(arr.dtype.newbyteorder("="))
+            return arr
 
+        image_for_det = image_data.copy()
+        # make float32 for detection routines (many expect float32)
+        if image_for_det.dtype != np.float32:
+            image_for_det = image_for_det.astype(np.float32)
+        image_for_det = _ensure_native_byteorder(image_for_det)
+
+        detection_candidates = None
+        tried_methods = []
+
+        # Try both with and without local background subtraction
+        bg_sub_options = [False, True]
+
+        # Parameter grid to try (thresh in sigma, smoothing r0, minarea)
+        param_grid = [
+            {"thresh": 5.0, "r0": 0.5, "minarea": 5},
+            {"thresh": 4.0, "r0": 0.5, "minarea": 5},
+            {"thresh": 3.0, "r0": 0.5, "minarea": 5},
+            {"thresh": 3.0, "r0": 1.0, "minarea": 5},
+            {"thresh": 2.5, "r0": 1.0, "minarea": 3},
+            {"thresh": 2.0, "r0": 1.5, "minarea": 3},
+        ]
+
+        for subtract_bg in bg_sub_options:
+            for params in param_grid:
+                if detection_candidates is not None and len(detection_candidates) > 0:
+                    break
+                try:
+                    st.info(f"Attempting SEP detection: thresh={params['thresh']}, r0={params['r0']}, minarea={params['minarea']}, subtract_bg={subtract_bg}")
+                    obj_try = photometry.get_objects_sep(
+                        image_for_det,
+                        header=clean_header,
+                        thresh=params["thresh"],
+                        r0=params["r0"],
+                        minarea=params["minarea"],
+                        aper=max(1.0, 1.5 * fwhm_estimate),
+                        use_fwhm=True,
+                        use_mask_large=True,
+                        subtract_bg=subtract_bg,
+                        bg_size=64,
+                        bgann=None,
+                        verbose=False
+                    )
+                    tried_methods.append(("sep", params, subtract_bg))
+                    if obj_try is not None and len(obj_try) > 0:
+                        detection_candidates = obj_try
+                        st.success(f"Detected {len(detection_candidates)} objects with SEP (thresh={params['thresh']}, subtract_bg={subtract_bg})")
+                        break
+                except Exception as e_sep:
+                    st.write(f"SEP attempt failed: {e_sep}")
+                    continue
+            if detection_candidates is not None and len(detection_candidates) > 0:
+                break
+
+        # Fallback: try SExtractor wrapper if SEP did not find anything
+        if detection_candidates is None or len(detection_candidates) == 0:
+            st.warning("SEP detection failed - trying SExtractor fallback with several parameter sets")
+            sex_param_grid = [
+                {"thresh": 3.0, "minarea": 5, "r0": 0.0},
+                {"thresh": 2.5, "minarea": 5, "r0": 0.8},
+                {"thresh": 2.0, "minarea": 3, "r0": 1.0},
+            ]
+            for params in sex_param_grid:
+                try:
+                    st.info(f"Attempting SExtractor detection: DETECT_THRESH={params['thresh']}, DETECT_MINAREA={params['minarea']}, smoothing={params['r0']}")
+                    obj_try = photometry.get_objects_sextractor(
+                        image_for_det,
+                        header=clean_header,
+                        thresh=params["thresh"],
+                        r0=params["r0"],
+                        minarea=params["minarea"],
+                        aper=max(1.0, 1.5 * fwhm_estimate),
+                        bg_size=64,
+                        edge=10,
+                        gain=1.0,
+                        mask_to_nans=False,
+                        verbose=False
+                    )
+                    tried_methods.append(("sex", params))
+                    # get_objects_sextractor may return (table, checkimages...) -> accept table
+                    if isinstance(obj_try, (list, tuple)):
+                        obj_try = obj_try[0]
+                    if obj_try is not None and len(obj_try) > 0:
+                        detection_candidates = obj_try
+                        st.success(f"Detected {len(detection_candidates)} objects with SExtractor (thresh={params['thresh']})")
+                        break
+                except Exception as e_sex:
+                    st.write(f"SExtractor attempt failed: {e_sex}")
+                    continue
+
+        obj = detection_candidates
+        if obj is None or len(obj) == 0:
+            st.error("No objects detected with any strategy (SEP or SExtractor). Tried parameter combinations:")
+            st.write(tried_methods)
+            return None
+        # end detection multi-strategy
+                
         st.info(f"Detected {len(obj)} objects for astrometry refinement")
-
+        
         # Get frame center using the cleaned header and test WCS
         try:
             # Use the cleaned header instead of original
