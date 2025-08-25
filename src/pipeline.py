@@ -1522,9 +1522,6 @@ def refine_astrometry_with_stdpipe(
         # Test the cleaned WCS before proceeding
         try:
             test_wcs = WCS(clean_header)
-            # Try a test transformation
-            test_x, test_y = image_data.shape[1] // 2, image_data.shape[0] // 2
-            test_coords = test_wcs.pixel_to_world_values(test_x, test_y)
             st.info("Cleaned WCS passes basic validation")
         except Exception as wcs_test_error:
             st.error(f"Cleaned WCS still has issues: {wcs_test_error}")
