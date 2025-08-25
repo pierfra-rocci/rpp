@@ -1793,7 +1793,7 @@ def detection_and_photometry(
     daofind = None
 
     try:
-               w, wcs_error = safe_wcs_create(science_header)
+        w, wcs_error = safe_wcs_create(science_header)
         if w is None:
             st.error(f"Error creating WCS: {wcs_error}")
             return None, None, daofind, None, None
