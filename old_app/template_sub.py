@@ -20,7 +20,7 @@ def get_template_and_masks(
     hips_survey: str,
     star_mag_limit: float = 14.0,
     catalog_radius: float = None,
-    psf_radius: float = 3.0
+    psf_radius: float = 3.0,
 ) -> tuple:
     """
     Download a HiPS template via astroquery.hips2fits, ensure linear scale,
@@ -40,7 +40,7 @@ def get_template_and_masks(
         st.info("Validating inputs...")
         if not isinstance(science_image, np.ndarray):
             raise TypeError("science_image must be numpy array")
-        if not hasattr(wcs, 'pixel_to_world'):
+        if not hasattr(wcs, "pixel_to_world"):
             raise TypeError("wcs must be astropy.wcs.WCS")
         if len(shape) != 2:
             raise ValueError("shape= (ny,nx)")
@@ -54,10 +54,10 @@ def get_template_and_masks(
 
     # Determine center and radius
     try:
-        center = wcs.pixel_to_world(nx/2, ny/2)
+        center = wcs.pixel_to_world(nx / 2, ny / 2)
         if catalog_radius is None:
-            corners = np.array([[0,0],[0,ny],[nx,0],[nx,ny]])
-            sky = wcs.pixel_to_world(corners[:,0], corners[:,1])
+            corners = np.array([[0, 0], [0, ny], [nx, 0], [nx, ny]])
+            sky = wcs.pixel_to_world(corners[:, 0], corners[:, 1])
             catalog_radius = center.separation(sky).max().deg
         st.success(f"Center and radius: {center}, {catalog_radius:.3f}°")
     except Exception as e:
@@ -67,11 +67,7 @@ def get_template_and_masks(
     # Fetch HiPS FITS cutout
     try:
         st.info(f"Querying hips2fits for {hips_survey}...")
-        hdu = hips2fits.query_with_wcs(
-            hips=hips_survey,
-            wcs=wcs,
-            format='fits'
-        )
+        hdu = hips2fits.query_with_wcs(hips=hips_survey, wcs=wcs, format="fits")
         hips_data = hdu[0].data.astype(float)
         hips_header = hdu[0].header
         st.success("HiPS FITS cutout retrieved.")
@@ -87,7 +83,7 @@ def get_template_and_masks(
         st.info("Checking WCS consistency...")
         hips_wcs = WCS(hips_header)
         if hips_data.shape != (ny, nx):
-            st.warning(f"Shape mismatch: {hips_data.shape} vs {(ny,nx)}")
+            st.warning(f"Shape mismatch: {hips_data.shape} vs {(ny, nx)}")
         else:
             st.success("Shape match OK.")
         sci_cd = np.abs(wcs.wcs.cdelt)
@@ -107,16 +103,19 @@ def get_template_and_masks(
     template_mask = np.zeros_like(hips_data, bool)
     try:
         st.info(f"Querying stars < {star_mag_limit} mag...")
-        v = Vizier(columns=['RAJ2000','DEJ2000'], column_filters={f'gmag': f'<{star_mag_limit}'})
-        res = v.query_region(center, radius=catalog_radius*u.deg, catalog='V/PS1')
+        v = Vizier(
+            columns=["RAJ2000", "DEJ2000"],
+            column_filters={f"gmag": f"<{star_mag_limit}"},
+        )
+        res = v.query_region(center, radius=catalog_radius * u.deg, catalog="V/PS1")
         if res and len(res[0]):
-            sc = SkyCoord(res[0]['RAJ2000'], res[0]['DEJ2000'], unit='deg')
-            x,y = wcs.world_to_pixel(sc)
-            apertures = CircularAperture(np.vstack((x,y)).T, r=psf_radius)
+            sc = SkyCoord(res[0]["RAJ2000"], res[0]["DEJ2000"], unit="deg")
+            x, y = wcs.world_to_pixel(sc)
+            apertures = CircularAperture(np.vstack((x, y)).T, r=psf_radius)
             st.success(f"Masking {len(x)} stars.")
-            for ap in apertures.to_mask(method='center'):
+            for ap in apertures.to_mask(method="center"):
                 mask_img = ap.to_image(shape)
-                template_mask |= (mask_img > 0)
+                template_mask |= mask_img > 0
         else:
             st.info("No bright stars found.")
     except Exception as e:
@@ -138,7 +137,7 @@ def visualize_results(
     hips_data: np.ndarray,
     science_image: np.ndarray,
     template_mask: np.ndarray,
-    sci_mask: np.ndarray
+    sci_mask: np.ndarray,
 ) -> None:
     z = ZScaleInterval()
     vmin_s, vmax_s = z.get_limits(science_image)
@@ -146,18 +145,18 @@ def visualize_results(
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 8))
 
-    axs[0,0].imshow(science_image, origin='lower', vmin=vmin_s, vmax=vmax_s)
-    axs[0,0].set_title('Science (ZScale)')
-    axs[0, 0].axis('off')
-    axs[0,1].imshow(hips_data, origin='lower', vmin=vmin_h, vmax=vmax_h)
-    axs[0,1].set_title('HiPS (ZScale)')
-    axs[0, 1].axis('off')
-    axs[1,0].imshow(template_mask, origin='lower', cmap='gray')
-    axs[1,0].set_title('Template Mask')
-    axs[1, 0].axis('off')
-    axs[1,1].imshow(sci_mask, origin='lower', cmap='gray')
-    axs[1,1].set_title('Science Mask')
-    axs[1, 1].axis('off')
+    axs[0, 0].imshow(science_image, origin="lower", vmin=vmin_s, vmax=vmax_s)
+    axs[0, 0].set_title("Science (ZScale)")
+    axs[0, 0].axis("off")
+    axs[0, 1].imshow(hips_data, origin="lower", vmin=vmin_h, vmax=vmax_h)
+    axs[0, 1].set_title("HiPS (ZScale)")
+    axs[0, 1].axis("off")
+    axs[1, 0].imshow(template_mask, origin="lower", cmap="gray")
+    axs[1, 0].set_title("Template Mask")
+    axs[1, 0].axis("off")
+    axs[1, 1].imshow(sci_mask, origin="lower", cmap="gray")
+    axs[1, 1].set_title("Science Mask")
+    axs[1, 1].axis("off")
 
     plt.tight_layout()
     st.pyplot(fig)
@@ -167,7 +166,7 @@ def match_psf_and_apply(
     hips_data: np.ndarray,
     science_image: np.ndarray,
     star_positions: np.ndarray,
-    cutout_size: int = 25
+    cutout_size: int = 25,
 ) -> tuple:
     """
     Build PSF models for both images using isolated stars, create a matching kernel,
@@ -199,7 +198,8 @@ def match_psf_and_apply(
     try:
         # create tiny table for extract_stars
         from astropy.table import Table
-        tbl = Table(rows=star_positions, names=('x_mean', 'y_mean'))
+
+        tbl = Table(rows=star_positions, names=("x_mean", "y_mean"))
         # extract
         hips_stars = extract_stars(hips_data, tbl, size=cutout_size)
         sci_stars = extract_stars(science_image, tbl, size=cutout_size)
@@ -226,7 +226,9 @@ def match_psf_and_apply(
     st.info("Convolving images with matching kernel...")
     try:
         matched_template = convolve_fft(hips_data, kernel, normalize_kernel=True)
-        matched_science = convolve_fft(science_image, kernel[::-1, ::-1], normalize_kernel=True)
+        matched_science = convolve_fft(
+            science_image, kernel[::-1, ::-1], normalize_kernel=True
+        )
     except Exception as e:
         st.error(f"Convolution failed: {e}")
         raise
@@ -236,8 +238,7 @@ def match_psf_and_apply(
 
 
 def visualize_matched_residuals(
-    matched_template: np.ndarray,
-    matched_science: np.ndarray
+    matched_template: np.ndarray, matched_science: np.ndarray
 ) -> None:
     """
     Display the matched template, matched science image, and their residual in a 1x3 subplot.
@@ -254,20 +255,22 @@ def visualize_matched_residuals(
 
         fig, axs = plt.subplots(1, 3, figsize=(15, 5))
         # Matched template
-        axs[0].imshow(matched_template, origin='lower', vmin=vmin_mt, vmax=vmax_mt)
-        axs[0].set_title('Matched Template (ZScale)')
-        axs[0].axis('off')
+        axs[0].imshow(matched_template, origin="lower", vmin=vmin_mt, vmax=vmax_mt)
+        axs[0].set_title("Matched Template (ZScale)")
+        axs[0].axis("off")
 
         # Matched science
-        axs[1].imshow(matched_science, origin='lower', vmin=vmin_ms, vmax=vmax_ms)
-        axs[1].set_title('Matched Science (ZScale)')
-        axs[1].axis('off')
+        axs[1].imshow(matched_science, origin="lower", vmin=vmin_ms, vmax=vmax_ms)
+        axs[1].set_title("Matched Science (ZScale)")
+        axs[1].axis("off")
 
         # Residual
-        im = axs[2].imshow(residual, origin='lower', vmin=vmin_res, vmax=vmax_res, cmap='RdBu')
-        axs[2].set_title('Residual (Science - Template)')
-        axs[2].axis('off')
-        fig.colorbar(im, ax=axs[2], orientation='horizontal', fraction=0.05)
+        im = axs[2].imshow(
+            residual, origin="lower", vmin=vmin_res, vmax=vmax_res, cmap="RdBu"
+        )
+        axs[2].set_title("Residual (Science - Template)")
+        axs[2].axis("off")
+        fig.colorbar(im, ax=axs[2], orientation="horizontal", fraction=0.05)
 
         plt.tight_layout()
         st.pyplot(fig)

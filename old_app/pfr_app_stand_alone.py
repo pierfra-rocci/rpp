@@ -54,7 +54,9 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide")
+st.set_page_config(
+    page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide"
+)
 
 # Add application version to the sidebar
 st.sidebar.markdown(f"**App Version:** {version}")

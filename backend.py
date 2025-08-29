@@ -9,7 +9,7 @@ import os
 import base64
 
 app = Flask(__name__)
-app.config['PREFERRED_URL_SCHEME'] = 'https'
+app.config["PREFERRED_URL_SCHEME"] = "https"
 CORS(app)
 
 # Simple in-memory store for recovery codes (for demo; use persistent store in production)
@@ -17,6 +17,7 @@ recovery_codes = {}
 
 # Use absolute path for database file
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.db")
+
 
 def get_db_connection():
     conn = sqlite3.connect("users.db")
@@ -26,7 +27,7 @@ def get_db_connection():
 
 # Create users table if it doesn't exist
 def init_db():
-    try: 
+    try:
         conn = get_db_connection()
         conn.execute("""CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,15 +38,17 @@ def init_db():
         )""")
         conn.commit()
         print("Database schema created successfully")
-        
+
         # Verify the table exists
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+        )
         if cursor.fetchone():
             print("Confirmed 'users' table exists")
         else:
             print("WARNING: 'users' table was not created!")
-            
+
         conn.close()
     except Exception as e:
         print(f"Database initialization error: {e}")
@@ -61,7 +64,9 @@ def send_email(to_email, subject, body):
     smtp_port = 587
     smtp_user = os.environ.get("SMTP_USER")
     smtp_pass_encoded = os.environ.get("SMTP_PASS_ENCODED")
-    smtp_pass = base64.b64decode(smtp_pass_encoded).decode() if smtp_pass_encoded else None
+    smtp_pass = (
+        base64.b64decode(smtp_pass_encoded).decode() if smtp_pass_encoded else None
+    )
     if not smtp_user or not smtp_pass:
         print("SMTP credentials not set.")
         return False
@@ -88,7 +93,9 @@ def register():
     conn = get_db_connection()
     cur = conn.cursor()
     # Check if username or email already exists
-    cur.execute("SELECT * FROM users WHERE username = ? OR email = ?", (username, email))
+    cur.execute(
+        "SELECT * FROM users WHERE username = ? OR email = ?", (username, email)
+    )
     if cur.fetchone():
         conn.close()
         return "Username or email is already taken.", 409
@@ -97,9 +104,13 @@ def register():
     cur.execute("SELECT * FROM users WHERE password = ?", (hashed_pw,))
     if cur.fetchone():
         conn.close()
-        return "Password is already used by another user. Please choose a different password.", 409
+        return (
+            "Password is already used by another user. Please choose a different password.",
+            409,
+        )
     cur.execute(
-        "INSERT INTO users (username, password, email) VALUES (?, ?, ?)", (username, hashed_pw, email)
+        "INSERT INTO users (username, password, email) VALUES (?, ?, ?)",
+        (username, hashed_pw, email),
     )
     conn.commit()
     conn.close()
@@ -136,7 +147,7 @@ def recover_request():
     conn.close()
     if not user:
         return "Email not found.", 404
-    code = ''.join(random.choices(string.digits, k=6))
+    code = "".join(random.choices(string.digits, k=6))
     recovery_codes[email] = code
     send_email(email, "Password Recovery Code", f"Your recovery code is: {code}")
     return "Recovery code sent to your email.", 200
@@ -206,7 +217,4 @@ def internal_server_error(e):
 
 
 if __name__ == "__main__":
-    app.run(port=5000,
-            debug=True,
-            use_reloader=True,
-            threaded=True)
+    app.run(port=5000, debug=True, use_reloader=True, threaded=True)

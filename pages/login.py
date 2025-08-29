@@ -7,8 +7,9 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔒",
-                   layout="wide")
+st.set_page_config(
+    page_title="RAPAS Photometry Pipeline", page_icon="🔒", layout="wide"
+)
 
 # Use session state to track login status - Keep these basic initializations
 if "logged_in" not in st.session_state:
@@ -28,18 +29,19 @@ if not st.session_state.logged_in:
         "Username",
         value="",
         placeholder="Enter your username",
-        help="Your registered username"
+        help="Your registered username",
     )
     password = st.sidebar.text_input(
         "Password",
         value="",
         type="password",
         placeholder="Enter your password",
-        help="Your account password"
+        help="Your account password",
     )
 
-    email = st.sidebar.text_input("Email", value="",
-                                  help="Required for registration and password recovery.")
+    email = st.sidebar.text_input(
+        "Email", value="", help="Required for registration and password recovery."
+    )
 
     login_col, register_col = st.sidebar.columns([1, 1])
     login_clicked = login_col.button("Login")
@@ -79,13 +81,13 @@ if not st.session_state.logged_in:
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("## Recover Password")
-    recovery_email = st.sidebar.text_input("Email", value="",
-                                           key="recovery_email")
+    recovery_email = st.sidebar.text_input("Email", value="", key="recovery_email")
     if st.session_state.recovery_step == 0:
         if st.sidebar.button("Send Recovery Code"):
             if recovery_email:
-                resp = requests.post(f"{backend_url}/recover_request",
-                                     data={"email": recovery_email})
+                resp = requests.post(
+                    f"{backend_url}/recover_request", data={"email": recovery_email}
+                )
                 if resp.status_code == 200:
                     st.session_state.recovery_step = 1
                     st.success("Recovery code sent to your email.")
@@ -94,15 +96,19 @@ if not st.session_state.logged_in:
             else:
                 st.warning("Please enter your email.")
     elif st.session_state.recovery_step == 1:
-        code = st.sidebar.text_input("Enter Recovery Code",
-                                     key="recovery_code")
-        new_password = st.sidebar.text_input("New Password", type="password",
-                                             key="recovery_new_pw")
+        code = st.sidebar.text_input("Enter Recovery Code", key="recovery_code")
+        new_password = st.sidebar.text_input(
+            "New Password", type="password", key="recovery_new_pw"
+        )
         if st.sidebar.button("Reset Password"):
             if recovery_email and code and new_password:
                 resp = requests.post(
                     f"{backend_url}/recover_confirm",
-                    data={"email": recovery_email, "code": code, "new_password": new_password},
+                    data={
+                        "email": recovery_email,
+                        "code": code,
+                        "new_password": new_password,
+                    },
                 )
                 if resp.status_code == 200:
                     st.success("Password updated successfully. You can now log in.")

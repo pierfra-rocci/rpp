@@ -17,20 +17,35 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from astropy.io import fits
-from astropy.visualization import (ZScaleInterval, ImageNormalize)
+from astropy.visualization import ZScaleInterval, ImageNormalize
 
 # Local Application Imports
-from src.tools import (FIGURE_SIZES, GAIA_BANDS, extract_coordinates,
-                       extract_pixel_scale, get_base_filename,
-                       safe_wcs_create, ensure_output_directory,
-                       cleanup_temp_files, initialize_log, write_to_log,
-                       zip_rpp_results_on_exit, save_header_to_txt,
-                       fix_header, save_catalog_files)
+from src.tools import (
+    FIGURE_SIZES,
+    GAIA_BANDS,
+    extract_coordinates,
+    extract_pixel_scale,
+    get_base_filename,
+    safe_wcs_create,
+    ensure_output_directory,
+    cleanup_temp_files,
+    initialize_log,
+    write_to_log,
+    zip_rpp_results_on_exit,
+    save_header_to_txt,
+    fix_header,
+    save_catalog_files,
+)
 
-from src.pipeline import (solve_with_astrometrynet, cross_match_with_gaia,
-                          calculate_zero_point, detection_and_photometry,
-                          detect_remove_cosmic_rays, enhance_catalog,
-                          airmass)
+from src.pipeline import (
+    solve_with_astrometrynet,
+    cross_match_with_gaia,
+    calculate_zero_point,
+    detection_and_photometry,
+    detect_remove_cosmic_rays,
+    enhance_catalog,
+    airmass,
+)
 
 from src.__version__ import version
 
@@ -38,11 +53,11 @@ from src.__version__ import version
 if getattr(sys, "frozen", False):
     try:
         import importlib.metadata
+
         importlib.metadata.distributions = lambda **kwargs: []
     except ImportError:
         st.warning(
-            "Could not modify importlib.metadata, "
-            "potential issues in frozen mode."
+            "Could not modify importlib.metadata, potential issues in frozen mode."
         )
 
 warnings.filterwarnings("ignore")
@@ -52,14 +67,16 @@ def clear_all_caches():
     """Clear all Streamlit caches and reset file upload state"""
     try:
         st.cache_data.clear()
-        if hasattr(st.cache_resource, 'clear'):
+        if hasattr(st.cache_resource, "clear"):
             st.cache_resource.clear()
-        
+
         # Clear file upload related session state
-        upload_keys = [key for key in st.session_state.keys() if 'uploader' in key.lower()]
+        upload_keys = [
+            key for key in st.session_state.keys() if "uploader" in key.lower()
+        ]
         for key in upload_keys:
             del st.session_state[key]
-        
+
         # Clear file-related session state
         if "science_file_path" in st.session_state:
             try:
@@ -68,10 +85,10 @@ def clear_all_caches():
             except Exception:
                 pass
             del st.session_state["science_file_path"]
-        
+
         if "files_loaded" in st.session_state:
             st.session_state["files_loaded"] = {"science_file": None}
-            
+
         st.success("All caches cleared successfully!")
         st.rerun()
     except Exception as e:
@@ -120,8 +137,10 @@ def load_fits_data(file):
                         header = hdu.header
                         # Only log it, don't show in UI
                         if st.session_state.get("log_buffer"):
-                            write_to_log(st.session_state["log_buffer"], 
-                                       f"Primary HDU has no data. Using data from HDU #{i}.")
+                            write_to_log(
+                                st.session_state["log_buffer"],
+                                f"Primary HDU has no data. Using data from HDU #{i}.",
+                            )
                         break
 
             if data is None:
@@ -157,43 +176,52 @@ def load_fits_data(file):
             try:
                 original_header = header.copy()
                 fixed_header = fix_header(header)
-                
+
                 # Check if any fixes were applied
                 fixes_applied = []
-                
+
                 # Check for specific fixes
-                if 'CTYPE1' in fixed_header and 'CTYPE1' in original_header:
-                    if str(fixed_header['CTYPE1']) != str(original_header['CTYPE1']):
-                        fixes_applied.append(f"CTYPE1: {original_header['CTYPE1']} → {fixed_header['CTYPE1']}")
-                
-                if 'CTYPE2' in fixed_header and 'CTYPE2' in original_header:
-                    if str(fixed_header['CTYPE2']) != str(original_header['CTYPE2']):
-                        fixes_applied.append(f"CTYPE2: {original_header['CTYPE2']} → {fixed_header['CTYPE2']}")
-                
+                if "CTYPE1" in fixed_header and "CTYPE1" in original_header:
+                    if str(fixed_header["CTYPE1"]) != str(original_header["CTYPE1"]):
+                        fixes_applied.append(
+                            f"CTYPE1: {original_header['CTYPE1']} → {fixed_header['CTYPE1']}"
+                        )
+
+                if "CTYPE2" in fixed_header and "CTYPE2" in original_header:
+                    if str(fixed_header["CTYPE2"]) != str(original_header["CTYPE2"]):
+                        fixes_applied.append(
+                            f"CTYPE2: {original_header['CTYPE2']} → {fixed_header['CTYPE2']}"
+                        )
+
                 # Check for added keywords
-                for key in ['CRPIX1', 'CRPIX2', 'EQUINOX', 'RADESYS']:
+                for key in ["CRPIX1", "CRPIX2", "EQUINOX", "RADESYS"]:
                     if key in fixed_header and key not in original_header:
                         fixes_applied.append(f"Added {key}: {fixed_header[key]}")
-                
+
                 # Check for CD matrix fixes
-                for key in ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']:
+                for key in ["CD1_1", "CD1_2", "CD2_1", "CD2_2"]:
                     if key in fixed_header and key in original_header:
                         if abs(fixed_header[key] - original_header.get(key, 0)) > 1e-10:
                             fixes_applied.append(f"Fixed {key}")
-                
+
                 if fixes_applied:
                     st.info(f"Applied header fixes: {', '.join(fixes_applied)}")
                     if st.session_state.get("log_buffer"):
-                        write_to_log(st.session_state["log_buffer"], 
-                                   f"Header fixes applied: {'; '.join(fixes_applied)}")
-                
+                        write_to_log(
+                            st.session_state["log_buffer"],
+                            f"Header fixes applied: {'; '.join(fixes_applied)}",
+                        )
+
                 header = fixed_header
-                
+
             except Exception as fix_error:
                 st.warning(f"Header fixing encountered an issue: {str(fix_error)}")
                 if st.session_state.get("log_buffer"):
-                    write_to_log(st.session_state["log_buffer"], 
-                               f"Header fixing failed: {str(fix_error)}", level="WARNING")
+                    write_to_log(
+                        st.session_state["log_buffer"],
+                        f"Header fixing failed: {str(fix_error)}",
+                        level="WARNING",
+                    )
 
             return data, header
 
@@ -298,7 +326,7 @@ def display_catalog_in_aladin(
             # Handle magnitude - collect both PSF and aperture magnitudes
             psf_mag = None
             aperture_mag = None
-            
+
             # Get PSF magnitude
             if mag_col in present_optional_cols and pd.notna(row[mag_col]):
                 try:
@@ -320,46 +348,52 @@ def display_catalog_in_aladin(
 
             # Handle catalog matches - collect individual catalog IDs
             catalog_matches = {}
-            
+
             # SIMBAD matches
-            if "simbad_main_id" in present_optional_cols and pd.notna(row["simbad_main_id"]):
+            if "simbad_main_id" in present_optional_cols and pd.notna(
+                row["simbad_main_id"]
+            ):
                 simbad_id = str(row["simbad_main_id"]).strip()
                 if simbad_id and simbad_id not in ["", "nan", "None"]:
                     catalog_matches["SIMBAD"] = simbad_id
-            
+
             # SkyBoT matches (solar system objects)
             if "skybot_NAME" in present_optional_cols and pd.notna(row["skybot_NAME"]):
                 skybot_name = str(row["skybot_NAME"]).strip()
                 if skybot_name and skybot_name not in ["", "nan", "None"]:
                     catalog_matches["SkyBoT"] = skybot_name
-            
+
             # AAVSO VSX matches (variable stars)
             if "aavso_Name" in present_optional_cols and pd.notna(row["aavso_Name"]):
                 aavso_name = str(row["aavso_Name"]).strip()
                 if aavso_name and aavso_name not in ["", "nan", "None"]:
                     catalog_matches["AAVSO"] = aavso_name
-            
+
             # Astro-Colibri matches
-            if "astrocolibri_name" in present_optional_cols and pd.notna(row["astrocolibri_name"]):
+            if "astrocolibri_name" in present_optional_cols and pd.notna(
+                row["astrocolibri_name"]
+            ):
                 colibri_name = str(row["astrocolibri_name"]).strip()
                 if colibri_name and colibri_name not in ["", "nan", "None"]:
                     catalog_matches["Astro-Colibri"] = colibri_name
-            
+
             # Quasar matches
             if "qso_name" in present_optional_cols and pd.notna(row["qso_name"]):
                 qso_name = str(row["qso_name"]).strip()
                 if qso_name and qso_name not in ["", "nan", "None"]:
                     catalog_matches["QSO"] = qso_name
-            
+
             # GAIA matches (if calibration star)
-            if "gaia_calib_star" in present_optional_cols and row.get("gaia_calib_star", False):
+            if "gaia_calib_star" in present_optional_cols and row.get(
+                "gaia_calib_star", False
+            ):
                 catalog_matches["GAIA"] = "Calibration Star"
-            
+
             source["catalog_matches"] = catalog_matches
 
             # FIXED: Handle source identification - prioritize the real "id" column first
             source_id = f"{fallback_id_prefix} {idx + 1}"  # Default fallback
-            
+
             # First, check if there's an "id" column in the table (the real catalog ID)
             if "id" in final_table.columns and pd.notna(row.get("id")):
                 id_value = str(row["id"]).strip()
@@ -373,7 +407,7 @@ def display_catalog_in_aladin(
                         if id_value and id_value not in ["nan", "None", ""]:
                             source_id = id_value
                             break
-            
+
             source["name"] = source_id
             source["source_number"] = idx + 1
 
@@ -621,16 +655,16 @@ def provide_download_buttons(folder_path):
 def display_archived_files_browser(output_dir):
     """
     Display a file browser for archived ZIP files in the user's results directory.
-    
+
     This function creates a secure file browser that only allows access to ZIP files
     within the specified output directory. Also automatically cleans up old files
     (except .json) that are older than 1 month.
-    
+
     Parameters
     ----------
     output_dir : str
         Path to the user's results directory
-        
+
     Returns
     -------
     None
@@ -639,19 +673,19 @@ def display_archived_files_browser(output_dir):
     if not os.path.exists(output_dir):
         st.warning("No results directory found.")
         return
-    
+
     try:
         # Automatically clean old files (excluding .json files)
         cutoff_date = datetime.now() - pd.Timedelta(days=30)
         deleted_count = 0
-        
+
         for item in os.listdir(output_dir):
             item_path = os.path.join(output_dir, item)
             if os.path.isfile(item_path):
                 # Skip .json files from cleanup
-                if item.lower().endswith('.json'):
+                if item.lower().endswith(".json"):
                     continue
-                    
+
                 try:
                     mod_time = datetime.fromtimestamp(os.path.getmtime(item_path))
                     if mod_time < cutoff_date:
@@ -660,85 +694,87 @@ def display_archived_files_browser(output_dir):
                 except Exception:
                     # Silently continue if file can't be deleted
                     pass
-        
+
         # Collect only ZIP files
         zip_files = []
         for item in os.listdir(output_dir):
             item_path = os.path.join(output_dir, item)
-            if os.path.isfile(item_path) and item.lower().endswith('.zip'):
+            if os.path.isfile(item_path) and item.lower().endswith(".zip"):
                 # Get file stats
                 try:
                     stat = os.stat(item_path)
                     file_size = stat.st_size
                     mod_time = datetime.fromtimestamp(stat.st_mtime)
-                    
-                    zip_files.append({
-                        'name': item,
-                        'size': file_size,
-                        'modified': mod_time,
-                        'path': item_path
-                    })
+
+                    zip_files.append(
+                        {
+                            "name": item,
+                            "size": file_size,
+                            "modified": mod_time,
+                            "path": item_path,
+                        }
+                    )
                 except Exception:
                     # Skip files that can't be accessed
                     continue
-        
+
         if not zip_files:
             st.info("No ZIP archives found.")
             if deleted_count > 0:
                 st.caption(f"Auto-cleaned {deleted_count} old files.")
             return
-        
+
         # Sort files by modification time (newest first)
-        zip_files.sort(key=lambda x: x['modified'], reverse=True)
-        
+        zip_files.sort(key=lambda x: x["modified"], reverse=True)
+
         st.write(f"**📦 {len(zip_files)} ZIP Archive(s)**")
-        
+
         if deleted_count > 0:
             st.caption(f"Auto-cleaned {deleted_count} old files.")
-        
+
         # Compact display with download buttons
         for file_info in zip_files:
             # Format file size
-            size = file_info['size']
-            if size > 1024*1024:
-                size_str = f"{size/(1024*1024):.1f}MB"
+            size = file_info["size"]
+            if size > 1024 * 1024:
+                size_str = f"{size / (1024 * 1024):.1f}MB"
             elif size > 1024:
-                size_str = f"{size/1024:.1f}KB"
+                size_str = f"{size / 1024:.1f}KB"
             else:
                 size_str = f"{size}B"
-            
+
             # Format date
-            date_str = file_info['modified'].strftime('%m/%d %H:%M')
-            
+            date_str = file_info["modified"].strftime("%m/%d %H:%M")
+
             # Truncate filename if too long
-            display_name = file_info['name']
+            display_name = file_info["name"]
             if len(display_name) > 30:
                 display_name = display_name[:27] + "..."
-            
+
             # Create compact row with download button
             col1, col2 = st.columns([3, 1])
-            
+
             with col1:
                 st.text(f"{display_name}")
                 st.caption(f"{size_str} • {date_str}")
-            
+
             with col2:
                 try:
-                    with open(file_info['path'], 'rb') as f:
+                    with open(file_info["path"], "rb") as f:
                         file_data = f.read()
-                    
+
                     st.download_button(
                         label="📥",
                         data=file_data,
-                        file_name=file_info['name'],
+                        file_name=file_info["name"],
                         mime="application/zip",
                         key=f"download_zip_{file_info['name']}",
                         help=f"Download {file_info['name']}",
-                        use_container_width=True
+                        use_container_width=True,
                     )
                 except Exception as e:
                     st.error(f"Error: {str(e)[:15]}...")
-                    
+
     except Exception as e:
         st.error(f"Error accessing results directory: {str(e)}")
 
@@ -746,45 +782,57 @@ def display_archived_files_browser(output_dir):
 def plot_magnitude_distribution(final_table, log_buffer=None):
     """
     Create magnitude distribution plots (histogram and error scatter plot).
-    
+
     Parameters
     ----------
     final_table : pandas.DataFrame
         DataFrame containing photometry results with magnitude columns
     log_buffer : StringIO, optional
         Log buffer for writing status messages
-        
+
     Returns
     -------
     matplotlib.figure.Figure
         Figure object containing the plots
     """
     fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
-    
+
     # Check if we have magnitude columns - use the new multi-aperture columns
     has_aperture = "aperture_mag_r1.5" in final_table.columns
     has_psf = "psf_mag" in final_table.columns
-    
+
     if not has_aperture and not has_psf:
         # Create empty plots with message
-        ax_mag.text(0.5, 0.5, "No magnitude data available",
-                    ha='center', va='center', transform=ax_mag.transAxes)
-        ax_err.text(0.5, 0.5, "No magnitude error data available",
-                    ha='center', va='center', transform=ax_err.transAxes)
+        ax_mag.text(
+            0.5,
+            0.5,
+            "No magnitude data available",
+            ha="center",
+            va="center",
+            transform=ax_mag.transAxes,
+        )
+        ax_err.text(
+            0.5,
+            0.5,
+            "No magnitude error data available",
+            ha="center",
+            va="center",
+            transform=ax_err.transAxes,
+        )
         return fig_mag
-    
+
     # Calculate bins for magnitude distribution
     mag_values = []
     if has_aperture:
         mag_values.extend(final_table["aperture_mag_r1.5"].dropna().tolist())
     if has_psf:
         mag_values.extend(final_table["psf_mag"].dropna().tolist())
-    
+
     if mag_values:
         bins = np.linspace(min(mag_values), max(mag_values), 40)
     else:
         bins = 40
-    
+
     # Magnitude distribution histogram (left panel)
     if has_aperture:
         ax_mag.hist(
@@ -802,13 +850,13 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
             label="PSF Calib Mag",
             color="tab:orange",
         )
-    
+
     ax_mag.set_xlabel("Calibrated Magnitude")
     ax_mag.set_ylabel("Number of Sources")
     ax_mag.set_title("Distribution of Calibrated Magnitudes")
     ax_mag.legend()
     ax_mag.grid(True, alpha=0.3)
-    
+
     # Scatter plot of magnitude vs error (right panel)
     if has_aperture and "aperture_mag_err_r1.5" in final_table.columns:
         ax_err.scatter(
@@ -817,7 +865,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
             alpha=0.7,
             label="Aperture (1.5×FWHM)",
             color="tab:blue",
-            s=18
+            s=18,
         )
     if has_psf and "psf_mag_err" in final_table.columns:
         ax_err.scatter(
@@ -826,17 +874,17 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
             alpha=0.7,
             label="PSF",
             color="tab:orange",
-            s=18
+            s=18,
         )
-    
+
     ax_err.set_xlabel("Calibrated Magnitude")
     ax_err.set_ylabel("Magnitude Error")
     ax_err.set_title("Magnitude Error vs Magnitude")
     ax_err.legend()
     ax_err.grid(True, alpha=0.3)
-    
+
     fig_mag.tight_layout()
-    
+
     # Log the plot creation if log_buffer is provided
     if log_buffer:
         write_to_log(log_buffer, "Created magnitude distribution plots")
@@ -863,9 +911,9 @@ def initialize_session_state():
         "epsf_photometry_result": None,
         "log_buffer": None,
         "base_filename": "photometry",
-        "science_file_path": None
+        "science_file_path": None,
     }
-    
+
     for key, default_value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = default_value
@@ -887,9 +935,9 @@ def initialize_session_state():
         "calibrate_cosmic_rays": False,
         "cr_gain": 1.0,
         "cr_readnoise": 2.5,
-        "cr_sigclip": 6.0
+        "cr_sigclip": 6.0,
     }
-    
+
     if "analysis_parameters" not in st.session_state:
         st.session_state.analysis_parameters = default_analysis_params.copy()
     else:
@@ -901,11 +949,11 @@ def initialize_session_state():
     # Observatory Parameters (keep only dictionary, remove individual keys)
     default_observatory_data = {
         "name": "Obs",
-        "latitude": 0.,
-        "longitude": 0.,
-        "elevation": 0.,
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "elevation": 0.0,
     }
-    
+
     if "observatory_data" not in st.session_state:
         st.session_state.observatory_data = default_observatory_data.copy()
     else:
@@ -930,10 +978,16 @@ def initialize_session_state():
     if "analysis_parameters" in st.session_state:
         ap = st.session_state["analysis_parameters"]
         for key in [
-            "seeing", "threshold_sigma", "detection_mask",
-            "astrometry_check", "calibrate_cosmic_rays",
-            "cr_gain", "cr_readnoise", "cr_sigclip",
-            "filter_band", "filter_max_mag"
+            "seeing",
+            "threshold_sigma",
+            "detection_mask",
+            "astrometry_check",
+            "calibrate_cosmic_rays",
+            "cr_gain",
+            "cr_readnoise",
+            "cr_sigclip",
+            "filter_band",
+            "filter_max_mag",
         ]:
             if key in ap:
                 st.session_state[key] = ap[key]
@@ -950,21 +1004,21 @@ def initialize_session_state():
 def update_observatory_from_fits_header(header):
     """
     Update observatory data in session state from FITS header information.
-    
+
     Parameters
     ----------
     header : astropy.io.fits.Header
         FITS header object to extract observatory information from
-        
+
     Returns
     -------
     bool
         True if any observatory data was updated, False otherwise
     """
     updated = False
-    
+
     # Check for observatory name
-    for key in ['TELESCOP', 'OBSERVER']:
+    for key in ["TELESCOP", "OBSERVER"]:
         if key in header and header[key]:
             observatory_name = str(header[key]).strip()
             if observatory_name and observatory_name not in ["", "UNKNOWN", "None"]:
@@ -972,33 +1026,33 @@ def update_observatory_from_fits_header(header):
                 st.session_state["observatory_name"] = observatory_name
                 updated = True
                 break
-    
+
     # Check for site latitude - Fixed key name from SITELAN to SITELAT
-    if 'SITELAT' in header and header['SITELAT'] is not None:
+    if "SITELAT" in header and header["SITELAT"] is not None:
         try:
-            latitude = float(header['SITELAT'])
+            latitude = float(header["SITELAT"])
             if -90 <= latitude <= 90:  # Valid latitude range
                 st.session_state.observatory_data["latitude"] = latitude
                 st.session_state["observatory_latitude"] = latitude
                 updated = True
         except (ValueError, TypeError):
             pass
-    
+
     # Check for site longitude
-    if 'SITELONG' in header and header['SITELONG'] is not None:
+    if "SITELONG" in header and header["SITELONG"] is not None:
         try:
-            longitude = float(header['SITELONG'])
+            longitude = float(header["SITELONG"])
             if -180 <= longitude <= 180:  # Valid longitude range
                 st.session_state.observatory_data["longitude"] = longitude
                 st.session_state["observatory_longitude"] = longitude
                 updated = True
         except (ValueError, TypeError):
             pass
-    
+
     # Check for site elevation
-    if 'SITEELEV' in header and header['SITEELEV'] is not None:
+    if "SITEELEV" in header and header["SITEELEV"] is not None:
         try:
-            elevation = float(header['SITEELEV'])
+            elevation = float(header["SITEELEV"])
             if elevation >= -400:  # Reasonable minimum (below sea level)
                 st.session_state.observatory_data["elevation"] = elevation
                 st.session_state["observatory_elevation"] = elevation
@@ -1014,8 +1068,9 @@ def update_observatory_from_fits_header(header):
 ###################################################################
 
 
-st.set_page_config(page_title="RAPAS Photometry Pipeline", page_icon="🔭",
-                   layout="wide")
+st.set_page_config(
+    page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide"
+)
 
 # --- Initialize Session State Early ---
 initialize_session_state()
@@ -1050,10 +1105,7 @@ if not st.session_state.logged_in:
 
 # Add application version to the sidebar
 st.title("🔭 RAPAS Photometry Pipeline")
-st.markdown(
-    '[(*RAPAS Home*)](https://rapas.imcce.fr/)',
-    unsafe_allow_html=True
-)
+st.markdown("[(*RAPAS Home*)](https://rapas.imcce.fr/)", unsafe_allow_html=True)
 
 # Added: Quick Start Tutorial link (opens the local markdown file in a new tab if the browser allows)
 st.markdown(
@@ -1071,12 +1123,12 @@ with st.sidebar.expander("🔭 Observatory Data", expanded=False):
         value=st.session_state.observatory_name,
         help="Name of the observatory (e.g., TJMS).",
     )
-    
+
     # Latitude input with locale handling
     latitude_input = st.text_input(
         "Latitude (degrees)",
         value=str(st.session_state.observatory_latitude),
-        help="Observatory latitude in decimal degrees (North positive). Accepts both comma and dot as decimal separator."
+        help="Observatory latitude in decimal degrees (North positive). Accepts both comma and dot as decimal separator.",
     )
     try:
         latitude = float(latitude_input.replace(",", "."))
@@ -1087,12 +1139,12 @@ with st.sidebar.expander("🔭 Observatory Data", expanded=False):
     except ValueError:
         if latitude_input.strip():  # Only show error if input is not empty
             st.error("Please enter a valid number for latitude.")
-    
+
     # Longitude input with locale handling
     longitude_input = st.text_input(
         "Longitude (degrees)",
         value=str(st.session_state.observatory_longitude),
-        help="Observatory longitude in decimal degrees (East positive). Accepts both comma and dot as decimal separator."
+        help="Observatory longitude in decimal degrees (East positive). Accepts both comma and dot as decimal separator.",
     )
     try:
         longitude = float(longitude_input.replace(",", "."))
@@ -1103,12 +1155,12 @@ with st.sidebar.expander("🔭 Observatory Data", expanded=False):
     except ValueError:
         if longitude_input.strip():
             st.error("Please enter a valid number for longitude.")
-    
+
     # Elevation input with locale handling
     elevation_input = st.text_input(
         "Elevation (meters)",
         value=str(st.session_state.observatory_elevation),
-        help="Observatory elevation above sea level in meters. Accepts both comma and dot as decimal separator."
+        help="Observatory elevation above sea level in meters. Accepts both comma and dot as decimal separator.",
     )
     try:
         elevation = float(elevation_input.replace(",", "."))
@@ -1135,10 +1187,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         max_value=5.0,
         value=st.session_state.analysis_parameters["threshold_sigma"],
         step=0.5,
-        help=(
-            "Source detection threshold in units of background "
-            "standard deviation."
-        ),
+        help=("Source detection threshold in units of background standard deviation."),
     )
     st.session_state.analysis_parameters["detection_mask"] = st.number_input(
         "Border Mask Size (pixels)",
@@ -1147,8 +1196,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         value=st.session_state.analysis_parameters["detection_mask"],
         step=5,
         help=(
-            "Size of the border region (in pixels) to exclude from "
-            "source detection."
+            "Size of the border region (in pixels) to exclude from source detection."
         ),
     )
     st.session_state.analysis_parameters["filter_band"] = st.selectbox(
@@ -1185,7 +1233,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
             max_value=10.0,
             value=st.session_state.analysis_parameters["cr_gain"],
             step=0.5,
-            help="Camera gain in electrons per ADU."
+            help="Camera gain in electrons per ADU.",
         )
         st.session_state.analysis_parameters["cr_readnoise"] = st.slider(
             "CRR Read Noise (e-)",
@@ -1193,7 +1241,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
             max_value=20.0,
             value=st.session_state.analysis_parameters["cr_readnoise"],
             step=0.5,
-            help="Camera read noise in electrons."
+            help="Camera read noise in electrons.",
         )
         st.session_state.analysis_parameters["cr_sigclip"] = st.slider(
             "CRR Sigma Clip",
@@ -1201,7 +1249,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
             max_value=10.0,
             value=st.session_state.analysis_parameters["cr_sigclip"],
             step=0.5,
-            help="Sigma clipping threshold for cosmic ray detection."
+            help="Sigma clipping threshold for cosmic ray detection.",
         )
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):
@@ -1217,7 +1265,7 @@ if st.sidebar.button("💾 Save Configuration"):
     analysis_params = dict(st.session_state.get("analysis_parameters", {}))
     observatory_params = dict(st.session_state.get("observatory_data", {}))
     colibri_api_key = st.session_state.get("colibri_api_key")
-    
+
     # Add pre-process options to analysis_parameters
     analysis_params["astrometry_check"] = st.session_state.get(
         "astrometry_check", False
@@ -1225,10 +1273,11 @@ if st.sidebar.button("💾 Save Configuration"):
     analysis_params["calibrate_cosmic_rays"] = st.session_state.get(
         "calibrate_cosmic_rays", False
     )
-    params = {"analysis_parameters": analysis_params,
-              "observatory_data": observatory_params,
-              "colibri_api_key": colibri_api_key,
-              }
+    params = {
+        "analysis_parameters": analysis_params,
+        "observatory_data": observatory_params,
+        "colibri_api_key": colibri_api_key,
+    }
     name = st.session_state.get("username", "user")
     config_filename = f"{name}_config.json"
     config_path = os.path.join(
@@ -1272,13 +1321,16 @@ with st.sidebar:
         clear_all_caches()
 
 science_file = st.file_uploader(
-    "Choose a FITS file for analysis", type=["fits", "fit", "fts", "fits.gz"],
-    key="science_uploader"
+    "Choose a FITS file for analysis",
+    type=["fits", "fit", "fts", "fits.gz"],
+    key="science_uploader",
 )
 science_file_path = None
 
 # Runtime logic to update the sessions state parameters
-st.session_state["calibrate_cosmic_rays"] = st.session_state.analysis_parameters["calibrate_cosmic_rays"]
+st.session_state["calibrate_cosmic_rays"] = st.session_state.analysis_parameters[
+    "calibrate_cosmic_rays"
+]
 
 # Update observatory_data dictionary with current session state values
 st.session_state.observatory_data = {
@@ -1306,8 +1358,9 @@ if science_file is not None:
     os.makedirs(user_tmp_dir, exist_ok=True)
 
     # Now use this directory for the temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix,
-                                     dir=user_tmp_dir) as tmp_file:
+    with tempfile.NamedTemporaryFile(
+        delete=False, suffix=suffix, dir=user_tmp_dir
+    ) as tmp_file:
         tmp_file.write(science_file.getvalue())
         science_file_path = tmp_file.name
 
@@ -1326,17 +1379,16 @@ if science_file is not None:
     if science_data is not None and science_header is not None:
         st.success(f"Loaded '{science_file.name}' successfully.")
         write_to_log(
-            st.session_state.log_buffer,
-            f"Loaded FITS file: {science_file.name}"
+            st.session_state.log_buffer, f"Loaded FITS file: {science_file.name}"
         )
-        
+
         # Update observatory data from FITS header if available
         result = update_observatory_from_fits_header(science_header)
         if result:
             st.info("Observatory information updated from FITS header")
             write_to_log(
                 st.session_state.log_buffer,
-                f"Observatory data updated from FITS header: {st.session_state.observatory_data}"
+                f"Observatory data updated from FITS header: {st.session_state.observatory_data}",
             )
 
     # Apply cosmic ray removal if enabled
@@ -1362,15 +1414,17 @@ if science_file is not None:
 
     # Test WCS creation with better error handling
     wcs_obj, wcs_error = safe_wcs_create(science_header)
-    
+
     # Initialize force_plate_solve as False by default
     force_plate_solve = False
-    
+
     # If WCS creation fails due to singular matrix, try to proceed without WCS for detection
     proceed_without_wcs = False
     if wcs_obj is None and "singular" in str(wcs_error).lower():
         st.warning(f"WCS header has issues: {wcs_error}")
-        st.info("Will attempt source detection without WCS and then try plate solving...")
+        st.info(
+            "Will attempt source detection without WCS and then try plate solving..."
+        )
         proceed_without_wcs = True
     elif wcs_obj is None:
         st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
@@ -1378,7 +1432,7 @@ if science_file is not None:
         use_astrometry = True
     else:
         st.success("Valid WCS found in the FITS header.")
-        
+
         # Show Force Plate Solving checkbox only when valid WCS exists
         force_plate_solve = st.checkbox(
             "🔄 Force Plate-Solve",
@@ -1387,9 +1441,9 @@ if science_file is not None:
                 "Force plate solving even though a valid WCS is present. "
                 "This will replace the existing WCS solution with a new one."
             ),
-            key="force_plate_solve_main"
+            key="force_plate_solve_main",
         )
-        
+
         if force_plate_solve:
             st.info("🔄 Force plate solve enabled - will re-solve astrometry")
             use_astrometry = True
@@ -1404,12 +1458,18 @@ if science_file is not None:
     if (wcs_obj is None and not proceed_without_wcs) or force_plate_solve:
         use_astrometry = True
         if use_astrometry:
-            plate_solve_reason = "forced by user" if force_plate_solve else "no valid WCS found"
-            with st.spinner(f"Running plate solve ({plate_solve_reason}) - this may take a while..."):
+            plate_solve_reason = (
+                "forced by user" if force_plate_solve else "no valid WCS found"
+            )
+            with st.spinner(
+                f"Running plate solve ({plate_solve_reason}) - this may take a while..."
+            ):
                 result = solve_with_astrometrynet(science_file_path)
                 if result is None:
                     if force_plate_solve:
-                        st.error("Forced plate solving failed. Will use original WCS if available.")
+                        st.error(
+                            "Forced plate solving failed. Will use original WCS if available."
+                        )
                         # Try to restore original WCS by reloading header
                         _, original_header = load_fits_data(science_file)
                         wcs_obj, wcs_error = safe_wcs_create(original_header)
@@ -1429,28 +1489,34 @@ if science_file is not None:
                 log_buffer = st.session_state["log_buffer"]
 
                 if wcs_obj is not None:
-                    solve_type = "Forced plate-solve" if force_plate_solve else "Initial solve"
+                    solve_type = (
+                        "Forced plate-solve" if force_plate_solve else "Initial solve"
+                    )
                     st.success(f"✅ {solve_type} successful!")
-                    write_to_log(log_buffer, f"Plate solving completed ({plate_solve_reason})")
-                    
+                    write_to_log(
+                        log_buffer, f"Plate solving completed ({plate_solve_reason})"
+                    )
+
                     wcs_header_filename = (
                         f"{st.session_state['base_filename']}_wcs_header"
                     )
                     wcs_header_file_path = save_header_to_txt(
                         science_header, wcs_header_filename
-                        )
+                    )
                     if wcs_header_file_path:
                         st.info("Updated WCS header saved")
-                        
+
                     # Re-extract pixel scale and recalculate seeing with updated header
-                    pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
+                    pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(
+                        science_header
+                    )
                     seeing = st.session_state.analysis_parameters["seeing"]
                     mean_fwhm_pixel = seeing / pixel_size_arcsec
-                    
+
                     # Update session state with the new values
                     st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
                     st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
-                    
+
                     write_to_log(
                         log_buffer,
                         f"Updated pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
@@ -1467,18 +1533,20 @@ if science_file is not None:
                         level="ERROR",
                     )
                     proceed_without_wcs = True
-    
+
     # Store whether we're proceeding without WCS
     st.session_state["proceed_without_wcs"] = proceed_without_wcs
     if proceed_without_wcs:
-        st.warning("⚠️ Proceeding without valid WCS - photometry will be limited to instrumental magnitudes")
+        st.warning(
+            "⚠️ Proceeding without valid WCS - photometry will be limited to instrumental magnitudes"
+        )
 
     else:
         # Extract pixel scale from existing header when not re-solving
         pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
         seeing = st.session_state.analysis_parameters["seeing"]
         mean_fwhm_pixel = seeing / pixel_size_arcsec
-        
+
         # Update session state with the calculated values
         st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
         st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
@@ -1502,16 +1570,24 @@ if science_file is not None:
         st.header("Image", anchor="science-image")
         try:
             # Create a side-by-side plot using matplotlib subplots
-            fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(2 * FIGURE_SIZES["medium"][0], FIGURE_SIZES["medium"][1]))
+            fig, (ax1, ax2) = plt.subplots(
+                1, 2, figsize=(2 * FIGURE_SIZES["medium"][0], FIGURE_SIZES["medium"][1])
+            )
 
             ax1.set_title("ZScale Visualization")
             try:
                 norm = ImageNormalize(science_data, interval=ZScaleInterval())
-                im1 = ax1.imshow(science_data, norm=norm, origin="lower", cmap="viridis")
+                im1 = ax1.imshow(
+                    science_data, norm=norm, origin="lower", cmap="viridis"
+                )
             except Exception as norm_error:
-                st.warning(f"ZScale normalization failed: {norm_error}. Using simple normalization.")
+                st.warning(
+                    f"ZScale normalization failed: {norm_error}. Using simple normalization."
+                )
                 vmin, vmax = np.percentile(science_data, [1, 99])
-                im1 = ax1.imshow(science_data, vmin=vmin, vmax=vmax, origin="lower", cmap="viridis")
+                im1 = ax1.imshow(
+                    science_data, vmin=vmin, vmax=vmax, origin="lower", cmap="viridis"
+                )
             fig.colorbar(im1, ax=ax1, label="Pixel Value")
             ax1.axis("off")
 
@@ -1528,11 +1604,15 @@ if science_file is not None:
                     ax2.axis("off")
 
                     ax_inset = fig.add_axes([0.65, 0.15, 0.15, 0.25])
-                    ax_inset.hist(data_scaled.flatten(), bins=50, color='skyblue', alpha=0.8)
-                    ax_inset.set_title('Pixel Distribution', fontsize=8)
-                    ax_inset.tick_params(axis='both', which='major', labelsize=6)
+                    ax_inset.hist(
+                        data_scaled.flatten(), bins=50, color="skyblue", alpha=0.8
+                    )
+                    ax_inset.set_title("Pixel Distribution", fontsize=8)
+                    ax_inset.tick_params(axis="both", which="major", labelsize=6)
                 else:
-                    st.warning("No finite values in image data for histogram equalization")
+                    st.warning(
+                        "No finite values in image data for histogram equalization"
+                    )
             except Exception as hist_error:
                 st.warning(f"Histogram equalization failed: {hist_error}")
 
@@ -1577,20 +1657,25 @@ if science_file is not None:
 
         # Use updated header if available, otherwise use original
         header_for_stats = st.session_state.get("calibrated_header", science_header)
-        
+
         # Get pixel scale and FWHM from session state if available, otherwise calculate
-        if "pixel_size_arcsec" in st.session_state and "mean_fwhm_pixel" in st.session_state:
+        if (
+            "pixel_size_arcsec" in st.session_state
+            and "mean_fwhm_pixel" in st.session_state
+        ):
             pixel_size_arcsec = st.session_state["pixel_size_arcsec"]
             mean_fwhm_pixel = st.session_state["mean_fwhm_pixel"]
             pixel_scale_source = "session_state"
         else:
-            pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(header_for_stats)
+            pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(
+                header_for_stats
+            )
             seeing = st.session_state.analysis_parameters["seeing"]
             mean_fwhm_pixel = seeing / pixel_size_arcsec
 
             st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
             st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
-        
+
         st.metric(
             "Mean Pixel Scale (arcsec/pixel)",
             f"{pixel_size_arcsec:.2f}",
@@ -1708,7 +1793,11 @@ if science_file is not None:
                         st.session_state["valid_dec"] = science_header[dec_key]
                         break
 
-        if "valid_ra" in st.session_state and "valid_dec" in st.session_state and science_header is not None:
+        if (
+            "valid_ra" in st.session_state
+            and "valid_dec" in st.session_state
+            and science_header is not None
+        ):
             science_header["RA"] = st.session_state["valid_ra"]
             science_header["DEC"] = st.session_state["valid_dec"]
 
@@ -1737,17 +1826,22 @@ if science_file is not None:
         ):
             image_to_process = science_data
             header_to_process = science_header.copy()
-            
+
             # Validate that we have a header
             if header_to_process is None:
-                st.error("No header available for processing. Cannot proceed with photometry.")
+                st.error(
+                    "No header available for processing. Cannot proceed with photometry."
+                )
                 st.stop()
-            
+
             # Debug: Show what header we're using
             st.write(f"Using header with {len(header_to_process)} keywords")
 
             # Get the correct pixel scale and FWHM values
-            if "pixel_size_arcsec" in st.session_state and "mean_fwhm_pixel" in st.session_state:
+            if (
+                "pixel_size_arcsec" in st.session_state
+                and "mean_fwhm_pixel" in st.session_state
+            ):
                 pixel_size_arcsec = st.session_state["pixel_size_arcsec"]
                 mean_fwhm_pixel = st.session_state["mean_fwhm_pixel"]
             else:
@@ -1761,10 +1855,18 @@ if science_file is not None:
                         "Background Extraction, FWHM Computation, Sources Detection and Photometry..."
                     ):
                         # Extract parameters from session state
-                        threshold_sigma = st.session_state.analysis_parameters["threshold_sigma"]
-                        detection_mask = st.session_state.analysis_parameters["detection_mask"]
-                        filter_band = st.session_state.analysis_parameters["filter_band"]
-                        filter_max_mag = st.session_state.analysis_parameters["filter_max_mag"]
+                        threshold_sigma = st.session_state.analysis_parameters[
+                            "threshold_sigma"
+                        ]
+                        detection_mask = st.session_state.analysis_parameters[
+                            "detection_mask"
+                        ]
+                        filter_band = st.session_state.analysis_parameters[
+                            "filter_band"
+                        ]
+                        filter_max_mag = st.session_state.analysis_parameters[
+                            "filter_max_mag"
+                        ]
 
                         result = detection_and_photometry(
                             image_to_process,
@@ -1774,12 +1876,14 @@ if science_file is not None:
                             detection_mask,
                             filter_band,
                         )
-                        
+
                         # Handle the return values - should be a tuple of 5 elements
                         if isinstance(result, tuple) and len(result) == 5:
                             phot_table_qtable, epsf_table, daofind, bkg, w = result
                         else:
-                            st.error(f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}")
+                            st.error(
+                                f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}"
+                            )
                             phot_table_qtable = epsf_table = daofind = bkg = w = None
 
                         if phot_table_qtable is not None:
@@ -1799,7 +1903,7 @@ if science_file is not None:
                                 mean_fwhm_pixel,
                                 filter_band,
                                 filter_max_mag,
-                                refined_wcs=w
+                                refined_wcs=w,
                             )
 
                         if matched_table is not None:
@@ -1809,7 +1913,10 @@ if science_file is not None:
                             with st.spinner("Calculating zero point..."):
                                 zero_point_value, zero_point_std, zp_plot = (
                                     calculate_zero_point(
-                                        phot_table_qtable, matched_table, filter_band, air
+                                        phot_table_qtable,
+                                        matched_table,
+                                        filter_band,
+                                        air,
                                     )
                                 )
 
@@ -1898,19 +2005,30 @@ if science_file is not None:
                                                 epsf_cols["match_id"] = "match_id"
                                                 epsf_cols["flux_fit"] = "psf_flux_fit"
                                                 epsf_cols["flux_err"] = "psf_flux_err"
-                                                epsf_cols["instrumental_mag"] = "psf_instrumental_mag"
+                                                epsf_cols["instrumental_mag"] = (
+                                                    "psf_instrumental_mag"
+                                                )
 
                                                 if (
                                                     len(epsf_cols) > 1
                                                     and "match_id" in epsf_df.columns
-                                                    and "match_id" in final_table.columns
+                                                    and "match_id"
+                                                    in final_table.columns
                                                 ):
                                                     epsf_subset = epsf_df[
-                                                        [col for col in epsf_cols.keys() if col in epsf_df.columns]
+                                                        [
+                                                            col
+                                                            for col in epsf_cols.keys()
+                                                            if col in epsf_df.columns
+                                                        ]
                                                     ].rename(columns=epsf_cols)
 
                                                 final_table = pd.merge(
-                                                    final_table, epsf_df, on="match_id", how="outer", indicator=True
+                                                    final_table,
+                                                    epsf_df,
+                                                    on="match_id",
+                                                    how="outer",
+                                                    indicator=True,
                                                 )
 
                                                 if (
@@ -1924,9 +2042,7 @@ if science_file is not None:
                                                         + zero_point_value
                                                         - 0.1 * air
                                                     )
-                                                    st.success(
-                                                        "Added PSF photometry"
-                                                    )
+                                                    st.success("Added PSF photometry")
 
                                                 if (
                                                     "instrumental_mag_x"
@@ -1941,9 +2057,7 @@ if science_file is not None:
                                                         ] = final_table[
                                                             "instrumental_mag_x"
                                                         ]
-                                                        final_table[
-                                                            "aperture_mag"
-                                                        ] = (
+                                                        final_table["aperture_mag"] = (
                                                             final_table[
                                                                 "instrumental_mag_x"
                                                             ]
@@ -2014,7 +2128,9 @@ if science_file is not None:
                                             )
                                             final_table["airmass"] = air
 
-                                            st.session_state["final_phot_table"] = final_table
+                                            st.session_state["final_phot_table"] = (
+                                                final_table
+                                            )
 
                                             st.subheader("Final Photometry Catalog")
                                             st.dataframe(final_table.head(10))
@@ -2024,24 +2140,47 @@ if science_file is not None:
                                             )
 
                                             # Plot histogram of aperture_mag and psf_mag before catalog enhancement
-                                            st.subheader("Magnitude Distribution (Aperture & PSF)")
-                                            
+                                            st.subheader(
+                                                "Magnitude Distribution (Aperture & PSF)"
+                                            )
+
                                             # Create and display the magnitude distribution plots
-                                            fig_mag = plot_magnitude_distribution(final_table, log_buffer)
+                                            fig_mag = plot_magnitude_distribution(
+                                                final_table, log_buffer
+                                            )
                                             st.pyplot(fig_mag)
 
                                             # Save the histogram as an image file
                                             try:
-                                                base_filename = st.session_state.get("base_filename", "photometry")
-                                                username = st.session_state.get("username", "anonymous")
-                                                output_dir = ensure_output_directory(f"{username}_rpp_results")
-                                                hist_filename = f"{base_filename}_histogram_mag.png"
-                                                hist_filepath = os.path.join(output_dir, hist_filename)
-                                                fig_mag.savefig(hist_filepath, dpi=120, bbox_inches="tight")
-                                                write_to_log(log_buffer, f"Saved magnitude histogram plot: {hist_filename}")
+                                                base_filename = st.session_state.get(
+                                                    "base_filename", "photometry"
+                                                )
+                                                username = st.session_state.get(
+                                                    "username", "anonymous"
+                                                )
+                                                output_dir = ensure_output_directory(
+                                                    f"{username}_rpp_results"
+                                                )
+                                                hist_filename = (
+                                                    f"{base_filename}_histogram_mag.png"
+                                                )
+                                                hist_filepath = os.path.join(
+                                                    output_dir, hist_filename
+                                                )
+                                                fig_mag.savefig(
+                                                    hist_filepath,
+                                                    dpi=120,
+                                                    bbox_inches="tight",
+                                                )
+                                                write_to_log(
+                                                    log_buffer,
+                                                    f"Saved magnitude histogram plot: {hist_filename}",
+                                                )
                                             except Exception as e:
-                                                st.warning(f"Could not save magnitude histogram plot: {e}")
-                                            
+                                                st.warning(
+                                                    f"Could not save magnitude histogram plot: {e}"
+                                                )
+
                                             # Clean up the figure
                                             plt.close(fig_mag)
 
@@ -2062,13 +2201,22 @@ if science_file is not None:
                                                     / 2.0
                                                 )
                                                 # Get colibri API key from session state
-                                                colibri_api_key = st.session_state.get("colibri_api_key", "")
+                                                colibri_api_key = st.session_state.get(
+                                                    "colibri_api_key", ""
+                                                )
                                                 # Ensure final_table exists before enhancement
                                                 if final_table is None:
-                                                    st.error("Final photometry table is None - cannot perform catalog enhancement")
-                                                    final_table = st.session_state.get("final_phot_table")
-                                                    
-                                                if final_table is not None and len(final_table) > 0:
+                                                    st.error(
+                                                        "Final photometry table is None - cannot perform catalog enhancement"
+                                                    )
+                                                    final_table = st.session_state.get(
+                                                        "final_phot_table"
+                                                    )
+
+                                                if (
+                                                    final_table is not None
+                                                    and len(final_table) > 0
+                                                ):
                                                     final_table = enhance_catalog(
                                                         colibri_api_key,
                                                         final_table,
@@ -2087,7 +2235,9 @@ if science_file is not None:
                                                 )
 
                                             # Call the new function here
-                                            save_catalog_files(final_table, catalog_name, output_dir)
+                                            save_catalog_files(
+                                                final_table, catalog_name, output_dir
+                                            )
 
                                         except Exception as e:
                                             st.error(f"{e}")
@@ -2103,18 +2253,20 @@ if science_file is not None:
                 dec_center = None
 
                 # Use the correct header - prioritize calibrated header if available
-                header_for_coords = st.session_state.get("calibrated_header", science_header)
+                header_for_coords = st.session_state.get(
+                    "calibrated_header", science_header
+                )
                 if header_for_coords is None:
                     header_for_coords = science_header
 
-                coord_keys = [("CRVAL1", "CRVAL2"),
-                              ("RA", "DEC"),
-                              ("OBJRA", "OBJDEC")]
+                coord_keys = [("CRVAL1", "CRVAL2"), ("RA", "DEC"), ("OBJRA", "OBJDEC")]
 
                 for ra_key, dec_key in coord_keys:
-                    if (header_for_coords is not None and
-                        ra_key in header_for_coords and dec_key in
-                        header_for_coords):
+                    if (
+                        header_for_coords is not None
+                        and ra_key in header_for_coords
+                        and dec_key in header_for_coords
+                    ):
                         try:
                             ra_center = float(header_for_coords[ra_key])
                             dec_center = float(header_for_coords[dec_key])
@@ -2131,25 +2283,34 @@ if science_file is not None:
                 if ra_center is not None and dec_center is not None:
                     # Check if we have a valid final photometry table
                     final_phot_table = st.session_state.get("final_phot_table")
-                    
-                    if (final_phot_table is not None and
-                        not final_phot_table.empty and
-                            len(final_phot_table) > 0):
-                        
+
+                    if (
+                        final_phot_table is not None
+                        and not final_phot_table.empty
+                        and len(final_phot_table) > 0
+                    ):
                         st.subheader("Aladin Catalog Viewer")
-                        
+
                         try:
                             display_catalog_in_aladin(
                                 final_table=final_phot_table,
                                 ra_center=ra_center,
                                 dec_center=dec_center,
-                                id_cols=["id", "simbad_main_id", "skybot_NAME",
-                                         "aavso_Name", "gaia_source_id",
-                                         "astrocolibri_name", "qso_name"]
+                                id_cols=[
+                                    "id",
+                                    "simbad_main_id",
+                                    "skybot_NAME",
+                                    "aavso_Name",
+                                    "gaia_source_id",
+                                    "astrocolibri_name",
+                                    "qso_name",
+                                ],
                             )
                         except Exception as e:
                             st.error(f"Error displaying Aladin viewer: {str(e)}")
-                            st.info("Catalog data is available but cannot be displayed in interactive viewer.")
+                            st.info(
+                                "Catalog data is available but cannot be displayed in interactive viewer."
+                            )
 
                     st.link_button(
                         "ESA Sky Viewer",
@@ -2194,7 +2355,7 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     detection_mask = st.session_state.analysis_parameters["detection_mask"]
     filter_band = st.session_state.analysis_parameters["filter_band"]
     filter_max_mag = st.session_state.analysis_parameters["filter_max_mag"]
-    
+
     write_to_log(
         log_buffer, f"Elevation: {st.session_state.observatory_data['elevation']} m"
     )
@@ -2207,7 +2368,7 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
 
     # Finalize and save the log
     write_to_log(log_buffer, "Processing completed", level="INFO")
-    with open(log_filepath, "w", encoding='utf-8') as f:
+    with open(log_filepath, "w", encoding="utf-8") as f:
         f.write(log_buffer.getvalue())
     write_to_log(log_buffer, f"Log saved to {log_filepath}")
 

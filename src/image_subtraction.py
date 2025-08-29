@@ -26,6 +26,7 @@ Requirements:
     - reproject
     - requests
 """
+
 import os
 import sys
 import numpy as np
@@ -49,20 +50,21 @@ import tempfile
 import json
 
 # Suppress FITS header fix warnings
-warnings.filterwarnings('ignore', category=fits.verify.VerifyWarning)
-warnings.filterwarnings('ignore', message='.*datfix.*')
-warnings.filterwarnings('ignore', message='.*FITSFixedWarning.*')
+warnings.filterwarnings("ignore", category=fits.verify.VerifyWarning)
+warnings.filterwarnings("ignore", message=".*datfix.*")
+warnings.filterwarnings("ignore", message=".*FITSFixedWarning.*")
 
 
 class Config:
     """Configuration class for TransientFinder with default parameters."""
+
     # Survey and image retrieval settings
     MAX_RETRIES = 2
     RETRY_DELAY = 2
     REQUEST_TIMEOUT = 60
     MAX_FIELD_SIZE_PANSTARRS = 60.0  # arcmin
-    MAX_FIELD_SIZE_DSS2 = 60.0       # degrees
-    MIN_FIELD_SIZE = 0.1             # degrees
+    MAX_FIELD_SIZE_DSS2 = 60.0  # degrees
+    MIN_FIELD_SIZE = 0.1  # degrees
 
     # Detection parameters
     SIGMA_CLIP = 3.0
@@ -81,7 +83,7 @@ class Config:
     def from_file(cls, config_path):
         """Load configuration from JSON file."""
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config_dict = json.load(f)
 
             config = cls()
@@ -216,23 +218,36 @@ class TransientFinder:
                         self.sci_wcs = WCS(self.sci_header)
                     except Exception as wcs_error:
                         print(f"Warning: WCS construction failed: {wcs_error}")
-                        print("Attempting to relax WCS parsing and remove DSS distortion keywords...")
+                        print(
+                            "Attempting to relax WCS parsing and remove DSS distortion keywords..."
+                        )
                         # Try relaxing WCS parsing
                         try:
                             self.sci_wcs = WCS(self.sci_header, relax=True)
                         except Exception:
                             # Remove DSS-specific distortion keywords and try again
                             header_copy = self.sci_header.copy()
-                            dss_keys = [k for k in header_copy.keys() if k.startswith('DSS') or k.startswith('DP') or k.startswith('PV')]
+                            dss_keys = [
+                                k
+                                for k in header_copy.keys()
+                                if k.startswith("DSS")
+                                or k.startswith("DP")
+                                or k.startswith("PV")
+                            ]
                             for k in dss_keys:
-                                header_copy.remove(k, ignore_missing=True,
-                                                   remove_all=True)
+                                header_copy.remove(
+                                    k, ignore_missing=True, remove_all=True
+                                )
                             try:
                                 self.sci_wcs = WCS(header_copy, relax=True)
-                                print("WCS loaded after removing DSS/distortion keywords.")
+                                print(
+                                    "WCS loaded after removing DSS/distortion keywords."
+                                )
                                 self.sci_header = header_copy
                             except Exception as final_wcs_error:
-                                print(f"Error: Could not load WCS after all attempts: {final_wcs_error}")
+                                print(
+                                    f"Error: Could not load WCS after all attempts: {final_wcs_error}"
+                                )
                                 raise
 
             # Validate data
@@ -244,15 +259,13 @@ class TransientFinder:
 
             # Get central coordinates
             central_x, central_y = self.nx // 2, self.ny // 2
-            ra, dec = self.sci_wcs.all_pix2world(central_x,
-                                                 central_y, 0)
-            self.center_coord = SkyCoord(ra, dec, unit='deg')
+            ra, dec = self.sci_wcs.all_pix2world(central_x, central_y, 0)
+            self.center_coord = SkyCoord(ra, dec, unit="deg")
 
             # Get image size in degrees
             corner_x, corner_y = self.nx - 1, self.ny - 1
-            ra_corner, dec_corner = self.sci_wcs.all_pix2world(corner_x,
-                                                               corner_y, 0)
-            corner_coord = SkyCoord(ra_corner, dec_corner, unit='deg')
+            ra_corner, dec_corner = self.sci_wcs.all_pix2world(corner_x, corner_y, 0)
+            corner_coord = SkyCoord(ra_corner, dec_corner, unit="deg")
             self.field_size = self.center_coord.separation(corner_coord) * 2
 
             print(f"Science image loaded: {self.science_fits_path}")
@@ -288,8 +301,13 @@ class TransientFinder:
         field_size_arcmin = self.field_size.to_value(u.arcmin)
 
         # Check field size limits
-        if survey.lower() == "panstarrs" and field_size_arcmin > self.config.MAX_FIELD_SIZE_PANSTARRS:
-            print(f"Warning: Field size ({field_size_arcmin:.1f} arcmin) exceeds PanSTARRS limit.")
+        if (
+            survey.lower() == "panstarrs"
+            and field_size_arcmin > self.config.MAX_FIELD_SIZE_PANSTARRS
+        ):
+            print(
+                f"Warning: Field size ({field_size_arcmin:.1f} arcmin) exceeds PanSTARRS limit."
+            )
             print("Switching to DSS2...")
             survey = "DSS2"
             filter_band = "red"
@@ -311,17 +329,17 @@ class TransientFinder:
     def _get_hips2fits_image(self, survey, filter_band):
         """Get reference image from HiPS2FITS using correct HiPS names."""
         hips_names = {
-            'panstarrs': {
-                'g': "CDS/P/PanSTARRS/DR1/g",
-                'r': "CDS/P/PanSTARRS/DR1/r",
-                'i': "CDS/P/PanSTARRS/DR1/i"
+            "panstarrs": {
+                "g": "CDS/P/PanSTARRS/DR1/g",
+                "r": "CDS/P/PanSTARRS/DR1/r",
+                "i": "CDS/P/PanSTARRS/DR1/i",
             },
-            'dss2': {
-                'blue': "CDS/P/DSS2/Blue",
-                'b': "CDS/P/DSS2/Blue",
-                'red': "CDS/P/DSS2/Red",
-                'r': "CDS/P/DSS2/Red"
-            }
+            "dss2": {
+                "blue": "CDS/P/DSS2/Blue",
+                "b": "CDS/P/DSS2/Blue",
+                "red": "CDS/P/DSS2/Red",
+                "r": "CDS/P/DSS2/Red",
+            },
         }
 
         survey_key = survey.lower()
@@ -334,17 +352,18 @@ class TransientFinder:
         if hips_id is None:
             # Use default band for survey
             hips_id = list(hips_names[survey_key].values())[0]
-            print(f"Warning: Filter '{filter_band}' not available for {survey}. Using default.")
+            print(
+                f"Warning: Filter '{filter_band}' not available for {survey}. Using default."
+            )
 
-        print(f"Retrieving {survey} {filter_band}-band image from HiPS2FITS ({hips_id})...")
+        print(
+            f"Retrieving {survey} {filter_band}-band image from HiPS2FITS ({hips_id})..."
+        )
 
         try:
             # Use hips2fits.query_with_wcs to get the FITS cutout
             result = hips2fits.query_with_wcs(
-                hips=hips_id,
-                wcs=self.sci_wcs,
-                get_query_payload=False,
-                format='fits'
+                hips=hips_id, wcs=self.sci_wcs, get_query_payload=False, format="fits"
             )
         except Exception as e:
             print(f"Error querying hips2fits for {survey}: {e}")
@@ -367,13 +386,15 @@ class TransientFinder:
                 self.ref_header = result.header
             elif isinstance(result, str):
                 # If result is a file path or URL
-                if result.startswith('http'):
-                    response = requests.get(result,
-                                            timeout=self.config.REQUEST_TIMEOUT)
+                if result.startswith("http"):
+                    response = requests.get(result, timeout=self.config.REQUEST_TIMEOUT)
                     if response.status_code != 200:
-                        print(f"Error: HTTP {response.status_code} when downloading FITS from {result}")
+                        print(
+                            f"Error: HTTP {response.status_code} when downloading FITS from {result}"
+                        )
                         return False
                     from io import BytesIO
+
                     fits_data = BytesIO(response.content)
                     with fits.open(fits_data) as hdul:
                         self.ref_data = hdul[0].data
@@ -382,7 +403,7 @@ class TransientFinder:
                     with fits.open(result) as hdul:
                         self.ref_data = hdul[0].data
                         self.ref_header = hdul[0].header
-            elif hasattr(result, 'read'):
+            elif hasattr(result, "read"):
                 # File-like object
                 with fits.open(result) as hdul:
                     self.ref_data = hdul[0].data
@@ -404,8 +425,7 @@ class TransientFinder:
             return False
 
         ref_fits_path = os.path.join(self.output_dir, "reference_image.fits")
-        fits.writeto(ref_fits_path, self.ref_data, self.ref_header,
-                     overwrite=True)
+        fits.writeto(ref_fits_path, self.ref_data, self.ref_header, overwrite=True)
         print(f"Reference image saved to: {ref_fits_path}")
         print(f"Reference image shape: {self.ref_data.shape}")
         return True
@@ -427,9 +447,11 @@ class TransientFinder:
             print("Aligning reference image to science image WCS using astroalign...")
 
             # Step 1: Reproject reference image to science WCS (as before)
-            aligned_ref, _ = reproject_interp((self.ref_data, self.ref_wcs),
-                                              self.sci_wcs,
-                                              shape_out=self.sci_data.shape)
+            aligned_ref, _ = reproject_interp(
+                (self.ref_data, self.ref_wcs),
+                self.sci_wcs,
+                shape_out=self.sci_data.shape,
+            )
 
             # Replace NaN values with median background
             median_ref = np.nanmedian(aligned_ref)
@@ -443,81 +465,101 @@ class TransientFinder:
                     # Try direct image registration first
                     try:
                         aligned_ref_aa, _ = aa.register(ref_img, sci_img)
-                        return aligned_ref_aa, 'image'
+                        return aligned_ref_aa, "image"
                     except Exception:
                         # Try with star coordinates
                         from photutils.detection import DAOStarFinder
                         from astropy.stats import sigma_clipped_stats
+
                         # Science image stars
-                        _, median_s, std_s = sigma_clipped_stats(sci_img,
-                                                                 sigma=3.0)
-                        daofind_s = DAOStarFinder(fwhm=3.0, threshold=5.*std_s)
+                        _, median_s, std_s = sigma_clipped_stats(sci_img, sigma=3.0)
+                        daofind_s = DAOStarFinder(fwhm=3.0, threshold=5.0 * std_s)
                         sources_s = daofind_s(sci_img - median_s)
                         if sources_s is None or len(sources_s) < 3:
-                            raise RuntimeError("Not enough stars found in science image for astroalign.")
-                        coords_s = np.transpose((sources_s['xcentroid'],
-                                                 sources_s['ycentroid']))
+                            raise RuntimeError(
+                                "Not enough stars found in science image for astroalign."
+                            )
+                        coords_s = np.transpose(
+                            (sources_s["xcentroid"], sources_s["ycentroid"])
+                        )
                         # Reference image stars
-                        _, median_r, std_r = sigma_clipped_stats(ref_img,
-                                                                 sigma=3.0)
-                        daofind_r = DAOStarFinder(fwhm=3.0, threshold=5.*std_r)
+                        _, median_r, std_r = sigma_clipped_stats(ref_img, sigma=3.0)
+                        daofind_r = DAOStarFinder(fwhm=3.0, threshold=5.0 * std_r)
                         sources_r = daofind_r(ref_img - median_r)
                         if sources_r is None or len(sources_r) < 3:
-                            raise RuntimeError("Not enough stars found in reference image for astroalign.")
-                        coords_r = np.transpose((sources_r['xcentroid'],
-                                                 sources_r['ycentroid']))
+                            raise RuntimeError(
+                                "Not enough stars found in reference image for astroalign."
+                            )
+                        coords_r = np.transpose(
+                            (sources_r["xcentroid"], sources_r["ycentroid"])
+                        )
                         # Find transform and apply
-                        transf, (_, _) = aa.find_transform(coords_r,
-                                                                         coords_s)
+                        transf, (_, _) = aa.find_transform(coords_r, coords_s)
                         from skimage.transform import warp
-                        aligned_ref_aa = warp(ref_img, transf.inverse,
-                                              output_shape=sci_img.shape,
-                                              order=3, mode='edge', preserve_range=True)
-                        return aligned_ref_aa.astype(ref_img.dtype), 'star'
+
+                        aligned_ref_aa = warp(
+                            ref_img,
+                            transf.inverse,
+                            output_shape=sci_img.shape,
+                            order=3,
+                            mode="edge",
+                            preserve_range=True,
+                        )
+                        return aligned_ref_aa.astype(ref_img.dtype), "star"
+
                 # Try normal orientation
                 try:
-                    aligned_ref_aa, mode = try_astroalign(aligned_ref,
-                                                          self.sci_data)
+                    aligned_ref_aa, mode = try_astroalign(aligned_ref, self.sci_data)
                     self.ref_data = aligned_ref_aa
                     self.ref_wcs = self.sci_wcs
                     self.ref_header = self.sci_header.copy()
-                    self.ref_header['HISTORY'] = f'Reference image aligned using astroalign ({mode} mode)'
+                    self.ref_header["HISTORY"] = (
+                        f"Reference image aligned using astroalign ({mode} mode)"
+                    )
                     print(f"Astroalign alignment successful ({mode} mode).")
                 except Exception as e1:
                     print(f"Astroalign normal orientation failed: {e1}")
-                    
+
                     # Try flipped images
                     flips = [
-                        ('vertical', np.flipud(aligned_ref)),
-                        ('horizontal', np.fliplr(aligned_ref)),
-                        ('both', np.flipud(np.fliplr(aligned_ref))),
+                        ("vertical", np.flipud(aligned_ref)),
+                        ("horizontal", np.fliplr(aligned_ref)),
+                        ("both", np.flipud(np.fliplr(aligned_ref))),
                     ]
                     for flip_name, ref_flip in flips:
                         try:
                             print(f"Trying astroalign with {flip_name} flip...")
-                            aligned_ref_aa, mode = try_astroalign(ref_flip,
-                                                                  self.sci_data)
+                            aligned_ref_aa, mode = try_astroalign(
+                                ref_flip, self.sci_data
+                            )
                             self.ref_data = aligned_ref_aa
                             self.ref_wcs = self.sci_wcs
                             self.ref_header = self.sci_header.copy()
-                            self.ref_header['HISTORY'] = f'Reference image aligned using astroalign ({mode} mode, {flip_name} flip)'
-                            print(f"Astroalign alignment successful ({mode} mode,{flip_name} flip).")
+                            self.ref_header["HISTORY"] = (
+                                f"Reference image aligned using astroalign ({mode} mode, {flip_name} flip)"
+                            )
+                            print(
+                                f"Astroalign alignment successful ({mode} mode,{flip_name} flip)."
+                            )
                             break
                         except Exception as e2:
                             print(f"Astroalign {flip_name} flip failed: {e2}")
                     else:
                         raise RuntimeError("Astroalign failed for all flips.")
             except ImportError:
-                print("astroalign not installed, falling back to cross-correlation alignment.")
+                print(
+                    "astroalign not installed, falling back to cross-correlation alignment."
+                )
                 raise
             except Exception as e:
                 print(f"astroalign alignment failed: {e}")
                 raise
 
             # Save aligned reference image
-            aligned_ref_path = os.path.join(self.output_dir,
-                                            "aligned_reference.fits")
-            fits.writeto(aligned_ref_path, self.ref_data, self.ref_header, overwrite=True)
+            aligned_ref_path = os.path.join(self.output_dir, "aligned_reference.fits")
+            fits.writeto(
+                aligned_ref_path, self.ref_data, self.ref_header, overwrite=True
+            )
             print(f"Aligned reference image saved to: {aligned_ref_path}")
             print(f"Aligned reference shape: {self.ref_data.shape}")
 
@@ -563,28 +605,26 @@ class TransientFinder:
 
     def _perform_proper_subtraction(self):
         """Perform ProperImage subtraction using the subtract function with automatic flux scaling and masking."""
-        print("Performing ProperImage subtraction using subtract() with beta=True (auto flux scaling)...")
+        print(
+            "Performing ProperImage subtraction using subtract() with beta=True (auto flux scaling)..."
+        )
 
         try:
             from properimage.operations import subtract
             from astropy.stats import sigma_clip
 
             # Mask science image
-            sci_mask = sigma_clip(self.sci_data, sigma=3, maxiters=2,
-                                  masked=True).mask
+            sci_mask = sigma_clip(self.sci_data, sigma=3, maxiters=2, masked=True).mask
             # Mask reference image
-            ref_mask = sigma_clip(self.ref_data, sigma=3, maxiters=2,
-                                  masked=True).mask
+            ref_mask = sigma_clip(self.ref_data, sigma=3, maxiters=2, masked=True).mask
             # Union of both masks
             union_mask = np.logical_or(sci_mask, ref_mask)
 
             # Ensure arrays are float32 and NaNs replaced with median
             sci_data = np.array(self.sci_data, dtype=np.float32)
             ref_data = np.array(self.ref_data, dtype=np.float32)
-            sci_data = np.where(np.isnan(sci_data), np.nanmedian(sci_data),
-                                sci_data)
-            ref_data = np.where(np.isnan(ref_data), np.nanmedian(ref_data),
-                                ref_data)
+            sci_data = np.where(np.isnan(sci_data), np.nanmedian(sci_data), sci_data)
+            ref_data = np.where(np.isnan(ref_data), np.nanmedian(ref_data), ref_data)
 
             # Workaround for header bug: pass arrays, not SingleImage objects
             result = subtract(
@@ -595,19 +635,19 @@ class TransientFinder:
                 align=True,
                 beta=True,
                 iterative=False,  # <-- disable slow iterative optimization
-                shift=False,      # <-- disable shift optimization
+                shift=False,  # <-- disable shift optimization
             )
             D = result[0]
             mask = result[3] if len(result) > 3 else None
             # Combine with union_mask
             if mask is not None:
                 final_mask = np.logical_or(mask, union_mask)
-                self.diff_data = np.ma.MaskedArray(D.real,
-                                                   mask=final_mask).filled(0)
+                self.diff_data = np.ma.MaskedArray(D.real, mask=final_mask).filled(0)
             else:
-                self.diff_data = np.ma.MaskedArray(D.real,
-                                                   mask=union_mask).filled(0)
-            print(f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}")
+                self.diff_data = np.ma.MaskedArray(D.real, mask=union_mask).filled(0)
+            print(
+                f"ProperImage subtraction successful. Difference image shape: {self.diff_data.shape}"
+            )
             return self._save_difference_image()
         except Exception as proper_error:
             print(f"ProperImage subtract() failed: {proper_error}")
@@ -619,9 +659,8 @@ class TransientFinder:
         """Save difference image to file."""
         diff_fits_path = os.path.join(self.output_dir, "difference_image.fits")
         diff_header = self.sci_header.copy()
-        diff_header['HISTORY'] = 'Image differencing performed with TransientFinder'
-        fits.writeto(diff_fits_path, self.diff_data, diff_header,
-                     overwrite=True)
+        diff_header["HISTORY"] = "Image differencing performed with TransientFinder"
+        fits.writeto(diff_fits_path, self.diff_data, diff_header, overwrite=True)
         print(f"Difference image saved to: {diff_fits_path}")
         return True
 
@@ -642,14 +681,17 @@ class TransientFinder:
             Table of detected transient sources (both positive and negative).
         """
         if self.diff_data is None:
-            print("Difference image not created. Please run perform_subtraction() first.")
+            print(
+                "Difference image not created. Please run perform_subtraction() first."
+            )
             return None
 
         try:
             print(f"Detecting transients with threshold=±{threshold}σ...")
             # Calculate background statistics with sigma clipping
-            _, median, std = sigma_clipped_stats(self.diff_data,
-                                                 sigma=self.config.SIGMA_CLIP)
+            _, median, std = sigma_clipped_stats(
+                self.diff_data, sigma=self.config.SIGMA_CLIP
+            )
 
             print(f"Background statistics: median={median:.3f}, std={std:.3f}")
 
@@ -660,19 +702,21 @@ class TransientFinder:
                 threshold_positive,
                 box_size=self.config.BOX_SIZE,
                 npeaks=self.config.MAX_PEAKS,
-                centroid_func=None
+                centroid_func=None,
             )
 
             # Find negative peaks (disappearing/dimming sources)
             # Invert the image to find negative peaks as positive peaks
             inverted_diff = -self.diff_data
-            threshold_negative = -median + (threshold * std)  # This becomes positive after inversion
+            threshold_negative = -median + (
+                threshold * std
+            )  # This becomes positive after inversion
             negative_peaks = find_peaks(
                 inverted_diff,
                 threshold_negative,
                 box_size=self.config.BOX_SIZE,
                 npeaks=self.config.MAX_PEAKS,
-                centroid_func=None
+                centroid_func=None,
             )
 
             # Combine results
@@ -684,12 +728,12 @@ class TransientFinder:
                 for peak in positive_peaks:
                     # Create new row with all required columns
                     row = {
-                        'x_peak': peak['x_peak'],
-                        'y_peak': peak['y_peak'], 
-                        'peak_value': peak['peak_value'],
-                        'peak_type': 'positive',
-                        'significance': (peak['peak_value'] - median) / std,
-                        'original_value': peak['peak_value']
+                        "x_peak": peak["x_peak"],
+                        "y_peak": peak["y_peak"],
+                        "peak_value": peak["peak_value"],
+                        "peak_type": "positive",
+                        "significance": (peak["peak_value"] - median) / std,
+                        "original_value": peak["peak_value"],
                     }
                     all_rows.append(row)
 
@@ -698,29 +742,33 @@ class TransientFinder:
                 print(f"Found {len(negative_peaks)} negative peaks")
                 for peak in negative_peaks:
                     # Convert back to original coordinates and values
-                    original_value = -peak['peak_value']  # Convert back from inverted
-                    significance = -(original_value - median) / std  # Negative significance
-                    
+                    original_value = -peak["peak_value"]  # Convert back from inverted
+                    significance = (
+                        -(original_value - median) / std
+                    )  # Negative significance
+
                     # Only include negative transients with significance > 100σ (in absolute value)
                     if abs(significance) > 100:
                         row = {
-                            'x_peak': peak['x_peak'],
-                            'y_peak': peak['y_peak'],
-                            'peak_value': original_value,  # Use corrected value
-                            'peak_type': 'negative',
-                            'significance': significance,
-                            'original_value': original_value
+                            "x_peak": peak["x_peak"],
+                            "y_peak": peak["y_peak"],
+                            "peak_value": original_value,  # Use corrected value
+                            "peak_type": "negative",
+                            "significance": significance,
+                            "original_value": original_value,
                         }
                         all_rows.append(row)
 
             if all_rows:
                 # Create table from rows
                 self.transient_table = Table(all_rows)
-                
+
                 # Sort by absolute significance (strongest detections first)
-                self.transient_table['abs_significance'] = np.abs(self.transient_table['significance'])
-                self.transient_table.sort('abs_significance', reverse=True)
-                
+                self.transient_table["abs_significance"] = np.abs(
+                    self.transient_table["significance"]
+                )
+                self.transient_table.sort("abs_significance", reverse=True)
+
             else:
                 self.transient_table = Table()
                 print("No transient sources detected.")
@@ -730,22 +778,28 @@ class TransientFinder:
             ra_list = []
             dec_list = []
 
-            for x, y in zip(self.transient_table['x_peak'], self.transient_table['y_peak']):
+            for x, y in zip(
+                self.transient_table["x_peak"], self.transient_table["y_peak"]
+            ):
                 ra, dec = self.sci_wcs.all_pix2world(x, y, 0)
                 ra_list.append(ra)
                 dec_list.append(dec)
 
-            self.transient_table['ra'] = ra_list
-            self.transient_table['dec'] = dec_list
+            self.transient_table["ra"] = ra_list
+            self.transient_table["dec"] = dec_list
 
             # Count positive and negative detections
-            n_positive = len([t for t in self.transient_table if t['peak_type'] == 'positive'])
-            n_negative = len([t for t in self.transient_table if t['peak_type'] == 'negative'])
+            n_positive = len(
+                [t for t in self.transient_table if t["peak_type"] == "positive"]
+            )
+            n_negative = len(
+                [t for t in self.transient_table if t["peak_type"] == "negative"]
+            )
 
             # Save transient catalog
             catalog_path = os.path.join(self.output_dir, "transients.csv")
-            self.transient_table.write(catalog_path, format='csv', overwrite=True)
-            
+            self.transient_table.write(catalog_path, format="csv", overwrite=True)
+
             print(f"Found {len(self.transient_table)} transient candidates:")
             print(f"  - {n_positive} positive (new/brightening sources)")
             print(f"  - {n_negative} negative (disappearing/dimming sources)")
@@ -754,17 +808,20 @@ class TransientFinder:
             # Print summary of strongest detections
             print("\nStrongest detections:")
             for i, transient in enumerate(self.transient_table[:5]):  # Top 5
-                peak_type = transient['peak_type']
-                significance = transient['significance']
-                ra = transient['ra']
-                dec = transient['dec']
-                print(f"  {i+1}. {peak_type.upper()} at RA={ra:.6f}°, Dec={dec:.6f}° (σ={significance:.1f})")
+                peak_type = transient["peak_type"]
+                significance = transient["significance"]
+                ra = transient["ra"]
+                dec = transient["dec"]
+                print(
+                    f"  {i + 1}. {peak_type.upper()} at RA={ra:.6f}°, Dec={dec:.6f}° (σ={significance:.1f})"
+                )
 
             return self.transient_table
 
         except Exception as e:
             print(f"Error detecting transients: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
@@ -797,88 +854,117 @@ class TransientFinder:
             # Plot science image
             vmin, vmax = zscale.get_limits(self.sci_data)
             norm_sci = ImageNormalize(vmin=vmin, vmax=vmax)
-            axes[0].imshow(self.sci_data, origin='lower', cmap='gray', norm=norm_sci)
-            axes[0].set_title('Science Image')
-            axes[0].set_xlabel('X (pixels)')
-            axes[0].set_ylabel('Y (pixels)')
+            axes[0].imshow(self.sci_data, origin="lower", cmap="gray", norm=norm_sci)
+            axes[0].set_title("Science Image")
+            axes[0].set_xlabel("X (pixels)")
+            axes[0].set_ylabel("Y (pixels)")
 
             # Plot reference image
             vmin, vmax = zscale.get_limits(self.ref_data)
             norm_ref = ImageNormalize(vmin=vmin, vmax=vmax)
-            axes[1].imshow(self.ref_data, origin='lower', cmap='gray', norm=norm_ref)
-            axes[1].set_title('Reference Image')
-            axes[1].set_xlabel('X (pixels)')
-            axes[1].set_ylabel('Y (pixels)')
+            axes[1].imshow(self.ref_data, origin="lower", cmap="gray", norm=norm_ref)
+            axes[1].set_title("Reference Image")
+            axes[1].set_xlabel("X (pixels)")
+            axes[1].set_ylabel("Y (pixels)")
 
             # Plot difference image
             vmin, vmax = zscale.get_limits(self.diff_data)
             limit = max(abs(vmin), abs(vmax))
             norm_diff = ImageNormalize(vmin=-limit, vmax=limit)
-            diff_im = axes[2].imshow(self.diff_data, origin='lower', cmap='coolwarm', norm=norm_diff)
-            axes[2].set_title('Difference Image')
-            axes[2].set_xlabel('X (pixels)')
-            axes[2].set_ylabel('Y (pixels)')
+            diff_im = axes[2].imshow(
+                self.diff_data, origin="lower", cmap="coolwarm", norm=norm_diff
+            )
+            axes[2].set_title("Difference Image")
+            axes[2].set_xlabel("X (pixels)")
+            axes[2].set_ylabel("Y (pixels)")
 
             # Add colorbar for difference image
-            plt.colorbar(diff_im, ax=axes[2], label='Flux Difference')
+            plt.colorbar(diff_im, ax=axes[2], label="Flux Difference")
 
             # Mark detected transients if available
             if self.transient_table is not None and len(self.transient_table) > 0:
                 print(f"Plotting {len(self.transient_table)} detected transients...")
-                
+
                 # Separate positive and negative for legend
                 positive_plotted = False
                 negative_plotted = False
-                
+
                 for idx, transient in enumerate(self.transient_table):
-                    x, y = transient['x_peak'], transient['y_peak']
-                    peak_type = transient['peak_type']
-                    significance = transient['significance']
-                    
-                    print(f"Plotting transient {idx+1}: {peak_type} at ({x:.1f}, {y:.1f}), σ={significance:.1f}")
-                    
+                    x, y = transient["x_peak"], transient["y_peak"]
+                    peak_type = transient["peak_type"]
+                    significance = transient["significance"]
+
+                    print(
+                        f"Plotting transient {idx + 1}: {peak_type} at ({x:.1f}, {y:.1f}), σ={significance:.1f}"
+                    )
+
                     # Use different colors and markers for positive vs negative
-                    if peak_type == 'positive':
-                        color = 'lime'
-                        edge_color = 'darkgreen'
+                    if peak_type == "positive":
+                        color = "lime"
+                        edge_color = "darkgreen"
                         positive_plotted = True
                     else:
-                        color = 'red'
-                        edge_color = 'darkred'
+                        color = "red"
+                        edge_color = "darkred"
                         negative_plotted = True
 
                     # Draw circle marker only (no text labels)
-                    circle = plt.Circle((x, y), radius=self.config.APERTURE_RADIUS,
-                                        fill=False, color=color, linewidth=2,
-                                        edgecolor=edge_color)
+                    circle = plt.Circle(
+                        (x, y),
+                        radius=self.config.APERTURE_RADIUS,
+                        fill=False,
+                        color=color,
+                        linewidth=2,
+                        edgecolor=edge_color,
+                    )
                     axes[2].add_patch(circle)
 
                 # Create custom legend
                 legend_elements = []
                 if positive_plotted:
                     legend_elements.append(
-                        plt.Line2D([0], [0], marker='o', color='w',
-                                   markerfacecolor='lime', markeredgecolor='darkgreen',
-                                   markersize=10, linewidth=0, label='Positive (new/bright)')
+                        plt.Line2D(
+                            [0],
+                            [0],
+                            marker="o",
+                            color="w",
+                            markerfacecolor="lime",
+                            markeredgecolor="darkgreen",
+                            markersize=10,
+                            linewidth=0,
+                            label="Positive (new/bright)",
+                        )
                     )
                 if negative_plotted:
                     legend_elements.append(
-                        plt.Line2D([0], [0], marker='o', color='w',
-                                   markerfacecolor='red', markeredgecolor='darkred',
-                                   markersize=10, linewidth=0, label='Negative (dim/gone)')
+                        plt.Line2D(
+                            [0],
+                            [0],
+                            marker="o",
+                            color="w",
+                            markerfacecolor="red",
+                            markeredgecolor="darkred",
+                            markersize=10,
+                            linewidth=0,
+                            label="Negative (dim/gone)",
+                        )
                     )
 
                 if legend_elements:
-                    axes[2].legend(handles=legend_elements, loc='upper right',
-                                   fontsize=10, framealpha=0.9, fancybox=True, shadow=True)
+                    axes[2].legend(
+                        handles=legend_elements,
+                        loc="upper right",
+                        fontsize=10,
+                        framealpha=0.9,
+                        fancybox=True,
+                        shadow=True,
+                    )
             else:
                 print("No transients to plot.")
 
             plt.tight_layout()
-            plot_path = os.path.join(self.output_dir,
-                                     "transient_detection_plot.png")
-            plt.savefig(plot_path, dpi=self.config.PLOT_DPI,
-                        bbox_inches='tight')
+            plot_path = os.path.join(self.output_dir, "transient_detection_plot.png")
+            plt.savefig(plot_path, dpi=self.config.PLOT_DPI, bbox_inches="tight")
 
             if show:
                 plt.show()
@@ -891,6 +977,7 @@ class TransientFinder:
         except Exception as e:
             print(f"Error plotting results: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
@@ -929,7 +1016,11 @@ class TransientFinder:
         # If not already aligned, align now (should be after align_images, but double-check)
         if not np.allclose(self.ref_wcs.wcs.cd, self.sci_wcs.wcs.cd, atol=1e-8):
             try:
-                aligned_ref, _ = reproject_interp((self.ref_data, self.ref_wcs), self.sci_wcs, shape_out=self.sci_data.shape)
+                aligned_ref, _ = reproject_interp(
+                    (self.ref_data, self.ref_wcs),
+                    self.sci_wcs,
+                    shape_out=self.sci_data.shape,
+                )
                 aligned_ref_wcs = self.sci_wcs
             except Exception as e:
                 print(f"Warning: Could not align reference image for cutouts: {e}")
@@ -938,18 +1029,24 @@ class TransientFinder:
 
         saved_paths = []
         for idx, transient in enumerate(self.transient_table[:n_sources]):
-            x, y = transient['x_peak'], transient['y_peak']
-            peak_type = transient['peak_type']
-            significance = transient['significance']
+            x, y = transient["x_peak"], transient["y_peak"]
+            peak_type = transient["peak_type"]
+            significance = transient["significance"]
 
             # Prepare cutouts using the aligned reference image as the orientation reference
             try:
                 cutout_center = (x, y)
-                cutout_ref = Cutout2D(aligned_ref, cutout_center, cutout_size, wcs=aligned_ref_wcs)
-                cutout_sci = Cutout2D(self.sci_data, cutout_center, cutout_size, wcs=self.sci_wcs)
-                cutout_diff = Cutout2D(self.diff_data, cutout_center, cutout_size, wcs=self.sci_wcs)
+                cutout_ref = Cutout2D(
+                    aligned_ref, cutout_center, cutout_size, wcs=aligned_ref_wcs
+                )
+                cutout_sci = Cutout2D(
+                    self.sci_data, cutout_center, cutout_size, wcs=self.sci_wcs
+                )
+                cutout_diff = Cutout2D(
+                    self.diff_data, cutout_center, cutout_size, wcs=self.sci_wcs
+                )
             except Exception as e:
-                print(f"Could not create cutout for transient {idx+1}: {e}")
+                print(f"Could not create cutout for transient {idx + 1}: {e}")
                 continue
 
             # Rotate science and difference cutouts to match the orientation of the aligned reference
@@ -971,34 +1068,40 @@ class TransientFinder:
             rot_angle_sci = get_rotation_angle(self.sci_wcs, aligned_ref_wcs)
             rot_angle_diff = get_rotation_angle(self.sci_wcs, aligned_ref_wcs)
 
-            sci_rot = rotate(cutout_sci.data, rot_angle_sci, reshape=False, order=1, mode='nearest')
-            diff_rot = rotate(cutout_diff.data, rot_angle_diff, reshape=False, order=1, mode='nearest')
+            sci_rot = rotate(
+                cutout_sci.data, rot_angle_sci, reshape=False, order=1, mode="nearest"
+            )
+            diff_rot = rotate(
+                cutout_diff.data, rot_angle_diff, reshape=False, order=1, mode="nearest"
+            )
             ref_rot = cutout_ref.data  # already in aligned orientation
 
             # Plot and save each cutout as a separate file
             fig, axes = plt.subplots(1, 3, figsize=(10, 3))
             # Science image
             vmin, vmax = np.nanpercentile(sci_rot, [5, 99])
-            axes[0].imshow(sci_rot, origin='lower', cmap='gray', vmin=vmin, vmax=vmax)
+            axes[0].imshow(sci_rot, origin="lower", cmap="gray", vmin=vmin, vmax=vmax)
             axes[0].set_title(f"Science\n({peak_type}, σ={significance:.1f})")
-            axes[0].axis('off')
+            axes[0].axis("off")
             # Reference image
             vmin, vmax = np.nanpercentile(ref_rot, [5, 99])
-            axes[1].imshow(ref_rot, origin='lower', cmap='gray', vmin=vmin, vmax=vmax)
+            axes[1].imshow(ref_rot, origin="lower", cmap="gray", vmin=vmin, vmax=vmax)
             axes[1].set_title("Reference (aligned)")
-            axes[1].axis('off')
+            axes[1].axis("off")
             # Difference image
             vlim = np.nanmax(np.abs(np.nanpercentile(diff_rot, [1, 99])))
-            axes[2].imshow(diff_rot, origin='lower', cmap='coolwarm', vmin=-vlim, vmax=+vlim)
+            axes[2].imshow(
+                diff_rot, origin="lower", cmap="coolwarm", vmin=-vlim, vmax=+vlim
+            )
             axes[2].set_title("Difference")
-            axes[2].axis('off')
+            axes[2].axis("off")
 
             plt.tight_layout()
             cutout_plot_path = os.path.join(
                 self.output_dir,
-                f"transient_cutout_{idx+1}_{peak_type}_sig{significance:.1f}.png"
+                f"transient_cutout_{idx + 1}_{peak_type}_sig{significance:.1f}.png",
             )
-            plt.savefig(cutout_plot_path, dpi=200, bbox_inches='tight')
+            plt.savefig(cutout_plot_path, dpi=200, bbox_inches="tight")
             if show:
                 plt.show()
             else:
@@ -1013,9 +1116,9 @@ class TransientFinder:
         files_to_remove = [
             "reference_image.fits",
             "aligned_reference.fits",
-            "difference_image.fits"
+            "difference_image.fits",
         ]
-        
+
         print("Cleaning up temporary files...")
         for filename in files_to_remove:
             filepath = os.path.join(self.output_dir, filename)
@@ -1038,29 +1141,43 @@ def main():
     """
     import argparse
 
-    parser = argparse.ArgumentParser(description='Find transient sources in astronomical images.')
-    parser.add_argument('science_image',
-                        help='Path to the science FITS image')
-    parser.add_argument('--survey', choices=['PanSTARRS', 'DSS2'],
-                        default='DSS2',
-                        help='Survey to use for reference image')
-    parser.add_argument('--filter', dest='filter_band',
-                        choices=['g', 'r', 'i', 'blue', 'red', 'Blue', 'Red'],
-                        default='r',
-                        help='Filter/band: g,r,i for PanSTARRS; blue,red for DSS2')
-    parser.add_argument('--output',
-                        help='Output directory for results')
-    parser.add_argument('--threshold', type=float, default=5.0,
-                        help='Detection threshold in sigma units')
-    parser.add_argument('--method', choices=['proper'],
-                        default='proper',
-                        help='Image subtraction method')
-    parser.add_argument('--no-plot',
-                        action='store_true', help='Skip plotting')
-    parser.add_argument('--config',
-                        help='Path to JSON configuration file')
-    parser.add_argument('--keep-temp', action='store_true',
-                        help='Keep temporary files (reference, difference images)')
+    parser = argparse.ArgumentParser(
+        description="Find transient sources in astronomical images."
+    )
+    parser.add_argument("science_image", help="Path to the science FITS image")
+    parser.add_argument(
+        "--survey",
+        choices=["PanSTARRS", "DSS2"],
+        default="DSS2",
+        help="Survey to use for reference image",
+    )
+    parser.add_argument(
+        "--filter",
+        dest="filter_band",
+        choices=["g", "r", "i", "blue", "red", "Blue", "Red"],
+        default="r",
+        help="Filter/band: g,r,i for PanSTARRS; blue,red for DSS2",
+    )
+    parser.add_argument("--output", help="Output directory for results")
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=5.0,
+        help="Detection threshold in sigma units",
+    )
+    parser.add_argument(
+        "--method",
+        choices=["proper"],
+        default="proper",
+        help="Image subtraction method",
+    )
+    parser.add_argument("--no-plot", action="store_true", help="Skip plotting")
+    parser.add_argument("--config", help="Path to JSON configuration file")
+    parser.add_argument(
+        "--keep-temp",
+        action="store_true",
+        help="Keep temporary files (reference, difference images)",
+    )
 
     args = parser.parse_args()
 
@@ -1068,12 +1185,10 @@ def main():
     config = Config.from_file(args.config) if args.config else Config()
 
     # Create TransientFinder with science image
-    finder = TransientFinder(args.science_image, output_dir=args.output,
-                             config=config)
+    finder = TransientFinder(args.science_image, output_dir=args.output, config=config)
 
     # Get reference image from specified survey
-    if not finder.get_reference_image(survey=args.survey,
-                                      filter_band=args.filter_band):
+    if not finder.get_reference_image(survey=args.survey, filter_band=args.filter_band):
         print("Failed to get reference image. Exiting.")
         return 1
 

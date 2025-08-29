@@ -21,7 +21,7 @@ from astropy.time import Time
 from photutils.background import LocalBackground, MMMBackground
 from photutils.psf import fit_fwhm
 from astropy.nddata import NDData
-from astropy.visualization import (ZScaleInterval, simple_norm)
+from astropy.visualization import ZScaleInterval, simple_norm
 
 
 import astropy.units as u
@@ -31,16 +31,20 @@ from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
-from photutils.aperture import (CircularAperture, CircularAnnulus,
-                                aperture_photometry)
+from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from photutils.psf import SourceGrouper
 from stdpipe import photometry, astrometry, catalogs
 
-from src.tools import (FIGURE_SIZES, URL, safe_catalog_query,
-                       safe_wcs_create, ensure_output_directory,
-                       write_to_log)
+from src.tools import (
+    FIGURE_SIZES,
+    URL,
+    safe_catalog_query,
+    safe_wcs_create,
+    ensure_output_directory,
+    write_to_log,
+)
 
 from typing import Union, Any, Optional, Dict, Tuple
 
@@ -69,67 +73,81 @@ def solve_with_astrometrynet(file_path):
     - Local Astrometry.Net installation with solve-field binary
     - Appropriate index files for the field scale
     - The image should contain enough stars for plate solving (typically >10)
-    
+
     Uses stdpipe.astrometry.blind_match_objects for cleaner interface.
     """
     try:
         if not os.path.exists(file_path):
             st.error(f"File {file_path} does not exist.")
             return None, None
-            
+
         # Load the FITS file
         st.write("Loading FITS file for local plate solving...")
         with fits.open(file_path) as hdul:
             image_data = hdul[0].data
             header = hdul[0].header.copy()
-            
+
         if image_data is None:
             st.error("No image data found in FITS file")
             return None, None
-            
+
         # Ensure data is float32 for better compatibility
         if image_data.dtype != np.float32:
             image_data = image_data.astype(np.float32)
-            
+
         # Check if WCS already exists
         try:
             existing_wcs = WCS(header)
             if existing_wcs.is_celestial:
-                st.info("Valid WCS already exists in header. Proceeding with blind solve anyway...")
+                st.info(
+                    "Valid WCS already exists in header. Proceeding with blind solve anyway..."
+                )
         except Exception:
             st.info("No valid WCS found in header. Proceeding with blind solve...")
-            
+
         # Estimate background
         st.write("Detecting objects for plate solving using photutils...")
         bkg, bkg_error = estimate_background(image_data, figure=False)
         if bkg is None:
             st.error(f"Failed to estimate background: {bkg_error}")
             return None, None
-            
+
         image_sub = image_data - bkg.background
-        
+
         # Helper function to try different detection parameters
-        def _try_source_detection(image_sub, fwhm_estimates,
-                                  threshold_multipliers, min_sources=10):
+        def _try_source_detection(
+            image_sub, fwhm_estimates, threshold_multipliers, min_sources=10
+        ):
             """Helper function to try different detection parameters."""
             for fwhm_est in fwhm_estimates:
                 for thresh_mult in threshold_multipliers:
                     threshold = thresh_mult * np.std(image_sub)
-                    
+
                     try:
-                        st.write(f"Trying FWHM={fwhm_est}, threshold={threshold:.1f}...")
+                        st.write(
+                            f"Trying FWHM={fwhm_est}, threshold={threshold:.1f}..."
+                        )
                         daofind = DAOStarFinder(fwhm=fwhm_est, threshold=threshold)
                         temp_sources = daofind(image_sub)
-                        
-                        if temp_sources is not None and len(temp_sources) >= min_sources:
-                            st.success(f"Photutils found {len(temp_sources)} sources with "
-                                     f"FWHM={fwhm_est}, threshold={threshold:.1f}")
+
+                        if (
+                            temp_sources is not None
+                            and len(temp_sources) >= min_sources
+                        ):
+                            st.success(
+                                f"Photutils found {len(temp_sources)} sources with "
+                                f"FWHM={fwhm_est}, threshold={threshold:.1f}"
+                            )
                             return temp_sources
                         elif temp_sources is not None:
-                            st.write(f"Found {len(temp_sources)} sources (need at least {min_sources})")
-                            
+                            st.write(
+                                f"Found {len(temp_sources)} sources (need at least {min_sources})"
+                            )
+
                     except Exception as e:
-                        st.write(f"Detection failed with FWHM={fwhm_est}, threshold={threshold:.1f}: {e}")
+                        st.write(
+                            f"Detection failed with FWHM={fwhm_est}, threshold={threshold:.1f}: {e}"
+                        )
                         continue
             return None
 
@@ -138,19 +156,21 @@ def solve_with_astrometrynet(file_path):
             image_sub,
             fwhm_estimates=[3.0, 4.0, 5.0],
             threshold_multipliers=[3.0, 4.0, 5.0],
-            min_sources=10
+            min_sources=10,
         )
-        
+
         # If that fails, try more aggressive parameters
         if sources is None:
-            st.warning("Standard detection failed. Trying more aggressive parameters...")
+            st.warning(
+                "Standard detection failed. Trying more aggressive parameters..."
+            )
             sources = _try_source_detection(
                 image_sub,
                 fwhm_estimates=[1.5, 2.0, 2.5],
                 threshold_multipliers=[2.0, 2.5],
-                min_sources=5
+                min_sources=5,
             )
-        
+
         if sources is None or len(sources) < 5:
             st.error("Failed to detect sufficient sources for plate solving.")
             st.error("Possible solutions:")
@@ -158,115 +178,138 @@ def solve_with_astrometrynet(file_path):
             st.error("2. Verify image is not severely over/under-exposed")
             st.error("3. Try adjusting the detection threshold manually")
             st.error("4. Consider pre-processing the image (cosmic ray removal, etc.)")
-            
+
             # Show a small region of the image for inspection
             try:
                 center_y, center_x = image_data.shape[0] // 2, image_data.shape[1] // 2
-                sample_region = image_data[center_y-50:center_y+50,
-                                           center_x-50:center_x+50]
-                
+                sample_region = image_data[
+                    center_y - 50 : center_y + 50, center_x - 50 : center_x + 50
+                ]
+
                 fig_sample, ax_sample = plt.subplots(figsize=(6, 6))
-                im = ax_sample.imshow(sample_region, origin='lower',
-                                      cmap='gray')
-                ax_sample.set_title('Central 100x100 pixel region')
+                im = ax_sample.imshow(sample_region, origin="lower", cmap="gray")
+                ax_sample.set_title("Central 100x100 pixel region")
                 plt.colorbar(im, ax=ax_sample)
                 st.pyplot(fig_sample)
-                
+
             except Exception as plot_error:
                 st.warning(f"Could not display sample region: {plot_error}")
-            
+
             return None, None
-        
+
         # Prepare sources for astrometry solving
         st.write(f"Successfully detected {len(sources)} sources")
-        
+
         # Filter for best sources if too many
         if len(sources) > 500:
-            sources.sort('flux')
+            sources.sort("flux")
             sources.reverse()
             sources = sources[:500]
             st.write(f"Using brightest {len(sources)} sources for plate solving")
-        
+
         st.success(f"Ready for plate solving with {len(sources)} sources")
-        
+
         # Convert sources to the format expected by stdpipe
         obj_table = Table()
-        obj_table['x'] = sources['xcentroid']
-        obj_table['y'] = sources['ycentroid'] 
-        obj_table['flux'] = sources['flux']
-        
+        obj_table["x"] = sources["xcentroid"]
+        obj_table["y"] = sources["ycentroid"]
+        obj_table["flux"] = sources["flux"]
+
         # Add signal-to-noise ratio if available
-        if 'peak' in sources.colnames:
+        if "peak" in sources.colnames:
             # Estimate SNR from peak/background ratio
             background_std = np.std(image_sub)
-            obj_table['sn'] = sources['peak'] / background_std
-            obj_table['fluxerr'] = sources['flux'] / obj_table['sn']
+            obj_table["sn"] = sources["peak"] / background_std
+            obj_table["fluxerr"] = sources["flux"] / obj_table["sn"]
         else:
             # Use flux as proxy for SNR
-            obj_table['sn'] = sources['flux'] / np.median(sources['flux'])
-            obj_table['fluxerr'] = np.sqrt(np.abs(sources['flux']))
-        
+            obj_table["sn"] = sources["flux"] / np.median(sources["flux"])
+            obj_table["fluxerr"] = np.sqrt(np.abs(sources["flux"]))
+
         # Ensure fluxerr is positive and finite
-        obj_table['fluxerr'] = np.where(
-            (obj_table['fluxerr'] <= 0) | ~np.isfinite(obj_table['fluxerr']),
-            sources['flux'] * 0.1,
-            obj_table['fluxerr']
+        obj_table["fluxerr"] = np.where(
+            (obj_table["fluxerr"] <= 0) | ~np.isfinite(obj_table["fluxerr"]),
+            sources["flux"] * 0.1,
+            obj_table["fluxerr"],
         )
 
         # Get pixel scale estimate
         pixel_scale_estimate = None
         if header:
             # Try to get pixel scale from various header keywords
-            for key in ['PIXSCALE', 'PIXSIZE', 'SECPIX']:
+            for key in ["PIXSCALE", "PIXSIZE", "SECPIX"]:
                 if key in header:
                     st.write(f"Found pixel scale in header: {key}")
                     pixel_scale_estimate = float(header[key])
                     break
-            
+
             # If still not found, try FOCALLEN + pixel size calculation
             if pixel_scale_estimate is None:
                 try:
                     focal_length = None
                     pixel_size = None
-                    
+
                     # Check for focal length keywords
-                    for focal_key in ['FOCALLEN', 'FOCAL', 'FOCLEN', 'FL']:
+                    for focal_key in ["FOCALLEN", "FOCAL", "FOCLEN", "FL"]:
                         if focal_key in header:
                             focal_length = float(header[focal_key])
-                            st.write(f"Found focal length: {focal_length} mm from {focal_key}")
+                            st.write(
+                                f"Found focal length: {focal_length} mm from {focal_key}"
+                            )
                             break
-                    
+
                     # Check for pixel size keywords (in microns)
-                    for pixel_key in ['PIXELSIZE', 'PIXSIZE', 'XPIXSZ', 'YPIXSZ', 'PIXELMICRONS']:
+                    for pixel_key in [
+                        "PIXELSIZE",
+                        "PIXSIZE",
+                        "XPIXSZ",
+                        "YPIXSZ",
+                        "PIXELMICRONS",
+                    ]:
                         if pixel_key in header:
                             pixel_size = float(header[pixel_key])
-                            st.write(f"Found pixel size: {pixel_size} microns from {pixel_key}")
+                            st.write(
+                                f"Found pixel size: {pixel_size} microns from {pixel_key}"
+                            )
                             break
-                    
+
                     # Calculate pixel scale using the formula from the guide scope reference
                     if focal_length is not None and pixel_size is not None:
                         pixel_scale_estimate = 206 * pixel_size / focal_length
-                        
+
                         # Sanity check - typical astronomical pixel scales
                         if not (0.1 <= pixel_scale_estimate <= 30.0):
-                            st.warning(f"Unusual pixel scale calculated: {pixel_scale_estimate:.2f} arcsec/pixel")
-                            st.warning("Please verify focal length and pixel size values in header")
+                            st.warning(
+                                f"Unusual pixel scale calculated: {pixel_scale_estimate:.2f} arcsec/pixel"
+                            )
+                            st.warning(
+                                "Please verify focal length and pixel size values in header"
+                            )
                         else:
-                            st.success(f"Pixel scale calculated from focal length and pixel size: {pixel_scale_estimate:.2f} arcsec/pixel")
+                            st.success(
+                                f"Pixel scale calculated from focal length and pixel size: {pixel_scale_estimate:.2f} arcsec/pixel"
+                            )
                     elif focal_length is not None:
-                        st.warning(f"Found focal length ({focal_length} mm) but no pixel size in header")
+                        st.warning(
+                            f"Found focal length ({focal_length} mm) but no pixel size in header"
+                        )
                     elif pixel_size is not None:
-                        st.warning(f"Found pixel size ({pixel_size} µm) but no focal length in header")
-                        
+                        st.warning(
+                            f"Found pixel size ({pixel_size} µm) but no focal length in header"
+                        )
+
                 except Exception as e:
-                    st.warning(f"Error calculating pixel scale from focal length/pixel size: {e}")
+                    st.warning(
+                        f"Error calculating pixel scale from focal length/pixel size: {e}"
+                    )
                     pass
-            
+
             # If not found, try to calculate from CD matrix
             if pixel_scale_estimate is None:
                 try:
-                    cd_values = [header.get(f'CD{i}_{j}', 0)
-                                 for i in [1, 2] for j in [1, 2]]
+                    cd_values = [
+                        header.get(f"CD{i}_{j}", 0) for i in [1, 2] for j in [1, 2]
+                    ]
                     if any(x != 0 for x in cd_values):
                         cd11, cd12, cd21, cd22 = cd_values
                         det = abs(cd11 * cd22 - cd12 * cd21)
@@ -274,99 +317,111 @@ def solve_with_astrometrynet(file_path):
                         st.write("Calculated pixel scale from CD matrix")
                 except Exception:
                     pass
- 
+
         # Prepare parameters for stdpipe blind_match_objects
         kwargs = {
-            'order': 2,  # SIP distortion order
-            'update': False,  # Don't update object list in place
-            'sn': 5,
-            'get_header': False,  # Return WCS object, not header
-            'width': image_data.shape[1],
-            'height': image_data.shape[0],
-            'verbose': True
+            "order": 2,  # SIP distortion order
+            "update": False,  # Don't update object list in place
+            "sn": 5,
+            "get_header": False,  # Return WCS object, not header
+            "width": image_data.shape[1],
+            "height": image_data.shape[0],
+            "verbose": True,
         }
-        
+
         # Add pixel scale constraints if available
         if pixel_scale_estimate and pixel_scale_estimate > 0:
             scale_low = pixel_scale_estimate * 0.8
             scale_high = pixel_scale_estimate * 1.2
-            kwargs.update({
-                'scale_lower': scale_low,
-                'scale_upper': scale_high,
-                'scale_units': 'arcsecperpix'
-            })
-            st.write(f"Using pixel scale estimate: {pixel_scale_estimate:.2f} arcsec/pixel")
+            kwargs.update(
+                {
+                    "scale_lower": scale_low,
+                    "scale_upper": scale_high,
+                    "scale_units": "arcsecperpix",
+                }
+            )
+            st.write(
+                f"Using pixel scale estimate: {pixel_scale_estimate:.2f} arcsec/pixel"
+            )
         else:
             # Use broad scale range if no estimate available
-            kwargs.update({
-                'scale_lower': 0.1,
-                'scale_upper': 10.0,
-                'scale_units': 'arcsecperpix'
-            })
+            kwargs.update(
+                {"scale_lower": 0.1, "scale_upper": 10.0, "scale_units": "arcsecperpix"}
+            )
             st.write("No pixel scale estimate available, using broad range")
-        
+
         # Add RA/DEC hint if available
-        if header and 'RA' in header and 'DEC' in header:
+        if header and "RA" in header and "DEC" in header:
             try:
-                ra_hint = float(header['RA'])
-                dec_hint = float(header['DEC'])
+                ra_hint = float(header["RA"])
+                dec_hint = float(header["DEC"])
                 if 0 <= ra_hint <= 360 and -90 <= dec_hint <= 90:
-                    kwargs.update({
-                        'center_ra': ra_hint,
-                        'center_dec': dec_hint,
-                        'radius': 0.95  # 5 degree search radius
-                    })
+                    kwargs.update(
+                        {
+                            "center_ra": ra_hint,
+                            "center_dec": dec_hint,
+                            "radius": 0.95,  # 5 degree search radius
+                        }
+                    )
                     st.write(f"Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}")
             except Exception:
                 st.write("Could not parse RA/DEC from header")
-        
+
         st.write("Running blind_match_objects...")
         st.write(f"Using {len(obj_table)} sources for plate solving")
 
         try:
             # Call stdpipe's blind_match_objects function
             solved_wcs = astrometry.blind_match_objects(obj_table, **kwargs)
-            
+
             if solved_wcs is not None:
                 st.success("Plate solving successful!")
-                
+
                 # Update original header with WCS solution
                 updated_header = header.copy()
-                
+
                 # Clear any existing WCS keywords to avoid conflicts
-                astrometry.clear_wcs(updated_header, remove_comments=True,
-                                     remove_underscored=True,
-                                     remove_history=True)
-                
+                astrometry.clear_wcs(
+                    updated_header,
+                    remove_comments=True,
+                    remove_underscored=True,
+                    remove_history=True,
+                )
+
                 # Add new WCS keywords from solution
                 wcs_header = solved_wcs.to_header(relax=True)
                 updated_header.update(wcs_header)
-                
+
                 # Add solution metadata
-                updated_header['COMMENT'] = 'WCS solution from stdpipe/astrometry.net'
-                updated_header['STDPIPE'] = (True, 'Solved with stdpipe.astrometry.blind_match_objects')
-                
+                updated_header["COMMENT"] = "WCS solution from stdpipe/astrometry.net"
+                updated_header["STDPIPE"] = (
+                    True,
+                    "Solved with stdpipe.astrometry.blind_match_objects",
+                )
+
                 # Display solution information
                 try:
                     center_ra, center_dec = solved_wcs.pixel_to_world_values(
-                        image_data.shape[1]/2, image_data.shape[0]/2
+                        image_data.shape[1] / 2, image_data.shape[0] / 2
                     )
                     pixel_scale = astrometry.get_pixscale(wcs=solved_wcs) * 3600
-                    
-                    st.write(f"Solution center: RA={center_ra:.6f}°, DEC={center_dec:.6f}°")
+
+                    st.write(
+                        f"Solution center: RA={center_ra:.6f}°, DEC={center_dec:.6f}°"
+                    )
                     st.write(f"Pixel scale: {pixel_scale:.3f} arcsec/pixel")
-                    
+
                     # Validate solution makes sense
                     if 0 <= center_ra <= 360 and -90 <= center_dec <= 90:
                         st.success("Solution coordinates are valid")
                     else:
                         st.warning("Solution coordinates seem invalid!")
-                        
+
                 except Exception as coord_error:
                     st.warning(f"Could not extract solution coordinates: {coord_error}")
-                
+
                 return solved_wcs, updated_header
-                
+
             else:
                 st.error("Plate solving failed!")
                 st.error("Possible issues:")
@@ -374,18 +429,18 @@ def solve_with_astrometrynet(file_path):
                 st.error("- Incorrect pixel scale estimate")
                 st.error("- Field not in astrometry.net index files")
                 st.error("- solve-field not found in PATH")
-                
+
                 return None, None
-                
+
         except Exception as solve_error:
             st.error(f"Error during stdpipe plate solving: {solve_error}")
             st.error("Requirements:")
             st.error("- solve-field binary must be in PATH")
             st.error("- Appropriate astrometry.net index files must be installed")
             st.error("- Sufficient sources with good S/N ratio")
-            
+
             return None, None
-        
+
     except Exception as e:
         st.error(f"Error in plate solving setup: {str(e)}")
         return None, None
@@ -545,7 +600,7 @@ def make_border_mask(
         raise ValueError("Borders are larger than the image")
 
     mask = np.zeros(image.shape[:2], dtype=dtype)
-    mask[top: height - bottom, left: width - right] = True
+    mask[top : height - bottom, left : width - right] = True
 
     return ~mask if invert else mask
 
@@ -615,53 +670,68 @@ def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
             try:
                 # Create a figure with two subplots side by side for background/RMS
                 fig_bkg, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-                
+
                 # Use ZScaleInterval for better visualization
                 zscale = ZScaleInterval()
                 vmin, vmax = zscale.get_limits(bkg.background)
-                
+
                 # Plot the background model
-                im1 = ax1.imshow(bkg.background, origin='lower', cmap='viridis',
-                                 vmin=vmin, vmax=vmax)
-                ax1.set_title('Estimated Background')
-                fig_bkg.colorbar(im1, ax=ax1, label='Flux')
-                
+                im1 = ax1.imshow(
+                    bkg.background, origin="lower", cmap="viridis", vmin=vmin, vmax=vmax
+                )
+                ax1.set_title("Estimated Background")
+                fig_bkg.colorbar(im1, ax=ax1, label="Flux")
+
                 # Plot the background RMS
                 vmin_rms, vmax_rms = zscale.get_limits(bkg.background_rms)
-                im2 = ax2.imshow(bkg.background_rms, origin='lower', cmap='viridis',
-                                 vmin=vmin_rms, vmax=vmax_rms)
-                ax2.set_title('Background RMS')
-                fig_bkg.colorbar(im2, ax=ax2, label='Flux')
-                
+                im2 = ax2.imshow(
+                    bkg.background_rms,
+                    origin="lower",
+                    cmap="viridis",
+                    vmin=vmin_rms,
+                    vmax=vmax_rms,
+                )
+                ax2.set_title("Background RMS")
+                fig_bkg.colorbar(im2, ax=ax2, label="Flux")
+
                 fig_bkg.tight_layout()
                 st.pyplot(fig_bkg)
-                
+
                 # Save background as FITS file
-                base_filename = st.session_state.get("base_filename",
-                                                     "photometry")
+                base_filename = st.session_state.get("base_filename", "photometry")
                 username = st.session_state.get("username", "anonymous")
                 output_dir = ensure_output_directory(f"{username}_rpp_results")
                 bkg_filename = f"{base_filename}_bkg.fits"
                 bkg_filepath = os.path.join(output_dir, bkg_filename)
-                
+
                 # Create FITS HDU and save background model
                 hdu_bkg = fits.PrimaryHDU(data=bkg.background)
-                hdu_bkg.header['COMMENT'] = 'Background model created with photutils.Background2D'
-                hdu_bkg.header['BOXSIZE'] = (adjusted_box_size, 'Box size for background estimation')
-                hdu_bkg.header['FILTSIZE'] = (adjusted_filter_size, 'Filter size for background smoothing')
-                
+                hdu_bkg.header["COMMENT"] = (
+                    "Background model created with photutils.Background2D"
+                )
+                hdu_bkg.header["BOXSIZE"] = (
+                    adjusted_box_size,
+                    "Box size for background estimation",
+                )
+                hdu_bkg.header["FILTSIZE"] = (
+                    adjusted_filter_size,
+                    "Filter size for background smoothing",
+                )
+
                 # Add RMS as extension
                 hdu_rms = fits.ImageHDU(data=bkg.background_rms)
-                hdu_rms.header['EXTNAME'] = 'BACKGROUND_RMS'
-                
+                hdu_rms.header["EXTNAME"] = "BACKGROUND_RMS"
+
                 hdul = fits.HDUList([hdu_bkg, hdu_rms])
                 hdul.writeto(bkg_filepath, overwrite=True)
-                
+
                 # Write to log if available
                 log_buffer = st.session_state.get("log_buffer")
                 if log_buffer is not None:
-                    write_to_log(log_buffer, f"Background model saved to {bkg_filename}")
-            
+                    write_to_log(
+                        log_buffer, f"Background model saved to {bkg_filename}"
+                    )
+
             except Exception as e:
                 st.warning(f"Error creating or saving background plot: {str(e)}")
             finally:
@@ -724,7 +794,7 @@ def airmass(
     """
 
     # Check if airmass already exists in header
-    airmass_keywords = ['AIRMASS', 'SECZ', 'AIRMASS_START', 'AIRMASS_END']
+    airmass_keywords = ["AIRMASS", "SECZ", "AIRMASS_START", "AIRMASS_END"]
     for keyword in airmass_keywords:
         if keyword in _header and _header[keyword] is not None:
             try:
@@ -736,10 +806,14 @@ def airmass(
                         return existing_airmass, {"airmass_source": f"header_{keyword}"}
                     return existing_airmass
                 else:
-                    st.warning(f"Invalid airmass value in header ({existing_airmass}), calculating from coordinates")
+                    st.warning(
+                        f"Invalid airmass value in header ({existing_airmass}), calculating from coordinates"
+                    )
                     break
             except (ValueError, TypeError):
-                st.warning(f"Could not parse airmass value from header keyword {keyword}")
+                st.warning(
+                    f"Could not parse airmass value from header keyword {keyword}"
+                )
                 continue
 
     def get_observation_type(sun_alt):
@@ -754,11 +828,11 @@ def airmass(
     try:
         ra = _header.get("RA") or _header.get("OBJRA") or _header.get("CRVAL1")
         dec = _header.get("DEC") or _header.get("OBJDEC") or _header.get("CRVAL2")
-        
+
         # Check for various date keywords in order of preference
-        date_keywords = ['DATE-OBS', 'DATE', 'DATE_OBS', 'DATEOBS', 'MJD-OBS']
+        date_keywords = ["DATE-OBS", "DATE", "DATE_OBS", "DATEOBS", "MJD-OBS"]
         obstime_str = None
-        
+
         for keyword in date_keywords:
             if keyword in _header and _header[keyword] is not None:
                 obstime_str = _header[keyword]
@@ -775,21 +849,21 @@ def airmass(
             raise KeyError(f"Missing required header keywords: {', '.join(missing)}")
 
         coord = SkyCoord(ra=ra, dec=dec, unit=u.deg, frame="icrs")
-        
+
         # Try to parse the observation time with different formats
         try:
             # First, try direct parsing
             obstime = Time(obstime_str)
-    
+
         except Exception:
             # If that fails, try different parsing strategies
             try:
                 # Handle common FITS date formats
                 if isinstance(obstime_str, str):
                     # Remove any timezone info and try to parse
-                    clean_date = obstime_str.replace('Z', '').replace('T', ' ')
+                    clean_date = obstime_str.replace("Z", "").replace("T", " ")
                     # Try ISO format
-                    obstime = Time(clean_date, format='iso')
+                    obstime = Time(clean_date, format="iso")
                 else:
                     # If it's not a string, convert it
                     obstime = Time(str(obstime_str))
@@ -797,10 +871,12 @@ def airmass(
                 # Last resort: try as MJD if it's a number
                 try:
                     mjd_value = float(obstime_str)
-                    obstime = Time(mjd_value, format='mjd')
+                    obstime = Time(mjd_value, format="mjd")
                 except (ValueError, TypeError):
-                    raise ValueError(f"Could not parse observation time '{obstime_str}' in any recognized format")
-        
+                    raise ValueError(
+                        f"Could not parse observation time '{obstime_str}' in any recognized format"
+                    )
+
         location = EarthLocation(
             lat=obs_data["latitude"] * u.deg,
             lon=obs_data["longitude"] * u.deg,
@@ -928,8 +1004,7 @@ def fwhm_fit(
         if box_size % 2 == 0:
             box_size += 1
 
-        xypos = list(zip(filtered_sources['xcentroid'],
-                         filtered_sources['ycentroid']))
+        xypos = list(zip(filtered_sources["xcentroid"], filtered_sources["ycentroid"]))
         fwhms = fit_fwhm(_img, xypos=xypos, fit_shape=box_size)
 
         mean_fwhm = np.median(fwhms)
@@ -949,7 +1024,7 @@ def perform_psf_photometry(
     fwhm: float,
     daostarfind: Any,
     mask: Optional[np.ndarray] = None,
-    error=None
+    error=None,
 ) -> Tuple[Table, Any]:
     """
     Perform PSF (Point Spread Function) photometry using an empirically-constructed PSF model.
@@ -1000,11 +1075,14 @@ def perform_psf_photometry(
         # build NDData including mask/uncertainty when available (improves extract_stars)
         try:
             from astropy.nddata import StdDevUncertainty
+
             nd_unc = StdDevUncertainty(error) if (error is not None) else None
         except Exception:
             nd_unc = None
 
-        nddata = NDData(data=img, mask=mask if mask is not None else None, uncertainty=nd_unc)
+        nddata = NDData(
+            data=img, mask=mask if mask is not None else None, uncertainty=nd_unc
+        )
     except Exception as e:
         st.error(f"Error in initial validation: {e}")
         raise
@@ -1023,14 +1101,23 @@ def perform_psf_photometry(
                 return np.asarray(tbl[name])
             if default is not None:
                 # return default repeated to match table length
-                return np.asarray(default) if np.shape(default) == (n_sources,) else np.full(n_sources, default)
+                return (
+                    np.asarray(default)
+                    if np.shape(default) == (n_sources,)
+                    else np.full(n_sources, default)
+                )
             return np.full(n_sources, np.nan)
 
         # Required columns (raise helpful error if missing)
         if "flux" not in photo_table.colnames:
             raise ValueError("photo_table missing required column 'flux'")
-        if "xcentroid" not in photo_table.colnames or "ycentroid" not in photo_table.colnames:
-            raise ValueError("photo_table must contain 'xcentroid' and 'ycentroid' columns")
+        if (
+            "xcentroid" not in photo_table.colnames
+            or "ycentroid" not in photo_table.colnames
+        ):
+            raise ValueError(
+                "photo_table must contain 'xcentroid' and 'ycentroid' columns"
+            )
 
         # Get arrays safely
         flux = _col_arr(photo_table, "flux")
@@ -1048,8 +1135,8 @@ def perform_psf_photometry(
         flux_std = np.std(flux_finite)
 
         # Define flux filtering criteria
-        flux_min = flux_median - 3*flux_std
-        flux_max = flux_median + 3*flux_std
+        flux_min = flux_median - 3 * flux_std
+        flux_max = flux_median + 3 * flux_std
 
         # Create individual boolean masks with explicit NaN handling
         valid_flux = np.isfinite(flux)
@@ -1059,8 +1146,13 @@ def perform_psf_photometry(
         valid_ycentroid = np.isfinite(ycentroid)
 
         # Combine validity checks
-        valid_all = (valid_flux & valid_roundness & valid_sharpness &
-                     valid_xcentroid & valid_ycentroid)
+        valid_all = (
+            valid_flux
+            & valid_roundness
+            & valid_sharpness
+            & valid_xcentroid
+            & valid_ycentroid
+        )
 
         if not np.any(valid_all):
             # relax: accept stars where position and flux are valid at least
@@ -1069,7 +1161,9 @@ def perform_psf_photometry(
                 raise ValueError("No sources with required valid parameters found")
 
         flux_criteria = np.zeros_like(valid_flux, dtype=bool)
-        flux_criteria[valid_flux] = (flux[valid_flux] >= flux_min) & (flux[valid_flux] <= flux_max)
+        flux_criteria[valid_flux] = (flux[valid_flux] >= flux_min) & (
+            flux[valid_flux] <= flux_max
+        )
 
         roundness_criteria = np.zeros_like(valid_roundness, dtype=bool)
         roundness_criteria[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.25
@@ -1081,19 +1175,19 @@ def perform_psf_photometry(
         edge_criteria = np.zeros_like(valid_xcentroid, dtype=bool)
         valid_coords = valid_xcentroid & valid_ycentroid
         edge_criteria[valid_coords] = (
-            (xcentroid[valid_coords] > 2 * fwhm) &
-            (xcentroid[valid_coords] < img.shape[1] - 2 * fwhm) &
-            (ycentroid[valid_coords] > 2 * fwhm) &
-            (ycentroid[valid_coords] < img.shape[0] - 2 * fwhm)
+            (xcentroid[valid_coords] > 2 * fwhm)
+            & (xcentroid[valid_coords] < img.shape[1] - 2 * fwhm)
+            & (ycentroid[valid_coords] > 2 * fwhm)
+            & (ycentroid[valid_coords] < img.shape[0] - 2 * fwhm)
         )
 
         # Combine all criteria with validity checks
         good_stars_mask = (
-            valid_all &
-            flux_criteria &
-            roundness_criteria &
-            sharpness_criteria &
-            edge_criteria
+            valid_all
+            & flux_criteria
+            & roundness_criteria
+            & sharpness_criteria
+            & edge_criteria
         )
 
         # Apply filters
@@ -1105,27 +1199,32 @@ def perform_psf_photometry(
 
         # Check if we have enough stars for PSF construction
         if len(filtered_photo_table) < 10:
-            st.warning(f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria...")
+            st.warning(
+                f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria..."
+            )
 
             # Relax criteria
             roundness_criteria_relaxed = np.zeros_like(valid_roundness, dtype=bool)
-            roundness_criteria_relaxed[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.5
+            roundness_criteria_relaxed[valid_roundness] = (
+                np.abs(roundness1[valid_roundness]) < 0.5
+            )
 
             sharpness_criteria_relaxed = np.zeros_like(valid_sharpness, dtype=bool)
-            sharpness_criteria_relaxed[valid_sharpness] = np.abs(sharpness[valid_sharpness]) < 1.0
+            sharpness_criteria_relaxed[valid_sharpness] = (
+                np.abs(sharpness[valid_sharpness]) < 1.0
+            )
 
             flux_criteria_relaxed = np.zeros_like(valid_flux, dtype=bool)
             flux_criteria_relaxed[valid_flux] = (
-                (flux[valid_flux] >= flux_median - 2*flux_std) &
-                (flux[valid_flux] <= flux_median + 2*flux_std)
-            )
+                flux[valid_flux] >= flux_median - 2 * flux_std
+            ) & (flux[valid_flux] <= flux_median + 2 * flux_std)
 
             good_stars_mask = (
-                (valid_flux & valid_xcentroid & valid_ycentroid) &
-                flux_criteria_relaxed &
-                roundness_criteria_relaxed &
-                sharpness_criteria_relaxed &
-                edge_criteria
+                (valid_flux & valid_xcentroid & valid_ycentroid)
+                & flux_criteria_relaxed
+                & roundness_criteria_relaxed
+                & sharpness_criteria_relaxed
+                & edge_criteria
             )
 
             filtered_photo_table = photo_table[good_stars_mask]
@@ -1133,7 +1232,9 @@ def perform_psf_photometry(
             st.write(f"After relaxing criteria: {len(filtered_photo_table)} stars")
 
         if len(filtered_photo_table) < 5:
-            raise ValueError("Too few good stars for PSF model construction. Need at least 5 stars.")
+            raise ValueError(
+                "Too few good stars for PSF model construction. Need at least 5 stars."
+            )
 
     except Exception as e:
         st.error(f"Error filtering stars for PSF model: {e}")
@@ -1164,15 +1265,18 @@ def perform_psf_photometry(
 
         # If extract_stars returns list or EPSFStars; ensure a consistent EPSFStars object
         from photutils.psf import EPSFStars
+
         if isinstance(stars, list):
             if len(stars) == 0:
-                raise ValueError("No stars extracted for PSF model. Check your selection criteria.")
+                raise ValueError(
+                    "No stars extracted for PSF model. Check your selection criteria."
+                )
             stars = EPSFStars(stars)
         n_stars = len(stars)
         st.write(f"{n_stars} stars extracted for PSF model.")
 
         # basic inspection of cutouts for NaN/all-zero
-        if hasattr(stars, 'data') and stars.data is not None:
+        if hasattr(stars, "data") and stars.data is not None:
             if isinstance(stars.data, list) and len(stars.data) > 0:
                 has_nan = any(np.isnan(star_data).any() for star_data in stars.data)
                 st.write(f"NaN in star data: {has_nan}")
@@ -1180,9 +1284,11 @@ def perform_psf_photometry(
                 st.write("Stars data is empty or not a list")
         else:
             st.write("Stars object has no data attribute")
-            
+
         if n_stars == 0:
-            raise ValueError("No stars extracted for PSF model. Check your selection criteria.")
+            raise ValueError(
+                "No stars extracted for PSF model. Check your selection criteria."
+            )
     except Exception as e:
         st.error(f"Error extracting stars: {e}")
         raise
@@ -1190,7 +1296,7 @@ def perform_psf_photometry(
     try:
         # Remove stars with NaN or all-zero data
         mask_valid = []
-        if hasattr(stars, 'data') and isinstance(stars.data, list):
+        if hasattr(stars, "data") and isinstance(stars.data, list):
             for star_data in stars.data:
                 if np.isnan(star_data).any():
                     mask_valid.append(False)
@@ -1209,7 +1315,9 @@ def perform_psf_photometry(
                     else:
                         mask_valid.append(True)
             except Exception as iter_error:
-                st.warning(f"Could not iterate through stars for validation: {iter_error}")
+                st.warning(
+                    f"Could not iterate through stars for validation: {iter_error}"
+                )
                 mask_valid = [True] * len(stars)
 
         mask_valid = np.array(mask_valid)
@@ -1217,12 +1325,15 @@ def perform_psf_photometry(
         # Only filter if we have any invalid stars
         if not np.all(mask_valid):
             from photutils.psf import EPSFStars
+
             filtered_stars = stars[mask_valid]
             if not isinstance(filtered_stars, EPSFStars):
                 filtered_stars = EPSFStars(list(filtered_stars))
             stars = filtered_stars
             n_stars = len(stars)
-            st.write(f"{n_stars} valid stars remain for PSF model after filtering invalid data.")
+            st.write(
+                f"{n_stars} valid stars remain for PSF model after filtering invalid data."
+            )
         else:
             st.write(f"All {len(stars)} stars are valid for PSF model.")
 
@@ -1241,20 +1352,22 @@ def perform_psf_photometry(
             st.write("Retrying with more conservative EPSFBuilder parameters...")
             try:
                 epsf_builder_conservative = EPSFBuilder(
-                    oversampling=2,
-                    maxiters=2,
-                    progress_bar=False
+                    oversampling=2, maxiters=2, progress_bar=False
                 )
                 epsf, fitted_stars = epsf_builder_conservative(stars)
             except Exception as conservative_error:
                 st.error(f"Conservative EPSFBuilder also failed: {conservative_error}")
                 raise
-        
+
         st.write("EPSF building completed successfully")
 
         if epsf is None:
             raise ValueError("EPSFBuilder returned None")
-        if not hasattr(epsf, 'data') or epsf.data is None or np.asarray(epsf.data).size == 0:
+        if (
+            not hasattr(epsf, "data")
+            or epsf.data is None
+            or np.asarray(epsf.data).size == 0
+        ):
             raise ValueError("EPSF data is invalid or empty")
 
         # check for NaNs but continue (could still be usable)
@@ -1273,6 +1386,7 @@ def perform_psf_photometry(
         # Try to wrap the EPSF into an ImagePSF (preferred for PSFPhotometry compatibility)
         try:
             from photutils.psf import ImagePSF
+
             psf_for_phot = ImagePSF(np.asarray(epsf.data))
         except Exception:
             # fallback to epsf object (works on newer photutils versions)
@@ -1284,42 +1398,58 @@ def perform_psf_photometry(
             hdu.header["COMMENT"] = "PSF model created with photutils.EPSFBuilder"
             # Ensure FWHM written as a scalar
             try:
-                if np is not None and (hasattr(fwhm, "__len__") and not np.isscalar(fwhm)):
+                if np is not None and (
+                    hasattr(fwhm, "__len__") and not np.isscalar(fwhm)
+                ):
                     fwhm_val = float(np.asarray(fwhm).mean())
                 else:
                     fwhm_val = float(fwhm)
             except Exception:
                 fwhm_val = float(getattr(epsf, "fwhm", 0.0) or 0.0)
             hdu.header["FWHMPIX"] = (fwhm_val, "FWHM in pixels used for extraction")
-            
+
             # OVERSAMP may be tuple/list/array; convert to safe FITS-friendly value
             oversamp = getattr(epsf, "oversampling", 3)
             try:
                 if isinstance(oversamp, (list, tuple, np.ndarray)):
                     # store as comma-separated string to avoid illegal array header values
-                    oversamp_val = ",".join(str(int(x)) for x in np.asarray(oversamp).ravel())
+                    oversamp_val = ",".join(
+                        str(int(x)) for x in np.asarray(oversamp).ravel()
+                    )
                 else:
                     oversamp_val = int(oversamp)
             except Exception:
                 oversamp_val = 3
             hdu.header["OVERSAMP"] = (str(oversamp_val), "Oversampling factor(s)")
-            
+
             # Number of stars used - ensure scalar int
             try:
                 nstars_val = int(len(filtered_photo_table))
             except Exception:
                 nstars_val = 0
             hdu.header["NSTARS"] = (nstars_val, "Number of stars used for PSF model")
-            
-            psf_filename = f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
+
+            psf_filename = (
+                f"{st.session_state.get('base_filename', 'psf_model')}_psf.fits"
+            )
             username = st.session_state.get("username", "anonymous")
-            psf_filepath = os.path.join(ensure_output_directory(f"{username}_rpp_results"), psf_filename)
+            psf_filepath = os.path.join(
+                ensure_output_directory(f"{username}_rpp_results"), psf_filename
+            )
             hdu.writeto(psf_filepath, overwrite=True)
             st.write("PSF model saved as FITS file")
-            
+
             norm_epsf = simple_norm(epsf.data, "log", percent=99.0)
-            fig_epsf_model, ax_epsf_model = plt.subplots(figsize=FIGURE_SIZES["medium"], dpi=120)
-            ax_epsf_model.imshow(epsf.data, norm=norm_epsf, origin="lower", cmap="viridis", interpolation="nearest")
+            fig_epsf_model, ax_epsf_model = plt.subplots(
+                figsize=FIGURE_SIZES["medium"], dpi=120
+            )
+            ax_epsf_model.imshow(
+                epsf.data,
+                norm=norm_epsf,
+                origin="lower",
+                cmap="viridis",
+                interpolation="nearest",
+            )
             ax_epsf_model.set_title(f"Fitted PSF Model ({nstars_val} stars)")
             st.pyplot(fig_epsf_model)
         except Exception as e:
@@ -1331,17 +1461,21 @@ def perform_psf_photometry(
     # Create PSF photometry object and perform photometry
     try:
         if error is not None and not isinstance(error, np.ndarray):
-            st.warning("Invalid error array provided, proceeding without error estimation")
+            st.warning(
+                "Invalid error array provided, proceeding without error estimation"
+            )
             error = None
         elif error is not None and error.shape != img.shape:
-            st.warning("Error array shape mismatch, proceeding without error estimation")
+            st.warning(
+                "Error array shape mismatch, proceeding without error estimation"
+            )
             error = None
 
         # Create a SourceGrouper
         min_separation = 1.9 * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
         bkgstat = MMMBackground()
-        localbkg_estimator = LocalBackground(2.1*fwhm, 2.5*fwhm, bkgstat)
+        localbkg_estimator = LocalBackground(2.1 * fwhm, 2.5 * fwhm, bkgstat)
 
         psfphot = PSFPhotometry(
             psf_model=psf_for_phot,
@@ -1350,18 +1484,18 @@ def perform_psf_photometry(
             aperture_radius=float(fit_shape) / 2.0,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
-            progress_bar=False
+            progress_bar=False,
         )
 
         # Prepare initial parameters (use 'x' and 'y' to be compatible with PSFPhotometry)
         initial_params = Table()
-        initial_params['x'] = photo_table["xcentroid"]
-        initial_params['y'] = photo_table["ycentroid"]
+        initial_params["x"] = photo_table["xcentroid"]
+        initial_params["y"] = photo_table["ycentroid"]
         if "flux" in photo_table.colnames:
             initial_params["flux"] = photo_table["flux"]
         # also provide legacy names for compatibility
-        initial_params['x_0'] = initial_params['x']
-        initial_params['y_0'] = initial_params['y']
+        initial_params["x_0"] = initial_params["x"]
+        initial_params["y_0"] = initial_params["y"]
 
         # Filter out sources that fall in masked regions (robust)
         mask_bool = None
@@ -1369,24 +1503,38 @@ def perform_psf_photometry(
             mask_bool = np.asarray(mask, dtype=bool)
         if mask_bool is not None:
             # compute rounded indices with clipping
-            x_int = np.clip(np.round(initial_params['x']).astype(int), 0, img.shape[1]-1)
-            y_int = np.clip(np.round(initial_params['y']).astype(int), 0, img.shape[0]-1)
+            x_int = np.clip(
+                np.round(initial_params["x"]).astype(int), 0, img.shape[1] - 1
+            )
+            y_int = np.clip(
+                np.round(initial_params["y"]).astype(int), 0, img.shape[0] - 1
+            )
 
             valid_bounds = (
-                (initial_params['x'] >= 0) & (initial_params['x'] < img.shape[1]) &
-                (initial_params['y'] >= 0) & (initial_params['y'] < img.shape[0])
+                (initial_params["x"] >= 0)
+                & (initial_params["x"] < img.shape[1])
+                & (initial_params["y"] >= 0)
+                & (initial_params["y"] < img.shape[0])
             )
 
             valid_mask = np.ones(len(initial_params), dtype=bool)
-            valid_mask[valid_bounds] = ~mask_bool[y_int[valid_bounds], x_int[valid_bounds]]
+            valid_mask[valid_bounds] = ~mask_bool[
+                y_int[valid_bounds], x_int[valid_bounds]
+            ]
 
             initial_params_filtered = initial_params[valid_mask]
 
-            st.write(f"Filtered out {len(initial_params) - len(initial_params_filtered)} sources that fall in masked regions")
-            st.write(f"Proceeding with {len(initial_params_filtered)} sources for PSF photometry")
+            st.write(
+                f"Filtered out {len(initial_params) - len(initial_params_filtered)} sources that fall in masked regions"
+            )
+            st.write(
+                f"Proceeding with {len(initial_params_filtered)} sources for PSF photometry"
+            )
 
             if len(initial_params_filtered) == 0:
-                st.error("All sources fall in masked regions. Cannot perform PSF photometry.")
+                st.error(
+                    "All sources fall in masked regions. Cannot perform PSF photometry."
+                )
                 return None, epsf
 
             initial_params = initial_params_filtered
@@ -1395,7 +1543,9 @@ def perform_psf_photometry(
 
         st.write("Performing PSF photometry on sources...")
         # call PSFPhotometry: data first
-        phot_epsf_result = psfphot(img, init_params=initial_params, mask=mask_bool, error=error)
+        phot_epsf_result = psfphot(
+            img, init_params=initial_params, mask=mask_bool, error=error
+        )
         st.session_state["epsf_photometry_result"] = phot_epsf_result
         st.write("PSF photometry completed successfully.")
         return phot_epsf_result, epsf
@@ -1411,11 +1561,11 @@ def refine_astrometry_with_stdpipe(
     wcs: WCS,
     fwhm_estimate: float,
     pixel_scale: float,
-    filter_band: str
+    filter_band: str,
 ) -> Optional[WCS]:
     """
     Perform astrometry refinement using stdpipe SCAMP and GAIA DR3 catalog.
-    
+
     Parameters
     ----------
     image_data : numpy.ndarray
@@ -1430,7 +1580,7 @@ def refine_astrometry_with_stdpipe(
         Pixel scale in arcseconds per pixel
     filter_band : str
         Gaia magnitude band to use for catalog matching
-        
+
     Returns
     -------
     astropy.wcs.WCS or None
@@ -1441,21 +1591,43 @@ def refine_astrometry_with_stdpipe(
 
         # Convert image data to float32 for stdpipe compatibility
         if image_data.dtype not in [np.float32, np.float64]:
-            st.info(f"Converting image from {image_data.dtype} to float32 for stdpipe compatibility")
+            st.info(
+                f"Converting image from {image_data.dtype} to float32 for stdpipe compatibility"
+            )
             image_data = image_data.astype(np.float32)
 
         # Clean and prepare header - remove problematic WCS distortion parameters
         clean_header = science_header.copy()
-        
+
         # Remove problematic keywords that might interfere with stdpipe
-        problematic_keys = ['HISTORY', 'COMMENT', 'CONTINUE']
-        
+        problematic_keys = ["HISTORY", "COMMENT", "CONTINUE"]
+
         # Remove DSS distortion parameters that cause the "coefficient scale is zero" error
-        dss_distortion_keys = [key for key in clean_header.keys() if any(pattern in str(key) for pattern in ['DSS', 'CNPIX', 'A_', 'B_', 'AP_', 'AMD',
-                                                                                                             'BP_', 'B_', 'PV', 'SIP', 'DISTORT'])]
-        
+        dss_distortion_keys = [
+            key
+            for key in clean_header.keys()
+            if any(
+                pattern in str(key)
+                for pattern in [
+                    "DSS",
+                    "CNPIX",
+                    "A_",
+                    "B_",
+                    "AP_",
+                    "AMD",
+                    "BP_",
+                    "B_",
+                    "PV",
+                    "SIP",
+                    "DISTORT",
+                ]
+            )
+        ]
+
         if dss_distortion_keys:
-            st.info(f"Removing {len(dss_distortion_keys)} problematic distortion parameters")
+            st.info(
+                f"Removing {len(dss_distortion_keys)} problematic distortion parameters"
+            )
             for key in dss_distortion_keys:
                 if key in clean_header:
                     del clean_header[key]
@@ -1464,16 +1636,16 @@ def refine_astrometry_with_stdpipe(
         # (some DSS distortion keywords may not have been caught above)
         keys_to_check = [k for k in list(clean_header.keys())]
         for k in keys_to_check:
-            if str(k).upper().startswith('DSS') and k in clean_header:
+            if str(k).upper().startswith("DSS") and k in clean_header:
                 del clean_header[k]
-        
+
         # Remove other problematic keys
         for key in problematic_keys:
             if key in clean_header:
                 del clean_header[key]
-        
+
         # ADDED: Remove CDELTM1 and CDELTM2 keys that can cause issues with stdpipe
-        cdeltm_keys = ['CDELTM1', 'CDELTM2']
+        cdeltm_keys = ["CDELTM1", "CDELTM2"]
         for key in cdeltm_keys:
             if key in clean_header:
                 del clean_header[key]
@@ -1482,50 +1654,50 @@ def refine_astrometry_with_stdpipe(
         # Validate and fix basic WCS parameters
         try:
             # Ensure CTYPE values are valid
-            if 'CTYPE1' not in clean_header or not clean_header['CTYPE1']:
-                clean_header['CTYPE1'] = 'RA---TAN'
-            if 'CTYPE2' not in clean_header or not clean_header['CTYPE2']:
-                clean_header['CTYPE2'] = 'DEC--TAN'
-            
+            if "CTYPE1" not in clean_header or not clean_header["CTYPE1"]:
+                clean_header["CTYPE1"] = "RA---TAN"
+            if "CTYPE2" not in clean_header or not clean_header["CTYPE2"]:
+                clean_header["CTYPE2"] = "DEC--TAN"
+
             # Ensure reference pixel is valid
-            if 'CRPIX1' not in clean_header or not np.isfinite(clean_header['CRPIX1']):
-                clean_header['CRPIX1'] = image_data.shape[1] / 2.0
-            if 'CRPIX2' not in clean_header or not np.isfinite(clean_header['CRPIX2']):
-                clean_header['CRPIX2'] = image_data.shape[0] / 2.0
-            
+            if "CRPIX1" not in clean_header or not np.isfinite(clean_header["CRPIX1"]):
+                clean_header["CRPIX1"] = image_data.shape[1] / 2.0
+            if "CRPIX2" not in clean_header or not np.isfinite(clean_header["CRPIX2"]):
+                clean_header["CRPIX2"] = image_data.shape[0] / 2.0
+
             # Check CD matrix validity
-            cd_keys = ['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']
+            cd_keys = ["CD1_1", "CD1_2", "CD2_1", "CD2_2"]
             cd_values = [clean_header.get(key, 0) for key in cd_keys]
-            
+
             if any(not np.isfinite(val) or val == 0 for val in cd_values):
                 st.warning("Invalid CD matrix detected, attempting reconstruction")
                 # Try to reconstruct from CDELT if available
-                if 'CDELT1' in clean_header and 'CDELT2' in clean_header:
-                    cdelt1 = clean_header['CDELT1']
-                    cdelt2 = clean_header['CDELT2']
-                    crota = clean_header.get('CROTA2', 0.0)
-                    
+                if "CDELT1" in clean_header and "CDELT2" in clean_header:
+                    cdelt1 = clean_header["CDELT1"]
+                    cdelt2 = clean_header["CDELT2"]
+                    crota = clean_header.get("CROTA2", 0.0)
+
                     cos_rot = np.cos(np.radians(crota))
                     sin_rot = np.sin(np.radians(crota))
-                    
-                    clean_header['CD1_1'] = cdelt1 * cos_rot
-                    clean_header['CD1_2'] = -cdelt1 * sin_rot
-                    clean_header['CD2_1'] = cdelt2 * sin_rot
-                    clean_header['CD2_2'] = cdelt2 * cos_rot
-                    
+
+                    clean_header["CD1_1"] = cdelt1 * cos_rot
+                    clean_header["CD1_2"] = -cdelt1 * sin_rot
+                    clean_header["CD2_1"] = cdelt2 * sin_rot
+                    clean_header["CD2_2"] = cdelt2 * cos_rot
+
                     st.info("Reconstructed CD matrix from CDELT/CROTA")
                 else:
                     # Use pixel scale estimate to create basic CD matrix
                     pixel_scale_deg = pixel_scale / 3600.0
-                    clean_header['CD1_1'] = -pixel_scale_deg
-                    clean_header['CD1_2'] = 0.0
-                    clean_header['CD2_1'] = 0.0
-                    clean_header['CD2_2'] = pixel_scale_deg
+                    clean_header["CD1_1"] = -pixel_scale_deg
+                    clean_header["CD1_2"] = 0.0
+                    clean_header["CD2_1"] = 0.0
+                    clean_header["CD2_2"] = pixel_scale_deg
                     st.info("Created basic CD matrix from pixel scale estimate")
-            
+
         except Exception as header_fix_error:
             st.warning(f"Error fixing header: {header_fix_error}")
-        
+
         # Test the cleaned WCS before proceeding
         try:
             test_wcs = WCS(clean_header)
@@ -1589,7 +1761,9 @@ def refine_astrometry_with_stdpipe(
                     obj_try = obj_try[0]
                 if obj_try is not None and len(obj_try) > 0:
                     detection_candidates = obj_try
-                    st.success(f"Detected {len(detection_candidates)} objects with SExtractor")
+                    st.success(
+                        f"Detected {len(detection_candidates)} objects with SExtractor"
+                    )
                     break
             except Exception as e_sex:
                 st.write(f"SExtractor attempt failed: {e_sex}")
@@ -1601,9 +1775,9 @@ def refine_astrometry_with_stdpipe(
             st.write(tried_methods)
             return None
         # end detection multi-strategy
-                
+
         st.info(f"Detected {len(obj)} objects for astrometry refinement")
-        
+
         # Get frame center using the cleaned header and test WCS
         try:
             # Use the cleaned header instead of original
@@ -1611,47 +1785,47 @@ def refine_astrometry_with_stdpipe(
                 header=clean_header,
                 wcs=test_wcs,  # Use the validated test WCS
                 width=image_data.shape[1],
-                height=image_data.shape[0]
+                height=image_data.shape[0],
             )
         except Exception as center_error:
             st.error(f"Failed to get frame center: {center_error}")
             # Try fallback method using header coordinates
             try:
                 center_ra = (
-                    clean_header.get('CRVAL1')
-                    or clean_header.get('RA')
-                    or clean_header.get('OBJRA')
+                    clean_header.get("CRVAL1")
+                    or clean_header.get("RA")
+                    or clean_header.get("OBJRA")
                 )
                 center_dec = (
-                    clean_header.get('CRVAL2')
-                    or clean_header.get('DEC')
-                    or clean_header.get('OBJDEC')
+                    clean_header.get("CRVAL2")
+                    or clean_header.get("DEC")
+                    or clean_header.get("OBJDEC")
                 )
-                
+
                 if center_ra is None or center_dec is None:
                     st.error("Could not determine field center coordinates")
                     return None
-                
+
                 # Calculate radius from image dimensions
                 radius = max(image_data.shape) * pixel_scale / 3600.0 / 2.0
                 st.info(
                     f"Using fallback field center: RA={center_ra:.3f}, "
                     f"DEC={center_dec:.3f}, radius={radius:.3f}"
                 )
-                
+
             except Exception as fallback_error:
-                st.error("Fallback coordinate extraction failed: " f"{fallback_error}")
+                st.error(f"Fallback coordinate extraction failed: {fallback_error}")
                 return None
-        
+
         # Map filter band to correct GAIA EDR3 column names
         gaia_band_mapping = {
             "phot_bp_mean_mag": "BPmag",
             "phot_rp_mean_mag": "RPmag",
-            "phot_g_mean_mag": "Gmag"
+            "phot_g_mean_mag": "Gmag",
         }
-        
+
         gaia_band = gaia_band_mapping.get(filter_band, "Gmag")
-        
+
         # Get GAIA catalog with correct parameters and error handling
         try:
             # Use correct catalog name and filters
@@ -1660,57 +1834,63 @@ def refine_astrometry_with_stdpipe(
                 center_dec,
                 radius,
                 "I/350/gaiaedr3",  # Correct GAIA EDR3 catalog identifier
-                filters={gaia_band: "< 20.0"}
+                filters={gaia_band: "< 20.0"},
             )
-            
+
             if cat is None or len(cat) == 0:
                 st.warning("No GAIA catalog sources found in field")
                 return None
-                
+
         except Exception as cat_error:
             st.error(f"Failed to get GAIA catalog: {cat_error}")
             # Try with a smaller search radius
             try:
                 smaller_radius = min(radius, 0.5)  # Limit to 0.5 degrees
-                st.info("Retrying GAIA query with smaller radius: " f"{smaller_radius:.3f}°")
+                st.info(
+                    f"Retrying GAIA query with smaller radius: {smaller_radius:.3f}°"
+                )
                 cat = catalogs.get_cat_vizier(
                     center_ra,
                     center_dec,
                     smaller_radius,
                     "I/350/gaiaedr3",
-                    filters={gaia_band: "< 19.0"}
+                    filters={gaia_band: "< 19.0"},
                 )
-                
+
                 if cat is None or len(cat) == 0:
-                    st.warning("No GAIA catalog sources found even with reduced search radius")
+                    st.warning(
+                        "No GAIA catalog sources found even with reduced search radius"
+                    )
                     return None
-                    
+
             except Exception as retry_error:
                 st.error(f"GAIA catalog query retry failed: {retry_error}")
                 return None
-        
+
         st.info(f"Retrieved {len(cat)} GAIA catalog sources")
-        
+
         # Apply additional filtering after retrieval if needed
         try:
             # Filter out sources with poor parallax measurements if the column exists
-            if 'parallax' in cat.colnames:
+            if "parallax" in cat.colnames:
                 # Keep sources with reasonable parallax values (not extreme negative values)
-                parallax_filter = cat['parallax'] > -100  # Basic parallax filter
+                parallax_filter = cat["parallax"] > -100  # Basic parallax filter
                 cat = cat[parallax_filter]
                 st.info(f"After parallax filtering: {len(cat)} GAIA catalog sources")
         except Exception as filter_error:
             st.warning(f"Could not apply additional filtering: {filter_error}")
-        
+
         # Ensure we still have enough sources for refinement
         if len(cat) < 10:
-            st.warning(f"Too few GAIA sources ({len(cat)}) for reliable astrometry refinement")
+            st.warning(
+                f"Too few GAIA sources ({len(cat)}) for reliable astrometry refinement"
+            )
             return None
-        
+
         # Calculate matching radius in degrees
         try:
             match_radius_deg = 1.5 * fwhm_estimate * pixel_scale / 3600.0
-            
+
             # Try SCAMP refinement with conservative parameters
             wcs_result = astrometry.refine_wcs_scamp(
                 obj,
@@ -1718,13 +1898,13 @@ def refine_astrometry_with_stdpipe(
                 wcs=test_wcs,  # Use the validated test WCS
                 sr=match_radius_deg,
                 order=2,
-                cat_col_ra='RA_ICRS',
-                cat_col_dec='DE_ICRS',
+                cat_col_ra="RA_ICRS",
+                cat_col_dec="DE_ICRS",
                 cat_col_mag=gaia_band,
                 cat_mag_lim=19,  # Conservative magnitude limit
-                verbose=True
+                verbose=True,
             )
-            
+
         except Exception as refine_error:
             st.warning(f"SCAMP astrometry refinement failed: {refine_error}")
             # Try with even more conservative parameters
@@ -1736,16 +1916,16 @@ def refine_astrometry_with_stdpipe(
                     wcs=test_wcs,
                     sr=match_radius_deg * 2.0,  # Double the search radius
                     order=1,
-                    cat_col_ra='RA_ICRS',
-                    cat_col_dec='DE_ICRS',
+                    cat_col_ra="RA_ICRS",
+                    cat_col_dec="DE_ICRS",
                     cat_col_mag=gaia_band,
-                    cat_mag_lim=19.,
-                    verbose=True
+                    cat_mag_lim=19.0,
+                    verbose=True,
                 )
             except Exception as final_refine_error:
                 st.error(f"Final SCAMP attempt failed: {final_refine_error}")
                 return None
-        
+
         # Validate and return the refined WCS
         if wcs_result is not None:
             st.success("WCS refinement successful using SCAMP")
@@ -1757,17 +1937,17 @@ def refine_astrometry_with_stdpipe(
                 wcs_header = wcs_result.to_header(relax=True)
                 science_header.update(wcs_header)
                 st.info("Updated header with refined WCS keywords")
-                
+
             except Exception as header_error:
                 st.warning(f"Could not update header: {header_error}")
                 # Return WCS anyway as it's still usable
-            
+
             return wcs_result
-                
+
         else:
             st.warning("SCAMP did not return a valid WCS solution")
             return None
-            
+
     except ImportError as import_error:
         st.error(f"stdpipe import error: {import_error}")
         st.error("Make sure stdpipe is properly installed: pip install stdpipe")
@@ -1783,7 +1963,7 @@ def detection_and_photometry(
     mean_fwhm_pixel,
     threshold_sigma,
     detection_mask,
-    filter_band
+    filter_band,
 ):
     """
     Perform a complete photometry workflow on an astronomical image.
@@ -1848,10 +2028,7 @@ def detection_and_photometry(
         science_header.get("PIXSIZE", science_header.get("PIXELSCAL", 1.0)),
     )
 
-    bkg, bkg_error = estimate_background(
-        image_data, box_size=64,
-        filter_size=9
-    )
+    bkg, bkg_error = estimate_background(image_data, box_size=64, filter_size=9)
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None
@@ -1864,23 +2041,23 @@ def detection_and_photometry(
     show_subtracted_image(image_sub)
 
     # Ensure bkg_error is also float64
-    bkg_error = np.full_like(image_sub, bkg.background_rms.astype(np.float64),
-                             dtype=np.float64)
+    bkg_error = np.full_like(
+        image_sub, bkg.background_rms.astype(np.float64), dtype=np.float64
+    )
 
     exposure_time = 1.0
     if (np.max(image_data) - np.min(image_data)) > 1:
-        exposure_time = science_header.get("EXPTIME",
-                                           science_header.get("EXPOSURE",
-                                                              science_header.get("EXP_TIME", 1.0)))
+        exposure_time = science_header.get(
+            "EXPTIME",
+            science_header.get("EXPOSURE", science_header.get("EXP_TIME", 1.0)),
+        )
 
     # Ensure effective_gain is float64
-    effective_gain = np.float64(2.5/np.std(image_data) * exposure_time)
+    effective_gain = np.float64(2.5 / np.std(image_data) * exposure_time)
 
     # Convert to float64 to ensure compatibility with calc_total_error
     total_error = calc_total_error(
-        image_sub.astype(np.float64),
-        bkg_error.astype(np.float64),
-        effective_gain
+        image_sub.astype(np.float64), bkg_error.astype(np.float64), effective_gain
     )
 
     st.write("Estimating FWHM...")
@@ -1893,11 +2070,11 @@ def detection_and_photometry(
     peak_max = 0.95 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=(threshold_sigma+0.5) * clipped_std,
-        peakmax=peak_max)
+        threshold=(threshold_sigma + 0.5) * clipped_std,
+        peakmax=peak_max,
+    )
 
-    sources = daofind(image_sub,
-                      mask=mask)
+    sources = daofind(image_sub, mask=mask)
 
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
@@ -1913,14 +2090,16 @@ def detection_and_photometry(
             wcs=w,
             fwhm_estimate=fwhm_estimate,
             pixel_scale=pixel_scale,
-            filter_band=filter_band
+            filter_band=filter_band,
         )
 
         # Validate WCS after refinement
         if refined_wcs:
             # Test a few source positions to ensure coordinates make sense
-            test_coords = positions[:min(5, len(positions))]
-            if not validate_wcs_orientation(science_header, science_header, test_coords):
+            test_coords = positions[: min(5, len(positions))]
+            if not validate_wcs_orientation(
+                science_header, science_header, test_coords
+            ):
                 st.warning("WCS refinement may have introduced coordinate issues")
             w = refined_wcs
     else:
@@ -1928,16 +2107,17 @@ def detection_and_photometry(
 
     # Create multiple circular apertures with different radii
     aperture_radii = [1.5, 2.0, 2.5]
-    apertures = [CircularAperture(positions, r=radius * fwhm_estimate)
-                 for radius in aperture_radii]
+    apertures = [
+        CircularAperture(positions, r=radius * fwhm_estimate)
+        for radius in aperture_radii
+    ]
 
     # Create circular annulus apertures for background estimation
     annulus_apertures = []
     for radius in aperture_radii:
         r_in = 1.5 * radius * fwhm_estimate
         r_out = 2.0 * radius * fwhm_estimate
-        annulus_apertures.append(CircularAnnulus(positions,
-                                                 r_in=r_in, r_out=r_out))
+        annulus_apertures.append(CircularAnnulus(positions, r_in=r_in, r_out=r_out))
 
     try:
         wcs_obj = None
@@ -1968,114 +2148,143 @@ def detection_and_photometry(
         for i, (aperture, annulus) in enumerate(zip(apertures, annulus_apertures)):
             # Aperture photometry
             phot_result = aperture_photometry(
-                image_sub, aperture, error=total_error, wcs=wcs_obj)
-            
+                image_sub, aperture, error=total_error, wcs=wcs_obj
+            )
+
             # Background estimation from annulus with robust outlier rejection
             bkg_result = aperture_photometry(
-                image_sub, annulus, error=total_error, wcs=wcs_obj)
-            
+                image_sub, annulus, error=total_error, wcs=wcs_obj
+            )
+
             # Process each source in this aperture size
             n_sources = len(bkg_result)
-            
+
             for source_idx in range(n_sources):
                 # Get individual apertures for this source
-                if hasattr(annulus, '__getitem__'):  # Multiple sources
+                if hasattr(annulus, "__getitem__"):  # Multiple sources
                     single_annulus = annulus[source_idx]
                     single_aperture = aperture[source_idx]
                 else:  # Single source
                     single_annulus = annulus
                     single_aperture = aperture
-                
+
                 # Get the annulus mask for this specific source
                 try:
-                    annulus_mask = single_annulus.to_mask(method='center')
+                    annulus_mask = single_annulus.to_mask(method="center")
                     if annulus_mask is None:
                         continue
-                        
+
                     annulus_data = annulus_mask.multiply(image_sub)
                     if annulus_data is None or annulus_data.size == 0:
                         continue
-                        
+
                     # Extract only the non-zero pixels (pixels within the annulus)
                     annulus_pixels = annulus_data[annulus_data != 0]
-                    
-                    if len(annulus_pixels) > 10:  # Need sufficient pixels for statistics
+
+                    if (
+                        len(annulus_pixels) > 10
+                    ):  # Need sufficient pixels for statistics
                         # Remove saturated pixels
-                        saturation_level = science_header.get('SATURATE', np.max(image_data) * 0.95)
-                        valid_pixels = annulus_pixels[annulus_pixels < saturation_level * 0.8]
-                        
+                        saturation_level = science_header.get(
+                            "SATURATE", np.max(image_data) * 0.95
+                        )
+                        valid_pixels = annulus_pixels[
+                            annulus_pixels < saturation_level * 0.8
+                        ]
+
                         if len(valid_pixels) == 0:
                             continue
-                        
+
                         # Iterative sigma clipping
-                        clipped_pixels = sigma_clip(valid_pixels, sigma=2.5, maxiters=3, masked=False)
-                        
+                        clipped_pixels = sigma_clip(
+                            valid_pixels, sigma=2.5, maxiters=3, masked=False
+                        )
+
                         if len(clipped_pixels) > 5:
                             median_val = np.median(clipped_pixels)
                             mad_val = np.median(np.abs(clipped_pixels - median_val))
                             threshold = median_val + 3 * mad_val
-                            
+
                             final_pixels = clipped_pixels[clipped_pixels <= threshold]
-                            
+
                             if len(final_pixels) > 3:
                                 robust_bkg_per_pixel = np.mean(final_pixels)
                                 robust_bkg_std = np.std(final_pixels)
-                                
+
                                 # Calculate total background for this aperture
                                 aperture_area = single_aperture.area
                                 robust_total_bkg = robust_bkg_per_pixel * aperture_area
-                                
+
                                 # Update the background result for this source
-                                bkg_result["aperture_sum"][source_idx] = robust_total_bkg
-                                
+                                bkg_result["aperture_sum"][source_idx] = (
+                                    robust_total_bkg
+                                )
+
                                 if "aperture_sum_err" in bkg_result.colnames:
-                                    bkg_uncertainty = robust_bkg_std * np.sqrt(aperture_area)
-                                    bkg_result["aperture_sum_err"][source_idx] = bkg_uncertainty
+                                    bkg_uncertainty = robust_bkg_std * np.sqrt(
+                                        aperture_area
+                                    )
+                                    bkg_result["aperture_sum_err"][source_idx] = (
+                                        bkg_uncertainty
+                                    )
                             elif len(clipped_pixels) > 0:
                                 # Fallback to sigma-clipped mean
                                 robust_bkg_per_pixel = np.mean(clipped_pixels)
-                                robust_total_bkg = robust_bkg_per_pixel * single_aperture.area
-                                bkg_result["aperture_sum"][source_idx] = robust_total_bkg
-                
+                                robust_total_bkg = (
+                                    robust_bkg_per_pixel * single_aperture.area
+                                )
+                                bkg_result["aperture_sum"][source_idx] = (
+                                    robust_total_bkg
+                                )
+
                 except Exception as e:
-                    print(f"Warning: Background estimation failed for source {source_idx}: {e}")
+                    print(
+                        f"Warning: Background estimation failed for source {source_idx}: {e}"
+                    )
                     continue
-            
+
             # Add radius information and process results
             radius_suffix = f"_r{aperture_radii[i]:.1f}"
-            
+
             # Rename aperture columns
             if "aperture_sum" in phot_result.colnames:
-                phot_result.rename_column("aperture_sum", f"aperture_sum{radius_suffix}")
+                phot_result.rename_column(
+                    "aperture_sum", f"aperture_sum{radius_suffix}"
+                )
             if "aperture_sum_err" in phot_result.colnames:
-                phot_result.rename_column("aperture_sum_err", f"aperture_sum_err{radius_suffix}")
-            
+                phot_result.rename_column(
+                    "aperture_sum_err", f"aperture_sum_err{radius_suffix}"
+                )
+
             # Calculate background-corrected photometry
             if "aperture_sum" in bkg_result.colnames:
                 # Ensure we handle both scalar and array cases
-                annulus_area = getattr(annulus, 'area', [a.area for a in annulus])
-                aperture_area = getattr(aperture, 'area', [a.area for a in aperture])
-                
+                annulus_area = getattr(annulus, "area", [a.area for a in annulus])
+                aperture_area = getattr(aperture, "area", [a.area for a in aperture])
+
                 # Avoid division by zero
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    bkg_per_pixel = np.divide(bkg_result["aperture_sum"], annulus_area, 
-                                            out=np.zeros_like(bkg_result["aperture_sum"]), 
-                                            where=annulus_area!=0)
-                
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    bkg_per_pixel = np.divide(
+                        bkg_result["aperture_sum"],
+                        annulus_area,
+                        out=np.zeros_like(bkg_result["aperture_sum"]),
+                        where=annulus_area != 0,
+                    )
+
                 total_bkg = bkg_per_pixel * aperture_area
-                
+
                 # Store background-corrected flux
                 if f"aperture_sum{radius_suffix}" in phot_result.colnames:
                     phot_result[f"aperture_sum_bkg_corr{radius_suffix}"] = (
                         phot_result[f"aperture_sum{radius_suffix}"] - total_bkg
                     )
-                
+
                 # Store background information
                 phot_result[f"background{radius_suffix}"] = total_bkg
                 phot_result[f"background_per_pixel{radius_suffix}"] = bkg_per_pixel
-            
+
             phot_tables.append(phot_result)
-        
+
         # Combine all photometry results
         phot_table = phot_tables[0]
         for i in range(1, len(phot_tables)):
@@ -2093,26 +2302,33 @@ def detection_and_photometry(
             aperture_sum_col = f"aperture_sum{radius_suffix}"
             aperture_err_col = f"aperture_sum_err{radius_suffix}"
             bkg_corr_col = f"aperture_sum_bkg_corr{radius_suffix}"
-            
-            if aperture_sum_col in phot_table.colnames and aperture_err_col in phot_table.colnames:
+
+            if (
+                aperture_sum_col in phot_table.colnames
+                and aperture_err_col in phot_table.colnames
+            ):
                 # SNR for raw aperture sum
                 phot_table[f"snr{radius_suffix}"] = np.round(
                     phot_table[aperture_sum_col] / phot_table[aperture_err_col]
                 )
                 m_err = 1.0857 / phot_table[f"snr{radius_suffix}"]
                 phot_table[f"aperture_mag_err{radius_suffix}"] = m_err
-                
+
                 # Instrumental magnitude for raw aperture sum
-                instrumental_mags = -2.5 * np.log10(phot_table[aperture_sum_col] / exposure_time)
+                instrumental_mags = -2.5 * np.log10(
+                    phot_table[aperture_sum_col] / exposure_time
+                )
                 phot_table[f"instrumental_mag{radius_suffix}"] = instrumental_mags
-                
+
                 # If background-corrected flux is available, calculate its magnitude too
                 if bkg_corr_col in phot_table.colnames:
                     # Handle negative or zero background-corrected fluxes
                     valid_flux = phot_table[bkg_corr_col] > 0
                     phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"] = np.nan
-                    phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"][valid_flux] = (
-                        -2.5 * np.log10(phot_table[bkg_corr_col][valid_flux] / exposure_time)
+                    phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"][
+                        valid_flux
+                    ] = -2.5 * np.log10(
+                        phot_table[bkg_corr_col][valid_flux] / exposure_time
                     )
             else:
                 phot_table[f"snr{radius_suffix}"] = np.nan
@@ -2131,10 +2347,12 @@ def detection_and_photometry(
             epsf_table, _ = perform_psf_photometry(
                 image_sub, sources, fwhm_estimate, daofind, mask, total_error
             )
-            
-            epsf_table["snr"] = np.round(epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"]))
+
+            epsf_table["snr"] = np.round(
+                epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"])
+            )
             m_err = 1.0857 / epsf_table["snr"]
-            epsf_table['psf_mag_err'] = m_err
+            epsf_table["psf_mag_err"] = m_err
 
             epsf_instrumental_mags = -2.5 * np.log10(
                 epsf_table["flux_fit"] / exposure_time
@@ -2211,9 +2429,9 @@ def show_subtracted_image(image_sub):
     fig, ax = plt.subplots(figsize=(7, 7))
     zscale = ZScaleInterval()
     vmin, vmax = zscale.get_limits(image_sub)
-    im = ax.imshow(image_sub, origin='lower', cmap='viridis', vmin=vmin, vmax=vmax)
+    im = ax.imshow(image_sub, origin="lower", cmap="viridis", vmin=vmin, vmax=vmax)
     ax.set_title("Background-subtracted image")
-    plt.colorbar(im, ax=ax, label='Flux')
+    plt.colorbar(im, ax=ax, label="Flux")
     st.pyplot(fig)
     plt.close(fig)
 
@@ -2225,7 +2443,7 @@ def cross_match_with_gaia(
     mean_fwhm_pixel,
     filter_band,
     filter_max_mag,
-    refined_wcs=None
+    refined_wcs=None,
 ):
     """
     Cross-match detected sources with the GAIA DR3 star catalog.
@@ -2237,17 +2455,17 @@ def cross_match_with_gaia(
     Parameters
     ----------
     _phot_table : astropy.table.Table
-       
+
         Table containing detected source positions (underscore prevents caching issues)
     _science_header : dict or astropy.io.fits.Header
         FITS header with WCS information (underscore prevents caching issues)
     pixel_size_arcsec : float
-       
+
         Pixel scale in arcseconds per pixel
     mean_fwhm_pixel : float
         FWHM in pixels, used to determine matching radius
     filter_band : str
-        GAIA magnitude band to use for filtering (e.g., 'phot_g_mean_mag', 'phot_bp_mean_mag', 
+        GAIA magnitude band to use for filtering (e.g., 'phot_g_mean_mag', 'phot_bp_mean_mag',
         'phot_rp_mean_mag' or other synthetic photometry bands)
     filter_max_mag : float
         Maximum magnitude for GAIA source filtering
@@ -2300,12 +2518,15 @@ def cross_match_with_gaia(
             st.error("Missing RA/DEC coordinates in header")
             return None
 
-        image_center_ra_dec = [science_header["RA"],
-                               science_header["DEC"]]
+        image_center_ra_dec = [science_header["RA"], science_header["DEC"]]
 
         # Validate coordinate values
-        if not (0 <= image_center_ra_dec[0] <= 360) or not (-90 <= image_center_ra_dec[1] <= 90):
-            st.error(f"Invalid coordinates: RA={image_center_ra_dec[0]}, DEC={image_center_ra_dec[1]}")
+        if not (0 <= image_center_ra_dec[0] <= 360) or not (
+            -90 <= image_center_ra_dec[1] <= 90
+        ):
+            st.error(
+                f"Invalid coordinates: RA={image_center_ra_dec[0]}, DEC={image_center_ra_dec[1]}"
+            )
             return None
 
         # Calculate search radius (divided by 1.5 to avoid field edge effects)
@@ -2317,31 +2538,37 @@ def cross_match_with_gaia(
         radius_query = gaia_search_radius_arcsec * u.arcsec
 
         st.write(
-            f"Querying Gaia in a radius of {round(radius_query.value / 60., 2)} arcmin."
+            f"Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
         )
 
         # Set Gaia data release
-        Gaia.MAIN_GAIA_TABLE = 'gaiadr3.gaia_source'
+        Gaia.MAIN_GAIA_TABLE = "gaiadr3.gaia_source"
 
         # Create a SkyCoord object for more reliable coordinate handling
-        center_coord = SkyCoord(ra=image_center_ra_dec[0],
-                                dec=image_center_ra_dec[1], unit="deg")
+        center_coord = SkyCoord(
+            ra=image_center_ra_dec[0], dec=image_center_ra_dec[1], unit="deg"
+        )
 
         try:
             # Use the SkyCoord object for cone search
             job = Gaia.cone_search(center_coord, radius=radius_query)
             gaia_table = job.get_results()
 
-            st.info(f"Retrieved {len(gaia_table) if gaia_table is not None else 0} sources from Gaia")
+            st.info(
+                f"Retrieved {len(gaia_table) if gaia_table is not None else 0} sources from Gaia"
+            )
 
             # Different query strategies based on filter band
-            if (filter_band not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"] and
-                    gaia_table is not None and len(gaia_table) > 0):
-
+            if (
+                filter_band
+                not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]
+                and gaia_table is not None
+                and len(gaia_table) > 0
+            ):
                 # Create a comma-separated list of source_ids (limit to 1000)
                 max_sources = min(len(gaia_table), 1000)
-                source_ids = list(gaia_table['source_id'][:max_sources])
-                source_ids_str = ','.join(str(id) for id in source_ids)
+                source_ids = list(gaia_table["source_id"][:max_sources])
+                source_ids_str = ",".join(str(id) for id in source_ids)
                 # Query synthetic photometry just for these specific sources
                 synth_query = f"""
                 SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
@@ -2355,9 +2582,12 @@ def cross_match_with_gaia(
 
                 # Join the two tables
                 if synth_table is not None and len(synth_table) > 0:
-                    st.info(f"Retrieved {len(synth_table)} synthetic photometry entries")
-                    gaia_table = join(gaia_table, synth_table, keys='source_id',
-                                      join_type='right')
+                    st.info(
+                        f"Retrieved {len(synth_table)} synthetic photometry entries"
+                    )
+                    gaia_table = join(
+                        gaia_table, synth_table, keys="source_id", join_type="right"
+                    )
 
         except Exception as cone_error:
             st.warning(f"Gaia query failed: {cone_error}")
@@ -2376,15 +2606,14 @@ def cross_match_with_gaia(
         return None
 
     try:
-        mag_filter = (gaia_table[filter_band] < filter_max_mag)
+        mag_filter = gaia_table[filter_band] < filter_max_mag
         var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
         color_index_filter = (gaia_table["bp_rp"] > -1) & (gaia_table["bp_rp"] < 2)
         astrometric_filter = gaia_table["ruwe"] < 1.6
 
-        combined_filter = (mag_filter &
-                           var_filter &
-                           color_index_filter &
-                           astrometric_filter)
+        combined_filter = (
+            mag_filter & var_filter & color_index_filter & astrometric_filter
+        )
 
         gaia_table_filtered = gaia_table[combined_filter]
 
@@ -2401,8 +2630,7 @@ def cross_match_with_gaia(
 
     try:
         gaia_skycoords = SkyCoord(
-            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"],
-            unit="deg"
+            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"], unit="deg"
         )
         idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
@@ -2423,7 +2651,9 @@ def cross_match_with_gaia(
         matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
 
         # Add the filter_band column from the filtered Gaia table
-        matched_table[filter_band] = gaia_table_filtered[filter_band][matched_indices_gaia]
+        matched_table[filter_band] = gaia_table_filtered[filter_band][
+            matched_indices_gaia
+        ]
 
         valid_gaia_mags = np.isfinite(matched_table[filter_band])
         matched_table = matched_table[valid_gaia_mags]
@@ -2477,22 +2707,28 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         return None, None, None
 
     try:
-        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(_matched_table[filter_band])
+        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(
+            _matched_table[filter_band]
+        )
 
-        zero_points = _matched_table[filter_band][valid] - _matched_table["instrumental_mag"][valid]
+        zero_points = (
+            _matched_table[filter_band][valid]
+            - _matched_table["instrumental_mag"][valid]
+        )
         _matched_table["zero_point"] = zero_points
         _matched_table["zero_point_error"] = np.std(zero_points)
 
-        clipped_zero_points = sigma_clip(zero_points, sigma=3,
-                                         cenfunc="mean", masked=False)
+        clipped_zero_points = sigma_clip(
+            zero_points, sigma=3, cenfunc="mean", masked=False
+        )
 
         zero_point_value = np.median(clipped_zero_points)
         zero_point_std = np.std(clipped_zero_points)
 
         if np.ma.is_masked(zero_point_value) or np.isnan(zero_point_value):
-            zero_point_value = float('nan')
+            zero_point_value = float("nan")
         if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
-            zero_point_std = float('nan')
+            zero_point_std = float("nan")
 
         _matched_table["calib_mag"] = (
             _matched_table["instrumental_mag"] + zero_point_value + 0.09 * air
@@ -2503,19 +2739,19 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Apply calibration to all aperture radii
         aperture_radii = [1.5, 2.0, 2.5, 3.0]
-        
+
         # Remove old single-aperture columns if they exist
         old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
         for col in old_columns:
             if col in _phot_table.columns:
                 _phot_table.drop(columns=[col], inplace=True)
-        
+
         # Add calibrated magnitudes for all aperture radii
         for radius in aperture_radii:
             radius_suffix = f"_r{radius:.1f}"
             instrumental_col = f"instrumental_mag{radius_suffix}"
             aperture_mag_col = f"aperture_mag{radius_suffix}"
-            
+
             if instrumental_col in _phot_table.columns:
                 _phot_table[aperture_mag_col] = (
                     _phot_table[instrumental_col] + zero_point_value + 0.09 * air
@@ -2526,7 +2762,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             radius_suffix = f"_r{radius:.1f}"
             instrumental_col = f"instrumental_mag{radius_suffix}"
             aperture_mag_col = f"aperture_mag{radius_suffix}"
-            
+
             if instrumental_col in _matched_table.columns:
                 _matched_table[aperture_mag_col] = (
                     _matched_table[instrumental_col] + zero_point_value + 0.09 * air
@@ -2537,7 +2773,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             _phot_table["calib_mag"] = (
                 _phot_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
             )
-        
+
         if "instrumental_mag_r1.5" in _matched_table.columns:
             _matched_table["calib_mag"] = (
                 _matched_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
@@ -2565,40 +2801,55 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         # Calculate and plot regression line with variance
         x_data = _matched_table[filter_band].values
         y_data = _matched_table["calib_mag"].values
-        
+
         # Remove any NaN values for regression
         valid_mask = np.isfinite(x_data) & np.isfinite(y_data)
         x_clean = x_data[valid_mask]
         y_clean = y_data[valid_mask]
-        
+
         if len(x_clean) > 1:
             # Calculate linear regression
             coeffs = np.polyfit(x_clean, y_clean, 1)
             slope, intercept = coeffs
-            
+
             # Create regression line points
             x_reg = np.linspace(x_clean.min(), x_clean.max(), 100)
             y_reg = slope * x_reg + intercept
-            
+
             # Calculate residuals and standard deviation
             y_pred = slope * x_clean + intercept
             residuals = y_clean - y_pred
             std_residuals = np.std(residuals)
-            
+
             # Plot regression line
-            ax.plot(x_reg, y_reg, 'r-', linewidth=2,
-                    label=f'Regression (slope={slope:.3f})')
-            
+            ax.plot(
+                x_reg, y_reg, "r-", linewidth=2, label=f"Regression (slope={slope:.3f})"
+            )
+
             # Plot variance bands (±1σ and ±2σ)
-            ax.fill_between(x_reg, y_reg - std_residuals, y_reg + std_residuals,
-                            alpha=0.3, color='red', label=f'±1σ ({std_residuals:.3f} mag)')
-            ax.fill_between(x_reg, y_reg - 2*std_residuals, y_reg + 2*std_residuals,
-                            alpha=0.15, color='red', label=f'±2σ ({2*std_residuals:.3f} mag)')
+            ax.fill_between(
+                x_reg,
+                y_reg - std_residuals,
+                y_reg + std_residuals,
+                alpha=0.3,
+                color="red",
+                label=f"±1σ ({std_residuals:.3f} mag)",
+            )
+            ax.fill_between(
+                x_reg,
+                y_reg - 2 * std_residuals,
+                y_reg + 2 * std_residuals,
+                alpha=0.15,
+                color="red",
+                label=f"±2σ ({2 * std_residuals:.3f} mag)",
+            )
 
         # Add a diagonal line for reference
         # Create ideal y=x reference line spanning the full range of magnitudes
-        mag_range = [min(_matched_table[filter_band].min(), _matched_table["calib_mag"].min()),
-                     max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max())]
+        mag_range = [
+            min(_matched_table[filter_band].min(), _matched_table["calib_mag"].min()),
+            max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max()),
+        ]
         ideal_mag = np.linspace(mag_range[0], mag_range[1], 100)
         ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
 
@@ -2620,12 +2871,19 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         zp_err = zero_point_std if zero_point_std is not None else 0.0
         yerr = np.sqrt(aperture_mag_err**2 + zp_err**2)
 
-        ax_resid.errorbar(mag_cat, residuals, yerr=yerr, fmt='o', markersize=5,
-                          alpha=0.7, label='Residuals')
-        ax_resid.axhline(0, color='gray', ls='--')
-        ax_resid.set_xlabel('Calibrated magnitude')
-        ax_resid.set_ylabel('Residual (catalog - calibrated)')
-        ax_resid.set_title('Photometric Residuals')
+        ax_resid.errorbar(
+            mag_cat,
+            residuals,
+            yerr=yerr,
+            fmt="o",
+            markersize=5,
+            alpha=0.7,
+            label="Residuals",
+        )
+        ax_resid.axhline(0, color="gray", ls="--")
+        ax_resid.set_xlabel("Calibrated magnitude")
+        ax_resid.set_ylabel("Residual (catalog - calibrated)")
+        ax_resid.set_title("Photometric Residuals")
         ax_resid.grid(True, alpha=0.5)
         ax_resid.legend()
 
@@ -2710,7 +2968,7 @@ def enhance_catalog(
     if final_table is None:
         st.error("final_table is None - cannot enhance catalog")
         return None
-    
+
     if len(final_table) == 0:
         st.warning("No sources to cross-match with catalogs.")
         return final_table
@@ -2719,25 +2977,27 @@ def enhance_catalog(
     if "ra" not in final_table.columns or "dec" not in final_table.columns:
         st.error("final_table must contain 'ra' and 'dec' columns for cross-matching")
         return final_table
-    
+
     # Make a copy to avoid modifying the original table
     enhanced_table = final_table.copy()
 
     # Filter out sources with NaN coordinates at the beginning
     valid_coords_mask = (
-        pd.notna(enhanced_table["ra"]) & 
-        pd.notna(enhanced_table["dec"]) & 
-        np.isfinite(enhanced_table["ra"]) & 
-        np.isfinite(enhanced_table["dec"])
+        pd.notna(enhanced_table["ra"])
+        & pd.notna(enhanced_table["dec"])
+        & np.isfinite(enhanced_table["ra"])
+        & np.isfinite(enhanced_table["dec"])
     )
-    
+
     if not valid_coords_mask.any():
         st.error("No sources with valid RA/Dec coordinates found for cross-matching")
         return enhanced_table
-    
+
     num_invalid = len(enhanced_table) - valid_coords_mask.sum()
     if num_invalid > 0:
-        st.warning(f"Excluding {num_invalid} sources with invalid coordinates from cross-matching")
+        st.warning(
+            f"Excluding {num_invalid} sources with invalid coordinates from cross-matching"
+        )
 
     # Compute field of view (arcmin) ONCE and use everywhere
     field_center_ra = None
@@ -2770,7 +3030,7 @@ def enhance_catalog(
         if "xcenter" in enhanced_table.columns and "ycenter" in enhanced_table.columns:
             enhanced_table["match_id"] = (
                 enhanced_table["xcenter"].round(2).astype(str)
-                               + "_"
+                + "_"
                 + enhanced_table["ycenter"].round(2).astype(str)
             )
 
@@ -2798,7 +3058,9 @@ def enhance_catalog(
             if rename_dict:
                 gaia_subset = gaia_subset.rename(columns=rename_dict)
 
-            enhanced_table = pd.merge(enhanced_table, gaia_subset, on="match_id", how="left")
+            enhanced_table = pd.merge(
+                enhanced_table, gaia_subset, on="match_id", how="left"
+            )
 
             enhanced_table["gaia_calib_star"] = enhanced_table["match_id"].isin(
                 matched_table["match_id"]
@@ -2916,7 +3178,7 @@ def enhance_catalog(
 
             # Filter valid coordinates for astro-colibri matching
             valid_final_coords = enhanced_table[valid_coords_mask]
-            
+
             if len(valid_final_coords) > 0 and len(astrostars) > 0:
                 source_coords = SkyCoord(
                     ra=valid_final_coords["ra"].values,
@@ -2938,17 +3200,20 @@ def enhance_catalog(
 
                 # Map matches back to the original table indices
                 valid_indices = valid_final_coords.index
-                
+
                 for i, (match, match_idx) in enumerate(zip(matches, idx)):
                     if match:
                         original_idx = valid_indices[i]
-                        enhanced_table.loc[original_idx, "astrocolibri_name"] = astrostars[
-                            "discoverer_internal_name"
-                        ][match_idx]
-                        enhanced_table.loc[original_idx, "astrocolibri_type"] = astrostars["type"][match_idx]
-                        enhanced_table.loc[original_idx, "astrocolibri_classification"] = astrostars[
-                            "classification"][match_idx]
-                
+                        enhanced_table.loc[original_idx, "astrocolibri_name"] = (
+                            astrostars["discoverer_internal_name"][match_idx]
+                        )
+                        enhanced_table.loc[original_idx, "astrocolibri_type"] = (
+                            astrostars["type"][match_idx]
+                        )
+                        enhanced_table.loc[
+                            original_idx, "astrocolibri_classification"
+                        ] = astrostars["classification"][match_idx]
+
                 st.success("Astro-Colibri matched objects in field.")
             else:
                 st.info("No valid coordinates available for Astro-Colibri matching")
@@ -2985,7 +3250,7 @@ def enhance_catalog(
 
                 # Filter valid coordinates for SIMBAD matching
                 valid_final_coords = enhanced_table[valid_coords_mask]
-                
+
                 if len(valid_final_coords) > 0:
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"].values,
@@ -2997,55 +3262,65 @@ def enhance_catalog(
                         try:
                             # Filter out NaN coordinates in SIMBAD result
                             simbad_valid_mask = (
-                                pd.notna(simbad_result["ra"]) & 
-                                pd.notna(simbad_result["dec"]) &
-                                np.isfinite(simbad_result["ra"]) &
-                                np.isfinite(simbad_result["dec"])
+                                pd.notna(simbad_result["ra"])
+                                & pd.notna(simbad_result["dec"])
+                                & np.isfinite(simbad_result["ra"])
+                                & np.isfinite(simbad_result["dec"])
                             )
-                            
+
                             if not simbad_valid_mask.any():
-                                st.warning("No SIMBAD sources with valid coordinates found")
+                                st.warning(
+                                    "No SIMBAD sources with valid coordinates found"
+                                )
                             else:
                                 simbad_filtered = simbad_result[simbad_valid_mask]
-                                
+
                                 simbad_coords = SkyCoord(
                                     ra=simbad_filtered["ra"],
                                     dec=simbad_filtered["dec"],
                                     unit=(u.hourangle, u.deg),
                                 )
 
-                                idx, d2d, _ = source_coords.match_to_catalog_sky(simbad_coords)
+                                idx, d2d, _ = source_coords.match_to_catalog_sky(
+                                    simbad_coords
+                                )
                                 matches = d2d <= (10 * u.arcsec)
 
                                 # Map matches back to the original table indices
                                 valid_indices = valid_final_coords.index
 
-                                for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                                for i, (match, match_idx) in enumerate(
+                                    zip(matches, idx)
+                                ):
                                     if match:
                                         original_idx = valid_indices[i]
-                                        enhanced_table.loc[original_idx, "simbad_main_id"] = simbad_filtered[
-                                            "main_id"
-                                        ][match_idx]
-                                        enhanced_table.loc[original_idx, "simbad_otype"] = simbad_filtered[
-                                            "otype"
-                                        ][match_idx]
-                                        enhanced_table.loc[original_idx, "simbad_B"] = simbad_filtered["B"][
-                                            match_idx
-                                        ]
-                                        enhanced_table.loc[original_idx, "simbad_V"] = simbad_filtered["V"][
-                                            match_idx
-                                        ]
+                                        enhanced_table.loc[
+                                            original_idx, "simbad_main_id"
+                                        ] = simbad_filtered["main_id"][match_idx]
+                                        enhanced_table.loc[
+                                            original_idx, "simbad_otype"
+                                        ] = simbad_filtered["otype"][match_idx]
+                                        enhanced_table.loc[original_idx, "simbad_B"] = (
+                                            simbad_filtered["B"][match_idx]
+                                        )
+                                        enhanced_table.loc[original_idx, "simbad_V"] = (
+                                            simbad_filtered["V"][match_idx]
+                                        )
                                         if "ids" in simbad_filtered.colnames:
-                                            enhanced_table.loc[original_idx, "simbad_ids"] = simbad_filtered[
-                                                "ids"
-                                            ][match_idx]
+                                            enhanced_table.loc[
+                                                original_idx, "simbad_ids"
+                                            ] = simbad_filtered["ids"][match_idx]
 
-                                st.success(f"Found {sum(matches)} SIMBAD objects in field.")
+                                st.success(
+                                    f"Found {sum(matches)} SIMBAD objects in field."
+                                )
                         except Exception as e:
                             st.error(
                                 f"Error creating SkyCoord objects from SIMBAD data: {str(e)}"
                             )
-                            st.write(f"Available SIMBAD columns: {simbad_result.colnames}")
+                            st.write(
+                                f"Available SIMBAD columns: {simbad_result.colnames}"
+                            )
                     else:
                         available_cols = ", ".join(simbad_result.colnames)
                         st.error(
@@ -3107,15 +3382,19 @@ def enhance_catalog(
 
                                 # Filter valid coordinates for SkyBoT matching
                                 valid_final_coords = enhanced_table[valid_coords_mask]
-                                
+
                                 if len(valid_final_coords) > 0:
                                     # Create source coordinates for matching
                                     source_coords = SkyCoord(
-                                        ra=valid_final_coords["ra"], dec=valid_final_coords["dec"], unit=u.deg
+                                        ra=valid_final_coords["ra"],
+                                        dec=valid_final_coords["dec"],
+                                        unit=u.deg,
                                     )
 
                                     # Perform cross-matching
-                                    idx, d2d, _ = source_coords.match_to_catalog_3d(skybot_coords)
+                                    idx, d2d, _ = source_coords.match_to_catalog_3d(
+                                        skybot_coords
+                                    )
                                     matches = d2d.arcsec <= 10
 
                                     # Add matched solar system object information to the final table
@@ -3132,23 +3411,39 @@ def enhance_catalog(
                                     matched_sources = np.where(matches)[0]
                                     matched_skybots = idx[matches]
 
-                                    for i, skybot_idx in zip(matched_sources, matched_skybots):
+                                    for i, skybot_idx in zip(
+                                        matched_sources, matched_skybots
+                                    ):
                                         original_idx = valid_indices[i]
-                                        enhanced_table.loc[original_idx, "skybot_NAME"] = skybot_result["data"][skybot_idx]["NAME"]
-                                        enhanced_table.loc[original_idx, "skybot_OBJECT_TYPE"] = skybot_result["data"][skybot_idx]["OBJECT_TYPE"]
-                                        enhanced_table.loc[original_idx, "skybot_MAGV"] = skybot_result["data"][skybot_idx]["MAGV"]
+                                        enhanced_table.loc[
+                                            original_idx, "skybot_NAME"
+                                        ] = skybot_result["data"][skybot_idx]["NAME"]
+                                        enhanced_table.loc[
+                                            original_idx, "skybot_OBJECT_TYPE"
+                                        ] = skybot_result["data"][skybot_idx][
+                                            "OBJECT_TYPE"
+                                        ]
+                                        enhanced_table.loc[
+                                            original_idx, "skybot_MAGV"
+                                        ] = skybot_result["data"][skybot_idx]["MAGV"]
 
                                     # Update the catalog_matches column for matched solar system objects
                                     has_skybot = enhanced_table["skybot_NAME"].notna()
-                                    enhanced_table.loc[has_skybot, "catalog_matches"] += "SkyBoT; "
+                                    enhanced_table.loc[
+                                        has_skybot, "catalog_matches"
+                                    ] += "SkyBoT; "
 
                                     st.success(
                                         f"Found {sum(has_skybot)} solar system objects in field."
                                     )
                                 else:
-                                    st.info("No valid coordinates available for SkyBoT matching")
+                                    st.info(
+                                        "No valid coordinates available for SkyBoT matching"
+                                    )
                             else:
-                                st.warning("No solar system objects found in the field.")
+                                st.warning(
+                                    "No solar system objects found in the field."
+                                )
                         except ValueError as e:
                             st.warning(
                                 f"No solar system objects found (no valid JSON data returned). {str(e)}"
@@ -3187,10 +3482,10 @@ def enhance_catalog(
                 vsx_coords = SkyCoord(
                     ra=vsx_table["RAJ2000"], dec=vsx_table["DEJ2000"], unit=u.deg
                 )
-                
+
                 # Filter valid coordinates for AAVSO matching
                 valid_final_coords = enhanced_table[valid_coords_mask]
-                
+
                 if len(valid_final_coords) > 0:
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"].values,
@@ -3211,11 +3506,15 @@ def enhance_catalog(
                     for i, (match, match_idx) in enumerate(zip(matches, idx)):
                         if match:
                             original_idx = valid_indices[i]
-                            enhanced_table.loc[original_idx, "aavso_Name"] = vsx_table["Name"][match_idx]
-                            enhanced_table.loc[original_idx, "aavso_Type"] = vsx_table["Type"][match_idx]
-                            enhanced_table.loc[original_idx, "aavso_Period"] = vsx_table["Period"][
-                                match_idx
-                            ]
+                            enhanced_table.loc[original_idx, "aavso_Name"] = vsx_table[
+                                "Name"
+                            ][match_idx]
+                            enhanced_table.loc[original_idx, "aavso_Type"] = vsx_table[
+                                "Type"
+                            ][match_idx]
+                            enhanced_table.loc[original_idx, "aavso_Period"] = (
+                                vsx_table["Period"][match_idx]
+                            )
 
                     st.success(f"Found {sum(matches)} variable stars in field.")
                 else:
@@ -3250,11 +3549,13 @@ def enhance_catalog(
 
                 # Filter valid coordinates for QSO matching
                 valid_final_coords = enhanced_table[valid_coords_mask]
-                
+
                 if len(valid_final_coords) > 0:
                     # Create source coordinates for matching
                     source_coords = SkyCoord(
-                        ra=valid_final_coords["ra"], dec=valid_final_coords["dec"], unit=u.deg
+                        ra=valid_final_coords["ra"],
+                        dec=valid_final_coords["dec"],
+                        unit=u.deg,
                     )
 
                     # Perform cross-matching
@@ -3277,15 +3578,15 @@ def enhance_catalog(
 
                     for i, qso_idx in zip(matched_sources, matched_qsos):
                         original_idx = valid_indices[i]
-                        enhanced_table.loc[original_idx, "qso_name"] = qso_df.iloc[qso_idx][
-                            "Name"
-                        ]
-                        enhanced_table.loc[original_idx, "qso_redshift"] = qso_df.iloc[qso_idx][
-                            "z"
-                        ]
-                        enhanced_table.loc[original_idx, "qso_Rmag"] = qso_df.iloc[qso_idx][
-                            "Rmag"
-                        ]
+                        enhanced_table.loc[original_idx, "qso_name"] = qso_df.iloc[
+                            qso_idx
+                        ]["Name"]
+                        enhanced_table.loc[original_idx, "qso_redshift"] = qso_df.iloc[
+                            qso_idx
+                        ]["z"]
+                        enhanced_table.loc[original_idx, "qso_Rmag"] = qso_df.iloc[
+                            qso_idx
+                        ]["Rmag"]
 
                     # Update the catalog_matches column for matched quasars
                     has_qso = enhanced_table["qso_name"].notna()
@@ -3326,19 +3627,23 @@ def validate_wcs_orientation(original_header, solved_header, test_pixel_coords):
     try:
         orig_wcs = WCS(original_header)
         solved_wcs = WCS(solved_header)
-        
+
         # Test a few pixel positions
-        orig_sky = orig_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1])
-        solved_sky = solved_wcs.pixel_to_world_values(test_pixel_coords[:, 0], test_pixel_coords[:, 1])
-        
+        orig_sky = orig_wcs.pixel_to_world_values(
+            test_pixel_coords[:, 0], test_pixel_coords[:, 1]
+        )
+        solved_sky = solved_wcs.pixel_to_world_values(
+            test_pixel_coords[:, 0], test_pixel_coords[:, 1]
+        )
+
         # Check if coordinates are consistent (within reasonable tolerance)
         ra_diff = np.abs(orig_sky[0] - solved_sky[0])
         dec_diff = np.abs(orig_sky[1] - solved_sky[1])
-        
+
         if np.any(ra_diff > 0.1) or np.any(dec_diff > 0.1):  # 0.1 degree tolerance
             st.warning("WCS orientation may have changed during plate solving")
             return False
-            
+
         return True
     except Exception as e:
         st.warning(f"Could not validate WCS orientation: {e}")
@@ -3351,23 +3656,25 @@ def validate_cross_match_results(phot_table, matched_table, header):
     """
     if len(matched_table) == 0:
         return False
-        
+
     # Check if matched sources are distributed across the field
     # (not clustered in one corner, which might indicate flipping)
     ra_range = matched_table["ra"].max() - matched_table["ra"].min()
     dec_range = matched_table["dec"].max() - matched_table["dec"].min()
-    
+
     # Expect some reasonable spread for a real field
     if ra_range < 0.001 or dec_range < 0.001:  # Less than ~4 arcsec
         st.warning("Matched sources seem too clustered - possible coordinate issue")
         return False
-        
+
     # Check separation distribution
     separations = matched_table.get("gaia_separation_arcsec", [])
     if len(separations) > 0:
         median_sep = np.median(separations)
         if median_sep > 10:  # More than 10 arcsec median separation
-            st.warning(f"Large median separation ({median_sep:.1f}) suggests coordinate problems")
+            st.warning(
+                f"Large median separation ({median_sep:.1f}) suggests coordinate problems"
+            )
             return False
 
     return True
@@ -3380,10 +3687,10 @@ def get_field_center_coordinates(header):
     # Priority order for coordinate keywords
     coord_keywords = [
         ("CRVAL1", "CRVAL2"),  # Standard WCS
-        ("RA", "DEC"),         # Common telescope keywords
-        ("OBJRA", "OBJDEC"),   # Object coordinates
+        ("RA", "DEC"),  # Common telescope keywords
+        ("OBJRA", "OBJDEC"),  # Object coordinates
     ]
-    
+
     for ra_key, dec_key in coord_keywords:
         if ra_key in header and dec_key in header:
             try:
@@ -3393,5 +3700,5 @@ def get_field_center_coordinates(header):
                     return ra, dec
             except (ValueError, TypeError):
                 continue
-    
+
     return None, None
