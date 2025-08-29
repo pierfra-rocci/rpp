@@ -1596,60 +1596,82 @@ def refine_astrometry_with_stdpipe(
             )
             image_data = image_data.astype(np.float32)
 
-        # Clean and prepare header - remove problematic WCS distortion parameters
+        # Clean and prepare header - remove problematic non-standard/distortion WCS keys
         clean_header = science_header.copy()
 
-        # Remove problematic keywords that might interfere with stdpipe
+        # Keep a conservative whitelist of essential WCS keywords we must not remove
+        essential_wcs = {
+            "CDELT1",
+            "CDELT2",
+            "CRPIX1",
+            "CRPIX2",
+            "CRVAL1",
+            "CRVAL2",
+            "CD1_1",
+            "CD1_2",
+            "CD2_1",
+            "CD2_2",
+            "PC1_1",
+            "PC1_2",
+            "PC2_1",
+            "PC2_2",
+            "CTYPE1",
+            "CTYPE2",
+        }
+
+        # Prefixes and exact keys that commonly cause wcslib/distortion initialization errors
+        remove_prefixes = (
+            "CPDIS",
+            "DET2IM",
+            "DSS",
+            "CNPIX",
+            "AP_",
+            "BP_",
+            "PVi",
+            "PV",
+            "A_",
+            "B_",
+            "SIP",
+            "DISTORT",
+            "CDELTM",
+        )
+
         problematic_keys = ["HISTORY", "COMMENT", "CONTINUE"]
 
-        # Remove DSS distortion parameters that cause the "coefficient scale is zero" error
-        dss_distortion_keys = [
-            key
-            for key in clean_header.keys()
-            if any(
-                pattern in str(key)
-                for pattern in [
-                    "DSS",
-                    "CNPIX",
-                    "A_",
-                    "B_",
-                    "AP_",
-                    "AMD",
-                    "BP_",
-                    "B_",
-                    "PV",
-                    "SIP",
-                    "DISTORT",
-                ]
-            )
-        ]
+        keys_to_remove = []
+        for key in list(clean_header.keys()):
+            if not key:
+                continue
+            if key in essential_wcs:
+                continue
+            up = str(key).upper()
+            for p in remove_prefixes:
+                if up.startswith(p.upper()):
+                    keys_to_remove.append(key)
+                    break
 
-        if dss_distortion_keys:
-            st.info(
-                f"Removing {len(dss_distortion_keys)} problematic distortion parameters"
-            )
-            for key in dss_distortion_keys:
-                if key in clean_header:
-                    del clean_header[key]
+        # Also remove general problematic comment/history keys
+        for k in problematic_keys:
+            if k in clean_header:
+                keys_to_remove.append(k)
 
-        # Extra safety: remove any header keys that explicitly start with 'DSS'
-        # (some DSS distortion keywords may not have been caught above)
-        keys_to_check = [k for k in list(clean_header.keys())]
-        for k in keys_to_check:
-            if str(k).upper().startswith("DSS") and k in clean_header:
-                del clean_header[k]
+        # Deduplicate while preserving order
+        seen = set()
+        keys_to_remove = [x for x in keys_to_remove if not (x in seen or seen.add(x))]
 
-        # Remove other problematic keys
-        for key in problematic_keys:
-            if key in clean_header:
-                del clean_header[key]
+        if keys_to_remove:
+            write_to_log(f"Removing distortion/non-standard header keys: {keys_to_remove}")
+            for k in keys_to_remove:
+                try:
+                    clean_header.pop(k, None)
+                except Exception:
+                    pass
 
-        # ADDED: Remove CDELTM1 and CDELTM2 keys that can cause issues with stdpipe
-        cdeltm_keys = ["CDELTM1", "CDELTM2"]
-        for key in cdeltm_keys:
-            if key in clean_header:
-                del clean_header[key]
-                st.info(f"Removed problematic WCS key: {key}")
+        # Extra safety: explicitly remove known problematic keys if present
+        for k in ("CDELTM1", "CDELTM2"):
+            if k in clean_header:
+                write_to_log(f"Removing known bad key: {k}")
+                clean_header.pop(k, None)
 
         # Validate and fix basic WCS parameters
         try:
