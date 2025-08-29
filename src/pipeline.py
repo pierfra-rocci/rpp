@@ -1459,6 +1459,13 @@ def refine_astrometry_with_stdpipe(
             for key in dss_distortion_keys:
                 if key in clean_header:
                     del clean_header[key]
+
+        # Extra safety: remove any header keys that explicitly start with 'DSS'
+        # (some DSS distortion keywords may not have been caught above)
+        keys_to_check = [k for k in list(clean_header.keys())]
+        for k in keys_to_check:
+            if str(k).upper().startswith('DSS') and k in clean_header:
+                del clean_header[k]
         
         # Remove other problematic keys
         for key in problematic_keys:
@@ -1549,7 +1556,7 @@ def refine_astrometry_with_stdpipe(
         detection_candidates = None
         tried_methods = []
 
-        st.info("Using SExtractor-only detection strategy for astrometry refinement")
+        st.info("Using SExtractor-only detection strategy")
         sex_param_grid = [
             {"thresh": 3.0, "minarea": 5, "r0": 0.0},
             {"thresh": 2.5, "minarea": 5, "r0": 0.8},
@@ -1558,7 +1565,11 @@ def refine_astrometry_with_stdpipe(
 
         for params in sex_param_grid:
             try:
-                st.info(f"Attempting SExtractor detection: DETECT_THRESH={params['thresh']}, DETECT_MINAREA={params['minarea']}, smoothing={params['r0']}")
+                msg = (
+                    f"Attempting SExtractor detection: DETECT_THRESH={params['thresh']}, "
+                    f"DETECT_MINAREA={params['minarea']}, smoothing={params['r0']}"
+                )
+                st.info(msg)
                 obj_try = photometry.get_objects_sextractor(
                     image_for_det,
                     header=clean_header,
@@ -1570,15 +1581,15 @@ def refine_astrometry_with_stdpipe(
                     edge=10,
                     gain=1.0,
                     mask_to_nans=False,
-                    verbose=False
+                    verbose=False,
                 )
                 tried_methods.append(("sex", params))
-                # get_objects_sextractor may return (table, checkimages...) -> accept table
+                # get_objects_sextractor may return (table, checkimages...). Accept table
                 if isinstance(obj_try, (list, tuple)):
                     obj_try = obj_try[0]
                 if obj_try is not None and len(obj_try) > 0:
                     detection_candidates = obj_try
-                    st.success(f"Detected {len(detection_candidates)} objects with SExtractor (thresh={params['thresh']})")
+                    st.success(f"Detected {len(detection_candidates)} objects with SExtractor")
                     break
             except Exception as e_sex:
                 st.write(f"SExtractor attempt failed: {e_sex}")
@@ -1586,7 +1597,7 @@ def refine_astrometry_with_stdpipe(
 
         obj = detection_candidates
         if obj is None or len(obj) == 0:
-            st.error("No objects detected with any strategy (SEP or SExtractor). Tried parameter combinations:")
+            st.error("No objects detected. Tried methods:")
             st.write(tried_methods)
             return None
         # end detection multi-strategy
@@ -1606,8 +1617,16 @@ def refine_astrometry_with_stdpipe(
             st.error(f"Failed to get frame center: {center_error}")
             # Try fallback method using header coordinates
             try:
-                center_ra = clean_header.get('CRVAL1') or clean_header.get('RA') or clean_header.get('OBJRA')
-                center_dec = clean_header.get('CRVAL2') or clean_header.get('DEC') or clean_header.get('OBJDEC')
+                center_ra = (
+                    clean_header.get('CRVAL1')
+                    or clean_header.get('RA')
+                    or clean_header.get('OBJRA')
+                )
+                center_dec = (
+                    clean_header.get('CRVAL2')
+                    or clean_header.get('DEC')
+                    or clean_header.get('OBJDEC')
+                )
                 
                 if center_ra is None or center_dec is None:
                     st.error("Could not determine field center coordinates")
@@ -1615,10 +1634,13 @@ def refine_astrometry_with_stdpipe(
                 
                 # Calculate radius from image dimensions
                 radius = max(image_data.shape) * pixel_scale / 3600.0 / 2.0
-                st.info(f"Using fallback field center: RA={center_ra:.3f}, DEC={center_dec:.3f}, radius={radius:.3f}°")
+                st.info(
+                    f"Using fallback field center: RA={center_ra:.3f}, "
+                    f"DEC={center_dec:.3f}, radius={radius:.3f}"
+                )
                 
             except Exception as fallback_error:
-                st.error(f"Fallback coordinate extraction failed: {fallback_error}")
+                st.error("Fallback coordinate extraction failed: " f"{fallback_error}")
                 return None
         
         # Map filter band to correct GAIA EDR3 column names
@@ -1650,7 +1672,7 @@ def refine_astrometry_with_stdpipe(
             # Try with a smaller search radius
             try:
                 smaller_radius = min(radius, 0.5)  # Limit to 0.5 degrees
-                st.info(f"Retrying GAIA query with smaller radius: {smaller_radius:.3f}°")
+                st.info("Retrying GAIA query with smaller radius: " f"{smaller_radius:.3f}°")
                 cat = catalogs.get_cat_vizier(
                     center_ra,
                     center_dec,
