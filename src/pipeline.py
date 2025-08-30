@@ -1606,7 +1606,7 @@ def refine_astrometry_with_stdpipe(
         # when headers are combined from different sources.
         keys_to_remove = [
             "HISTORY", "COMMENT", "CONTINUE",  # General metadata
-            "CDELTM1", "CDELTM2",  # Can conflict with CD matrix
+            "XPIXELSZ", "YPIXELSZ", "CDELTM1", "CDELTM2",  # Can conflict with CD matrix
         ]
         
         # Add distortion-related keywords to the removal list
@@ -1620,7 +1620,7 @@ def refine_astrometry_with_stdpipe(
             if key in clean_header:
                 del clean_header[key]
                 removed_count += 1
-        
+
         if removed_count > 0:
             st.info(f"Removed {removed_count} problematic or distortion-related keywords from header.")
 
