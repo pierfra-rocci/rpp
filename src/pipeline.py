@@ -1812,7 +1812,8 @@ def refine_astrometry_with_stdpipe(
                 radius = max(image_data.shape) * pixel_scale / 3600.0 / 2.0
                 st.info(
                     f"Using fallback field center: RA={center_ra:.3f}, "
-                    f"DEC={{center_dec:.3f}}, radius={{radius:.3f}}"""
+                    f"DEC={{center_dec:.3f}}, radius={{radius:.3f}}"
+                    ""
                 )
 
             except Exception as fallback_error:
