@@ -12,7 +12,7 @@ backend_log="backend.log"
 frontend_log="frontend.log"
 
 echo "Starting backend with gunicorn in background..."
-gunicorn --workers 4 --bind 0.0.0.0:5000 backend:app 2>&1 | tee $backend_log &
+gunicorn --workers 4 --bind 0.0.0.0:5000 --log-level=debug --error-logfile - backend:app 2>&1 | tee $backend_log &
 
 echo "Waiting for backend to start..."
 sleep 5
