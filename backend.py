@@ -1,5 +1,6 @@
 from flask import Flask, request
 import sqlite3
+import scrypt
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import smtplib
