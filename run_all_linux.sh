@@ -11,8 +11,8 @@ fi
 backend_log="backend.log"
 frontend_log="frontend.log"
 
-echo "Starting backend_prod.py in background..."
-python backend_prod.py | tee $backend_log &
+echo "Starting backend with gunicorn in background..."
+gunicorn --workers 4 --bind 0.0.0.0:5000 backend:app | tee $backend_log &
 
 echo "Starting frontend.py in background..."
 streamlit run frontend.py | tee $frontend_log &

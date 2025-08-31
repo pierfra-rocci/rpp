@@ -7,20 +7,18 @@ import random
 import string
 import os
 import base64
+import datetime
 
 app = Flask(__name__)
 app.config["PREFERRED_URL_SCHEME"] = "https"
 CORS(app)
-
-# Simple in-memory store for recovery codes (for demo; use persistent store in production)
-recovery_codes = {}
 
 # Use absolute path for database file
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.db")
 
 
 def get_db_connection():
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -36,10 +34,16 @@ def init_db():
             email TEXT UNIQUE NOT NULL,
             config_json TEXT
         )""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS recovery_codes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            code TEXT NOT NULL,
+            expires_at DATETIME NOT NULL
+        )""")
         conn.commit()
         print("Database schema created successfully")
 
-        # Verify the table exists
+        # Verify the tables exist
         cursor = conn.cursor()
         cursor.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
@@ -48,6 +52,14 @@ def init_db():
             print("Confirmed 'users' table exists")
         else:
             print("WARNING: 'users' table was not created!")
+        
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='recovery_codes'"
+        )
+        if cursor.fetchone():
+            print("Confirmed 'recovery_codes' table exists")
+        else:
+            print("WARNING: 'recovery_codes' table was not created!")
 
         conn.close()
     except Exception as e:
@@ -144,11 +156,17 @@ def recover_request():
     cur = conn.cursor()
     cur.execute("SELECT username FROM users WHERE email = ?", (email,))
     user = cur.fetchone()
-    conn.close()
     if not user:
+        conn.close()
         return "Email not found.", 404
     code = "".join(random.choices(string.digits, k=6))
-    recovery_codes[email] = code
+    expires_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
+    cur.execute(
+        "INSERT INTO recovery_codes (email, code, expires_at) VALUES (?, ?, ?)",
+        (email, code, expires_at),
+    )
+    conn.commit()
+    conn.close()
     send_email(email, "Password Recovery Code", f"Your recovery code is: {code}")
     return "Recovery code sent to your email.", 200
 
@@ -161,15 +179,28 @@ def recover_confirm():
     new_password = data.get("new_password")
     if not email or not code or not new_password:
         return "Email, code, and new password required.", 400
-    if recovery_codes.get(email) != code:
-        return "Invalid or expired code.", 400
-    hashed_pw = generate_password_hash(new_password)
     conn = get_db_connection()
     cur = conn.cursor()
+    cur.execute(
+        "SELECT * FROM recovery_codes WHERE email = ? AND code = ?", (email, code)
+    )
+    recovery_code = cur.fetchone()
+    if not recovery_code:
+        conn.close()
+        return "Invalid recovery code.", 400
+    
+    expires_at = datetime.datetime.strptime(recovery_code["expires_at"], "%Y-%m-%d %H:%M:%S.%f")
+    if datetime.datetime.now() > expires_at:
+        cur.execute("DELETE FROM recovery_codes WHERE email = ?", (email,))
+        conn.commit()
+        conn.close()
+        return "Recovery code has expired.", 400
+
+    hashed_pw = generate_password_hash(new_password)
     cur.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, email))
+    cur.execute("DELETE FROM recovery_codes WHERE email = ?", (email,))
     conn.commit()
     conn.close()
-    del recovery_codes[email]
     return "Password updated successfully.", 200
 
 
