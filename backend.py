@@ -1,6 +1,5 @@
 from flask import Flask, request
 import sqlite3
-import scrypt
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import smtplib
@@ -112,7 +111,7 @@ def register():
     if cur.fetchone():
         conn.close()
         return "Username or email is already taken.", 409
-    hashed_pw = generate_password_hash(password)
+    hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
     # Check if password hash already exists
     cur.execute("SELECT * FROM users WHERE password = ?", (hashed_pw,))
     if cur.fetchone():
@@ -197,7 +196,7 @@ def recover_confirm():
         conn.close()
         return "Recovery code has expired.", 400
 
-    hashed_pw = generate_password_hash(new_password)
+    hashed_pw = generate_password_hash(new_password, method='pbkdf2:sha256')
     cur.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, email))
     cur.execute("DELETE FROM recovery_codes WHERE email = ?", (email,))
     conn.commit()
