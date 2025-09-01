@@ -47,6 +47,8 @@ from src.pipeline import (
     airmass,
 )
 
+from src.image_subtraction import TransientFinder
+
 from src.__version__ import version
 
 # Conditional Import (already present, just noting its location)
@@ -2329,6 +2331,90 @@ if science_file is not None:
                         f"https://cdsxmatch.u-strasbg.fr/xmatch?request=doQuery&RA={ra_center}&DEC={dec_center}&radius=5",
                         help="Open CDS XMatch service for these coordinates",
                     )
+
+                    # Add an expander for the Transient Finder
+                    with st.expander("Transient Finder", expanded=False):
+                        st.markdown("### Find transient sources by subtracting a reference image.")
+
+                        # Add survey and filter selection
+                        transient_survey = st.selectbox(
+                            "Reference Survey",
+                            options=["PanSTARRS", "DSS2"],
+                            index=1,  # Default to DSS2
+                            key="transient_survey",
+                            help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
+                        )
+
+                        transient_filter = st.selectbox(
+                            "Reference Filter",
+                            options=["g", "r", "i", "blue", "red"],
+                            index=4,  # Default to 'red'
+                            key="transient_filter",
+                            help="Filter/band for the reference image. Options depend on the selected survey.",
+                        )
+
+                        # Add a button to run the image subtraction
+                        if st.button("🌠 Run Image Subtraction", key="run_subtraction"):
+                            if "science_file_path" in st.session_state and st.session_state["science_file_path"]:
+                                with st.spinner("Running Image Subtraction... This may take a moment."):
+                                    try:
+                                        # Initialize the TransientFinder
+                                        finder = TransientFinder(
+                                            science_fits_path=st.session_state["science_file_path"],
+                                            output_dir=st.session_state["output_dir"],
+                                        )
+
+                                        # 1. Get reference image
+                                        st.write(f"Retrieving reference image from {transient_survey} ({transient_filter} band)...")
+                                        if not finder.get_reference_image(
+                                            survey=transient_survey,
+                                            filter_band=transient_filter,
+                                        ):
+                                            st.error("❌ Failed to retrieve the reference image. Please try another survey or filter.")
+                                            st.stop()
+                                        st.write("✅ Reference image retrieved.")
+
+                                        # 2. Perform subtraction
+                                        st.write("Performing image subtraction...")
+                                        if not finder.perform_subtraction(method="proper"):
+                                            st.error("❌ Image subtraction failed.")
+                                            st.stop()
+                                        st.write("✅ Image subtraction complete.")
+
+                                        # 3. Detect transients
+                                        st.write("Detecting transient sources...")
+                                        transients = finder.detect_transients(threshold=5.0)
+
+                                        if transients is not None and len(transients) > 0:
+                                            st.success(f"🎉 Found {len(transients)} transient candidate(s)!")
+                                            st.dataframe(transients.to_pandas())
+
+                                            # 4. Plot results
+                                            st.write("Generating result plots...")
+                                            plot_path = finder.plot_results(show=False)
+                                            if plot_path and os.path.exists(plot_path):
+                                                st.image(plot_path, caption="Transient Detection: Science, Reference, and Difference Images")
+
+                                            # 5. Plot cutouts
+                                            cutout_paths = finder.plot_transient_cutouts(show=False)
+                                            if cutout_paths:
+                                                st.write("Cutouts for each transient:")
+                                                for path in cutout_paths:
+                                                    if os.path.exists(path):
+                                                        st.image(path, caption=os.path.basename(path))
+                                        else:
+                                            st.info("✅ No significant transient sources were detected.")
+
+                                        # 6. Cleanup temporary files
+                                        if not st.session_state.get("keep_temp_files", False):
+                                            finder.cleanup_temp_files()
+                                            st.write("Temporary files cleaned up.")
+
+                                    except Exception as e:
+                                        st.error(f"An error occurred during the transient finding process: {e}")
+                                        st.exception(e)
+                            else:
+                                st.warning("Please upload a science FITS file first before running the transient finder.")
 
                     # Only provide download buttons if processing was completed
                     if final_phot_table is not None:
