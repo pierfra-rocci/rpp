@@ -72,8 +72,8 @@ init_db()
 
 # Helper send email (configure SMTP as needed)
 def send_email(to_email, subject, body):
-    smtp_server = "smtp.gmail.com"
-    smtp_port = 587
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
     smtp_user = os.environ.get("SMTP_USER")
     smtp_pass_encoded = os.environ.get("SMTP_PASS_ENCODED")
     smtp_pass = (
@@ -89,9 +89,16 @@ def send_email(to_email, subject, body):
             message = f"Subject: {subject}\n\n{body}"
             server.sendmail(smtp_user, to_email, message)
         return True
-    except Exception as e:
-        print(f"Failed to send email: {e}")
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"Failed to send email: SMTP authentication error - {e}")
         return False
+    except smtplib.SMTPConnectError as e:
+        print(f"Failed to send email: Error connecting to the SMTP server - {e}")
+        return False
+    except Exception as e:
+        print(f"Failed to send email: An unexpected error occurred - {e}")
+        return False
+
 
 
 @app.route("/register", methods=["POST"])
@@ -126,6 +133,12 @@ def register():
     )
     conn.commit()
     conn.close()
+    # Send welcome email
+    send_email(
+        email,
+        "Welcome to RAPAS Photometry Pipeline!",
+        f"Hi {username},\n\nThank you for registering for the RAPAS Photometry Pipeline. We are excited to have you on board!\n\nBest,\nThe RAPAS Team",
+    )
     return "Registered successfully.", 201
 
 
@@ -161,9 +174,10 @@ def recover_request():
         return "Email not found.", 404
     code = "".join(random.choices(string.digits, k=6))
     expires_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
+    hashed_code = generate_password_hash(code)
     cur.execute(
         "INSERT INTO recovery_codes (email, code, expires_at) VALUES (?, ?, ?)",
-        (email, code, expires_at),
+        (email, hashed_code, expires_at),
     )
     conn.commit()
     conn.close()
@@ -181,20 +195,21 @@ def recover_confirm():
         return "Email, code, and new password required.", 400
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute(
-        "SELECT * FROM recovery_codes WHERE email = ? AND code = ?", (email, code)
-    )
-    recovery_code = cur.fetchone()
-    if not recovery_code:
-        conn.close()
-        return "Invalid recovery code.", 400
+    cur.execute("SELECT * FROM recovery_codes WHERE email = ?", (email,))
+    recovery_codes = cur.fetchall()
     
-    expires_at = datetime.datetime.strptime(recovery_code["expires_at"], "%Y-%m-%d %H:%M:%S.%f")
-    if datetime.datetime.now() > expires_at:
-        cur.execute("DELETE FROM recovery_codes WHERE email = ?", (email,))
-        conn.commit()
+    valid_code_found = False
+    for recovery_code in recovery_codes:
+        if check_password_hash(recovery_code["code"], code):
+            expires_at = datetime.datetime.strptime(recovery_code["expires_at"], "%Y-%m-%d %H:%M:%S.%f")
+            if datetime.datetime.now() > expires_at:
+                continue  # Expired code
+            valid_code_found = True
+            break
+
+    if not valid_code_found:
         conn.close()
-        return "Recovery code has expired.", 400
+        return "Invalid or expired recovery code.", 400
 
     hashed_pw = generate_password_hash(new_password, method='pbkdf2:sha256')
     cur.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, email))
