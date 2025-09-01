@@ -2365,10 +2365,10 @@ if science_file is not None:
                                         )
 
                                         # 1. Get reference image
-                                        st.write(f"Retrieving reference image from {transient_survey} ({transient_filter} band)...")
+                                        st.write(f"Retrieving reference image from {st.session_state.transient_survey} ({st.session_state.transient_filter} band)...")
                                         if not finder.get_reference_image(
-                                            survey=transient_survey,
-                                            filter_band=transient_filter,
+                                            survey=st.session_state.transient_survey,
+                                            filter_band=st.session_state.transient_filter,
                                         ):
                                             st.error("❌ Failed to retrieve the reference image. Please try another survey or filter.")
                                             st.stop()
