@@ -1263,6 +1263,30 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
     )
     st.markdown("[Get your key](https://www.astro-colibri.science)")
 
+# Add an expander for the Transient Finder
+with st.sidebar.expander("Transient Finder", expanded=False):
+    st.markdown("### Find transient sources by subtracting a reference image.")
+
+    # Add a checkbox to enable/disable the transient finder
+    run_transient_finder = st.checkbox("Enable Transient Finder", key="run_transient_finder")
+
+    # Add survey and filter selection
+    transient_survey = st.selectbox(
+        "Reference Survey",
+        options=["PanSTARRS", "DSS2"],
+        index=1,  # Default to DSS2
+        key="transient_survey",
+        help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
+    )
+
+    transient_filter = st.selectbox(
+        "Reference Filter",
+        options=["g", "r", "i", "blue", "red"],
+        index=4,  # Default to 'red'
+        key="transient_filter",
+        help="Filter/band for the reference image. Options depend on the selected survey.",
+    )
+
 if st.sidebar.button("💾 Save Configuration"):
     analysis_params = dict(st.session_state.get("analysis_parameters", {}))
     observatory_params = dict(st.session_state.get("observatory_data", {}))
@@ -2332,29 +2356,9 @@ if science_file is not None:
                         help="Open CDS XMatch service for these coordinates",
                     )
 
-                    # Add an expander for the Transient Finder
-                    with st.expander("Transient Finder", expanded=False):
-                        st.markdown("### Find transient sources by subtracting a reference image.")
-
-                        # Add survey and filter selection
-                        transient_survey = st.selectbox(
-                            "Reference Survey",
-                            options=["PanSTARRS", "DSS2"],
-                            index=1,  # Default to DSS2
-                            key="transient_survey",
-                            help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
-                        )
-
-                        transient_filter = st.selectbox(
-                            "Reference Filter",
-                            options=["g", "r", "i", "blue", "red"],
-                            index=4,  # Default to 'red'
-                            key="transient_filter",
-                            help="Filter/band for the reference image. Options depend on the selected survey.",
-                        )
-
-                        # Add a button to run the image subtraction
-                        if st.button("🌠 Run Image Subtraction", key="run_subtraction"):
+                    # Add a button to run the image subtraction
+                    if st.button("🌠 Run Image Subtraction", key="run_subtraction"):
+                        if st.session_state.get("run_transient_finder"):
                             if "science_file_path" in st.session_state and st.session_state["science_file_path"]:
                                 with st.spinner("Running Image Subtraction... This may take a moment."):
                                     try:
@@ -2415,6 +2419,8 @@ if science_file is not None:
                                         st.exception(e)
                             else:
                                 st.warning("Please upload a science FITS file first before running the transient finder.")
+                        else:
+                            st.warning("Please enable the 'Transient Finder' in the sidebar to run the image subtraction.")
 
                     # Only provide download buttons if processing was completed
                     if final_phot_table is not None:
