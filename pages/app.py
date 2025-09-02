@@ -939,6 +939,8 @@ def initialize_session_state():
         "cr_readnoise": 2.5,
         "cr_sigclip": 6.0,
         "run_transient_finder": False,
+        "transient_survey": "DSS2",
+        "transient_filter": "red",
     }
 
     if "analysis_parameters" not in st.session_state:
@@ -1297,15 +1299,6 @@ if st.sidebar.button("💾 Save Configuration"):
     colibri_api_key = st.session_state.get("colibri_api_key")
 
     # Add pre-process options to analysis_parameters
-    analysis_params["astrometry_check"] = st.session_state.get(
-        "astrometry_check", False
-    )
-    analysis_params["calibrate_cosmic_rays"] = st.session_state.get(
-        "calibrate_cosmic_rays", False
-    )
-    analysis_params["run_transient_finder"] = st.session_state.get(
-        "run_transient_finder", False
-    )
     params = {
         "analysis_parameters": analysis_params,
         "observatory_data": observatory_params,
