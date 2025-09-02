@@ -1270,7 +1270,10 @@ with st.sidebar.expander("Transient Finder", expanded=False):
     st.markdown("### Find transient sources by subtracting a reference image.")
 
     # Add a checkbox to enable/disable the transient finder
-    run_transient_finder = st.checkbox("Enable Transient Finder", key="run_transient_finder")
+    st.session_state.analysis_parameters['run_transient_finder'] = st.checkbox(
+        "Enable Transient Finder", 
+        value=st.session_state.analysis_parameters.get('run_transient_finder', False)
+    )
 
     # Add survey and filter selection
     transient_survey = st.selectbox(
