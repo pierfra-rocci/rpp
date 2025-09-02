@@ -938,6 +938,7 @@ def initialize_session_state():
         "cr_gain": 1.0,
         "cr_readnoise": 2.5,
         "cr_sigclip": 6.0,
+        "run_transient_finder": False,
     }
 
     if "analysis_parameters" not in st.session_state:
@@ -990,6 +991,7 @@ def initialize_session_state():
             "cr_sigclip",
             "filter_band",
             "filter_max_mag",
+            "run_transient_finder",
         ]:
             if key in ap:
                 st.session_state[key] = ap[key]
@@ -1298,6 +1300,9 @@ if st.sidebar.button("💾 Save Configuration"):
     )
     analysis_params["calibrate_cosmic_rays"] = st.session_state.get(
         "calibrate_cosmic_rays", False
+    )
+    analysis_params["run_transient_finder"] = st.session_state.get(
+        "run_transient_finder", False
     )
     params = {
         "analysis_parameters": analysis_params,
