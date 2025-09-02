@@ -1267,7 +1267,6 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
 
 # Add an expander for the Transient Finder
 with st.sidebar.expander("Transient Finder", expanded=False):
-    st.markdown("### Find transient sources by subtracting a reference image.")
 
     # Add a checkbox to enable/disable the transient finder
     st.session_state.analysis_parameters['run_transient_finder'] = st.checkbox(
