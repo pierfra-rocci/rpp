@@ -994,6 +994,8 @@ def initialize_session_state():
             "filter_band",
             "filter_max_mag",
             "run_transient_finder",
+            "transient_survey",
+            "transient_filter",
         ]:
             if key in ap:
                 st.session_state[key] = ap[key]
@@ -1277,19 +1279,21 @@ with st.sidebar.expander("Transient Finder", expanded=False):
     )
 
     # Add survey and filter selection
-    transient_survey = st.selectbox(
+    survey_options = ["PanSTARRS", "DSS2"]
+    survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'DSS2'))
+    st.session_state.analysis_parameters['transient_survey'] = st.selectbox(
         "Reference Survey",
-        options=["PanSTARRS", "DSS2"],
-        index=1,  # Default to DSS2
-        key="transient_survey",
+        options=survey_options,
+        index=survey_index,
         help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
     )
 
-    transient_filter = st.selectbox(
+    filter_options = ["g", "r", "i", "blue", "red"]
+    filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'red'))
+    st.session_state.analysis_parameters['transient_filter'] = st.selectbox(
         "Reference Filter",
-        options=["g", "r", "i", "blue", "red"],
-        index=4,  # Default to 'red'
-        key="transient_filter",
+        options=filter_options,
+        index=filter_index,
         help="Filter/band for the reference image. Options depend on the selected survey.",
     )
 
