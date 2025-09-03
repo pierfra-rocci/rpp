@@ -1000,28 +1000,6 @@ def initialize_session_state():
             if key in ap:
                 st.session_state[key] = ap[key]
 
-        if "analysis_parameters" in st.session_state:
-        ap = st.session_state["analysis_parameters"]
-        for key in [
-            "seeing",
-            "threshold_sigma",
-            "detection_mask",
-            "astrometry_check",
-            "calibrate_cosmic_rays",
-            "cr_gain",
-            "cr_readnoise",
-            "cr_sigclip",
-            "filter_band",
-            "filter_max_mag",
-            "run_transient_finder",
-            "transient_survey",
-            "transient_filter",
-        ]:
-            if key in ap:
-                st.session_state[key] = ap[key]
-
-    if "filter_parameters" in st.session_state:
-
     if "colibri_api_key" in st.session_state:
         st.session_state["colibri_api_key"] = st.session_state["colibri_api_key"]
 
