@@ -1670,9 +1670,6 @@ def refine_astrometry_with_stdpipe(
             st.error(f"Cleaned WCS still has issues: {wcs_test_error}")
             return None
 
-        # Get objects using stdpipe with corrected parameters
-        # Robust multi-strategy detection: try several parameter sets with stdpipe SEP wrapper,
-        # then fall back to SExtractor wrapper if SEP fails. Also try local background subtraction.
         def _ensure_native_byteorder(arr: np.ndarray) -> np.ndarray:
             # SEP requires native byteorder arrays (see SEP docs)
             if not arr.dtype.isnative:
