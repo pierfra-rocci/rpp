@@ -225,30 +225,82 @@ Firefox may not properly handle autocomplete with Streamlit's login form. Try th
 - Ensure adequate RAM (8GB+ recommended)
 - Close other applications during processing
 
+## Recent changes / Changelog (last update: 2025-10-19)
+
+- Improved WCS handling and robustness:
+  - safe_wcs_create and fix_header functions now better detect and remove problematic keywords (CD/PC matrices, fake coordinates, singular matrices) and optionally add a minimal default WCS when necessary.
+  - refine_astrometry_with_stdpipe includes header cleaning, stronger validation and fallbacks before calling SCAMP/stdpipe.
+- Photometry workflow updates:
+  - Multi-aperture photometry saved in columns named instrumentally like instrumenta­l_mag_r1.5, aperture_mag_r1.5, aperture_mag_err_r1.5 (also for 2.0, 2.5, 3.0× FWHM).
+  - PSF photometry uses an empirical PSF (EPSFBuilder) with more robust star filtering and error handling; PSF model saved as a FITS file.
+  - Aperture background estimation uses annuli with robust sigma-clipping and MAD-based thresholds.
+- Astrometry and catalog matching:
+  - Local blind plate solving via stdpipe/astrometry.net (solve_with_astrometrynet).
+  - GAIA DR3 cross-matching with per-source quality filters (ruwe, variability, color index) and optional synthetic photometry queries.
+  - SCAMP-based WCS refinement available with conservative retry strategies.
+- Transient detection and image subtraction:
+  - TransientFinder integration: retrieve reference image, perform subtraction and detect transient candidates (optional, controlled in sidebar).
+- UI / UX and outputs:
+  - Embedded Aladin Lite v3 viewer for catalog overlay (display_catalog_in_aladin).
+  - Results saved to a per-user output directory: <username>_rpp_results; catalog saved as both CSV and VOTable (XML) when possible.
+  - Zip/archive utilities: provide_download_buttons, display_archived_files_browser, zip_rpp_results_on_exit.
+  - Temporary files are stored in OS temp under a user-specific subdirectory and cleaned up by cleanup_temp_files.
+- Logging:
+  - In-memory log buffer created by initialize_log and written at end of processing. Log file saved to output directory.
+- Backend and session:
+  - Login/registration/recover flow in pages/login.py using a local backend (default http://localhost:5000). Configuration save endpoint used at /save_config and get_config for loading user settings.
+- Robustness and safety:
+  - Many functions use safe_* wrappers (safe_catalog_query, safe_wcs_create) and graceful fallbacks to avoid hard failures.
+  - Improved checks on header keywords and numeric ranges (RA/DEC, CRPIX, CRVAL, pixel scale).
+- Small but important API/column changes:
+  - Column names now include multi-aperture suffixes (_r1.5, _r2.0, etc.). The app keeps backward-compatible legacy columns where possible (calib_mag, aperture_mag) but new processing prefers per-radius columns.
+
+## Quick run (minimal)
+1. Ensure system dependencies:
+   - Python 3.10+
+   - Astrometry.net (solve-field) and required index files
+   - SCAMP (optional, for high-order WCS refinement)
+2. Install Python packages:
+   - pip install -r requirements.txt
+   - If no requirements.txt, the main packages required include: streamlit astropy photutils astroquery matplotlib pandas numpy astroscrappy stdpipe requests scikit-image
+3. Start the Streamlit app:
+   - streamlit run pages/app.py
+   - Default Streamlit port: 8501 (change with --server.port)
+4. Backend (optional):
+   - Local backend assumed at http://localhost:5000 for login/config endpoints. If not used, the app continues in anonymous mode and saves config locally to output directory.
+
+## Files & outputs
+- <username>_rpp_results/
+  - *_catalog.csv  (CSV catalog)
+  - *_catalog.xml  (VOTable, when conversion succeeds)
+  - *_bkg.fits     (background model and RMS)
+  - *_psf.fits     (fitted PSF model)
+  - *_image.png    (saved visualization)
+  - *.log          (processing log)
+  - *.zip          (archived results created by the app)
+
+## Notes & Known issues
+- Plate solving:
+  - Requires local astrometry.net solve-field binary in PATH and appropriate index files for your scale.
+  - If plate solving fails, the app will fall back to instrumental photometry without WCS (coordinates limited).
+- WCS and header variability:
+  - Many FITS headers from telescopes/cameras use non-standard keywords. fix_header and safe_wcs_create attempt automatic fixes, but manual RA/DEC entry may still be necessary.
+- Catalog queries:
+  - GAIA / Vizier / SIMBAD queries require internet access and may be rate-limited.
+  - Synthetic photometry queries are limited in size; the code restricts to a safe number of source_ids when querying GAIA synthetic photometry tables.
+- Transient finder:
+  - May require additional dependencies and internet access to fetch survey reference images.
+- VOTable creation:
+  - Some DataFrame columns with mixed types or objects may be removed prior to VOTable conversion; the app warns when it strips problematic columns.
+
 ## Contributing
+- Please open issues or pull requests for bugs, feature requests or improvements.
+- Tests and clear reproducible examples are appreciated for complex changes (WCS, PSF, astrometry).
 
-Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
-
-## License
-
-This project is open source. Please check the license file for details.
-
-## Citation
-
-If you use this pipeline, please cites it.
-
-## Support
-
-For support and questions:
-
-- Create an issue on the project repository
-- Review the detailed log files for error diagnosis
-
-### Common Issues
-
-- **WCS Problems**: Automatic header fixing and plate solving fallback
-- **Network Timeouts**: Retry mechanisms for catalog queries
-- **File Permissions**: Secure temporary file handling
+## Support / Contact
+- For quick support, open an issue on the project repository.
+- For the Astro-Colibri API, see: https://www.astro-colibri.science
+- App version is declared in src/__version__.py (displayed in the app sidebar).
 
 ## License
 
