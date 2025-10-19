@@ -58,8 +58,36 @@
 <li class="toctree-l2"><a class="reference internal" href="#advanced-scripting-with-pfr-functions">Advanced: Scripting with PFR Functions</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="#id1">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#minimal-python-example">Minimal Python example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notes-and-next-steps">Notes and next steps</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-photometry-example">Basic Photometry Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#variable-star-analysis">Variable Star Analysis</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#asteroids-and-moving-objects">Asteroids and Moving Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tutorial-complete-photometry-workflow">Tutorial: Complete Photometry Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-scripting-with-pfr-functions">Advanced: Scripting with PFR Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#id1">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#minimal-python-example">Minimal Python example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notes-and-next-steps">Notes and next steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html#usage-examples">Usage Examples</a></li>
 </ul>
 
         </div>
@@ -273,115 +301,49 @@
 <span class="c1"># Gaia Params</span>
 <span class="n">gaia_band</span> <span class="o">=</span> <span class="s1">&#39;phot_g_mean_mag&#39;</span>
 <span class="n">gaia_max_mag</span> <span class="o">=</span> <span class="mf">20.0</span>
-<span class="c1"># Observatory Params</span>
-<span class="n">observatory</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;MyObs&quot;</span><span class="p">,</span> <span class="s2">&quot;latitude&quot;</span><span class="p">:</span> <span class="mf">45.0</span><span class="p">,</span> <span class="s2">&quot;longitude&quot;</span><span class="p">:</span> <span class="mf">10.0</span><span class="p">,</span> <span class="s2">&quot;elevation&quot;</span><span class="p">:</span> <span class="mf">100.0</span>
-<span class="p">}</span>
-<span class="c1"># API Keys</span>
-<span class="n">colibri_api_key</span> <span class="o">=</span> <span class="s2">&quot;YOUR_COLIBRI_KEY&quot;</span> <span class="c1"># Or None</span>
-
-<span class="c1"># --- Mimic Session State Setup ---</span>
-<span class="c1"># Need to manually manage state usually handled by Streamlit</span>
-<span class="n">session_state</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s2">&quot;output_dir&quot;</span><span class="p">:</span> <span class="n">output_dir</span><span class="p">,</span>
-    <span class="s2">&quot;base_filename&quot;</span><span class="p">:</span> <span class="n">fits_filepath</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.fits&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">),</span>
-    <span class="s2">&quot;log_buffer&quot;</span><span class="p">:</span> <span class="kc">None</span> <span class="c1"># Or initialize a StringIO buffer</span>
-<span class="p">}</span>
-<span class="c1"># Ensure output dir exists</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">output_dir</span><span class="p">):</span> <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
-
-<span class="c1"># --- Load Data ---</span>
-<span class="k">try</span><span class="p">:</span>
-    <span class="k">with</span> <span class="n">fits</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">fits_filepath</span><span class="p">)</span> <span class="k">as</span> <span class="n">hdul</span><span class="p">:</span>
-        <span class="c1"># Assuming load_fits_data logic is replicated or simplified</span>
-        <span class="n">raw_data</span> <span class="o">=</span> <span class="n">hdul</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="c1"># Example: Use raw data</span>
-        <span class="n">header</span> <span class="o">=</span> <span class="n">hdul</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">header</span>
-        <span class="c1"># Apply normalization if needed (logic from load_fits_data)</span>
-        <span class="c1"># For simplicity, using raw data here</span>
-        <span class="n">image_data</span> <span class="o">=</span> <span class="n">raw_data</span>
-        <span class="n">data_not_normalized</span> <span class="o">=</span> <span class="n">raw_data</span> <span class="c1"># Pass the non-normalized for stdpipe if used</span>
-<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error loading FITS: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">exit</span><span class="p">()</span>
-
-<span class="c1"># --- Get Metadata ---</span>
-<span class="n">wcs</span><span class="p">,</span> <span class="n">wcs_error</span> <span class="o">=</span> <span class="n">safe_wcs_create</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">wcs_error</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WCS Error: </span><span class="si">{</span><span class="n">wcs_error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="c1"># Handle missing WCS (e.g., try solving or exit)</span>
-    <span class="n">exit</span><span class="p">()</span>
-<span class="n">pixel_scale</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">extract_pixel_scale</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
-<span class="n">air_mass</span> <span class="o">=</span> <span class="n">airmass</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">observatory</span><span class="p">)</span>
-
-<span class="c1"># --- Estimate FWHM (Requires background subtraction first) ---</span>
-<span class="n">bkg</span><span class="p">,</span> <span class="n">bkg_error</span> <span class="o">=</span> <span class="n">estimate_background</span><span class="p">(</span><span class="n">image_data</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">bkg_error</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Background Error: </span><span class="si">{</span><span class="n">bkg_error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">exit</span><span class="p">()</span>
-<span class="n">img_sub</span> <span class="o">=</span> <span class="n">image_data</span> <span class="o">-</span> <span class="n">bkg</span><span class="o">.</span><span class="n">background</span>
-<span class="n">mask</span> <span class="o">=</span> <span class="n">make_border_mask</span><span class="p">(</span><span class="n">image_data</span><span class="p">,</span> <span class="n">border</span><span class="o">=</span><span class="n">detection_mask_px</span><span class="p">)</span>
-<span class="n">mean_fwhm_pixel</span> <span class="o">=</span> <span class="n">fwhm_fit</span><span class="p">(</span><span class="n">img_sub</span><span class="p">,</span> <span class="n">fwhm</span><span class="o">=</span><span class="n">seeing_arcsec</span><span class="o">/</span><span class="n">pixel_scale</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">)</span>
-<span class="k">if</span> <span class="n">mean_fwhm_pixel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;FWHM estimation failed.&quot;</span><span class="p">)</span>
-    <span class="n">mean_fwhm_pixel</span> <span class="o">=</span> <span class="n">seeing_arcsec</span> <span class="o">/</span> <span class="n">pixel_scale</span> <span class="c1"># Fallback</span>
-
-<span class="c1"># --- Detection and Photometry ---</span>
-<span class="c1"># Note: detection_and_photometry uses st.write, st.session_state etc.</span>
-<span class="c1"># This call would likely fail or need modification.</span>
-<span class="c1"># For scripting, consider using photutils/stdpipe functions directly.</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Skipping detection_and_photometry call due to Streamlit dependencies.&quot;</span><span class="p">)</span>
-<span class="c1"># phot_table, epsf_table, _, _ = detection_and_photometry(</span>
-<span class="c1">#     image_data, header, data_not_normalized, mean_fwhm_pixel,</span>
-<span class="c1">#     threshold_sigma, detection_mask_px, gaia_band</span>
-<span class="c1"># )</span>
-<span class="c1"># Simplified placeholder:</span>
-<span class="n">phot_table</span> <span class="o">=</span> <span class="n">Table</span><span class="p">({</span><span class="s1">&#39;xcenter&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">],</span> <span class="s1">&#39;ycenter&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">],</span> <span class="s1">&#39;aperture_sum&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1000</span><span class="p">],</span> <span class="s1">&#39;aperture_sum_err&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">10</span><span class="p">]})</span> <span class="c1"># Dummy data</span>
-<span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;instrumental_mag&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;aperture_sum&#39;</span><span class="p">])</span>
-<span class="c1"># Add RA/Dec manually if needed for cross-match</span>
-<span class="k">if</span> <span class="n">wcs</span><span class="p">:</span>
-    <span class="n">coords</span> <span class="o">=</span> <span class="n">wcs</span><span class="o">.</span><span class="n">pixel_to_world</span><span class="p">(</span><span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;xcenter&#39;</span><span class="p">],</span> <span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;ycenter&#39;</span><span class="p">])</span>
-    <span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">ra</span><span class="o">.</span><span class="n">deg</span>
-    <span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">dec</span><span class="o">.</span><span class="n">deg</span>
-
-<span class="c1"># --- Cross-match with GAIA ---</span>
-<span class="c1"># Note: cross_match_with_gaia uses st.write etc.</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Skipping cross_match_with_gaia call due to Streamlit dependencies.&quot;</span><span class="p">)</span>
-<span class="c1"># matched_table = cross_match_with_gaia(</span>
-<span class="c1">#     phot_table, header, pixel_scale, mean_fwhm_pixel, gaia_band, gaia_max_mag</span>
-<span class="c1"># )</span>
-<span class="c1"># Simplified placeholder:</span>
-<span class="n">matched_table</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span> <span class="c1"># Dummy data</span>
-    <span class="s1">&#39;instrumental_mag&#39;</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mf">7.5</span><span class="p">],</span> <span class="n">gaia_band</span><span class="p">:</span> <span class="p">[</span><span class="mf">15.0</span><span class="p">],</span> <span class="s1">&#39;ra&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;ra&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]],</span> <span class="s1">&#39;dec&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;dec&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span>
-<span class="p">})</span>
-
-<span class="c1"># --- Calculate Zero Point ---</span>
-<span class="c1"># Note: calculate_zero_point uses st.success, st.session_state, plt.savefig etc.</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Skipping calculate_zero_point call due to Streamlit dependencies.&quot;</span><span class="p">)</span>
-<span class="c1"># zp, zp_std, _ = calculate_zero_point(phot_table, matched_table, gaia_band, air_mass)</span>
-<span class="c1"># Simplified placeholder:</span>
-<span class="n">zp</span> <span class="o">=</span> <span class="mf">22.5</span> <span class="c1"># Dummy ZP</span>
-<span class="n">zp_std</span> <span class="o">=</span> <span class="mf">0.05</span>
-
-<span class="c1"># Apply ZP to phot_table</span>
-<span class="k">if</span> <span class="n">zp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;calib_mag&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">phot_table</span><span class="p">[</span><span class="s1">&#39;instrumental_mag&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">zp</span> <span class="o">+</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">air_mass</span>
-
-<span class="c1"># --- Enhance Catalog ---</span>
-<span class="c1"># Note: enhance_catalog uses st.write, st.info, st.session_state etc.</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Skipping enhance_catalog call due to Streamlit dependencies.&quot;</span><span class="p">)</span>
-<span class="c1"># final_catalog_df = enhance_catalog(</span>
-<span class="c1">#     colibri_api_key, phot_table.to_pandas(), matched_table, header, pixel_scale</span>
-<span class="c1"># )</span>
-<span class="c1"># Simplified placeholder:</span>
-<span class="n">final_catalog_df</span> <span class="o">=</span> <span class="n">phot_table</span><span class="o">.</span><span class="n">to_pandas</span><span class="p">()</span>
-
-<span class="c1"># --- Save Results ---</span>
-<span class="k">if</span> <span class="n">final_catalog_df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-    <span class="n">output_csv</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">session_state</span><span class="p">[</span><span class="s1">&#39;base_filename&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_catalog.csv&quot;</span><span class="p">)</span>
-    <span class="n">final_catalog_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">output_csv</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Catalog saved to </span><span class="si">{</span><span class="n">output_csv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
+</section>
+</section>
+<section id="id1">
+<h1>Examples<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>This page contains a compact set of examples and a very small, self-contained
+Python example that shows how to call core library functions. The production
+app is a Streamlit frontend backed by a Flask backend; the example below is
+meant to be runnable in a simple development environment (with appropriate
+dependencies and a FITS file if you want real results).</p>
+<section id="minimal-python-example">
+<h2>Minimal Python example<a class="headerlink" href="#minimal-python-example" title="Link to this heading"></a></h2>
+<p>Save the following as <cite>run_example.py</cite> in the project root and run it with
+<cite>python run_example.py</cite>. It demonstrates the call pattern used by the
+application; if you don’t have a FITS file handy it will print a friendly
+message instead.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># run_example.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">process_image_batch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_fits_image</span>
+
+<span class="n">fits_path</span> <span class="o">=</span> <span class="s1">&#39;example.fits&#39;</span>  <span class="c1"># replace with a real .fits file to actually run</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">load_fits_image</span><span class="p">(</span><span class="n">fits_path</span><span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">process_image_batch</span><span class="p">([</span><span class="n">image</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Processed&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">),</span> <span class="s1">&#39;images&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;example.fits not found. This example demonstrates the call pattern only.&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="notes-and-next-steps">
+<h2>Notes and next steps<a class="headerlink" href="#notes-and-next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>The repository includes higher-level examples in the <cite>doc</cite> folder. Use the
+<cite>installation</cite> and <cite>usage</cite> pages to set up your environment and run the
+frontend/backend stack.</p></li>
+<li><p>For batch/advanced workflows refer to the longer script examples that
+demonstrate combining multiple catalogs and plotting light curves.</p></li>
+</ul>
 </section>
 </section>
 

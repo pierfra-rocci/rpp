@@ -99,8 +99,69 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#id1">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#id1">Examples</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#core-application-modules">Core Application Modules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#frontend-application-pages-app-py">Frontend Application (pages/app.py)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pipeline-processing-src-pipeline-py">Pipeline Processing (src/pipeline.py)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#astrometric-functions">Astrometric Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#image-processing-functions">Image Processing Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#photometry-functions">Photometry Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#calibration-functions">Calibration Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#utility-functions-src-tools-py">Utility Functions (src/tools.py)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#file-and-data-handling">File and Data Handling</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#header-and-wcs-utilities">Header and WCS Utilities</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#catalog-and-network-functions">Catalog and Network Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#logging-and-visualization">Logging and Visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#version-information-src-version-py">Version Information (src/__version__.py)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#src.__version__.version"><code class="docutils literal notranslate"><span class="pre">version</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#src.__version__.version_info"><code class="docutils literal notranslate"><span class="pre">version_info</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-constants">Configuration Constants</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#figure-sizes-src-tools-py">Figure Sizes (src/tools.py)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#src.tools.FIGURE_SIZES"><code class="docutils literal notranslate"><span class="pre">FIGURE_SIZES</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#photometric-bands-src-tools-py">Photometric Bands (src/tools.py)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#src.tools.GAIA_BANDS"><code class="docutils literal notranslate"><span class="pre">GAIA_BANDS</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#backend-api-backend-py">Backend API (backend.py)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#user-management-endpoints">User Management Endpoints</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#configuration-management">Configuration Management</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#error-handling">Error Handling</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#usage-examples">Usage Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#basic-pipeline-usage">Basic Pipeline Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#custom-processing-workflow">Custom Processing Workflow</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#notes">Notes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html#usage-examples">Usage Examples</a></li>
 </ul>
 
         </div>
@@ -230,7 +291,7 @@ The algorithm detects cosmic rays using Laplacian edge detection.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="src.pipeline.estimate_background">
-<span class="sig-prename descclassname"><span class="pre">src.pipeline.</span></span><span class="sig-name descname"><span class="pre">estimate_background</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">128</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/pipeline.html#estimate_background"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pipeline.estimate_background" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">src.pipeline.</span></span><span class="sig-name descname"><span class="pre">estimate_background</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">box_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/pipeline.html#estimate_background"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pipeline.estimate_background" title="Link to this definition"></a></dt>
 <dd><p>Estimate the background and background RMS of an astronomical image.</p>
 <p>Uses photutils.Background2D to create a 2D background model with sigma-clipping
 and the SExtractor background estimation algorithm. Includes error handling
@@ -329,7 +390,7 @@ If False, the mask will be True for non-border regions</p></li>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>image_data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><em>numpy.ndarray</em></a>) – 2D array of the image data.</p></li>
 <li><p><strong>_science_header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.1)"><em>astropy.io.fits.Header</em></a>) – FITS header or dictionary with image metadata.</p></li>
-<li><p><strong>mean_fwhm_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Estimated FWHM in pixels, used for aperture and PSF sizing.</p></li>
+<li><p><strong>mean_fwhm_pixel</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Estimated FWHM in pixels, used for aperture and PSF sizing</p></li>
 <li><p><strong>threshold_sigma</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Detection threshold in sigma above background.</p></li>
 <li><p><strong>detection_mask</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Border size in pixels to mask during detection.</p></li>
 <li><p><strong>filter_band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Photometric band for catalog matching and calibration.</p></li>
@@ -380,6 +441,7 @@ and then uses this model to perform PSF photometry on all detected sources.</p>
 <li><p><strong>fwhm</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Full Width at Half Maximum in pixels, used to define extraction and fitting sizes</p></li>
 <li><p><strong>daostarfind</strong> (<em>callable</em>) – Star detection function used as “finder” in PSF photometry</p></li>
 <li><p><strong>mask</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><em>numpy.ndarray</em></a><em>, </em><em>optional</em>) – Mask to exclude certain image areas from analysis</p></li>
+<li><p><strong>error</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><em>numpy.ndarray</em></a><em>, </em><em>optional</em>) – Error array for the image</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -390,21 +452,15 @@ and then uses this model to perform PSF photometry on all detected sources.</p>
 </p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Tuple[<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.1)">astropy.table.Table</a>, <a class="reference external" href="https://photutils.readthedocs.io/en/stable/api/photutils.psf.EPSFModel.html#photutils.psf.EPSFModel" title="(in photutils v2.2)">photutils.psf.EPSFModel</a>]</p>
+<dd class="field-odd"><p>Tuple[<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.1)">astropy.table.Table</a>, <a class="reference external" href="https://photutils.readthedocs.io/en/stable/api/photutils.psf.EPSFModel.html#photutils.psf.EPSFModel" title="(in photutils v2.3)">photutils.psf.EPSFModel</a>]</p>
 </dd>
 </dl>
-<p class="rubric">Notes</p>
-<p>The function displays the extracted stars used for PSF model building and the
-resulting PSF model in the Streamlit interface. It also saves the PSF model
-as a FITS file in the output directory.</p>
-<p>If successful, the photometry results are also stored in the Streamlit session state
-under ‘epsf_photometry_result’.</p>
 <p>Perform PSF photometry using empirically-constructed PSF model. Includes star selection, PSF building, and iterative fitting.</p>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="src.pipeline.fwhm_fit">
-<span class="sig-prename descclassname"><span class="pre">src.pipeline.</span></span><span class="sig-name descname"><span class="pre">fwhm_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fwhm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std_lo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std_hi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/pipeline.html#fwhm_fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pipeline.fwhm_fit" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">src.pipeline.</span></span><span class="sig-name descname"><span class="pre">fwhm_fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fwhm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std_lo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">std_hi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/src/pipeline.html#fwhm_fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pipeline.fwhm_fit" title="Link to this definition"></a></dt>
 <dd><p>Estimate the Full Width at Half Maximum (FWHM) of stars in an astronomical image.</p>
 <p>This function detects sources in the image using DAOStarFinder, filters them based on
 flux values, and fits 1D Gaussian models to the marginal distributions of each source
@@ -465,19 +521,15 @@ to ensure reliable photometric calibration stars.</p>
 or None if the cross-match failed or found no matches</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.0)">pandas.DataFrame</a> or None</p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)">pandas.DataFrame</a> or None</p>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
 <ul class="simple">
 <li><p>The maximum separation for matching is set to twice the FWHM in arcseconds</p></li>
-<li><p>Applies multiple quality filters to ensure reliable calibration:
-- Excludes variable stars (phot_variable_flag != “VARIABLE”)
-- Limits color index range (abs(bp_rp) &lt; 1.5)
-- Ensures good astrometric solutions (ruwe &lt;= 1.5)</p></li>
-<li><p>For non-standard Gaia bands, queries synthetic photometry from gaiadr3.synthetic_photometry_gspc</p></li>
-<li><p>Progress and status updates are displayed in the Streamlit interface</p></li>
-<li><p>The underscore prefix in parameter names prevents issues with caching when the function is called repeatedly</p></li>
+<li><p>Applies a simple atmospheric extinction correction of 0.1*airmass</p></li>
+<li><p>Stores the calibrated photometry table in session state as ‘final_phot_table’</p></li>
+<li><p>Creates and saves a plot showing the relation between GAIA and calibrated magnitudes</p></li>
 </ul>
 <p>Cross-match detected sources with GAIA DR3 catalog. Includes quality filtering and support for synthetic photometry bands.</p>
 </dd></dl>
@@ -491,8 +543,8 @@ accounting for atmospheric extinction using the provided airmass.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>_phot_table</strong> (<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.1)"><em>astropy.table.Table</em></a><em> or </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.0)"><em>pandas.DataFrame</em></a>) – Photometry results table (underscore prevents caching issues)</p></li>
-<li><p><strong>_matched_table</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.0)"><em>pandas.DataFrame</em></a>) – Table of GAIA cross-matched sources (used for calibration)</p></li>
+<li><p><strong>_phot_table</strong> (<a class="reference external" href="https://docs.astropy.org/en/stable/api/astropy.table.Table.html#astropy.table.Table" title="(in Astropy v7.1)"><em>astropy.table.Table</em></a><em> or </em><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><em>pandas.DataFrame</em></a>) – Photometry results table (underscore prevents caching issues)</p></li>
+<li><p><strong>_matched_table</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><em>pandas.DataFrame</em></a>) – Table of GAIA cross-matched sources (used for calibration)</p></li>
 <li><p><strong>filter_band</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – GAIA magnitude band used (e.g., ‘phot_g_mean_mag’)</p></li>
 <li><p><strong>air</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Airmass value for atmospheric extinction correction</p></li>
 </ul>
@@ -585,8 +637,8 @@ astronomical databases.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>final_table</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.0)"><em>pandas.DataFrame</em></a>) – Final photometry catalog with RA/Dec coordinates</p></li>
-<li><p><strong>matched_table</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.0)"><em>pandas.DataFrame</em></a>) – Table of already matched GAIA sources (used for calibration)</p></li>
+<li><p><strong>final_table</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><em>pandas.DataFrame</em></a>) – Final photometry catalog with RA/Dec coordinates</p></li>
+<li><p><strong>matched_table</strong> (<a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><em>pandas.DataFrame</em></a>) – Table of already matched GAIA sources (used for calibration)</p></li>
 <li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.13)"><em>dict</em></a><em> or </em><a class="reference external" href="https://docs.astropy.org/en/stable/io/fits/api/headers.html#astropy.io.fits.Header" title="(in Astropy v7.1)"><em>astropy.io.fits.Header</em></a>) – FITS header with observation information</p></li>
 <li><p><strong>pixel_scale_arcsec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a>) – Pixel scale in arcseconds per pixel</p></li>
 <li><p><strong>search_radius_arcsec</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><em>float</em></a><em>, </em><em>optional</em>) – Search radius for cross-matching in arcseconds, default=60</p></li>
@@ -603,7 +655,7 @@ astronomical databases.</p>
 - A summary column ‘catalog_matches’ listing all catalog matches</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.0)">pandas.DataFrame</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)">pandas.DataFrame</a></p>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
@@ -1050,7 +1102,7 @@ global dictionary. Allowed values are ‘small’, ‘medium’, ‘large’,
 figsize and dpi.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://matplotlib.org/stable/api/_as_gen/matplotlib.figure.Figure.html#matplotlib.figure.Figure" title="(in Matplotlib v3.10.3)">matplotlib.figure.Figure</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://matplotlib.org/stable/api/_as_gen/matplotlib.figure.Figure.html#matplotlib.figure.Figure" title="(in Matplotlib v3.10.7)">matplotlib.figure.Figure</a></p>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
@@ -1066,7 +1118,7 @@ figsize and dpi.</p>
 <h3>Version Information (src/__version__.py)<a class="headerlink" href="#version-information-src-version-py" title="Link to this heading"></a></h3>
 <dl class="py data">
 <dt class="sig sig-object py" id="src.__version__.version">
-<span class="sig-prename descclassname"><span class="pre">src.__version__.</span></span><span class="sig-name descname"><span class="pre">version</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'0.9.8'</span></em><a class="headerlink" href="#src.__version__.version" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">src.__version__.</span></span><span class="sig-name descname"><span class="pre">version</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'1.3.1'</span></em><a class="headerlink" href="#src.__version__.version" title="Link to this definition"></a></dt>
 <dd><p>str(object=’’) -&gt; str
 str(bytes_or_buffer[, encoding[, errors]]) -&gt; str</p>
 <p>Create a new string object from the given object. If encoding or
@@ -1081,7 +1133,7 @@ errors defaults to ‘strict’.</p>
 
 <dl class="py data">
 <dt class="sig sig-object py" id="src.__version__.version_info">
-<span class="sig-prename descclassname"><span class="pre">src.__version__.</span></span><span class="sig-name descname"><span class="pre">version_info</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(0,</span> <span class="pre">9,</span> <span class="pre">8)</span></em><a class="headerlink" href="#src.__version__.version_info" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">src.__version__.</span></span><span class="sig-name descname"><span class="pre">version_info</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(1,</span> <span class="pre">3,</span> <span class="pre">1)</span></em><a class="headerlink" href="#src.__version__.version_info" title="Link to this definition"></a></dt>
 <dd><p>Built-in immutable sequence.</p>
 <p>If no argument is given, the constructor returns an empty tuple.
 If iterable is specified the tuple is initialized from iterable’s items.</p>

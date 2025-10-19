@@ -46,13 +46,10 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Usage Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting Started</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#basic-workflow">Basic Workflow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#detailed-step-by-step-guide">Detailed Step-by-Step Guide</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#processing-pipeline-details">Processing Pipeline Details</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#configuration-management">Configuration Management</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#file-management">File Management</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#error-handling-and-troubleshooting">Error Handling and Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start-development">Quick start (development)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#production-ish-run">Production-ish run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#logging-and-troubleshooting">Logging and troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next steps</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide.html">User Guide</a></li>
@@ -60,8 +57,27 @@
 <li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#id1">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start-development">Quick start (development)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#production-ish-run">Production-ish run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#logging-and-troubleshooting">Logging and troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#next-steps">Next steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html#id1">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html">Core Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference.html#usage-examples">Usage Examples</a></li>
 </ul>
 
         </div>
@@ -90,270 +106,68 @@
              
   <section id="usage-guide">
 <h1>Usage Guide<a class="headerlink" href="#usage-guide" title="Link to this heading"></a></h1>
-<section id="getting-started">
-<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h2>
-<p>RAPAS Photometry Pipeline (RPP) provides a web-based interface that guides you through the process of analyzing astronomical images with comprehensive photometric analysis and catalog cross-matching.</p>
+<p>This page shows the minimal steps to run the project locally and how to use
+the main features. It includes short, copy-paste commands for Windows
+PowerShell and Unix shells.</p>
+<section id="quick-start-development">
+<h2>Quick start (development)<a class="headerlink" href="#quick-start-development" title="Link to this heading"></a></h2>
 <ol class="arabic">
-<li><p>Start the backend server (in a separate terminal):</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>backend.py
+<li><p>Create and activate a virtual environment (PowerShell):</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">-m</span> <span class="n">venv</span> <span class="p">.</span><span class="n">venv</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+</pre></div>
+</div>
+<p>or on Unix/macOS:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
 </pre></div>
 </div>
 </li>
-<li><p>Launch the frontend application:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>streamlit<span class="w"> </span>run<span class="w"> </span>frontend.py
+<li><p>Install requirements:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">-r</span> <span class="n">requirements</span><span class="p">.</span><span class="n">txt</span>
 </pre></div>
 </div>
 </li>
-<li><p>Open your web browser to the displayed URL (typically <a class="reference external" href="http://localhost:8501">http://localhost:8501</a>)</p></li>
-<li><p>Log in using your credentials or register a new account.</p></li>
+<li><p>Start the backend (development server):</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">backend</span><span class="p">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>The backend runs by default on port 5000.</p>
+</li>
+<li><p>Start the frontend (Streamlit):</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">streamlit</span> <span class="n">run</span> <span class="n">frontend</span><span class="p">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>Visit the URL printed by Streamlit (usually <a class="reference external" href="http://localhost:8501">http://localhost:8501</a>).</p>
+</li>
 </ol>
 </section>
-<section id="basic-workflow">
-<h2>Basic Workflow<a class="headerlink" href="#basic-workflow" title="Link to this heading"></a></h2>
-<p>The typical workflow in RPP consists of:</p>
-<ol class="arabic simple">
-<li><p><strong>Authentication</strong>: Log in with your username and password or register a new account.</p></li>
-<li><p><strong>Observatory Configuration</strong>: Set your observatory location, coordinates, and elevation.</p></li>
-<li><p><strong>File Upload</strong>: Upload FITS science images (supports .fits, .fit, .fts, .fits.gz formats).</p></li>
-<li><p><strong>Parameter Configuration</strong>: Adjust analysis parameters in the sidebar.</p></li>
-<li><p><strong>Image Processing</strong>: Run the comprehensive photometry pipeline.</p></li>
-</ol>
+<section id="production-ish-run">
+<h2>Production-ish run<a class="headerlink" href="#production-ish-run" title="Link to this heading"></a></h2>
+<p>To run the backend behind a production server you can use <cite>waitress</cite> (Windows
+friendly) like the included <cite>backend_prod.py</cite>:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">backend_prod</span><span class="p">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>And run the frontend with Streamlit as above.</p>
 </section>
-<section id="detailed-step-by-step-guide">
-<h2>Detailed Step-by-Step Guide<a class="headerlink" href="#detailed-step-by-step-guide" title="Link to this heading"></a></h2>
-<p><strong>Step 1: Authentication</strong></p>
+<section id="logging-and-troubleshooting">
+<h2>Logging and troubleshooting<a class="headerlink" href="#logging-and-troubleshooting" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>Register a new account with username and password</p></li>
-<li><p>Login credentials are stored securely with password hashing</p></li>
-<li><p>Each user gets their own workspace and configuration</p></li>
-</ul>
-<p><strong>Step 2: Observatory Setup</strong></p>
-<p>Configure your observatory details in the sidebar:</p>
-<ul class="simple">
-<li><p><strong>Observatory Name</strong>: Identifier for your observing site</p></li>
-<li><p><strong>Latitude</strong>: Geographic latitude in decimal degrees (North positive)</p></li>
-<li><p><strong>Longitude</strong>: Geographic longitude in decimal degrees (East positive)</p></li>
-<li><p><strong>Elevation</strong>: Height above sea level in meters</p></li>
-</ul>
-<p>The application accepts both comma and dot as decimal separators for international users.</p>
-<p><strong>Step 3: Analysis Parameters</strong></p>
-<p>Set the following parameters in the sidebar:</p>
-<ul class="simple">
-<li><p><strong>Seeing (FWHM)</strong>: Initial estimate in arcseconds (1.0-6.0)</p></li>
-<li><p><strong>Detection Threshold</strong>: Source detection sigma threshold (0.5-4.5)</p></li>
-<li><p><strong>Border Mask</strong>: Pixel border exclusion size (0-200 pixels)</p></li>
-<li><p><strong>Calibration Filter Band</strong>: GAIA magnitude band for photometric calibration</p></li>
-<li><p><strong>Max Calibration Mag</strong>: Faintest magnitude for calibration stars (15.0-21.0)</p></li>
-</ul>
-<p><strong>Step 4: Processing Options</strong></p>
-<p>Enable optional processing features:</p>
-<ul class="simple">
-<li><p><strong>Refine Astrometry</strong>: Use SCAMP and GAIA DR3 for WCS refinement</p></li>
-<li><p><strong>Remove Cosmic Rays</strong>: Apply L.A.Cosmic algorithm with configurable parameters</p></li>
-<li><p><strong>Force Re-solve</strong>: Override existing WCS solution with new plate solving</p></li>
-</ul>
-<p><strong>Step 5: File Upload and Processing</strong></p>
-<ol class="arabic simple">
-<li><p>Upload your FITS file using the file uploader</p></li>
-<li><p>The application will display the image with dual visualization modes</p></li>
-<li><p>Click “Photometric Calibration” to start the pipeline</p></li>
-<li><p>Monitor progress through real-time status updates</p></li>
-</ol>
-<p><strong>Step 6: Results and Analysis</strong></p>
-<p>The pipeline generates:</p>
-<ul class="simple">
-<li><p><strong>Source Detection</strong>: Automatic detection using DAOStarFinder</p></li>
-<li><p><strong>Background Modeling</strong>: 2D background estimation and visualization</p></li>
-<li><p><strong>FWHM Analysis</strong>: Automatic seeing measurement with plots</p></li>
-<li><p><strong>Multi-Aperture Photometry</strong>: Four different aperture radii</p></li>
-<li><p><strong>PSF Photometry</strong>: Empirical PSF model construction and fitting</p></li>
-<li><p><strong>Astrometric Solution</strong>: Local plate solving and optional refinement</p></li>
-<li><p><strong>Catalog Cross-matching</strong>: Multiple astronomical database queries</p></li>
-<li><p><strong>Photometric Calibration</strong>: Zero-point calculation with GAIA DR3</p></li>
-</ul>
-<p><strong>Step 7: Interactive Exploration</strong></p>
-<ul class="simple">
-<li><p><strong>Aladin Lite Viewer</strong>: Interactive sky map with detected sources</p></li>
-<li><p><strong>Magnitude Distributions</strong>: Histograms and scatter plots</p></li>
-<li><p><strong>Source Tables</strong>: Comprehensive catalogs with cross-match results</p></li>
-<li><p><strong>ESA Sky Integration</strong>: External sky viewer links</p></li>
-</ul>
-<p><strong>Step 8: Data Export</strong></p>
-<ul class="simple">
-<li><p><strong>Download Results</strong>: Complete ZIP archive with all outputs</p></li>
-<li><p><strong>Archived Results</strong>: Browse previous analysis results</p></li>
-<li><p><strong>Individual Files</strong>: Access specific output files as needed</p></li>
+<li><p>Backend logs are printed to the console. Check for database initialization
+messages about the <cite>users</cite> and <cite>recovery_codes</cite> tables.</p></li>
+<li><p>If email-based features fail, confirm SMTP environment variables
+(<cite>SMTP_SERVER</cite>, <cite>SMTP_PORT</cite>, <cite>SMTP_USER</cite>, <cite>SMTP_PASS_ENCODED</cite>) are set.</p></li>
+<li><p>For astrometry/plate solving features ensure external dependencies (like
+Astrometry.net indices) are installed and available on PATH.</p></li>
 </ul>
 </section>
-<section id="processing-pipeline-details">
-<h2>Processing Pipeline Details<a class="headerlink" href="#processing-pipeline-details" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>Image Loading and Validation</strong>:</dt><dd><ul class="simple">
-<li><p>Automatic FITS header validation and fixing</p></li>
-<li><p>Support for multi-extension and compressed FITS files</p></li>
-<li><p>Data cube handling (extracts 2D planes)</p></li>
-<li><p>RGB image support (uses first channel)</p></li>
-</ul>
-</dd>
-<dt><strong>Optional Cosmic Ray Removal</strong>:</dt><dd><ul class="simple">
-<li><p>L.A.Cosmic algorithm via astroscrappy</p></li>
-<li><p>Configurable gain, read noise, and sigma clipping parameters</p></li>
-<li><p>Before/after comparison display</p></li>
-</ul>
-</dd>
-<dt><strong>Background Estimation</strong>:</dt><dd><ul class="simple">
-<li><p>photutils.Background2D with SExtractor algorithm</p></li>
-<li><p>Sigma clipping and 2D interpolation</p></li>
-<li><p>Background and RMS map visualization</p></li>
-<li><p>FITS output for further analysis</p></li>
-</ul>
-</dd>
-<dt><strong>Source Detection</strong>:</dt><dd><ul class="simple">
-<li><p>DAOStarFinder with configurable parameters</p></li>
-<li><p>Border masking to avoid edge effects</p></li>
-<li><p>Quality filtering based on shape parameters</p></li>
-<li><p>Detection threshold optimization</p></li>
-</ul>
-</dd>
-<dt><strong>FWHM Estimation</strong>:</dt><dd><ul class="simple">
-<li><p>Gaussian fitting on marginal sums</p></li>
-<li><p>Multiple source averaging for robust estimates</p></li>
-<li><p>FWHM vs flux scatter plots</p></li>
-<li><p>Outlier rejection and validation</p></li>
-</ul>
-</dd>
-<dt><strong>Astrometric Processing</strong>:</dt><dd><ul class="simple">
-<li><p><strong>Blind Plate Solving</strong>: Astrometry.net via stdpipe
-* Automatic source extraction
-* Scale and position hint optimization
-* Index file selection and solving
-* WCS validation and header updates</p></li>
-<li><p><strong>WCS Refinement</strong>: SCAMP with GAIA DR3
-* High-order polynomial fitting
-* Catalog matching and residual analysis
-* Distortion correction modeling
-* Quality assessment and validation</p></li>
-</ul>
-</dd>
-<dt><strong>Multi-Aperture Photometry</strong>:</dt><dd><ul class="simple">
-<li><p>Four aperture radii: 1.5×, 2.0×, 2.5×, 3.0× FWHM</p></li>
-<li><p>Local background estimation with annular apertures</p></li>
-<li><p>Background-corrected and raw flux measurements</p></li>
-<li><p>Error propagation including Poisson and read noise</p></li>
-<li><p>Signal-to-noise ratio calculation for each aperture</p></li>
-</ul>
-</dd>
-<dt><strong>PSF Photometry</strong>:</dt><dd><ul class="simple">
-<li><p>Empirical PSF model construction using EPSFBuilder</p></li>
-<li><p>Star selection based on shape and brightness criteria</p></li>
-<li><p>Iterative PSF fitting with IterativePSFPhotometry</p></li>
-<li><p>PSF model visualization and FITS output</p></li>
-<li><p>Comparison with aperture photometry results</p></li>
-</ul>
-</dd>
-<dt><strong>Photometric Calibration</strong>:</dt><dd><ul class="simple">
-<li><p>GAIA DR3 cross-matching with quality filters</p></li>
-<li><p>Robust zero-point calculation with sigma clipping</p></li>
-<li><p>Atmospheric extinction correction using airmass</p></li>
-<li><p>Calibration star filtering (variability, color, astrometry)</p></li>
-<li><p>Zero-point uncertainty estimation</p></li>
-</ul>
-</dd>
-<dt><strong>Catalog Cross-matching</strong>:</dt><dd><ul class="simple">
-<li><p><strong>GAIA DR3</strong>: Stellar parameters and calibration</p></li>
-<li><p><strong>SIMBAD</strong>: Object identification and classification</p></li>
-<li><p><strong>Astro-Colibri</strong>: Transient alerts and events</p></li>
-<li><p><strong>SkyBoT</strong>: Solar system object identification</p></li>
-<li><p><strong>AAVSO VSX</strong>: Variable star catalog</p></li>
-<li><p><strong>Milliquas</strong>: Quasar and AGN identification</p></li>
-</ul>
-</dd>
-</dl>
-</section>
-<section id="configuration-management">
-<h2>Configuration Management<a class="headerlink" href="#configuration-management" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>Saving Configuration</strong>:</dt><dd><ul class="simple">
-<li><p>Click “Save Configuration” to store current settings</p></li>
-<li><p>Settings saved both locally and to backend database</p></li>
-<li><p>User-specific configuration persistence</p></li>
-</ul>
-</dd>
-<dt><strong>Loading Configuration</strong>:</dt><dd><ul class="simple">
-<li><p>Configurations automatically loaded on login</p></li>
-<li><p>Override with manual parameter adjustments</p></li>
-<li><p>Reset to defaults if needed</p></li>
-</ul>
-</dd>
-<dt><strong>API Keys</strong>:</dt><dd><ul class="simple">
-<li><p>Astro-Colibri UID key for transient queries</p></li>
-<li><p>Stored securely with encryption</p></li>
-<li><p>Optional but recommended for full functionality</p></li>
-</ul>
-</dd>
-</dl>
-</section>
-<section id="file-management">
-<h2>File Management<a class="headerlink" href="#file-management" title="Link to this heading"></a></h2>
-<dl class="simple">
-<dt><strong>Input Files</strong>:</dt><dd><ul class="simple">
-<li><p>FITS files with standard extensions</p></li>
-<li><p>Automatic format detection and validation</p></li>
-<li><p>Temporary file handling with cleanup</p></li>
-<li><p>Multi-user file isolation</p></li>
-</ul>
-</dd>
-<dt><strong>Output Files</strong>:</dt><dd><ul class="simple">
-<li><p>Comprehensive CSV catalog with all measurements</p></li>
-<li><p>Processing log with timestamps and status</p></li>
-<li><p>Background and PSF model FITS files</p></li>
-<li><p>Visualization plots in PNG format</p></li>
-<li><p>Updated WCS header in text format</p></li>
-<li><p>Complete ZIP archive for distribution</p></li>
-</ul>
-</dd>
-<dt><strong>Archived Results</strong>:</dt><dd><ul class="simple">
-<li><p>Automatic archiving of completed analyses</p></li>
-<li><p>User-specific result directories</p></li>
-<li><p>Automatic cleanup of old files (30+ days)</p></li>
-<li><p>Browse and download previous results</p></li>
-</ul>
-</dd>
-</dl>
-</section>
-<section id="error-handling-and-troubleshooting">
-<h2>Error Handling and Troubleshooting<a class="headerlink" href="#error-handling-and-troubleshooting" title="Link to this heading"></a></h2>
-<p><strong>Common Issues</strong>:</p>
+<section id="next-steps">
+<h2>Next steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p><strong>No WCS found</strong>: Enable force plate solving option</p></li>
-<li><p><strong>Plate solving fails</strong>: Check Astrometry.net installation and index files</p></li>
-<li><p><strong>No catalog matches</strong>: Verify internet connection and coordinates</p></li>
-<li><p><strong>Memory errors</strong>: Process smaller images or increase available RAM</p></li>
-<li><p><strong>Permission errors</strong>: Check file system permissions and disk space</p></li>
+<li><p>See <a class="reference internal" href="examples.html"><span class="doc">Examples</span></a> for a tiny local Python example.</p></li>
+<li><p>See <a class="reference internal" href="installation.html"><span class="doc">Installation Guide</span></a> for more details about optional dependencies.</p></li>
 </ul>
-<p><strong>Recovery Options</strong>:</p>
-<ul class="simple">
-<li><p><strong>Automatic fallbacks</strong>: Graceful degradation when components fail</p></li>
-<li><p><strong>Parameter adjustment</strong>: Modify detection and calibration thresholds</p></li>
-<li><p><strong>Manual coordinates</strong>: Enter RA/DEC if header values are missing</p></li>
-<li><p><strong>Skip optional steps</strong>: Disable cosmic ray removal or astrometry refinement</p></li>
-</ul>
-<p><strong>Getting Help</strong>:</p>
-<ul class="simple">
-<li><p>Check detailed log files for error diagnosis</p></li>
-<li><p>Review troubleshooting section in documentation</p></li>
-<li><p>Verify all dependencies are properly installed</p></li>
-<li><p>Contact support with specific error messages</p></li>
-</ul>
-<dl class="simple">
-<dt><strong>Diagnostic Information</strong>:</dt><dd><ul class="simple">
-<li><p>Detailed processing logs with timestamps and log levels</p></li>
-<li><p>Error messages with context and suggested solutions</p></li>
-<li><p>Processing parameter documentation and help text</p></li>
-<li><p>Version information and system requirements</p></li>
-</ul>
-</dd>
-</dl>
 </section>
 </section>
 

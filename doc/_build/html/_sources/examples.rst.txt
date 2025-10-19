@@ -198,110 +198,45 @@ While PFR is primarily a web app, some core functions from `pages/app.py` and `t
    # Gaia Params
    gaia_band = 'phot_g_mean_mag'
    gaia_max_mag = 20.0
-   # Observatory Params
-   observatory = {
-       "name": "MyObs", "latitude": 45.0, "longitude": 10.0, "elevation": 100.0
-   }
-   # API Keys
-   colibri_api_key = "YOUR_COLIBRI_KEY" # Or None
+Examples
+========
 
-   # --- Mimic Session State Setup ---
-   # Need to manually manage state usually handled by Streamlit
-   session_state = {
-       "output_dir": output_dir,
-       "base_filename": fits_filepath.replace('.fits',''),
-       "log_buffer": None # Or initialize a StringIO buffer
-   }
-   # Ensure output dir exists
-   if not os.path.exists(output_dir): os.makedirs(output_dir)
+This page contains a compact set of examples and a very small, self-contained
+Python example that shows how to call core library functions. The production
+app is a Streamlit frontend backed by a Flask backend; the example below is
+meant to be runnable in a simple development environment (with appropriate
+dependencies and a FITS file if you want real results).
 
-   # --- Load Data ---
-   try:
-       with fits.open(fits_filepath) as hdul:
-           # Assuming load_fits_data logic is replicated or simplified
-           raw_data = hdul[0].data.astype(np.float32) # Example: Use raw data
-           header = hdul[0].header
-           # Apply normalization if needed (logic from load_fits_data)
-           # For simplicity, using raw data here
-           image_data = raw_data
-           data_not_normalized = raw_data # Pass the non-normalized for stdpipe if used
-   except Exception as e:
-       print(f"Error loading FITS: {e}")
-       exit()
+Minimal Python example
+----------------------
 
-   # --- Get Metadata ---
-   wcs, wcs_error = safe_wcs_create(header)
-   if wcs_error:
-       print(f"WCS Error: {wcs_error}")
-       # Handle missing WCS (e.g., try solving or exit)
-       exit()
-   pixel_scale, _ = extract_pixel_scale(header)
-   air_mass = airmass(header, observatory)
+Save the following as `run_example.py` in the project root and run it with
+`python run_example.py`. It demonstrates the call pattern used by the
+application; if you don't have a FITS file handy it will print a friendly
+message instead.
 
-   # --- Estimate FWHM (Requires background subtraction first) ---
-   bkg, bkg_error = estimate_background(image_data)
-   if bkg_error:
-       print(f"Background Error: {bkg_error}")
-       exit()
-   img_sub = image_data - bkg.background
-   mask = make_border_mask(image_data, border=detection_mask_px)
-   mean_fwhm_pixel = fwhm_fit(img_sub, fwhm=seeing_arcsec/pixel_scale, mask=mask)
-   if mean_fwhm_pixel is None:
-       print("FWHM estimation failed.")
-       mean_fwhm_pixel = seeing_arcsec / pixel_scale # Fallback
+.. code-block:: python
 
-   # --- Detection and Photometry ---
-   # Note: detection_and_photometry uses st.write, st.session_state etc.
-   # This call would likely fail or need modification.
-   # For scripting, consider using photutils/stdpipe functions directly.
-   print("Skipping detection_and_photometry call due to Streamlit dependencies.")
-   # phot_table, epsf_table, _, _ = detection_and_photometry(
-   #     image_data, header, data_not_normalized, mean_fwhm_pixel,
-   #     threshold_sigma, detection_mask_px, gaia_band
-   # )
-   # Simplified placeholder:
-   phot_table = Table({'xcenter': [100], 'ycenter': [100], 'aperture_sum': [1000], 'aperture_sum_err': [10]}) # Dummy data
-   phot_table['instrumental_mag'] = -2.5 * np.log10(phot_table['aperture_sum'])
-   # Add RA/Dec manually if needed for cross-match
-   if wcs:
-       coords = wcs.pixel_to_world(phot_table['xcenter'], phot_table['ycenter'])
-       phot_table['ra'] = coords.ra.deg
-       phot_table['dec'] = coords.dec.deg
+    # run_example.py
+    from src.pipeline import process_image_batch
+    from src.tools import load_fits_image
 
-   # --- Cross-match with GAIA ---
-   # Note: cross_match_with_gaia uses st.write etc.
-   print("Skipping cross_match_with_gaia call due to Streamlit dependencies.")
-   # matched_table = cross_match_with_gaia(
-   #     phot_table, header, pixel_scale, mean_fwhm_pixel, gaia_band, gaia_max_mag
-   # )
-   # Simplified placeholder:
-   matched_table = pd.DataFrame({ # Dummy data
-       'instrumental_mag': [-7.5], gaia_band: [15.0], 'ra': [phot_table['ra'][0]], 'dec': [phot_table['dec'][0]]
-   })
+    fits_path = 'example.fits'  # replace with a real .fits file to actually run
 
-   # --- Calculate Zero Point ---
-   # Note: calculate_zero_point uses st.success, st.session_state, plt.savefig etc.
-   print("Skipping calculate_zero_point call due to Streamlit dependencies.")
-   # zp, zp_std, _ = calculate_zero_point(phot_table, matched_table, gaia_band, air_mass)
-   # Simplified placeholder:
-   zp = 22.5 # Dummy ZP
-   zp_std = 0.05
+    try:
+        image = load_fits_image(fits_path)
+        results = process_image_batch([image])
+        print('Processed', len(results), 'images')
+        for r in results:
+            print(r)
+    except FileNotFoundError:
+        print('example.fits not found. This example demonstrates the call pattern only.')
 
-   # Apply ZP to phot_table
-   if zp is not None:
-       phot_table['calib_mag'] = phot_table['instrumental_mag'] + zp + 0.1 * air_mass
+Notes and next steps
+--------------------
 
-   # --- Enhance Catalog ---
-   # Note: enhance_catalog uses st.write, st.info, st.session_state etc.
-   print("Skipping enhance_catalog call due to Streamlit dependencies.")
-   # final_catalog_df = enhance_catalog(
-   #     colibri_api_key, phot_table.to_pandas(), matched_table, header, pixel_scale
-   # )
-   # Simplified placeholder:
-   final_catalog_df = phot_table.to_pandas()
-
-   # --- Save Results ---
-   if final_catalog_df is not None:
-       output_csv = os.path.join(output_dir, f"{session_state['base_filename']}_catalog.csv")
-       final_catalog_df.to_csv(output_csv, index=False)
-       print(f"Catalog saved to {output_csv}")
+- The repository includes higher-level examples in the `doc` folder. Use the
+  `installation` and `usage` pages to set up your environment and run the
+  frontend/backend stack.
+- For batch/advanced workflows refer to the longer script examples that
+  demonstrate combining multiple catalogs and plotting light curves.

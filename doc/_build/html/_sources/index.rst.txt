@@ -51,7 +51,6 @@ Key Features
 
 **User-Friendly Interface**:
    - Web-based interface accessible through any modern browser
-   - Interactive Aladin Lite integration for source exploration
    - Real-time processing progress and status updates
    - Comprehensive error handling and user feedback
    - Multi-user support with individual accounts and workspaces
@@ -118,33 +117,36 @@ System Architecture
 
 Supported Data Formats
 ---------------------
+   RAPAS Photometry Pipeline
+   ==========================
 
-**Input Formats**:
-   - FITS files (.fits, .fit, .fts)
-   - Compressed FITS (.fits.gz)
-   - Multi-extension FITS (MEF)
-   - Data cubes (automatically extracts 2D planes)
-   - RGB astronomical images (uses first channel)
+   Simple, minimal documentation to get started with the RAPAS Photometry Pipeline.
 
-**Output Formats**:
-   - CSV catalogs with comprehensive source measurements
-   - PNG visualizations and plots
-   - FITS files for background and PSF models
-   - Text files for headers and processing logs
-   - ZIP archives for complete result packages
+   This project provides a small toolkit and web front-end for running a photometry
+   pipeline. The documentation here is intentionally short and focused on a quick
+   start and a tiny example so you can try the project locally.
 
-Scientific Applications
-----------------------
+   Quick links
+   -----------
 
-**Photometric Studies**:
-   - Precise magnitude measurements for stellar photometry
-   - Variable star monitoring and light curve generation
-   - Color-magnitude diagram construction
-   - Multi-aperture photometric analysis
+   .. toctree::
+       :maxdepth: 2
 
-**Astrometric Analysis**:
-   - Accurate source position determination
-   - WCS solution validation and refinement
+       installation
+       usage
+       examples
+       api
+       features
+       advanced_features
+       troubleshooting
+       api_reference
+
+   Indices and tables
+   ------------------
+
+   * :ref:`genindex`
+   * :ref:`modindex`
+   * :ref:`search`
    - Coordinate system calibration
    - Multi-epoch analysis support
 

@@ -48,8 +48,21 @@
 <li class="toctree-l1"><a class="reference internal" href="../../advanced_features.html">Advanced Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html#id1">Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../troubleshooting.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../changelog.html">Changelog</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples.html#id1">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../advanced_features.html">Advanced Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../troubleshooting.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference.html">Core Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference.html#usage-examples">Usage Examples</a></li>
 </ul>
 
         </div>
@@ -83,13 +96,16 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">zipfile</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
 
 <span class="c1"># Third-Party Imports</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">astropy.wcs</span><span class="w"> </span><span class="kn">import</span> <span class="n">WCS</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.table</span><span class="w"> </span><span class="kn">import</span> <span class="n">Table</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>  <span class="c1"># Keep if directly used, otherwise remove</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io.votable</span><span class="w"> </span><span class="kn">import</span> <span class="n">from_table</span><span class="p">,</span> <span class="n">writeto</span>
 
 <span class="c1"># Constants</span>
 <span class="n">FIGURE_SIZES</span> <span class="o">=</span> <span class="p">{</span>
@@ -243,9 +259,17 @@
         <span class="n">working_header</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
 
     <span class="c1"># Remove problematic keywords that can interfere with WCS</span>
-    <span class="n">problematic_keywords</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;XPIXELSZ&#39;</span><span class="p">,</span> <span class="s1">&#39;YPIXELSZ&#39;</span><span class="p">,</span> <span class="s1">&#39;CDELTM1&#39;</span><span class="p">,</span> <span class="s1">&#39;CDELTM2&#39;</span><span class="p">,</span> 
-                          <span class="s1">&#39;PIXSCALE&#39;</span><span class="p">,</span> <span class="s1">&#39;SCALE&#39;</span><span class="p">,</span> <span class="s1">&#39;XORGSUBF&#39;</span><span class="p">,</span> <span class="s1">&#39;YORGSUBF&#39;</span><span class="p">]</span>
-    
+    <span class="n">problematic_keywords</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;XPIXELSZ&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;YPIXELSZ&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CDELTM1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CDELTM2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;PIXSCALE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SCALE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;XORGSUBF&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;YORGSUBF&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+
     <span class="n">removed_keywords</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">problematic_keywords</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">working_header</span><span class="p">:</span>
@@ -254,12 +278,11 @@
                 <span class="n">removed_keywords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">keyword</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
                 <span class="k">pass</span>
-    
-    <span class="k">if</span> <span class="n">removed_keywords</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="s1">&#39;info&#39;</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">removed_keywords</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="s2">&quot;info&quot;</span><span class="p">):</span>
         <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Removed problematic WCS keywords&quot;</span><span class="p">)</span>  <span class="c1"># {&#39;, &#39;.join(removed_keywords)}&quot;)</span>
 
-    <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CTYPE1&quot;</span><span class="p">,</span> <span class="s2">&quot;CTYPE2&quot;</span><span class="p">,</span> <span class="s2">&quot;CRVAL1&quot;</span><span class="p">,</span> <span class="s2">&quot;CRVAL2&quot;</span><span class="p">,</span>
-                     <span class="s2">&quot;CRPIX1&quot;</span><span class="p">,</span> <span class="s2">&quot;CRPIX2&quot;</span><span class="p">]</span>
+    <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;CTYPE1&quot;</span><span class="p">,</span> <span class="s2">&quot;CTYPE2&quot;</span><span class="p">,</span> <span class="s2">&quot;CRVAL1&quot;</span><span class="p">,</span> <span class="s2">&quot;CRVAL2&quot;</span><span class="p">,</span> <span class="s2">&quot;CRPIX1&quot;</span><span class="p">,</span> <span class="s2">&quot;CRPIX2&quot;</span><span class="p">]</span>
     <span class="n">missing_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">working_header</span><span class="p">]</span>
 
     <span class="k">if</span> <span class="n">missing_keys</span><span class="p">:</span>
@@ -336,12 +359,12 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">fix_header</span><span class="p">(</span><span class="n">header</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Fix common issues in FITS headers based on stdweb processing approach.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    header : astropy.io.fits.Header</span>
 <span class="sd">        FITS header object to fix</span>
-<span class="sd">        </span>
+
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    astropy.io.fits.Header</span>
@@ -350,16 +373,19 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="c1"># Create a copy to avoid modifying the original</span>
         <span class="n">fixed_header</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        
+
         <span class="c1"># Define problematic keywords to remove</span>
         <span class="n">problematic_keywords</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s1">&#39;XPIXELSZ&#39;</span><span class="p">,</span> <span class="s1">&#39;YPIXELSZ&#39;</span><span class="p">,</span>      <span class="c1"># Pixel size keywords that can conflict with WCS</span>
-            <span class="s1">&#39;CDELTM1&#39;</span><span class="p">,</span> <span class="s1">&#39;CDELTM2&#39;</span><span class="p">,</span>        <span class="c1"># Alternative delta keywords</span>
-            <span class="s1">&#39;PIXSCALE&#39;</span><span class="p">,</span>                   <span class="c1"># Non-standard pixel scale</span>
-            <span class="s1">&#39;SCALE&#39;</span><span class="p">,</span>                      <span class="c1"># Generic scale keyword</span>
-            <span class="s1">&#39;XORGSUBF&#39;</span><span class="p">,</span> <span class="s1">&#39;YORGSUBF&#39;</span><span class="p">,</span>      <span class="c1"># Origin subframe keywords</span>
+            <span class="s2">&quot;XPIXELSZ&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;YPIXELSZ&quot;</span><span class="p">,</span>  <span class="c1"># Pixel size keywords that can conflict with WCS</span>
+            <span class="s2">&quot;CDELTM1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;CDELTM2&quot;</span><span class="p">,</span>  <span class="c1"># Alternative delta keywords</span>
+            <span class="s2">&quot;PIXSCALE&quot;</span><span class="p">,</span>  <span class="c1"># Non-standard pixel scale</span>
+            <span class="s2">&quot;SCALE&quot;</span><span class="p">,</span>  <span class="c1"># Generic scale keyword</span>
+            <span class="s2">&quot;XORGSUBF&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;YORGSUBF&quot;</span><span class="p">,</span>  <span class="c1"># Origin subframe keywords</span>
         <span class="p">]</span>
-        
+
         <span class="c1"># Remove problematic keywords</span>
         <span class="n">removed_keywords</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="n">problematic_keywords</span><span class="p">:</span>
@@ -369,184 +395,210 @@
                     <span class="n">removed_keywords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">keyword</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
                     <span class="k">pass</span>
-        
+
         <span class="k">if</span> <span class="n">removed_keywords</span><span class="p">:</span>
             <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Removed problematic keywords: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">removed_keywords</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># Define WCS keywords to check for problems</span>
         <span class="n">wcs_keywords</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;CD&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;CD1_1&#39;</span><span class="p">,</span> <span class="s1">&#39;CD1_2&#39;</span><span class="p">,</span> <span class="s1">&#39;CD2_1&#39;</span><span class="p">,</span> <span class="s1">&#39;CD2_2&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;PC&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;PC1_1&#39;</span><span class="p">,</span> <span class="s1">&#39;PC1_2&#39;</span><span class="p">,</span> <span class="s1">&#39;PC2_1&#39;</span><span class="p">,</span> <span class="s1">&#39;PC2_2&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;CDELT&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;CDELT1&#39;</span><span class="p">,</span> <span class="s1">&#39;CDELT2&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;CRPIX&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;CRPIX1&#39;</span><span class="p">,</span> <span class="s1">&#39;CRPIX2&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;CRVAL&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;CRVAL1&#39;</span><span class="p">,</span> <span class="s1">&#39;CRVAL2&#39;</span><span class="p">],</span>
-            <span class="s1">&#39;CTYPE&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;CTYPE1&#39;</span><span class="p">,</span> <span class="s1">&#39;CTYPE2&#39;</span><span class="p">]</span>
+            <span class="s2">&quot;CD&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;CD1_1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD1_2&quot;</span><span class="p">,</span> <span class="s2">&quot;CD2_1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD2_2&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;PC&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;PC1_1&quot;</span><span class="p">,</span> <span class="s2">&quot;PC1_2&quot;</span><span class="p">,</span> <span class="s2">&quot;PC2_1&quot;</span><span class="p">,</span> <span class="s2">&quot;PC2_2&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;CDELT&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;CDELT1&quot;</span><span class="p">,</span> <span class="s2">&quot;CDELT2&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;CRPIX&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;CRPIX1&quot;</span><span class="p">,</span> <span class="s2">&quot;CRPIX2&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;CRVAL&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;CRVAL1&quot;</span><span class="p">,</span> <span class="s2">&quot;CRVAL2&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;CTYPE&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;CTYPE1&quot;</span><span class="p">,</span> <span class="s2">&quot;CTYPE2&quot;</span><span class="p">],</span>
         <span class="p">}</span>
-        
+
         <span class="c1"># Check for problematic values and remove entire WCS if found</span>
         <span class="n">remove_all_wcs</span> <span class="o">=</span> <span class="kc">False</span>
-        
+
         <span class="c1"># Check CD matrix for singularity</span>
-        <span class="n">cd_keys</span> <span class="o">=</span> <span class="n">wcs_keywords</span><span class="p">[</span><span class="s1">&#39;CD&#39;</span><span class="p">]</span>
+        <span class="n">cd_keys</span> <span class="o">=</span> <span class="n">wcs_keywords</span><span class="p">[</span><span class="s2">&quot;CD&quot;</span><span class="p">]</span>
         <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">key</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cd_keys</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">cd11</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CD1_1&#39;</span><span class="p">])</span>
-                <span class="n">cd12</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CD1_2&#39;</span><span class="p">])</span>
-                <span class="n">cd21</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CD2_1&#39;</span><span class="p">])</span>
-                <span class="n">cd22</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CD2_2&#39;</span><span class="p">])</span>
-                
+                <span class="n">cd11</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CD1_1&quot;</span><span class="p">])</span>
+                <span class="n">cd12</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CD1_2&quot;</span><span class="p">])</span>
+                <span class="n">cd21</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CD2_1&quot;</span><span class="p">])</span>
+                <span class="n">cd22</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CD2_2&quot;</span><span class="p">])</span>
+
                 <span class="c1"># Calculate determinant to check for singularity</span>
                 <span class="n">determinant</span> <span class="o">=</span> <span class="n">cd11</span> <span class="o">*</span> <span class="n">cd22</span> <span class="o">-</span> <span class="n">cd12</span> <span class="o">*</span> <span class="n">cd21</span>
-                
+
                 <span class="c1"># Check for singular matrix or invalid values</span>
-                <span class="k">if</span> <span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">determinant</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-15</span> <span class="ow">or</span> 
-                    <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="p">[</span><span class="n">cd11</span><span class="p">,</span> <span class="n">cd12</span><span class="p">,</span> <span class="n">cd21</span><span class="p">,</span> <span class="n">cd22</span><span class="p">])</span> <span class="ow">or</span>
-                    <span class="nb">any</span><span class="p">(</span><span class="n">val</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="p">[</span><span class="n">cd11</span><span class="p">,</span> <span class="n">cd22</span><span class="p">])):</span>
-                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Detected problematic CD matrix - removing all WCS keywords&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="nb">abs</span><span class="p">(</span><span class="n">determinant</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1e-15</span>
+                    <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="p">[</span><span class="n">cd11</span><span class="p">,</span> <span class="n">cd12</span><span class="p">,</span> <span class="n">cd21</span><span class="p">,</span> <span class="n">cd22</span><span class="p">])</span>
+                    <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">val</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="p">[</span><span class="n">cd11</span><span class="p">,</span> <span class="n">cd22</span><span class="p">])</span>
+                <span class="p">):</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="s2">&quot;Detected problematic CD matrix - removing all WCS keywords&quot;</span>
+                    <span class="p">)</span>
                     <span class="n">remove_all_wcs</span> <span class="o">=</span> <span class="kc">True</span>
-                    
+
             <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                 <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Invalid CD matrix values - removing all WCS keywords&quot;</span><span class="p">)</span>
                 <span class="n">remove_all_wcs</span> <span class="o">=</span> <span class="kc">True</span>
-        
+
         <span class="c1"># Check for obviously fake coordinate values</span>
-        <span class="k">if</span> <span class="s1">&#39;CRVAL1&#39;</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="ow">and</span> <span class="s1">&#39;CRVAL2&#39;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;CRVAL1&quot;</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="ow">and</span> <span class="s2">&quot;CRVAL2&quot;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">ra</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CRVAL1&#39;</span><span class="p">])</span>
-                <span class="n">dec</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CRVAL2&#39;</span><span class="p">])</span>
-                
+                <span class="n">ra</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CRVAL1&quot;</span><span class="p">])</span>
+                <span class="n">dec</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CRVAL2&quot;</span><span class="p">])</span>
+
                 <span class="c1"># Check for clearly fake values (exactly 0,0 or out of range)</span>
-                <span class="k">if</span> <span class="p">((</span><span class="n">ra</span> <span class="o">==</span> <span class="mf">0.0</span> <span class="ow">and</span> <span class="n">dec</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">)</span> <span class="ow">or</span>
-                    <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">360</span><span class="p">)</span> <span class="ow">or</span>
-                    <span class="ow">not</span> <span class="p">(</span><span class="o">-</span><span class="mi">90</span> <span class="o">&lt;=</span> <span class="n">dec</span> <span class="o">&lt;=</span> <span class="mi">90</span><span class="p">)</span> <span class="ow">or</span>
-                    <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ra</span><span class="p">)</span> <span class="ow">or</span>
-                    <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dec</span><span class="p">)):</span>
-                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected fake coordinates (RA=</span><span class="si">{</span><span class="n">ra</span><span class="si">}</span><span class="s2">, DEC=</span><span class="si">{</span><span class="n">dec</span><span class="si">}</span><span class="s2">) - removing all WCS keywords&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="p">(</span><span class="n">ra</span> <span class="o">==</span> <span class="mf">0.0</span> <span class="ow">and</span> <span class="n">dec</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">360</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="p">(</span><span class="o">-</span><span class="mi">90</span> <span class="o">&lt;=</span> <span class="n">dec</span> <span class="o">&lt;=</span> <span class="mi">90</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">ra</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">dec</span><span class="p">)</span>
+                <span class="p">):</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Detected fake coordinates (RA=</span><span class="si">{</span><span class="n">ra</span><span class="si">}</span><span class="s2">, DEC=</span><span class="si">{</span><span class="n">dec</span><span class="si">}</span><span class="s2">) - removing all WCS keywords&quot;</span>
+                    <span class="p">)</span>
                     <span class="n">remove_all_wcs</span> <span class="o">=</span> <span class="kc">True</span>
-                    
+
             <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                 <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Invalid coordinate values - removing all WCS keywords&quot;</span><span class="p">)</span>
                 <span class="n">remove_all_wcs</span> <span class="o">=</span> <span class="kc">True</span>
-        
+
         <span class="c1"># Check for invalid pixel reference points</span>
-        <span class="k">if</span> <span class="s1">&#39;CRPIX1&#39;</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="ow">and</span> <span class="s1">&#39;CRPIX2&#39;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;CRPIX1&quot;</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="ow">and</span> <span class="s2">&quot;CRPIX2&quot;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">crpix1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CRPIX1&#39;</span><span class="p">])</span>
-                <span class="n">crpix2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CRPIX2&#39;</span><span class="p">])</span>
-                
+                <span class="n">crpix1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CRPIX1&quot;</span><span class="p">])</span>
+                <span class="n">crpix2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CRPIX2&quot;</span><span class="p">])</span>
+
                 <span class="c1"># Check for obviously wrong values</span>
-                <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">crpix1</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">crpix2</span><span class="p">)</span> <span class="ow">or</span>
-                    <span class="n">crpix1</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">crpix2</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
-                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Detected invalid CRPIX values - removing all WCS keywords&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">crpix1</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">crpix2</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">crpix1</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+                    <span class="ow">or</span> <span class="n">crpix2</span> <span class="o">&lt;=</span> <span class="mi">0</span>
+                <span class="p">):</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="s2">&quot;Detected invalid CRPIX values - removing all WCS keywords&quot;</span>
+                    <span class="p">)</span>
                     <span class="n">remove_all_wcs</span> <span class="o">=</span> <span class="kc">True</span>
-                    
+
             <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                 <span class="n">remove_all_wcs</span> <span class="o">=</span> <span class="kc">True</span>
-        
+
         <span class="c1"># Check for invalid CTYPE values</span>
-        <span class="k">for</span> <span class="n">ctype_key</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;CTYPE1&#39;</span><span class="p">,</span> <span class="s1">&#39;CTYPE2&#39;</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">ctype_key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CTYPE1&quot;</span><span class="p">,</span> <span class="s2">&quot;CTYPE2&quot;</span><span class="p">]:</span>
             <span class="k">if</span> <span class="n">ctype_key</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
                 <span class="n">ctype_val</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="n">ctype_key</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
                 <span class="c1"># If CTYPE is empty or contains obvious placeholder text</span>
-                <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">ctype_val</span> <span class="ow">or</span> 
-                    <span class="n">ctype_val</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="s1">&#39;null&#39;</span><span class="p">,</span> <span class="s1">&#39;undefined&#39;</span><span class="p">]</span> <span class="ow">or</span>
-                    <span class="nb">len</span><span class="p">(</span><span class="n">ctype_val</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">):</span>
-                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected invalid </span><span class="si">{</span><span class="n">ctype_key</span><span class="si">}</span><span class="s2"> value - removing all WCS keywords&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="ow">not</span> <span class="n">ctype_val</span>
+                    <span class="ow">or</span> <span class="n">ctype_val</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="s2">&quot;null&quot;</span><span class="p">,</span> <span class="s2">&quot;undefined&quot;</span><span class="p">]</span>
+                    <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">ctype_val</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span>
+                <span class="p">):</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Detected invalid </span><span class="si">{</span><span class="n">ctype_key</span><span class="si">}</span><span class="s2"> value - removing all WCS keywords&quot;</span>
+                    <span class="p">)</span>
                     <span class="n">remove_all_wcs</span> <span class="o">=</span> <span class="kc">True</span>
-        
+
         <span class="c1"># Remove all WCS keywords if problems detected</span>
         <span class="k">if</span> <span class="n">remove_all_wcs</span><span class="p">:</span>
             <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Removing all WCS keywords due to detected problems&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># Remove all WCS-related keywords</span>
             <span class="n">keys_to_remove</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">fixed_header</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
-                <span class="k">if</span> <span class="p">(</span><span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CD&#39;</span><span class="p">)</span> <span class="ow">or</span> 
-                    <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;PC&#39;</span><span class="p">)</span> <span class="ow">or</span> 
-                    <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CDELT&#39;</span><span class="p">)</span> <span class="ow">or</span> 
-                    <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CRPIX&#39;</span><span class="p">)</span> <span class="ow">or</span> 
-                    <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CRVAL&#39;</span><span class="p">)</span> <span class="ow">or</span> 
-                    <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CTYPE&#39;</span><span class="p">)</span> <span class="ow">or</span>
-                    <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;CROTA&#39;</span><span class="p">)</span> <span class="ow">or</span>
-                    <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;PV&#39;</span><span class="p">)</span> <span class="ow">or</span>
-                    <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;PROJP&#39;</span><span class="p">)</span> <span class="ow">or</span>
-                    <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;EQUINOX&#39;</span><span class="p">,</span> <span class="s1">&#39;EPOCH&#39;</span><span class="p">,</span> <span class="s1">&#39;RADESYS&#39;</span><span class="p">,</span> <span class="s1">&#39;LONPOLE&#39;</span><span class="p">,</span> <span class="s1">&#39;LATPOLE&#39;</span><span class="p">]):</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;CD&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;PC&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;CDELT&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;CRPIX&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;CRVAL&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;CTYPE&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;CROTA&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;PV&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;PROJP&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;EQUINOX&quot;</span><span class="p">,</span> <span class="s2">&quot;EPOCH&quot;</span><span class="p">,</span> <span class="s2">&quot;RADESYS&quot;</span><span class="p">,</span> <span class="s2">&quot;LONPOLE&quot;</span><span class="p">,</span> <span class="s2">&quot;LATPOLE&quot;</span><span class="p">]</span>
+                <span class="p">):</span>
                     <span class="n">keys_to_remove</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-            
+
             <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys_to_remove</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="k">del</span> <span class="n">fixed_header</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
                 <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
                     <span class="k">pass</span>
-            
-            <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Removed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">keys_to_remove</span><span class="p">)</span><span class="si">}</span><span class="s2"> WCS keywords: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">keys_to_remove</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span><span class="si">}{</span><span class="s1">&#39;...&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">keys_to_remove</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
+            <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Removed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">keys_to_remove</span><span class="p">)</span><span class="si">}</span><span class="s2"> WCS keywords: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">keys_to_remove</span><span class="p">[:</span><span class="mi">10</span><span class="p">])</span><span class="si">}{</span><span class="s1">&#39;...&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="n">keys_to_remove</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
             <span class="c1"># Add minimal default WCS if image dimensions are available</span>
-            <span class="k">if</span> <span class="s1">&#39;NAXIS1&#39;</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="ow">and</span> <span class="s1">&#39;NAXIS2&#39;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;NAXIS1&quot;</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="ow">and</span> <span class="s2">&quot;NAXIS2&quot;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
-                    <span class="n">naxis1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;NAXIS1&#39;</span><span class="p">])</span>
-                    <span class="n">naxis2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;NAXIS2&#39;</span><span class="p">])</span>
-                    
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CTYPE1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;RA---TAN&#39;</span>
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CTYPE2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;DEC--TAN&#39;</span>
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CRPIX1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">naxis1</span> <span class="o">/</span> <span class="mf">2.0</span>
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CRPIX2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">naxis2</span> <span class="o">/</span> <span class="mf">2.0</span>
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CRVAL1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># Will need manual input</span>
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CRVAL2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># Will need manual input</span>
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;EQUINOX&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2000.0</span>
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;RADESYS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;ICRS&#39;</span>
-                    
-                    <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Added minimal default WCS (1 arcsec/pixel) - coordinates will need manual input&quot;</span><span class="p">)</span>
-                    
+                    <span class="n">naxis1</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;NAXIS1&quot;</span><span class="p">])</span>
+                    <span class="n">naxis2</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;NAXIS2&quot;</span><span class="p">])</span>
+
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CTYPE1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;RA---TAN&quot;</span>
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CTYPE2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;DEC--TAN&quot;</span>
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CRPIX1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">naxis1</span> <span class="o">/</span> <span class="mf">2.0</span>
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CRPIX2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">naxis2</span> <span class="o">/</span> <span class="mf">2.0</span>
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CRVAL1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># Will need manual input</span>
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CRVAL2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># Will need manual input</span>
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;EQUINOX&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2000.0</span>
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;RADESYS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ICRS&quot;</span>
+
+                    <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="s2">&quot;Added minimal default WCS (1 arcsec/pixel) - coordinates will need manual input&quot;</span>
+                    <span class="p">)</span>
+
                 <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                     <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not add default WCS due to invalid NAXIS values&quot;</span><span class="p">)</span>
-        
+
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># If WCS seems valid, apply minor fixes</span>
-            
+
             <span class="c1"># Fix CTYPE formatting</span>
-            <span class="k">if</span> <span class="s1">&#39;CTYPE1&#39;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
-                <span class="n">ctype1</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CTYPE1&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">ctype1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ctype1</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;---&#39;</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="s1">&#39;RA&#39;</span> <span class="ow">in</span> <span class="n">ctype1</span><span class="o">.</span><span class="n">upper</span><span class="p">():</span>
-                        <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CTYPE1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;RA---TAN&#39;</span>
-                    <span class="k">elif</span> <span class="s1">&#39;GLON&#39;</span> <span class="ow">in</span> <span class="n">ctype1</span><span class="o">.</span><span class="n">upper</span><span class="p">():</span>
-                        <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CTYPE1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;GLON-TAN&#39;</span>
-            
-            <span class="k">if</span> <span class="s1">&#39;CTYPE2&#39;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
-                <span class="n">ctype2</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CTYPE2&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-                <span class="k">if</span> <span class="n">ctype2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ctype2</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;---&#39;</span><span class="p">):</span>
-                    <span class="k">if</span> <span class="s1">&#39;DEC&#39;</span> <span class="ow">in</span> <span class="n">ctype2</span><span class="o">.</span><span class="n">upper</span><span class="p">():</span>
-                        <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CTYPE2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;DEC--TAN&#39;</span>
-                    <span class="k">elif</span> <span class="s1">&#39;GLAT&#39;</span> <span class="ow">in</span> <span class="n">ctype2</span><span class="o">.</span><span class="n">upper</span><span class="p">():</span>
-                        <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;CTYPE2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;GLAT-TAN&#39;</span>
-            
+            <span class="k">if</span> <span class="s2">&quot;CTYPE1&quot;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
+                <span class="n">ctype1</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CTYPE1&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">ctype1</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ctype1</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="s2">&quot;RA&quot;</span> <span class="ow">in</span> <span class="n">ctype1</span><span class="o">.</span><span class="n">upper</span><span class="p">():</span>
+                        <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CTYPE1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;RA---TAN&quot;</span>
+                    <span class="k">elif</span> <span class="s2">&quot;GLON&quot;</span> <span class="ow">in</span> <span class="n">ctype1</span><span class="o">.</span><span class="n">upper</span><span class="p">():</span>
+                        <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CTYPE1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GLON-TAN&quot;</span>
+
+            <span class="k">if</span> <span class="s2">&quot;CTYPE2&quot;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
+                <span class="n">ctype2</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CTYPE2&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">ctype2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">ctype2</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="s2">&quot;DEC&quot;</span> <span class="ow">in</span> <span class="n">ctype2</span><span class="o">.</span><span class="n">upper</span><span class="p">():</span>
+                        <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CTYPE2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;DEC--TAN&quot;</span>
+                    <span class="k">elif</span> <span class="s2">&quot;GLAT&quot;</span> <span class="ow">in</span> <span class="n">ctype2</span><span class="o">.</span><span class="n">upper</span><span class="p">():</span>
+                        <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;CTYPE2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;GLAT-TAN&quot;</span>
+
             <span class="c1"># Fix missing EQUINOX/EPOCH</span>
-            <span class="k">if</span> <span class="s1">&#39;EQUINOX&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="ow">and</span> <span class="s1">&#39;EPOCH&#39;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
-                <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;EQUINOX&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;EPOCH&#39;</span><span class="p">]</span>
-            <span class="k">elif</span> <span class="s1">&#39;EQUINOX&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
-                <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;EQUINOX&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2000.0</span>
-                
+            <span class="k">if</span> <span class="s2">&quot;EQUINOX&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="ow">and</span> <span class="s2">&quot;EPOCH&quot;</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
+                <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;EQUINOX&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;EPOCH&quot;</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="s2">&quot;EQUINOX&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
+                <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;EQUINOX&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2000.0</span>
+
             <span class="c1"># Fix RADESYS if missing</span>
-            <span class="k">if</span> <span class="s1">&#39;RADESYS&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">fixed_header</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;EQUINOX&#39;</span><span class="p">,</span> <span class="mf">2000.0</span><span class="p">)</span> <span class="o">==</span> <span class="mf">2000.0</span><span class="p">:</span>
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;RADESYS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;ICRS&#39;</span>
+            <span class="k">if</span> <span class="s2">&quot;RADESYS&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">fixed_header</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;EQUINOX&quot;</span><span class="p">,</span> <span class="mf">2000.0</span><span class="p">)</span> <span class="o">==</span> <span class="mf">2000.0</span><span class="p">:</span>
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;RADESYS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ICRS&quot;</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">fixed_header</span><span class="p">[</span><span class="s1">&#39;RADESYS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;FK5&#39;</span>
-            
+                    <span class="n">fixed_header</span><span class="p">[</span><span class="s2">&quot;RADESYS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;FK5&quot;</span>
+
             <span class="c1"># Remove PC matrix if CD matrix is present (they conflict)</span>
-            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">key</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;CD1_1&#39;</span><span class="p">,</span> <span class="s1">&#39;CD2_2&#39;</span><span class="p">]):</span>
-                <span class="n">pc_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;PC1_1&#39;</span><span class="p">,</span> <span class="s1">&#39;PC1_2&#39;</span><span class="p">,</span> <span class="s1">&#39;PC2_1&#39;</span><span class="p">,</span> <span class="s1">&#39;PC2_2&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">key</span> <span class="ow">in</span> <span class="n">fixed_header</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;CD1_1&quot;</span><span class="p">,</span> <span class="s2">&quot;CD2_2&quot;</span><span class="p">]):</span>
+                <span class="n">pc_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;PC1_1&quot;</span><span class="p">,</span> <span class="s2">&quot;PC1_2&quot;</span><span class="p">,</span> <span class="s2">&quot;PC2_1&quot;</span><span class="p">,</span> <span class="s2">&quot;PC2_2&quot;</span><span class="p">]</span>
                 <span class="n">removed_pc</span> <span class="o">=</span> <span class="p">[]</span>
                 <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">pc_keys</span><span class="p">:</span>
                     <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">fixed_header</span><span class="p">:</span>
                         <span class="k">del</span> <span class="n">fixed_header</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
                         <span class="n">removed_pc</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">removed_pc</span><span class="p">:</span>
-                    <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Removed conflicting PC matrix keywords: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">removed_pc</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+                    <span class="n">st</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Removed conflicting PC matrix keywords: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">removed_pc</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
         <span class="k">return</span> <span class="n">fixed_header</span>
-        
+
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="c1"># If fixing fails completely, return original header</span>
         <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Header fixing failed: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -769,11 +821,11 @@
     <span class="k">if</span> <span class="s2">&quot;CD1_1&quot;</span> <span class="ow">in</span> <span class="n">header</span> <span class="ow">and</span> <span class="s2">&quot;CD2_2&quot;</span> <span class="ow">in</span> <span class="n">header</span><span class="p">:</span>
         <span class="n">cd1_1</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CD1_1&quot;</span><span class="p">]))</span>
         <span class="n">cd2_2</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="s2">&quot;CD2_2&quot;</span><span class="p">]))</span>
-        
+
         <span class="c1"># Take average of both diagonal elements and convert from degrees to arcsec</span>
         <span class="n">avg_cd</span> <span class="o">=</span> <span class="p">(</span><span class="n">cd1_1</span> <span class="o">+</span> <span class="n">cd2_2</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
         <span class="n">scale</span> <span class="o">=</span> <span class="n">avg_cd</span> <span class="o">*</span> <span class="mf">3600.0</span>
-        
+
         <span class="c1"># Sanity check: CD matrix values should result in reasonable pixel scales</span>
         <span class="k">if</span> <span class="mf">0.01</span> <span class="o">&lt;=</span> <span class="n">scale</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">scale</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;from CD matrix (CD1_1=</span><span class="si">{</span><span class="n">cd1_1</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">, CD2_2=</span><span class="si">{</span><span class="n">cd2_2</span><span class="si">:</span><span class="s2">.2e</span><span class="si">}</span><span class="s2">)&quot;</span>
@@ -781,22 +833,22 @@
     <span class="c1"># Method 3: Calculate from pixel size and focal length using simple formula</span>
     <span class="n">focal_length</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">pixel_size</span> <span class="o">=</span> <span class="kc">None</span>
-    
+
     <span class="c1"># Check for focal length keywords</span>
-    <span class="k">for</span> <span class="n">focal_key</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;FOCALLEN&#39;</span><span class="p">,</span> <span class="s1">&#39;FOCAL&#39;</span><span class="p">,</span> <span class="s1">&#39;FOCLEN&#39;</span><span class="p">,</span> <span class="s1">&#39;FL&#39;</span><span class="p">]:</span>
+    <span class="k">for</span> <span class="n">focal_key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;FOCALLEN&quot;</span><span class="p">,</span> <span class="s2">&quot;FOCAL&quot;</span><span class="p">,</span> <span class="s2">&quot;FOCLEN&quot;</span><span class="p">,</span> <span class="s2">&quot;FL&quot;</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">focal_key</span> <span class="ow">in</span> <span class="n">header</span><span class="p">:</span>
             <span class="n">focal_length</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="n">focal_key</span><span class="p">])</span>
             <span class="k">break</span>
-    
+
     <span class="c1"># Check for pixel size keywords</span>
-    <span class="k">for</span> <span class="n">pixel_key</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;PIXELSIZE&#39;</span><span class="p">,</span> <span class="s1">&#39;PIXSIZE&#39;</span><span class="p">,</span> <span class="s1">&#39;XPIXSZ&#39;</span><span class="p">,</span> <span class="s1">&#39;YPIXSZ&#39;</span><span class="p">,</span> <span class="s1">&#39;PIXELMICRONS&#39;</span><span class="p">]:</span>
+    <span class="k">for</span> <span class="n">pixel_key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;PIXELSIZE&quot;</span><span class="p">,</span> <span class="s2">&quot;PIXSIZE&quot;</span><span class="p">,</span> <span class="s2">&quot;XPIXSZ&quot;</span><span class="p">,</span> <span class="s2">&quot;YPIXSZ&quot;</span><span class="p">,</span> <span class="s2">&quot;PIXELMICRONS&quot;</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">pixel_key</span> <span class="ow">in</span> <span class="n">header</span><span class="p">:</span>
             <span class="n">pixel_size</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">header</span><span class="p">[</span><span class="n">pixel_key</span><span class="p">])</span>
             <span class="k">break</span>
-    
+
     <span class="k">if</span> <span class="n">focal_length</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">pixel_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">focal_length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">xpixsz_unit</span> <span class="o">=</span> <span class="n">header</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;XPIXSZU&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-        
+
         <span class="c1"># Handle different units</span>
         <span class="k">if</span> <span class="n">xpixsz_unit</span> <span class="o">==</span> <span class="s2">&quot;mm&quot;</span><span class="p">:</span>
             <span class="c1"># Convert mm to microns</span>
@@ -809,12 +861,15 @@
             <span class="c1"># Default assumption: micrometers</span>
             <span class="n">pixel_size_microns</span> <span class="o">=</span> <span class="n">pixel_size</span>
             <span class="n">unit_desc</span> <span class="o">=</span> <span class="s2">&quot;μm (assumed)&quot;</span>
-        
+
         <span class="c1"># Use the simple formula: pixel_scale = 206 × pixel_size_microns / focal_length_mm</span>
         <span class="n">scale</span> <span class="o">=</span> <span class="mf">206.0</span> <span class="o">*</span> <span class="n">pixel_size_microns</span> <span class="o">/</span> <span class="n">focal_length</span>
-        
+
         <span class="k">if</span> <span class="mf">0.01</span> <span class="o">&lt;=</span> <span class="n">scale</span> <span class="o">&lt;=</span> <span class="mi">100</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">scale</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;calculated: 206 × </span><span class="si">{</span><span class="n">pixel_size_microns</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">unit_desc</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">focal_length</span><span class="si">}</span><span class="s2"> mm&quot;</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="n">scale</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;calculated: 206 × </span><span class="si">{</span><span class="n">pixel_size_microns</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">unit_desc</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="n">focal_length</span><span class="si">}</span><span class="s2"> mm&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
 
     <span class="c1"># Method 4: Default fallback</span>
     <span class="k">return</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;default fallback value&quot;</span></div>
@@ -899,7 +954,9 @@
                         <span class="n">f</span>
                         <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">base_dir</span><span class="p">)</span>
                         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span> <span class="n">f</span><span class="p">))</span>
-                        <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;.fit&quot;</span><span class="p">,</span> <span class="s2">&quot;.fts&quot;</span><span class="p">,</span><span class="s2">&quot;.ssf&quot;</span><span class="p">,</span><span class="s2">&quot;.log&quot;</span><span class="p">))</span>
+                        <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span>
+                            <span class="p">(</span><span class="s2">&quot;.fits&quot;</span><span class="p">,</span> <span class="s2">&quot;.fit&quot;</span><span class="p">,</span> <span class="s2">&quot;.fts&quot;</span><span class="p">,</span> <span class="s2">&quot;.ssf&quot;</span><span class="p">,</span> <span class="s2">&quot;.log&quot;</span><span class="p">)</span>
+                        <span class="p">)</span>
                     <span class="p">]</span>
                     <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">temp_dir_files</span><span class="p">:</span>
                         <span class="k">try</span><span class="p">:</span>
@@ -907,9 +964,7 @@
                         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                             <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not remove </span><span class="si">{</span><span class="n">file</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Temporary path </span><span class="si">{</span><span class="n">base_dir</span><span class="si">}</span><span class="s2"> is not a directory.&quot;</span>
-                    <span class="p">)</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Temporary path </span><span class="si">{</span><span class="n">base_dir</span><span class="si">}</span><span class="s2"> is not a directory.&quot;</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not remove temporary files: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
@@ -991,8 +1046,7 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">zip_rpp_results_on_exit</span><span class="p">(</span><span class="n">science_file_obj</span><span class="p">,</span> <span class="n">outputdir</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compresses analysis result files into a timestamped ZIP archive.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Compresses analysis result files into a timestamped ZIP archive.&quot;&quot;&quot;</span>
     <span class="n">output_dir</span> <span class="o">=</span> <span class="n">outputdir</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">output_dir</span><span class="p">):</span>
         <span class="k">return</span>
@@ -1059,6 +1113,138 @@
         <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">header_txt</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">output_filename</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">save_header_to_fits</span><span class="p">(</span><span class="n">header</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Save a FITS header to a FITS file with an empty primary HDU.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    header : dict or astropy.io.fits.Header</span>
+<span class="sd">        FITS header dictionary or object</span>
+<span class="sd">    filename : str</span>
+<span class="sd">        Base filename to use (without extension)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str or None</span>
+<span class="sd">        Full path to the saved file, or None if saving failed</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The function creates a minimal FITS file with the header information</span>
+<span class="sd">    preserved in the primary HDU, and saves it to the current output directory</span>
+<span class="sd">    (retrieved from session state).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">header</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Create a minimal primary HDU with the header</span>
+        <span class="n">primary_hdu</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">PrimaryHDU</span><span class="p">(</span><span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+
+        <span class="c1"># Create HDU list</span>
+        <span class="n">hdul</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">HDUList</span><span class="p">([</span><span class="n">primary_hdu</span><span class="p">])</span>
+
+        <span class="c1"># Get output directory from session state</span>
+        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;output_dir&quot;</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
+        <span class="n">output_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">.fits&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Write FITS file</span>
+        <span class="n">hdul</span><span class="o">.</span><span class="n">writeto</span><span class="p">(</span><span class="n">output_filename</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">hdul</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">output_filename</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">st</span><span class="p">,</span> <span class="s2">&quot;warning&quot;</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save header as FITS file: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">save_catalog_files</span><span class="p">(</span><span class="n">final_table</span><span class="p">,</span> <span class="n">catalog_name</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Save the final photometry table as both VOTable (XML) and CSV files.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        final_table (pd.DataFrame): The photometry results table.</span>
+<span class="sd">        catalog_name (str): The base name for the catalog files.</span>
+<span class="sd">        output_dir (str): The directory to save the files in.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Add safety check before VOTable creation</span>
+    <span class="k">if</span> <span class="n">final_table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">final_table</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Clean the DataFrame before conversion to handle problematic columns</span>
+            <span class="n">df_for_votable</span> <span class="o">=</span> <span class="n">final_table</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="c1"># Remove or fix columns that might cause issues with astropy Table conversion</span>
+            <span class="n">problematic_columns</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df_for_votable</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="c1"># Check for columns with mixed types or object arrays that might cause issues</span>
+                <span class="k">if</span> <span class="n">df_for_votable</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="s2">&quot;object&quot;</span><span class="p">:</span>
+                    <span class="c1"># Try to convert to string, handling None/NaN values</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">df_for_votable</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_for_votable</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+                        <span class="n">df_for_votable</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_for_votable</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;nan&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                        <span class="n">df_for_votable</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_for_votable</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;None&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="n">problematic_columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+
+            <span class="c1"># Remove columns that still cause issues</span>
+            <span class="k">if</span> <span class="n">problematic_columns</span><span class="p">:</span>
+                <span class="n">df_for_votable</span> <span class="o">=</span> <span class="n">df_for_votable</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">problematic_columns</span><span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Removed problematic columns from VOTable: </span><span class="si">{</span><span class="n">problematic_columns</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Convert pandas DataFrame to astropy Table</span>
+            <span class="n">astropy_table</span> <span class="o">=</span> <span class="n">Table</span><span class="o">.</span><span class="n">from_pandas</span><span class="p">(</span><span class="n">df_for_votable</span><span class="p">)</span>
+
+            <span class="c1"># Create VOTable</span>
+            <span class="n">votable</span> <span class="o">=</span> <span class="n">from_table</span><span class="p">(</span><span class="n">astropy_table</span><span class="p">)</span>
+            <span class="c1"># Define base_catalog_name here to ensure it&#39;s available for both</span>
+            <span class="c1"># success and fallback</span>
+            <span class="n">base_catalog_name</span> <span class="o">=</span> <span class="n">catalog_name</span>
+            <span class="k">if</span> <span class="n">base_catalog_name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.csv&quot;</span><span class="p">):</span>
+                <span class="n">base_catalog_name</span> <span class="o">=</span> <span class="n">base_catalog_name</span><span class="p">[:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_catalog_name</span><span class="si">}</span><span class="s2">.xml&quot;</span>  <span class="c1"># VOTable extension</span>
+
+            <span class="n">catalog_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+
+            <span class="c1"># Write VOTable to file</span>
+            <span class="n">writeto</span><span class="p">(</span><span class="n">votable</span><span class="p">,</span> <span class="n">catalog_path</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;VOTable catalog saved as </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Also create CSV buffer for backward compatibility if needed</span>
+            <span class="n">csv_buffer</span> <span class="o">=</span> <span class="n">StringIO</span><span class="p">()</span>
+            <span class="n">final_table</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">csv_buffer</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">csv_data</span> <span class="o">=</span> <span class="n">csv_buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+
+            <span class="c1"># Save CSV file using catalog_name as file name</span>
+            <span class="n">csv_file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">catalog_name</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">csv_file_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">csv_data</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CSV catalog saved as </span><span class="si">{</span><span class="n">catalog_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error preparing VOTable download: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;final_table status:&quot;</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">final_table</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  Length: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">final_table</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">final_table</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;None&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">final_table</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Columns: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">final_table</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Cannot create VOTable: final_table is None or empty&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">final_table</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;final_table is None&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;final_table length: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">final_table</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 
            </div>
