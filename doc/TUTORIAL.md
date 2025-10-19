@@ -1,114 +1,73 @@
-RPP Quick Tutorial
-==================
+RPP Quick User Guide
+====================
 
-This very short tutorial walks through getting the project running locally
-and executing the minimal example from the documentation.
+This guide provides a walkthrough on how to use the RAPAS Photometry Pipeline (RPP) application to perform photometric analysis on your astronomical images.
 
-1) Clone and install
+Getting Started
+---------------
 
-   - Open PowerShell (Windows) or a terminal (macOS/Linux)
+The first screen you will see is the login page. If you are a new user, you will need to register for an account to save your results and track your analysis history. Existing users can log in with their credentials.
 
-   - Run the steps in :doc:`installation` (create virtualenv and install
+Step-by-Step Photometry Tutorial
+--------------------------------
 
-   `requirements.txt`).
+This tutorial will guide you through a typical analysis session from uploading an image to interpreting the results.
 
-2. Start the backend
+### 1. Configure Observatory Data
 
-  RPP Quick Tutorial
-  ==================
+After logging in, you will see the main application interface. In the sidebar on the left, you need to configure your observatory's details. This information is crucial for accurate time-dependent calculations, such as airmass.
 
-  This short tutorial shows the minimal steps to run the RAPAS Photometry
-  Pipeline locally and to run the minimal example included in the docs.
+-   **Observatory Name**: A descriptive name for your observing location (e.g., "My Backyard Observatory").
+-   **Latitude, Longitude, Elevation**: The precise geographical coordinates (in decimal degrees for latitude/longitude and meters for elevation) of your observatory.
 
-  1. Clone and install
+The application will attempt to automatically read these coordinates from the FITS file header if they are present (`SITELAT`, `SITELONG`, `SITEELEV`). However, it is good practice to verify and set them manually in the sidebar to ensure accuracy.
 
-  - Open PowerShell (Windows) or a terminal (macOS/Linux).
-  - Clone the repository, create a virtual environment and install dependencies:
+### 2. Upload a FITS file
 
-  ```powershell
-  git clone https://github.com/your-repo/rpp.git
-  cd rpp
-  python -m venv .venv
-  .\.venv\Scripts\Activate.ps1   # PowerShell
-  pip install -r requirements.txt
-  ```
+In the main area of the page, you will find the file uploader.
 
-  On Unix/macOS use:
+-   Click "Browse files" or drag and drop your FITS image into the upload area.
+-   Supported file extensions are: `.fits`, `.fit`, `.fts`, and `.fits.gz`.
 
-  ```bash
-  python3 -m venv .venv
-  source .venv/bin/activate
-  pip install -r requirements.txt
-  ```
+Once uploaded, the application will display a preview of your image, allowing you to visually confirm you have selected the correct file.
 
-  2. Start the backend
+### 3. Set Analysis Parameters
 
-  In one terminal run:
+Below the image preview, you will find several parameters to control the analysis. Fine-tuning these parameters is key to obtaining high-quality photometric results.
 
-  ```powershell
-  python backend.py
-  ```
+-   **Seeing (FWHM)**: The Full-Width at Half-Maximum of the stellar profiles in your image, measured in pixels. This is a crucial parameter for accurate source extraction and PSF photometry. You can estimate this value using an image inspection tool or by examining a few unsaturated stars in the preview.
+-   **Detection Threshold**: The signal-to-noise ratio threshold for detecting sources above the background noise. A value between 3.0 and 5.0 is typical. Lowering this value may detect fainter sources but also risks including more spurious noise detections.
+-   **Border Mask (pixels)**: The width of a border around the image to exclude from source detection. This helps avoid detecting partial or distorted sources at the very edges of the frame.
+-   **Calibration Band**: Select the photometric band (e.g., V, R, I) that matches the filter used for your image. This selection determines which reference catalog data (from APASS or other configured catalogs) is used for photometric calibration.
+-   **Max Calibration Magnitude**: The brightest magnitude for stars from the reference catalog to be used for calibration. This helps exclude saturated or non-linear stars from the calibration process, leading to a more reliable zero-point calculation.
 
-  The backend listens on port 5000 by default.
+### 4. Advanced Options (Optional)
 
-  3. Start the frontend
+-   **Remove Cosmic Rays**: If your image is affected by cosmic rays, enable this option. For optimal results, you may need to provide the **Camera Gain** (in e-/ADU) and **Read Noise** (in e-) for your detector. This step uses an algorithm (like L.A.Cosmic) to identify and remove cosmic ray hits before source detection.
+-   **Refine Astrometry**: If your image's World Coordinate System (WCS) is imprecise or missing, this option can calculate it by matching star patterns to a catalog. This process, known as plate-solving, requires `Astrometry.net` and `SCAMP` to be installed and configured on the server. A successful astrometric solution is essential for cross-matching with photometric catalogs.
 
-  In another terminal run:
+### 5. Run the Analysis
 
-  ```powershell
-  streamlit run frontend.py
-  ```
+Once you have set all the parameters, click the "Run Photometry" button to start the analysis. The process may take a few minutes depending on the image size, the number of sources, and the options selected. You can monitor the progress through the application's status indicators.
 
-  Open the URL printed by Streamlit (usually http://localhost:8501).
+Understanding the Outputs
+-------------------------
 
-  4. Try the minimal Python example
+After the analysis is complete, the results will be available for download. The results are saved in a user-specific folder on the server (`<username>_rpp_results/`) to keep your data private.
 
-  - Create `run_example.py` in the project root as shown in `doc/examples.rst`.
-  - Run it with:
+A `*.zip` file containing all output files will be created for easy download. Key files inside the archive include:
 
-  ```powershell
-  python run_example.py
-  ```
+-   `*_catalog.csv`: A CSV file containing the list of all detected sources. It includes instrumental magnitudes, calibrated magnitudes, errors, positions (pixel and celestial coordinates), and other photometric parameters for each source.
+-   `*_image.png`: A diagnostic PNG image showing the detected sources circled, which is useful for visually verifying the source detection process.
+-   `*_psf.fits`: A FITS image of the effective Point Spread Function (PSF) model that was derived from bright, non-saturated stars in your image.
+-   `*_bkg.fits`: A FITS image of the calculated background model that was subtracted from your original image before source detection.
+-   `*.log`: A detailed log file of the entire analysis process, including all parameters used and steps taken. This file is invaluable for troubleshooting any issues or for documenting your analysis.
 
-  If you do not have a FITS file, the example script will show the call
-  pattern and print a friendly message.
+You can download the ZIP archive to your computer to inspect the results in detail using your preferred FITS viewers and data analysis software.
 
-  What's next
+Support
+-------
 
-  - To perform real photometry, obtain one or more FITS images and re-run the
-    example or use the web frontend to upload and process images.
-  - For plate solving and advanced catalog cross-matching, install Astrometry.net
-    and (optionally) SCAMP; obtain appropriate astrometry index files.
-
-  Additional short guide
-  ----------------------
-
-  Common UI steps and important options:
-
-  - Launch the Streamlit app and open the provided localhost URL.
-  - Log in or register using the login page.
-  - Configure observatory data in the sidebar (name, latitude, longitude,
-    elevation). The app attempts to read header coordinates if present.
-  - Upload a FITS file using the main uploader (supported extensions: .fits,
-    .fit, .fts, .fits.gz).
-  - Main analysis parameters include seeing (FWHM), detection threshold,
-    border mask, calibration band, and max calibration magnitude.
-  - Optional: enable "Remove Cosmic Rays" (configure camera gain/read-noise)
-    or "Refine Astrometry" (requires Astrometry.net/SCAMP installed).
-
-  Outputs and logs
-  ---------------
-
-  - Results are saved under a per-user results folder: `<username>_rpp_results/`.
-  - Typical outputs: `*_catalog.csv`, `*_bkg.fits`, `*_psf.fits`, `*_image.png`,
-    `*.log`, and a `*.zip` archive of the run.
-  - Check the per-run log file (`<base_filename>.log`) for diagnostic details.
-
-  Support
-  -------
-
-  - If you encounter issues, collect logs and open a repository issue with a
-    short reproducible example.
-  - For Astrometry.net and SCAMP installation consult their official docs.
+If you encounter any issues or have questions, please check the `*.log` file first for detailed error messages or warnings. If the problem persists, contact the system administrator or open an issue on the project's repository, providing the log file and a clear description of the problem.
 
 
