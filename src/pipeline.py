@@ -2056,14 +2056,16 @@ def detection_and_photometry(
         )
 
         # Validate WCS after refinement
-        if refined_wcs:
-            # Test a few source positions to ensure coordinates make sense
-            test_coords = positions[: min(5, len(positions))]
-            if not validate_wcs_orientation(
-                science_header, science_header, test_coords
-            ):
-                st.warning("WCS refinement may have introduced coordinate issues")
-            w = refined_wcs
+        # if refined_wcs:
+        #     # Test a few source positions to ensure coordinates make sense
+        #     test_coords = positions[: min(5, len(positions))]
+        #     if not validate_wcs_orientation(
+        #         science_header, science_header, test_coords
+        #     ):
+        #         st.warning("WCS refinement may have introduced coordinate issues")
+        #         refined_wcs = None
+
+        w = refined_wcs
     else:
         st.info("Refine Astrometry is disabled. Skipping astrometry refinement.")
 
