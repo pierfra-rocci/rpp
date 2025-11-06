@@ -33,7 +33,7 @@ from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
 from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photometry
 from photutils.background import Background2D, SExtractorBackground
-from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
+from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry, IterativePSFPhotometry
 from photutils.psf import SourceGrouper
 from stdpipe import photometry, astrometry, catalogs
 
@@ -1346,7 +1346,7 @@ def perform_psf_photometry(
     try:
         epsf_builder = EPSFBuilder(oversampling=3, maxiters=3, progress_bar=False)
         try:
-            epsf, fitted_stars = epsf_builder(stars)
+            epsf, _ = epsf_builder(stars)
         except Exception as build_error:
             st.error(f"EPSFBuilder failed: {build_error}")
             st.write("Retrying with more conservative EPSFBuilder parameters...")
@@ -1354,7 +1354,7 @@ def perform_psf_photometry(
                 epsf_builder_conservative = EPSFBuilder(
                     oversampling=2, maxiters=2, progress_bar=False
                 )
-                epsf, fitted_stars = epsf_builder_conservative(stars)
+                epsf, _ = epsf_builder_conservative(stars)
             except Exception as conservative_error:
                 st.error(f"Conservative EPSFBuilder also failed: {conservative_error}")
                 raise
@@ -1472,19 +1472,27 @@ def perform_psf_photometry(
             error = None
 
         # Create a SourceGrouper
-        min_separation = 1.9 * fwhm
+        min_separation = 1.95 * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
         bkgstat = MMMBackground()
-        localbkg_estimator = LocalBackground(2.1 * fwhm, 2.5 * fwhm, bkgstat)
+        localbkg_estimator = LocalBackground(2. * fwhm, 2.5 * fwhm, bkgstat)
 
-        psfphot = PSFPhotometry(
+        # psfphot = PSFPhotometry(
+        #     psf_model=psf_for_phot,
+        #     fit_shape=fit_shape,
+        #     finder=daostarfind,
+        #     aperture_radius=float(fit_shape) / 2.0,
+        #     grouper=grouper,
+        #     localbkg_estimator=localbkg_estimator,
+        # )
+        
+        psfphot = IterativePSFPhotometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,
             finder=daostarfind,
             aperture_radius=float(fit_shape) / 2.0,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
-            progress_bar=False,
         )
 
         # Prepare initial parameters (use 'x' and 'y' to be compatible with PSFPhotometry)
