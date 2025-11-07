@@ -1735,30 +1735,45 @@ def refine_astrometry_with_stdpipe(
                     )
                     break
             except Exception as e_sex:
-                st.write(f"SExtractor attempt failed: {e_sex}")
+                err_str = str(e_sex)
+                st.write(f"SExtractor attempt failed: {err_str}")
+                # record exception for diagnostics
+                tried_methods.append(("sex-exc", params, err_str))
                 continue
 
         obj = detection_candidates
         # If SExtractor found nothing, attempt a robust photutils DAOStarFinder fallback
         if obj is None or len(obj) == 0:
-            st.warning("SExtractor returned no detections; attempting DAOStarFinder fallback...")
-            # Log attempted methods
+            st.warning(
+                "SExtractor returned no detections; attempting DAOStarFinder fallback..."
+            )
+            # Log attempted methods and exceptions
             st.write(tried_methods)
 
             try:
                 # Ensure image has finite values for stats
-                finite_pixels = np.isfinite(image_for_det)
-                if finite_pixels.sum() < 10:
-                    st.error("Image contains too few finite pixels for source detection.")
+                finite_mask = np.isfinite(image_for_det)
+                n_finite = int(np.sum(finite_mask))
+                if n_finite < 10:
+                    st.error(
+                        "Image contains too few finite pixels for source detection."
+                    )
                     return None
 
                 # Compute robust background stats
-                mean_bkg, median_bkg, std_bkg = sigma_clipped_stats(
-                    image_for_det[finite_pixels], sigma=3.0
+                _, median_bkg, std_bkg = sigma_clipped_stats(
+                    image_for_det[finite_mask], sigma=3.0
                 )
                 if not np.isfinite(std_bkg) or std_bkg <= 0:
-                    st.error("Background noise estimate invalid; cannot run DAOStarFinder.")
+                    st.error(
+                        "Background noise estimate invalid; cannot run DAOStarFinder."
+                    )
                     return None
+
+                st.info(
+                    f"DAO fallback: median_bkg={median_bkg:.3g}, std_bkg={std_bkg:.3g}, "
+                    f"finite_pixels={n_finite}"
+                )
 
                 # Try multiple thresholds (in sigma units) for DAOStarFinder
                 dao_thresholds = [5.0, 4.0, 3.0]
@@ -1766,14 +1781,22 @@ def refine_astrometry_with_stdpipe(
                 for t in dao_thresholds:
                     try:
                         abs_thresh = t * std_bkg
-                        daofind = DAOStarFinder(threshold=abs_thresh, fwhm=max(1.0, 1.5 * fwhm_estimate))
+                        daofind = DAOStarFinder(
+                            threshold=abs_thresh,
+                            fwhm=max(1.0, 1.5 * fwhm_estimate),
+                        )
                         sources = daofind(image_for_det - median_bkg)
                         if sources is not None and len(sources) > 0:
                             dao_found = sources
-                            st.success(f"Detected {len(sources)} objects with DAOStarFinder (threshold={t}σ)")
+                            st.success(
+                                f"Detected {len(sources)} objects with DAOStarFinder "
+                                f"(threshold={t}σ)"
+                            )
                             break
                     except Exception as e_dao:
-                        st.write(f"DAOStarFinder attempt (threshold={t}) failed: {e_dao}")
+                        st.write(
+                            f"DAOStarFinder attempt (threshold={t}) failed: {e_dao}"
+                        )
                         continue
 
                 if dao_found is None:
