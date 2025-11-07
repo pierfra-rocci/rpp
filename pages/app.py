@@ -116,7 +116,7 @@ def clear_all_caches():
 
 
 @st.cache_data
-def load_fits_data(file):
+def load_fits_data(_file):
     """
     Load image data and header from a FITS file with robust error handling.
 
@@ -142,10 +142,10 @@ def load_fits_data(file):
     - For 3D data (RGB or data cube), extracts the first 2D plane with appropriate warnings.
     - For higher dimensional data, takes the first slice along all extra dimensions.
     """
-    if file is not None:
+    if _file is not None:
         # Read bytes and guard against empty uploads
         try:
-            file_content = file.read()
+            file_content = _file.read()
         except Exception as e:
             st.error(f"Failed to read uploaded file: {e}")
             return None, None
