@@ -3327,19 +3327,45 @@ def enhance_catalog(
                 matches = d2d < (10 * u.arcsec)
 
                 # Map matches back to the original table indices
-                valid_indices = valid_final_coords.index
+                valid_indices = list(valid_final_coords.index)
 
-                for i, (match, match_idx) in zip(matches, idx):
-                    if match:
-                        original_idx = valid_indices[i]
+                # Use enumerate to iterate indices cleanly and avoid unpacking errors
+                for i, match_idx in enumerate(idx):
+                    try:
+                        if not bool(matches[i]):
+                            continue
+                    except Exception:
+                        # fallback if matches is a masked/quantity array
+                        if getattr(matches[i], 'value', False) is False:
+                            continue
+
+                    original_idx = valid_indices[i]
+                    # Use iloc for safe pandas indexing
+                    try:
                         enhanced_table.loc[original_idx, "astrocolibri_name"] = (
-                            astrostars["discoverer_internal_name"][match_idx]
+                            astrostars.iloc[int(match_idx)]["discoverer_internal_name"]
                         )
+                    except Exception:
+                        enhanced_table.loc[original_idx, "astrocolibri_name"] = (
+                            astrostars["discoverer_internal_name"].iloc[int(match_idx)]
+                        )
+
+                    try:
                         enhanced_table.loc[original_idx, "astrocolibri_type"] = (
-                            astrostars["type"][match_idx]
+                            astrostars.iloc[int(match_idx)]["type"]
                         )
+                    except Exception:
+                        enhanced_table.loc[original_idx, "astrocolibri_type"] = (
+                            astrostars["type"].iloc[int(match_idx)]
+                        )
+
+                    try:
                         enhanced_table.loc[original_idx, "astrocolibri_classification"] = (
-                            astrostars["classification"][match_idx]
+                            astrostars.iloc[int(match_idx)]["classification"]
+                        )
+                    except Exception:
+                        enhanced_table.loc[original_idx, "astrocolibri_classification"] = (
+                            astrostars["classification"].iloc[int(match_idx)]
                         )
 
                 st.success("Astro-Colibri matched objects in field.")
