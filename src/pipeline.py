@@ -1739,10 +1739,52 @@ def refine_astrometry_with_stdpipe(
                 continue
 
         obj = detection_candidates
+        # If SExtractor found nothing, attempt a robust photutils DAOStarFinder fallback
         if obj is None or len(obj) == 0:
-            st.error("No objects detected. Tried methods:")
+            st.warning("SExtractor returned no detections; attempting DAOStarFinder fallback...")
+            # Log attempted methods
             st.write(tried_methods)
-            return None
+
+            try:
+                # Ensure image has finite values for stats
+                finite_pixels = np.isfinite(image_for_det)
+                if finite_pixels.sum() < 10:
+                    st.error("Image contains too few finite pixels for source detection.")
+                    return None
+
+                # Compute robust background stats
+                mean_bkg, median_bkg, std_bkg = sigma_clipped_stats(
+                    image_for_det[finite_pixels], sigma=3.0
+                )
+                if not np.isfinite(std_bkg) or std_bkg <= 0:
+                    st.error("Background noise estimate invalid; cannot run DAOStarFinder.")
+                    return None
+
+                # Try multiple thresholds (in sigma units) for DAOStarFinder
+                dao_thresholds = [5.0, 4.0, 3.0]
+                dao_found = None
+                for t in dao_thresholds:
+                    try:
+                        abs_thresh = t * std_bkg
+                        daofind = DAOStarFinder(threshold=abs_thresh, fwhm=max(1.0, 1.5 * fwhm_estimate))
+                        sources = daofind(image_for_det - median_bkg)
+                        if sources is not None and len(sources) > 0:
+                            dao_found = sources
+                            st.success(f"Detected {len(sources)} objects with DAOStarFinder (threshold={t}σ)")
+                            break
+                    except Exception as e_dao:
+                        st.write(f"DAOStarFinder attempt (threshold={t}) failed: {e_dao}")
+                        continue
+
+                if dao_found is None:
+                    st.error("No objects detected by DAOStarFinder either.")
+                    return None
+
+                # Use DAOStarFinder results as obj for downstream processing
+                obj = dao_found
+            except Exception as fallback_exc:
+                st.error(f"Fallback detection failed: {fallback_exc}")
+                return None
         # end detection multi-strategy
 
         st.info(f"Detected {len(obj)} objects for astrometry refinement")
