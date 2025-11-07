@@ -1344,33 +1344,124 @@ def perform_psf_photometry(
         raise
 
     try:
-        epsf_builder = EPSFBuilder(oversampling=3, maxiters=3, progress_bar=False)
+        # Prepare a cleaned list of star cutouts suitable for EPSFBuilder
+        clean_cutouts = []
         try:
-            epsf, _ = epsf_builder(stars)
-        except Exception as build_error:
-            st.error(f"EPSFBuilder failed: {build_error}")
-            st.write("Retrying with more conservative EPSFBuilder parameters...")
+            # Iterate robustly through stars and extract numeric arrays
+            for i in range(len(stars)):
+                try:
+                    star = stars[i]
+                    # star may be a simple array or an object with .data
+                    if hasattr(star, "data"):
+                        arr = np.asarray(star.data)
+                    else:
+                        arr = np.asarray(star)
+
+                    # skip empty/NaN/all-zero cutouts
+                    if arr.size == 0:
+                        continue
+                    if np.isnan(arr).all() or np.all(arr == 0):
+                        continue
+
+                    clean_cutouts.append(arr)
+                except Exception:
+                    # skip problematic entries rather than aborting
+                    continue
+        except Exception:
+            clean_cutouts = []
+
+        n_clean = len(clean_cutouts)
+        st.write(f"Using {n_clean} valid cutouts for EPSF construction")
+
+        if n_clean < 5:
+            raise ValueError("Too few valid star cutouts for EPSF building")
+
+        # If there are a lot of stars, pick the brightest cutouts (by peak) to avoid
+        # confusing the builder with many low-S/N objects which can trigger internal
+        # ambiguous-array checks in some photutils versions.
+        max_use = 200
+        if n_clean > max_use:
+            peaks = np.array([c.max() for c in clean_cutouts])
+            top_idx = np.argsort(peaks)[-max_use:][::-1]
+            selected = [clean_cutouts[i] for i in top_idx]
+        else:
+            selected = clean_cutouts
+
+        # Try EPSFBuilder with retries and progressively simpler parameters
+        epsf = None
+        builder_attempts = [dict(oversampling=3, maxiters=3), dict(oversampling=2, maxiters=2), dict(oversampling=1, maxiters=1)]
+        from types import SimpleNamespace
+
+        for params in builder_attempts:
             try:
-                epsf_builder_conservative = EPSFBuilder(
-                    oversampling=2, maxiters=2, progress_bar=False
-                )
-                epsf, _ = epsf_builder_conservative(stars)
-            except Exception as conservative_error:
-                st.error(f"Conservative EPSFBuilder also failed: {conservative_error}")
-                raise
+                epsf_builder = EPSFBuilder(progress_bar=False, **params)
+                # EPSFBuilder accepts an iterable of star cutouts or EPSFStars; try passing selected
+                epsf, _ = epsf_builder(selected)
+                if epsf is not None:
+                    st.write(f"EPSFBuilder succeeded with oversampling={params.get('oversampling')}")
+                    break
+            except Exception as build_error:
+                st.warning(f"EPSFBuilder attempt oversampling={params.get('oversampling')} failed: {build_error}")
+                epsf = None
 
-        st.write("EPSF building completed successfully")
-
+        # If EPSFBuilder failed entirely, fall back to a median-stacked empirical PSF
         if epsf is None:
-            raise ValueError("EPSFBuilder returned None")
-        if (
-            not hasattr(epsf, "data")
-            or epsf.data is None
-            or np.asarray(epsf.data).size == 0
-        ):
-            raise ValueError("EPSF data is invalid or empty")
+            st.warning("EPSFBuilder failed on all attempts — constructing median empirical PSF as fallback")
+            # normalize each cutout by its sum (avoid divide-by-zero)
+            norm_cutouts = []
+            for c in selected:
+                ssum = np.nansum(c)
+                if ssum <= 0 or not np.isfinite(ssum):
+                    continue
+                norm_cutouts.append(c.astype(float) / ssum)
 
-        # check for NaNs but continue (could still be usable)
+            if len(norm_cutouts) == 0:
+                raise ValueError("No valid normalized cutouts available for median PSF fallback")
+
+            # ensure consistent shapes by cropping/padding to median shape
+            shapes = np.array([c.shape for c in norm_cutouts])
+            # pick the most common shape
+            uniq_shapes, counts = np.unique(shapes.reshape(len(shapes), -1), axis=0, return_counts=True)
+            # fallback to using the first shape if uniqueness fails
+            try:
+                chosen_shape = tuple(uniq_shapes[np.argmax(counts)])
+            except Exception:
+                chosen_shape = norm_cutouts[0].shape
+
+            # center-crop or pad to chosen_shape
+            def fit_to_shape(arr, shp):
+                out = np.zeros(shp, dtype=float)
+                y0 = (arr.shape[0] - shp[0]) // 2
+                x0 = (arr.shape[1] - shp[1]) // 2
+                if y0 >= 0 and x0 >= 0:
+                    # crop
+                    out = arr[y0 : y0 + shp[0], x0 : x0 + shp[1]]
+                else:
+                    # pad
+                    y_off = max(0, -y0)
+                    x_off = max(0, -x0)
+                    yy = min(arr.shape[0], shp[0] - y_off)
+                    xx = min(arr.shape[1], shp[1] - x_off)
+                    out[y_off : y_off + yy, x_off : x_off + xx] = arr[0:yy, 0:xx]
+                return out
+
+            aligned = [fit_to_shape(c, chosen_shape) for c in norm_cutouts]
+            epsf_array = np.median(np.stack(aligned, axis=0), axis=0)
+            # renormalize
+            s = np.nansum(epsf_array)
+            if s > 0 and np.isfinite(s):
+                epsf_array = epsf_array / s
+
+            # Build a minimal EPSF-like object with attributes expected by downstream code
+            epsf = SimpleNamespace()
+            epsf.data = epsf_array
+            epsf.oversampling = 1
+            epsf.fwhm = getattr(epsf, 'fwhm', float(fwhm))
+
+        # Validate epsf.data
+        if not hasattr(epsf, "data") or epsf.data is None or np.asarray(epsf.data).size == 0:
+            raise ValueError("EPSF data is invalid or empty after attempts and fallback")
+
         epsf_array = np.asarray(epsf.data)
         if epsf_array.size > 0 and np.isnan(epsf_array).any():
             st.warning("EPSF data contains NaN values")
