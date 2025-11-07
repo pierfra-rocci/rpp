@@ -1018,6 +1018,96 @@ def fwhm_fit(
         raise ValueError(f"Unexpected error in fwhm_fit: {e}")
 
 
+def _filter_psf_stars(photo_table: Table, fwhm: float) -> Table:
+    """
+    Filter sources from a photometry table to select good stars for PSF model construction.
+    """
+    st.write("Filtering stars for PSF model construction...")
+
+    n_sources = len(photo_table)
+    if n_sources == 0:
+        raise ValueError("photo_table is empty")
+
+    def _col_arr(tbl, name, default=None):
+        if name in tbl.colnames:
+            return np.asarray(tbl[name])
+        if default is not None:
+            return np.full(n_sources, default)
+        return np.full(n_sources, np.nan)
+
+    if "flux" not in photo_table.colnames or "xcentroid" not in photo_table.colnames or "ycentroid" not in photo_table.colnames:
+        raise ValueError("photo_table missing required columns: 'flux', 'xcentroid', 'ycentroid'")
+
+    flux = _col_arr(photo_table, "flux")
+    roundness1 = _col_arr(photo_table, "roundness1", np.nan)
+    sharpness = _col_arr(photo_table, "sharpness", np.nan)
+    xcentroid = _col_arr(photo_table, "xcentroid")
+    ycentroid = _col_arr(photo_table, "ycentroid")
+
+    flux_finite = flux[np.isfinite(flux)]
+    if len(flux_finite) == 0:
+        raise ValueError("No sources with finite flux values found")
+
+    flux_median = np.median(flux_finite)
+    flux_std = np.std(flux_finite)
+    flux_min = flux_median - 3 * flux_std
+    flux_max = flux_median + 3 * flux_std
+
+    valid_flux = np.isfinite(flux)
+    valid_roundness = np.isfinite(roundness1)
+    valid_sharpness = np.isfinite(sharpness)
+    valid_xcentroid = np.isfinite(xcentroid)
+    valid_ycentroid = np.isfinite(ycentroid)
+
+    valid_all = valid_flux & valid_roundness & valid_sharpness & valid_xcentroid & valid_ycentroid
+    if not np.any(valid_all):
+        valid_all = valid_flux & valid_xcentroid & valid_ycentroid
+        if not np.any(valid_all):
+            raise ValueError("No sources with required valid parameters found")
+
+    flux_criteria = np.zeros_like(valid_flux, dtype=bool)
+    flux_criteria[valid_flux] = (flux[valid_flux] >= flux_min) & (flux[valid_flux] <= flux_max)
+
+    roundness_criteria = np.zeros_like(valid_roundness, dtype=bool)
+    roundness_criteria[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.25
+
+    sharpness_criteria = np.zeros_like(valid_sharpness, dtype=bool)
+    sharpness_criteria[valid_sharpness] = sharpness[valid_sharpness] > 0.5
+
+    img_shape = st.session_state.get("image_shape", (4096, 4096)) # Fallback shape
+    edge_criteria = np.zeros_like(valid_xcentroid, dtype=bool)
+    valid_coords = valid_xcentroid & valid_ycentroid
+    edge_criteria[valid_coords] = (
+        (xcentroid[valid_coords] > 2 * fwhm)
+        & (xcentroid[valid_coords] < img_shape[1] - 2 * fwhm)
+        & (ycentroid[valid_coords] > 2 * fwhm)
+        & (ycentroid[valid_coords] < img_shape[0] - 2 * fwhm)
+    )
+
+    good_stars_mask = valid_all & flux_criteria & roundness_criteria & sharpness_criteria & edge_criteria
+    filtered_table = photo_table[good_stars_mask]
+
+    st.write(f"Original sources: {len(photo_table)}")
+    st.write(f"Filtered sources for PSF model: {len(filtered_table)}")
+
+    if len(filtered_table) < 10:
+        st.warning(f"Only {len(filtered_table)} stars available for PSF model. Relaxing criteria...")
+        roundness_criteria_relaxed = np.zeros_like(valid_roundness, dtype=bool)
+        roundness_criteria_relaxed[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.5
+        sharpness_criteria_relaxed = np.zeros_like(valid_sharpness, dtype=bool)
+        sharpness_criteria_relaxed[valid_sharpness] = np.abs(sharpness[valid_sharpness]) < 1.0
+        flux_criteria_relaxed = np.zeros_like(valid_flux, dtype=bool)
+        flux_criteria_relaxed[valid_flux] = (flux[valid_flux] >= flux_median - 2 * flux_std) & (flux[valid_flux] <= flux_median + 2 * flux_std)
+        
+        good_stars_mask_relaxed = (valid_flux & valid_xcentroid & valid_ycentroid) & flux_criteria_relaxed & roundness_criteria_relaxed & sharpness_criteria_relaxed & edge_criteria
+        filtered_table = photo_table[good_stars_mask_relaxed]
+        st.write(f"After relaxing criteria: {len(filtered_table)} stars")
+
+    if len(filtered_table) < 5:
+        raise ValueError("Too few good stars for PSF model construction. Need at least 5 stars.")
+
+    return filtered_table
+
 def perform_psf_photometry(
     img: np.ndarray,
     photo_table: Table,
@@ -1059,6 +1149,8 @@ def perform_psf_photometry(
             raise ValueError(
                 "Invalid image data provided. Ensure the image is a non-empty numpy array."
             )
+        st.session_state["image_shape"] = img.shape
+
 
         if mask is not None and (
             not isinstance(mask, np.ndarray) or mask.shape != img.shape
@@ -1089,153 +1181,7 @@ def perform_psf_photometry(
 
     # Filter photo_table to select only the best stars for PSF model
     try:
-        st.write("Filtering stars for PSF model construction...")
-
-        # Ensure table-like behavior for astropy Table / QTable (no .get)
-        n_sources = len(photo_table)
-        if n_sources == 0:
-            raise ValueError("photo_table is empty")
-
-        def _col_arr(tbl, name, default=None):
-            if name in tbl.colnames:
-                return np.asarray(tbl[name])
-            if default is not None:
-                # return default repeated to match table length
-                return (
-                    np.asarray(default)
-                    if np.shape(default) == (n_sources,)
-                    else np.full(n_sources, default)
-                )
-            return np.full(n_sources, np.nan)
-
-        # Required columns (raise helpful error if missing)
-        if "flux" not in photo_table.colnames:
-            raise ValueError("photo_table missing required column 'flux'")
-        if (
-            "xcentroid" not in photo_table.colnames
-            or "ycentroid" not in photo_table.colnames
-        ):
-            raise ValueError(
-                "photo_table must contain 'xcentroid' and 'ycentroid' columns"
-            )
-
-        # Get arrays safely
-        flux = _col_arr(photo_table, "flux")
-        roundness1 = _col_arr(photo_table, "roundness1", np.nan)
-        sharpness = _col_arr(photo_table, "sharpness", np.nan)
-        xcentroid = _col_arr(photo_table, "xcentroid")
-        ycentroid = _col_arr(photo_table, "ycentroid")
-
-        # Get flux statistics with NaN handling
-        flux_finite = flux[np.isfinite(flux)]
-        if len(flux_finite) == 0:
-            raise ValueError("No sources with finite flux values found")
-
-        flux_median = np.median(flux_finite)
-        flux_std = np.std(flux_finite)
-
-        # Define flux filtering criteria
-        flux_min = flux_median - 3 * flux_std
-        flux_max = flux_median + 3 * flux_std
-
-        # Create individual boolean masks with explicit NaN handling
-        valid_flux = np.isfinite(flux)
-        valid_roundness = np.isfinite(roundness1)
-        valid_sharpness = np.isfinite(sharpness)
-        valid_xcentroid = np.isfinite(xcentroid)
-        valid_ycentroid = np.isfinite(ycentroid)
-
-        # Combine validity checks
-        valid_all = (
-            valid_flux
-            & valid_roundness
-            & valid_sharpness
-            & valid_xcentroid
-            & valid_ycentroid
-        )
-
-        if not np.any(valid_all):
-            # relax: accept stars where position and flux are valid at least
-            valid_all = valid_flux & valid_xcentroid & valid_ycentroid
-            if not np.any(valid_all):
-                raise ValueError("No sources with required valid parameters found")
-
-        flux_criteria = np.zeros_like(valid_flux, dtype=bool)
-        flux_criteria[valid_flux] = (flux[valid_flux] >= flux_min) & (
-            flux[valid_flux] <= flux_max
-        )
-
-        roundness_criteria = np.zeros_like(valid_roundness, dtype=bool)
-        roundness_criteria[valid_roundness] = np.abs(roundness1[valid_roundness]) < 0.25
-
-        sharpness_criteria = np.zeros_like(valid_sharpness, dtype=bool)
-        sharpness_criteria[valid_sharpness] = sharpness[valid_sharpness] > 0.5
-
-        # Edge criteria
-        edge_criteria = np.zeros_like(valid_xcentroid, dtype=bool)
-        valid_coords = valid_xcentroid & valid_ycentroid
-        edge_criteria[valid_coords] = (
-            (xcentroid[valid_coords] > 2 * fwhm)
-            & (xcentroid[valid_coords] < img.shape[1] - 2 * fwhm)
-            & (ycentroid[valid_coords] > 2 * fwhm)
-            & (ycentroid[valid_coords] < img.shape[0] - 2 * fwhm)
-        )
-
-        # Combine all criteria with validity checks
-        good_stars_mask = (
-            valid_all
-            & flux_criteria
-            & roundness_criteria
-            & sharpness_criteria
-            & edge_criteria
-        )
-
-        # Apply filters
-        filtered_photo_table = photo_table[good_stars_mask]
-
-        st.write(f"Original sources: {len(photo_table)}")
-        st.write(f"Filtered sources for PSF model: {len(filtered_photo_table)}")
-        st.write(f"Flux range for PSF stars: {flux_min:.1f} - {flux_max:.1f}")
-
-        # Check if we have enough stars for PSF construction
-        if len(filtered_photo_table) < 10:
-            st.warning(
-                f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria..."
-            )
-
-            # Relax criteria
-            roundness_criteria_relaxed = np.zeros_like(valid_roundness, dtype=bool)
-            roundness_criteria_relaxed[valid_roundness] = (
-                np.abs(roundness1[valid_roundness]) < 0.5
-            )
-
-            sharpness_criteria_relaxed = np.zeros_like(valid_sharpness, dtype=bool)
-            sharpness_criteria_relaxed[valid_sharpness] = (
-                np.abs(sharpness[valid_sharpness]) < 1.0
-            )
-
-            flux_criteria_relaxed = np.zeros_like(valid_flux, dtype=bool)
-            flux_criteria_relaxed[valid_flux] = (
-                flux[valid_flux] >= flux_median - 2 * flux_std
-            ) & (flux[valid_flux] <= flux_median + 2 * flux_std)
-
-            good_stars_mask = (
-                (valid_flux & valid_xcentroid & valid_ycentroid)
-                & flux_criteria_relaxed
-                & roundness_criteria_relaxed
-                & sharpness_criteria_relaxed
-                & edge_criteria
-            )
-
-            filtered_photo_table = photo_table[good_stars_mask]
-
-            st.write(f"After relaxing criteria: {len(filtered_photo_table)} stars")
-
-        if len(filtered_photo_table) < 5:
-            raise ValueError(
-                "Too few good stars for PSF model construction. Need at least 5 stars."
-            )
-
+        filtered_photo_table = _filter_psf_stars(photo_table, fwhm)
     except Exception as e:
         st.error(f"Error filtering stars for PSF model: {e}")
         raise
