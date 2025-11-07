@@ -8,6 +8,7 @@ import tempfile
 import warnings
 from datetime import datetime
 from io import BytesIO
+from types import SimpleNamespace
 
 # Third-Party Imports
 import streamlit as st
@@ -47,7 +48,7 @@ from src.pipeline import (
     airmass,
 )
 
-from src.image_subtraction import TransientFinder
+from old_app.image_subtraction import TransientFinder
 
 from src.__version__ import version
 
@@ -1330,32 +1331,32 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
     st.markdown("[Get your key](https://www.astro-colibri.science)")
 
 # Add an expander for the Transient Finder
-with st.sidebar.expander("Transient Finder", expanded=False):
+# with st.sidebar.expander("Transient Finder", expanded=False):
 
-    # Add a checkbox to enable/disable the transient finder
-    st.session_state.analysis_parameters['run_transient_finder'] = st.checkbox(
-        "Enable Transient Finder", 
-        value=st.session_state.analysis_parameters.get('run_transient_finder', False)
-    )
+#     # Add a checkbox to enable/disable the transient finder
+#     st.session_state.analysis_parameters['run_transient_finder'] = st.checkbox(
+#         "Enable Transient Finder", 
+#         value=st.session_state.analysis_parameters.get('run_transient_finder', False)
+#     )
 
-    # Add survey and filter selection
-    survey_options = ["PanSTARRS", "DSS2"]
-    survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'DSS2'))
-    st.session_state.analysis_parameters['transient_survey'] = st.selectbox(
-        "Reference Survey",
-        options=survey_options,
-        index=survey_index,
-        help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
-    )
+#     # Add survey and filter selection
+#     survey_options = ["PanSTARRS", "DSS2"]
+#     survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'DSS2'))
+#     st.session_state.analysis_parameters['transient_survey'] = st.selectbox(
+#         "Reference Survey",
+#         options=survey_options,
+#         index=survey_index,
+#         help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
+#     )
 
-    filter_options = ["g", "r", "i", "blue", "red"]
-    filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'red'))
-    st.session_state.analysis_parameters['transient_filter'] = st.selectbox(
-        "Reference Filter",
-        options=filter_options,
-        index=filter_index,
-        help="Filter/band for the reference image. Options depend on the selected survey.",
-    )
+#     filter_options = ["g", "r", "i", "blue", "red"]
+#     filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'red'))
+#     st.session_state.analysis_parameters['transient_filter'] = st.selectbox(
+#         "Reference Filter",
+#         options=filter_options,
+#         index=filter_index,
+#         help="Filter/band for the reference image. Options depend on the selected survey.",
+#     )
 
 if st.sidebar.button("💾 Save Configuration"):
     analysis_params = dict(st.session_state.get("analysis_parameters", {}))
@@ -1411,8 +1412,6 @@ with st.sidebar:
         clear_all_caches()
 
 # Persistent uploader: keep uploaded file bytes across reruns until cleared
-from types import SimpleNamespace
-
 if "uploaded_bytes" not in st.session_state:
     uploaded = st.file_uploader(
         "Choose a FITS file for analysis",
