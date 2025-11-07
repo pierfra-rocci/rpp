@@ -2974,7 +2974,7 @@ def enhance_catalog(
     # Compute field of view (arcmin) ONCE and use everywhere
     field_center_ra = None
     field_center_dec = None
-    field_width_arcmin = 30.0  # fallback default
+    field_width_arcmin = 35.  # fallback default
     if header is not None:
         if "CRVAL1" in header and "CRVAL2" in header:
             field_center_ra = float(header["CRVAL1"])
@@ -3085,8 +3085,8 @@ def enhance_catalog(
             else:
                 base_date = datetime.now()
 
-            date_min = (base_date - timedelta(days=14)).isoformat()
-            date_max = (base_date + timedelta(days=7)).isoformat()
+            date_min = (base_date - timedelta(days=28)).isoformat()
+            date_max = (base_date + timedelta(days=28)).isoformat()
 
             body = {
                 "uid": api_key,
@@ -3168,7 +3168,7 @@ def enhance_catalog(
                     raise ValueError("Search radius must be a number")
 
                 idx, d2d, _ = source_coords.match_to_catalog_sky(astro_colibri_coords)
-                matches = d2d < (15 * u.arcsec)
+                matches = d2d < (10 * u.arcsec)
 
                 # Map matches back to the original table indices
                 valid_indices = valid_final_coords.index
