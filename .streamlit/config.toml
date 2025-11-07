@@ -32,12 +32,12 @@ developmentMode = false
 showWarningOnDirectExecution = true
 
 [logger]
-level = "debug"
+level = "warning"
 messageFormat = "%(asctime)s %(message)s"
 
 [server]
 port = 8501
-folderWatchBlacklist = ['']
+folderWatchBlacklist = []
 
 # If XSRF protection is enabled and CORS protection is disabled at the
 # same time, Streamlit will enable them both instead.
@@ -49,11 +49,13 @@ enableCORS = true
 # If XSRF protection is enabled and CORS protection is disabled at the
 # same time, Streamlit will enable them both instead.
 # Default: true
-enableXsrfProtection = true
+enableXsrfProtection = false
 
 # Max size, in megabytes, for files uploaded with the file_uploader.
 # Default: 200
 maxUploadSize = 200
+
+fileWatcherType = "none"
 
 # Max size, in megabytes, of messages that can be sent via the WebSocket
 # connection.
@@ -62,7 +64,7 @@ maxMessageSize = 200
 
 # Automatically rerun script when the file is modified on disk.
 # Default: false
-runOnSave = true
+runOnSave = false
 
 [browser]
 # Whether to send usage statistics to Streamlit.
@@ -75,30 +77,8 @@ gatherUsageStats = false
 
 
 [client]
-# Controls whether uncaught app exceptions and deprecation warnings
-# are displayed in the browser. This can be one of the following:
-# - "full"       : In the browser, Streamlit displays app deprecation
-#                  warnings and exceptions, including exception types,
-#                  exception messages, and associated tracebacks.
-# - "stacktrace" : In the browser, Streamlit displays exceptions,
-#                  including exception types, generic exception messages,
-#                  and associated tracebacks. Deprecation warnings and
-#                  full exception messages will only print to the
-#                  console.
-# - "type"       : In the browser, Streamlit displays exception types and
-#                  generic exception messages. Deprecation warnings, full
-#                  exception messages, and associated tracebacks only
-#                  print to the console.
-# - "none"       : In the browser, Streamlit displays generic exception
-#                  messages. Deprecation warnings, full exception
-#                  messages, associated tracebacks, and exception types
-#                  will only print to the console.
-# - True         : This is deprecated. Streamlit displays "full"
-#                  error details.
-# - False        : This is deprecated. Streamlit displays "stacktrace"
-#                  error details.
 # Default: "full"
-showErrorDetails = "full"
+showErrorDetails = "stacktrace"
 
 # Change the visibility of items in the toolbar, options menu,
 # and settings dialog (top right of the app).
@@ -112,7 +92,7 @@ showErrorDetails = "full"
 #                 Streamlit Community Cloud) or through st.set_page_config.
 #                 If there are no options left, hide the menu.
 # Default: "auto"
-toolbarMode = "viewer"
+toolbarMode = "auto"
 
 # Controls whether to display the default sidebar page navigation in a
 # multi-page app. This only applies when app's pages are defined by the
