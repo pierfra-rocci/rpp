@@ -197,7 +197,7 @@ def solve_with_astrometrynet(file_path):
 
             return None, None
 
-        # Prepare sources for astrometry solving
+        # Prepare sources for astrometric solving
         st.write(f"Successfully detected {len(sources)} sources")
 
         # Filter for best sources if too many
@@ -3173,7 +3173,7 @@ def enhance_catalog(
                 # Map matches back to the original table indices
                 valid_indices = valid_final_coords.index
 
-                for i, (match, match_idx) in enumerate(zip(matches, idx)):
+                for i, (match, match_idx) in zip(matches, idx):
                     if match:
                         original_idx = valid_indices[i]
                         enhanced_table.loc[original_idx, "astrocolibri_name"] = (
@@ -3182,9 +3182,9 @@ def enhance_catalog(
                         enhanced_table.loc[original_idx, "astrocolibri_type"] = (
                             astrostars["type"][match_idx]
                         )
-                        enhanced_table.loc[
-                            original_idx, "astrocolibri_classification"
-                        ] = astrostars["classification"][match_idx]
+                        enhanced_table.loc[original_idx, "astrocolibri_classification"] = (
+                            astrostars["classification"][match_idx]
+                        )
 
                 st.success("Astro-Colibri matched objects in field.")
             else:
@@ -3316,119 +3316,110 @@ def enhance_catalog(
 
             obs_time = Time(obs_date).isot
 
-            sr_value = min(field_width_arcmin / 60.0, 1.0)
+            sr_value = min(field_width_arcmin / 60.0, 1.0)  # degrees (cap at 1°)
+            # Keep endpoint you were using, but the documented API is at ssp.imcce.fr
             skybot_url = (
                 f"http://vo.imcce.fr/webservices/skybot/skybotconesearch_query.php?"
                 f"RA={field_center_ra}&DEC={field_center_dec}&SR={sr_value}&"
-                f"EPOCH={quote(obs_time)}&mime=json"
+                f"EPOCH={quote(str(obs_time))}&mime=json"
             )
 
             st.info("Querying SkyBoT for solar system objects...")
 
             try:
+                # Prepare output columns
                 enhanced_table["skybot_NAME"] = None
                 enhanced_table["skybot_OBJECT_TYPE"] = None
                 enhanced_table["skybot_MAGV"] = None
 
                 response = requests.get(skybot_url, timeout=15)
 
-                if response.status_code == 200:
+                if response.status_code != 200:
+                    st.warning(
+                        f"SkyBoT query failed with status code {response.status_code}"
+                    )
+                else:
                     response_text = response.text.strip()
-
-                    if response_text.startswith("{") or response_text.startswith("["):
+                    if not (response_text.startswith("{") or response_text.startswith("[")):
+                        st.info("SkyBoT returned non-JSON or empty response.")
+                    else:
                         try:
                             skybot_result = response.json()
+                        except Exception as e_json:
+                            st.warning(f"SkyBoT JSON parse failed: {e_json}")
+                            skybot_result = {}
 
-                            if "data" in skybot_result and skybot_result["data"]:
-                                skybot_coords = SkyCoord(
-                                    ra=[
-                                        float(obj["RA"])
-                                        for obj in skybot_result["data"]
-                                    ],
-                                    dec=[
-                                        float(obj["DEC"])
-                                        for obj in skybot_result["data"]
-                                    ],
-                                    unit=u.deg,
-                                )
+                        data = skybot_result.get("data") or skybot_result.get("result") or []
+                        if not data:
+                            st.info("No solar system objects found in the field.")
+                        else:
+                            # Build SkyCoord from returned objects, skip invalid entries
+                            ra_list = []
+                            dec_list = []
+                            good_indices = []
+                            for i_obj, obj in enumerate(data):
+                                try:
+                                    # handle different possible key names and types
+                                    ra_val = obj.get("RA") or obj.get("ra") or obj.get("raj2000")
+                                    dec_val = obj.get("DEC") or obj.get("dec") or obj.get("decj2000")
+                                    if ra_val is None or dec_val is None:
+                                        continue
+                                    ra_f = float(ra_val)
+                                    dec_f = float(dec_val)
+                                    ra_list.append(ra_f)
+                                    dec_list.append(dec_f)
+                                    good_indices.append(i_obj)
+                                except Exception:
+                                    continue
+
+                            if len(ra_list) == 0:
+                                st.info("SkyBoT returned entries but no usable coordinates.")
+                            else:
+                                skybot_coords = SkyCoord(ra=ra_list, dec=dec_list, unit=u.deg)
 
                                 # Filter valid coordinates for SkyBoT matching
                                 valid_final_coords = enhanced_table[valid_coords_mask]
-
-                                if len(valid_final_coords) > 0:
-                                    # Create source coordinates for matching
+                                if len(valid_final_coords) == 0:
+                                    st.info("No valid coordinates available for SkyBoT matching")
+                                else:
                                     source_coords = SkyCoord(
-                                        ra=valid_final_coords["ra"],
-                                        dec=valid_final_coords["dec"],
+                                        ra=valid_final_coords["ra"].values,
+                                        dec=valid_final_coords["dec"].values,
                                         unit=u.deg,
                                     )
 
-                                    # Perform cross-matching
-                                    idx, d2d, _ = source_coords.match_to_catalog_3d(
-                                        skybot_coords
-                                    )
-                                    matches = d2d.arcsec <= 10
-
-                                    # Add matched solar system object information to the final table
-                                    enhanced_table["skybot_NAME"] = None
-                                    enhanced_table["skybot_OBJECT_TYPE"] = None
-                                    enhanced_table["skybot_MAGV"] = None
-
-                                    # Initialize catalog_matches column if it doesn't exist
-                                    if "catalog_matches" not in enhanced_table.columns:
-                                        enhanced_table["catalog_matches"] = ""
+                                    # Use 2D sky matching
+                                    idx, d2d, _ = source_coords.match_to_catalog_sky(skybot_coords)
+                                    max_sep = 10.0 * u.arcsec
+                                    matches = d2d <= max_sep
 
                                     # Map matches back to the original table indices
                                     valid_indices = valid_final_coords.index
                                     matched_sources = np.where(matches)[0]
-                                    matched_skybots = idx[matches]
 
-                                    for i, skybot_idx in zip(
-                                        matched_sources, matched_skybots
-                                    ):
-                                        original_idx = valid_indices[i]
-                                        enhanced_table.loc[
-                                            original_idx, "skybot_NAME"
-                                        ] = skybot_result["data"][skybot_idx]["NAME"]
-                                        enhanced_table.loc[
-                                            original_idx, "skybot_OBJECT_TYPE"
-                                        ] = skybot_result["data"][skybot_idx][
-                                            "OBJECT_TYPE"
-                                        ]
-                                        enhanced_table.loc[
-                                            original_idx, "skybot_MAGV"
-                                        ] = skybot_result["data"][skybot_idx]["MAGV"]
+                                    # Initialize catalog_matches column if missing
+                                    if "catalog_matches" not in enhanced_table.columns:
+                                        enhanced_table["catalog_matches"] = ""
 
-                                    # Update the catalog_matches column for matched solar system objects
+                                    for src_i in matched_sources:
+                                        original_idx = valid_indices[src_i]
+                                        skybot_idx = good_indices[int(idx[src_i])]
+                                        rec = data[skybot_idx]
+                                        # case-insensitive safe extraction
+                                        name = rec.get("NAME") or rec.get("Name") or rec.get("name")
+                                        objtype = rec.get("OBJECT_TYPE") or rec.get("OBJECT") or rec.get("object_type")
+                                        magv = rec.get("MAGV") or rec.get("magv") or rec.get("VMAG")
+                                        enhanced_table.loc[original_idx, "skybot_NAME"] = name
+                                        enhanced_table.loc[original_idx, "skybot_OBJECT_TYPE"] = objtype
+                                        enhanced_table.loc[original_idx, "skybot_MAGV"] = magv
+
                                     has_skybot = enhanced_table["skybot_NAME"].notna()
-                                    enhanced_table.loc[
-                                        has_skybot, "catalog_matches"
-                                    ] += "SkyBoT; "
-
-                                    st.success(
-                                        f"Found {sum(has_skybot)} solar system objects in field."
-                                    )
-                                else:
-                                    st.info(
-                                        "No valid coordinates available for SkyBoT matching"
-                                    )
-                            else:
-                                st.warning(
-                                    "No solar system objects found in the field."
-                                )
-                        except ValueError as e:
-                            st.warning(
-                                f"No solar system objects found (no valid JSON data returned). {str(e)}"
-                            )
-                    else:
-                        st.warning("No solar system objects found in the field.")
-                else:
-                    st.warning(
-                        f"SkyBoT query failed with status code {response.status_code}"
-                    )
-
+                                    enhanced_table.loc[has_skybot, "catalog_matches"] += "SkyBoT; "
+                                    st.success(f"Found {int(has_skybot.sum())} solar system objects in field.")
             except requests.exceptions.RequestException as req_err:
                 st.warning(f"Request to SkyBoT failed: {req_err}")
+            except Exception as e:
+                st.error(f"Unexpected error during SkyBoT processing: {e}")
         else:
             st.warning("Could not determine field center for SkyBoT query")
     except Exception as e:
