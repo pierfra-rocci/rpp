@@ -79,6 +79,13 @@ def clear_all_caches():
         for key in upload_keys:
             del st.session_state[key]
 
+        # Also clear persisted uploaded file (if present)
+        if "uploaded" in st.session_state:
+            try:
+                del st.session_state["uploaded"]
+            except Exception:
+                pass
+            
         # Clear file-related session state
         if "science_file_path" in st.session_state:
             try:
@@ -1371,11 +1378,21 @@ with st.sidebar:
     if st.button("🧹 Clear Cache & Reset Upload"):
         clear_all_caches()
 
-science_file = st.file_uploader(
-    "Choose a FITS file for analysis",
-    type=["fits", "fit", "fts", "fits.gz"],
-    key="science_uploader",
-)
+# Persistent uploader: keep uploaded file across reruns until cleared
+if "uploaded" not in st.session_state:
+    uploaded = st.file_uploader(
+        "Choose a FITS file for analysis",
+        type=["fits", "fit", "fts", "fits.gz"],
+        key="science_uploader",
+    )
+    if uploaded:
+        st.session_state.uploaded = uploaded
+        science_file = uploaded
+    else:
+        science_file = None
+else:
+    science_file = st.session_state.uploaded
+
 science_file_path = None
 
 # Runtime logic to update the sessions state parameters
