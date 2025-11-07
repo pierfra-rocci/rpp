@@ -12,7 +12,6 @@ from types import SimpleNamespace
 
 # Third-Party Imports
 import streamlit as st
-import streamlit.components.v1 as components
 import requests
 import numpy as np
 import pandas as pd
@@ -20,9 +19,9 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.visualization import ZScaleInterval, ImageNormalize
 
-from jinja2 import Template
-
-from src.ui_helpers import display_catalog_in_aladin, plot_magnitude_distribution, provide_download_buttons, display_archived_files_browser, clear_all_caches
+from src.ui_helpers import (display_catalog_in_aladin, plot_magnitude_distribution,
+                            provide_download_buttons, display_archived_files_browser,
+                            clear_all_caches)
 
 # Local Application Imports
 from src.tools import (
@@ -52,8 +51,6 @@ from src.pipeline import (
     airmass,
 )
 
-from old_app.image_subtraction import TransientFinder
-
 from src.__version__ import version
 
 # Conditional Import (already present, just noting its location)
@@ -68,9 +65,6 @@ if getattr(sys, "frozen", False):
         )
 
 warnings.filterwarnings("ignore")
-
-
-
 
 
 @st.cache_data
@@ -231,12 +225,6 @@ def load_fits_data(_file):
                 pass
 
     return None, None
-
-
-
-
-
-
 
 
 def initialize_session_state():
@@ -414,7 +402,6 @@ def update_observatory_from_fits_header(header):
 ###################################################################
 # Main Streamlit App
 ###################################################################
-
 
 st.set_page_config(
     page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide"
