@@ -1389,14 +1389,37 @@ def perform_psf_photometry(
 
         # Try EPSFBuilder with retries and progressively simpler parameters
         epsf = None
-        builder_attempts = [dict(oversampling=3, maxiters=3), dict(oversampling=2, maxiters=2), dict(oversampling=1, maxiters=1)]
+        builder_attempts = [
+            dict(oversampling=3, maxiters=3),
+            dict(oversampling=2, maxiters=2),
+            dict(oversampling=1, maxiters=1),
+        ]
         from types import SimpleNamespace
+
+        # DEBUG: report selected summary before wrapping
+        try:
+            st.write(f"DEBUG: selected type: {type(selected)}, n_selected={len(selected)}")
+        except Exception:
+            st.write("DEBUG: selected summary unavailable")
+
+        # Build stars_for_builder in a way compatible with photutils.EPSFBuilder
+        try:
+            from photutils.psf import EPSFStars
+            try:
+                stars_for_builder = EPSFStars(selected)
+                st.write("DEBUG: wrapped selected into EPSFStars")
+            except Exception as epsfstars_err:
+                stars_for_builder = [SimpleNamespace(data=np.asarray(c)) for c in selected]
+                st.write(f"DEBUG: using SimpleNamespace wrappers for selected (EPSFStars failed: {epsfstars_err})")
+        except Exception as import_err:
+            stars_for_builder = [SimpleNamespace(data=np.asarray(c)) for c in selected]
+            st.write(f"DEBUG: EPSFStars import failed ({import_err}); using SimpleNamespace wrappers")
 
         for params in builder_attempts:
             try:
                 epsf_builder = EPSFBuilder(progress_bar=False, **params)
-                # EPSFBuilder accepts an iterable of star cutouts or EPSFStars; try passing selected
-                epsf, _ = epsf_builder(selected)
+                # Pass the wrapped object (not a raw Python list) to EPSFBuilder
+                epsf, _ = epsf_builder(stars_for_builder)
                 if epsf is not None:
                     st.write(f"EPSFBuilder succeeded with oversampling={params.get('oversampling')}")
                     break
@@ -1435,14 +1458,14 @@ def perform_psf_photometry(
                 x0 = (arr.shape[1] - shp[1]) // 2
                 if y0 >= 0 and x0 >= 0:
                     # crop
-                    out = arr[y0 : y0 + shp[0], x0 : x0 + shp[1]]
+                    out = arr[y0: y0 + shp[0], x0: x0 + shp[1]]
                 else:
                     # pad
                     y_off = max(0, -y0)
                     x_off = max(0, -x0)
                     yy = min(arr.shape[0], shp[0] - y_off)
                     xx = min(arr.shape[1], shp[1] - x_off)
-                    out[y_off : y_off + yy, x_off : x_off + xx] = arr[0:yy, 0:xx]
+                    out[y_off: y_off + yy, x_off: x_off + xx] = arr[0:yy, 0:xx]
                 return out
 
             aligned = [fit_to_shape(c, chosen_shape) for c in norm_cutouts]
