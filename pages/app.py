@@ -85,6 +85,17 @@ def clear_all_caches():
                 del st.session_state["uploaded"]
             except Exception:
                 pass
+        # Also clear persisted raw upload bytes and name if present
+        if "uploaded_bytes" in st.session_state:
+            try:
+                del st.session_state["uploaded_bytes"]
+            except Exception:
+                pass
+        if "uploaded_name" in st.session_state:
+            try:
+                del st.session_state["uploaded_name"]
+            except Exception:
+                pass
             
         # Clear file-related session state
         if "science_file_path" in st.session_state:
@@ -1399,20 +1410,42 @@ with st.sidebar:
     if st.button("🧹 Clear Cache & Reset Upload"):
         clear_all_caches()
 
-# Persistent uploader: keep uploaded file across reruns until cleared
-if "uploaded" not in st.session_state:
+# Persistent uploader: keep uploaded file bytes across reruns until cleared
+from types import SimpleNamespace
+
+if "uploaded_bytes" not in st.session_state:
     uploaded = st.file_uploader(
         "Choose a FITS file for analysis",
         type=["fits", "fit", "fts", "fits.gz"],
         key="science_uploader",
     )
     if uploaded:
-        st.session_state.uploaded = uploaded
-        science_file = uploaded
+        try:
+            st.session_state["uploaded_bytes"] = uploaded.getvalue()
+            st.session_state["uploaded_name"] = uploaded.name
+            st.session_state["uploaded"] = uploaded
+            science_file = uploaded
+        except Exception:
+            st.error("Failed to persist uploaded file. Please re-upload.")
+            science_file = None
     else:
         science_file = None
 else:
-    science_file = st.session_state.uploaded
+    # Recreate a lightweight file-like object from stored bytes so downstream
+    # code that calls .read() or .getvalue() continues to work.
+    tmp = SimpleNamespace()
+    tmp._bytes = st.session_state.get("uploaded_bytes")
+
+    def _read():
+        return tmp._bytes
+
+    def _getvalue():
+        return tmp._bytes
+
+    tmp.read = _read
+    tmp.getvalue = _getvalue
+    tmp.name = st.session_state.get("uploaded_name", "uploaded.fits")
+    science_file = tmp
 
 science_file_path = None
 
