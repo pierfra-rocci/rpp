@@ -1202,12 +1202,38 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
             "Size of the border region (in pixels) to exclude from source detection."
         ),
     )
-    st.session_state.analysis_parameters["filter_band"] = st.selectbox(
+    # Use GAIA_BANDS (list of (label, field)) to present a friendly menu
+    try:
+        band_labels = [b[0] for b in GAIA_BANDS]
+        band_fields = [b[1] for b in GAIA_BANDS]
+    except Exception:
+        # Fallback if GAIA_BANDS is not in expected format
+        band_labels = [str(b) for b in GAIA_BANDS]
+        band_fields = band_labels
+
+    # Determine default selection index based on stored filter field
+    current_field = st.session_state.analysis_parameters.get(
+        "filter_band", band_fields[0] if band_fields else "phot_g_mean_mag"
+    )
+    if current_field in band_fields:
+        default_index = band_fields.index(current_field)
+    else:
+        default_index = 0
+
+    selected_label = st.selectbox(
         "Calibration Filter Band",
-        options=GAIA_BANDS,
-        index=GAIA_BANDS.index(st.session_state.analysis_parameters["filter_band"]),
+        options=band_labels,
+        index=default_index,
         help="Filter Magnitude band used for photometric calibration.",
     )
+
+    # Store the actual catalog field name (second element) in session state
+    try:
+        selected_field = band_fields[band_labels.index(selected_label)]
+    except Exception:
+        selected_field = current_field
+
+    st.session_state.analysis_parameters["filter_band"] = selected_field
     st.session_state.analysis_parameters["filter_max_mag"] = st.slider(
         "Max Calibration Mag",
         min_value=15.0,

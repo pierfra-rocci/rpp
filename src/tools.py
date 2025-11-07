@@ -27,19 +27,19 @@ FIGURE_SIZES = {
 URL = "https://astro-colibri.science/"
 
 GAIA_BANDS = [
-    "phot_g_mean_mag",
-    "phot_bp_mean_mag",
-    "phot_rp_mean_mag",
-    "u_jkc_mag",
-    "v_jkc_mag",
-    "b_jkc_mag",
-    "r_jkc_mag",
-    "i_jkc_mag",
-    "u_sdss_mag",
-    "g_sdss_mag",
-    "r_sdss_mag",
-    "i_sdss_mag",
-    "z_sdss_mag",
+    ("G", "phot_g_mean_mag"),
+    ("Bp", "phot_bp_mean_mag"),
+    ("Rp", "phot_rp_mean_mag"),
+    ("U", "u_jkc_mag"),
+    ("V", "v_jkc_mag"),
+    ("B", "b_jkc_mag"),
+    ("R", "r_jkc_mag"),
+    ("I", "i_jkc_mag"),
+    ("u", "u_sdss_mag"),
+    ("g", "g_sdss_mag"),
+    ("r", "r_sdss_mag"),
+    ("i", "i_sdss_mag"),
+    ("z", "z_sdss_mag")
 ]
 
 
