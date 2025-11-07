@@ -1581,6 +1581,7 @@ def perform_psf_photometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,
             finder=daostarfind,
+            maxiters=2,
             aperture_radius=float(fit_shape) / 2.0,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
