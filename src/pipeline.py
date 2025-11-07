@@ -1563,7 +1563,7 @@ def perform_psf_photometry(
             error = None
 
         # Create a SourceGrouper
-        min_separation = 1.95 * fwhm
+        min_separation = 2. * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
         bkgstat = MMMBackground()
         localbkg_estimator = LocalBackground(2. * fwhm, 2.5 * fwhm, bkgstat)
