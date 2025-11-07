@@ -132,8 +132,27 @@ def load_fits_data(file):
     - For higher dimensional data, takes the first slice along all extra dimensions.
     """
     if file is not None:
-        file_content = file.read()
-        hdul = fits.open(BytesIO(file_content), mode="readonly")
+        # Read bytes and guard against empty uploads
+        try:
+            file_content = file.read()
+        except Exception as e:
+            st.error(f"Failed to read uploaded file: {e}")
+            return None, None
+
+        if not file_content:
+            st.error("Uploaded FITS file is empty.")
+            return None, None
+
+        # Try opening the FITS file and handle corrupt/invalid FITS gracefully
+        try:
+            hdul = fits.open(BytesIO(file_content), mode="readonly")
+        except OSError as e:
+            st.error(f"Invalid or corrupt FITS file: {e}")
+            return None, None
+        except Exception as e:
+            st.error(f"Error opening FITS file: {e}")
+            return None, None
+
         try:
             data = hdul[0].data
             hdul.verify("fix")
@@ -144,7 +163,6 @@ def load_fits_data(file):
                     if hasattr(hdu, "data") and hdu.data is not None:
                         data = hdu.data
                         header = hdu.header
-                        # Only log it, don't show in UI
                         if st.session_state.get("log_buffer"):
                             write_to_log(
                                 st.session_state["log_buffer"],
@@ -238,7 +256,10 @@ def load_fits_data(file):
             st.error(f"Error loading FITS file: {str(e)}")
             return None, None
         finally:
-            hdul.close()
+            try:
+                hdul.close()
+            except Exception:
+                pass
 
     return None, None
 
