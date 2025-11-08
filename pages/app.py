@@ -42,10 +42,11 @@ from src.pipeline import (
     calculate_zero_point,
     detection_and_photometry,
     detect_remove_cosmic_rays,
-    airmass,
+    airmass
 )
 
 from src.astrometry import solve_with_astrometrynet
+
 from src.xmatch_catalogs import cross_match_with_gaia, enhance_catalog
 
 from src.__version__ import version

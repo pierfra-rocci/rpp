@@ -1,5 +1,4 @@
 import os
-
 import streamlit as st
 
 import numpy as np
@@ -8,7 +7,7 @@ import matplotlib.pyplot as plt
 
 import astroscrappy
 from astropy.wcs import WCS
-from astropy.stats import sigma_clip, SigmaClip
+from astropy.stats import sigma_clip
 from astropy.stats import sigma_clipped_stats
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from astropy.time import Time
@@ -16,23 +15,21 @@ from photutils.psf import fit_fwhm
 from astropy.visualization import ZScaleInterval
 
 import astropy.units as u
-from astropy.io import fits
 from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
 from photutils.aperture import (CircularAperture, CircularAnnulus,
                                 aperture_photometry)
-from photutils.background import Background2D, SExtractorBackground
 
 from src.tools import (
     safe_wcs_create,
-    ensure_output_directory,
-    write_to_log,
+    ensure_output_directory
 )
 
 from typing import Union, Optional, Dict, Tuple
 
 from src.psf import perform_psf_photometry
-from src.astrometry import refine_astrometry_with_stdpipe
+from src.utils_common import (refine_astrometry_with_stdpipe,
+                              estimate_background)
 
 
 def detect_remove_cosmic_rays(
@@ -192,145 +189,6 @@ def make_border_mask(
     mask[top : height - bottom, left : width - right] = True
 
     return ~mask if invert else mask
-
-
-def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
-    """
-    Estimate the background and background RMS of an astronomical image.
-
-    Uses photutils.Background2D to create a 2D background model with sigma-clipping
-    and the SExtractor background estimation algorithm. Includes error handling
-    and automatic adjustment for small images.
-
-    Parameters
-    ----------
-    image_data : numpy.ndarray
-        The 2D image array
-    box_size : int, optional
-        The box size in pixels for the local background estimation.
-        Will be automatically adjusted if the image is small.
-    filter_size : int, optional
-        Size of the filter for smoothing the background.
-
-    Returns
-    -------
-    tuple
-        (background_2d_object, error_message) where:
-        - background_2d_object: photutils.Background2D object if successful, None if failed
-        - error_message: None if successful, string describing the error if failed
-
-    Notes
-    -----
-    The function automatically adjusts the box_size and filter_size parameters
-    if the image is too small, and handles various edge cases to ensure robust
-    background estimation.
-    """
-    if image_data is None:
-        return None, "No image data provided"
-
-    if not isinstance(image_data, np.ndarray):
-        return None, f"Image data must be a numpy array, got {type(image_data)}"
-
-    if len(image_data.shape) != 2:
-        return None, f"Image must be 2D, got shape {image_data.shape}"
-
-    height, width = image_data.shape
-    adjusted_box_size = max(box_size, min(height // 10, width // 10, 128))
-    adjusted_filter_size = min(filter_size, adjusted_box_size // 2)
-
-    if adjusted_box_size < 10:
-        return None, f"Image too small ({height}x{width}) for background estimation"
-
-    try:
-        sigma_clip = SigmaClip(sigma=3)
-        bkg_estimator = SExtractorBackground()
-
-        bkg = Background2D(
-            data=image_data,
-            box_size=adjusted_box_size,
-            filter_size=adjusted_filter_size,
-            sigma_clip=sigma_clip,
-            bkg_estimator=bkg_estimator,
-        )
-
-        # Plot the background model with ZScale and save as FITS
-        if figure:
-            fig_bkg = None
-            try:
-                # Create a figure with two subplots side by side for background/RMS
-                fig_bkg, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-
-                # Use ZScaleInterval for better visualization
-                zscale = ZScaleInterval()
-                vmin, vmax = zscale.get_limits(bkg.background)
-
-                # Plot the background model
-                im1 = ax1.imshow(
-                    bkg.background, origin="lower", cmap="viridis", vmin=vmin, vmax=vmax
-                )
-                ax1.set_title("Estimated Background")
-                fig_bkg.colorbar(im1, ax=ax1, label="Flux")
-
-                # Plot the background RMS
-                vmin_rms, vmax_rms = zscale.get_limits(bkg.background_rms)
-                im2 = ax2.imshow(
-                    bkg.background_rms,
-                    origin="lower",
-                    cmap="viridis",
-                    vmin=vmin_rms,
-                    vmax=vmax_rms,
-                )
-                ax2.set_title("Background RMS")
-                fig_bkg.colorbar(im2, ax=ax2, label="Flux")
-
-                fig_bkg.tight_layout()
-                st.pyplot(fig_bkg)
-
-                # Save background as FITS file
-                base_filename = st.session_state.get("base_filename", "photometry")
-                username = st.session_state.get("username", "anonymous")
-                output_dir = ensure_output_directory(f"{username}_rpp_results")
-                bkg_filename = f"{base_filename}_bkg.fits"
-                bkg_filepath = os.path.join(output_dir, bkg_filename)
-
-                # Create FITS HDU and save background model
-                hdu_bkg = fits.PrimaryHDU(data=bkg.background)
-                hdu_bkg.header["COMMENT"] = (
-                    "Background model created with photutils.Background2D"
-                )
-                hdu_bkg.header["BOXSIZE"] = (
-                    adjusted_box_size,
-                    "Box size for background estimation",
-                )
-                hdu_bkg.header["FILTSIZE"] = (
-                    adjusted_filter_size,
-                    "Filter size for background smoothing",
-                )
-
-                # Add RMS as extension
-                hdu_rms = fits.ImageHDU(data=bkg.background_rms)
-                hdu_rms.header["EXTNAME"] = "BACKGROUND_RMS"
-
-                hdul = fits.HDUList([hdu_bkg, hdu_rms])
-                hdul.writeto(bkg_filepath, overwrite=True)
-
-                # Write to log if available
-                log_buffer = st.session_state.get("log_buffer")
-                if log_buffer is not None:
-                    write_to_log(
-                        log_buffer, f"Background model saved to {bkg_filename}"
-                    )
-
-            except Exception as e:
-                st.warning(f"Error creating or saving background plot: {str(e)}")
-            finally:
-                # Clean up matplotlib figure to prevent memory leaks
-                if fig_bkg is not None:
-                    plt.close(fig_bkg)
-
-        return bkg, None
-    except Exception as e:
-        return None, f"Background estimation error: {str(e)}"
 
 
 def airmass(
