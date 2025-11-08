@@ -180,3 +180,4 @@ setup_database.py
 add_user.py
 run_all_cmd.bat
 users.db
+dev_test/**
