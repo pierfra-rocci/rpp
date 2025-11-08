@@ -39,18 +39,17 @@ from src.tools import (
 )
 
 from src.pipeline import (
-    solve_with_astrometrynet,
-    cross_match_with_gaia,
     calculate_zero_point,
     detection_and_photometry,
     detect_remove_cosmic_rays,
-    enhance_catalog,
     airmass,
 )
 
-from old_app.image_subtraction import TransientFinder
+from src.astrometry import solve_with_astrometrynet
+from src.xmatch_catalogs import cross_match_with_gaia, enhance_catalog
 
 from src.__version__ import version
+
 
 # Conditional Import (already present, just noting its location)
 if getattr(sys, "frozen", False):
@@ -116,7 +115,6 @@ def clear_all_caches():
         st.error(f"Error clearing caches: {e}")
 
 
-@st.cache_data
 def load_fits_data(_file):
     """
     Load image data and header from a FITS file with robust error handling.
@@ -139,7 +137,7 @@ def load_fits_data(_file):
     Notes
     -----
     - For multi-extension FITS files, uses the primary HDU if it contains data,
-      otherwise uses the first HDU with valid data.
+    otherwise uses the first HDU with valid data.
     - For 3D data (RGB or data cube), extracts the first 2D plane with appropriate warnings.
     - For higher dimensional data, takes the first slice along all extra dimensions.
     """
@@ -292,7 +290,6 @@ def display_catalog_in_aladin(
 ) -> None:
     """
     Display a DataFrame catalog in an embedded Aladin Lite interactive sky viewer.
-
     This function creates an interactive astronomical image with catalog overlay
     that allows exploring detected sources and their cross-matches.
 
@@ -365,7 +362,6 @@ def display_catalog_in_aladin(
             except (ValueError, TypeError):
                 continue
 
-            # Handle magnitude - collect both PSF and aperture magnitudes
             psf_mag = None
             aperture_mag = None
 
@@ -432,16 +428,14 @@ def display_catalog_in_aladin(
                 catalog_matches["GAIA"] = "Calibration Star"
 
             source["catalog_matches"] = catalog_matches
-
-            # FIXED: Handle source identification - prioritize the real "id" column first
-            source_id = f"{fallback_id_prefix} {idx + 1}"  # Default fallback
+            source_id = f"{fallback_id_prefix} {idx + 1}"
 
             # First, check if there's an "id" column in the table (the real catalog ID)
             if "id" in final_table.columns and pd.notna(row.get("id")):
                 id_value = str(row["id"]).strip()
                 if id_value and id_value not in ["nan", "None", ""]:
                     source_id = f"ID: {id_value}"
-            # Only if no "id" column exists, fall back to other catalog identifiers
+
             elif id_cols:
                 for id_col in id_cols:
                     if id_col in present_optional_cols and pd.notna(row[id_col]):
@@ -456,8 +450,6 @@ def display_catalog_in_aladin(
             # Add the raw ID value separately for display in popup
             if "id" in final_table.columns and pd.notna(row.get("id")):
                 source["catalog_id"] = str(row["id"])
-
-            # ... rest of existing code ...
 
             # Add additional useful information
             for info_col in ["snr", "flux_fit", "fwhm"]:
@@ -483,7 +475,6 @@ def display_catalog_in_aladin(
                 st.error(f"Failed to encode catalog data: {str(e)}")
                 return
 
-            # Fix JavaScript error handling structure
             html_content = f"""
 <!DOCTYPE html>
 <html>
@@ -622,7 +613,6 @@ def display_catalog_in_aladin(
 </body>
 </html>
 """
-
             components.html(
                 html_content,
                 height=600,
@@ -631,7 +621,6 @@ def display_catalog_in_aladin(
 
         except Exception as e:
             st.error(f"Failed to render Aladin HTML component: {str(e)}")
-            # Fallback: show a simple coordinate table
             st.subheader("Source Coordinates (Aladin viewer unavailable)")
             display_df = pd.DataFrame(catalog_sources)
             if not display_df.empty:
@@ -641,7 +630,6 @@ def display_catalog_in_aladin(
 def provide_download_buttons(folder_path):
     """
     Creates a single download button for a zip file containing all files in the specified folder.
-
     This function compresses all files in the given folder into a single zip archive
     and provides a download button for the archive.
 
@@ -697,7 +685,6 @@ def provide_download_buttons(folder_path):
 def display_archived_files_browser(output_dir):
     """
     Display a file browser for archived ZIP files in the user's results directory.
-
     This function creates a secure file browser that only allows access to ZIP files
     within the specified output directory. Also automatically cleans up old files
     (except .json) that are older than 1 month.
@@ -839,7 +826,6 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     """
     fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
 
-    # Check if we have magnitude columns - use the new multi-aperture columns
     has_aperture = "aperture_mag_r1.5" in final_table.columns
     has_psf = "psf_mag" in final_table.columns
 
@@ -927,7 +913,6 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
 
     fig_mag.tight_layout()
 
-    # Log the plot creation if log_buffer is provided
     if log_buffer:
         write_to_log(log_buffer, "Created magnitude distribution plots")
 
@@ -939,7 +924,6 @@ def initialize_session_state():
     Initialize all session state variables for the application.
     Ensures all required keys have default values.
     """
-    # Login/User State
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
     if "username" not in st.session_state:
@@ -965,7 +949,7 @@ def initialize_session_state():
         username = st.session_state.get("username", "anonymous")
         st.session_state.output_dir = ensure_output_directory(f"{username}_rpp_results")
 
-    # Analysis Parameters (consolidated)
+    # Analysis Parameters
     default_analysis_params = {
         "seeing": 3.0,
         "threshold_sigma": 3.0,
@@ -1106,16 +1090,14 @@ def update_observatory_from_fits_header(header):
     return updated
 
 
-###################################################################
-# Main Streamlit App
-###################################################################
-
+######################
+# Main Streamlit App #
+######################
 
 st.set_page_config(
     page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide"
 )
 
-# --- Initialize Session State Early ---
 initialize_session_state()
 
 # Custom CSS to control plot display size
@@ -1430,8 +1412,6 @@ if "uploaded_bytes" not in st.session_state:
     else:
         science_file = None
 else:
-    # Recreate a lightweight file-like object from stored bytes so downstream
-    # code that calls .read() or .getvalue() continues to work.
     tmp = SimpleNamespace()
     tmp._bytes = st.session_state.get("uploaded_bytes")
 
@@ -1450,8 +1430,7 @@ science_file_path = None
 
 # Runtime logic to update the sessions state parameters
 st.session_state["calibrate_cosmic_rays"] = st.session_state.analysis_parameters[
-    "calibrate_cosmic_rays"
-]
+    "calibrate_cosmic_rays"]
 
 # Update observatory_data dictionary with current session state values
 st.session_state.observatory_data = {
@@ -1779,7 +1758,6 @@ if science_file is not None:
         # Use updated header if available, otherwise use original
         header_for_stats = st.session_state.get("calibrated_header", science_header)
 
-        # Get pixel scale and FWHM from session state if available, otherwise calculate
         if (
             "pixel_size_arcsec" in st.session_state
             and "mean_fwhm_pixel" in st.session_state
@@ -1998,7 +1976,6 @@ if science_file is not None:
                             filter_band,
                         )
 
-                        # Handle the return values - should be a tuple of 5 elements
                         if isinstance(result, tuple) and len(result) == 5:
                             phot_table_qtable, epsf_table, daofind, bkg, w = result
                         else:
