@@ -171,9 +171,12 @@ pfr-win32*
 .ruff-cache
 *.ruff_cache
 *.ipynb_checkpoints
-users.db
 rpp_results/**
 PyZOGY-master/**
 *_rpp_results/**
 node_modules/**
 RPP-win32-x64/**
+setup_database.py
+add_user.py
+run_all_cmd.bat
+users.db

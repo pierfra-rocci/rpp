@@ -62,6 +62,26 @@ def init_db():
             print("WARNING: 'recovery_codes' table was not created!")
 
         conn.close()
+
+        # # Add a default user
+        # try:
+        #     conn = get_db_connection()
+        #     cur = conn.cursor()
+        #     cur.execute("SELECT * FROM users WHERE username = 'test'")
+        #     if not cur.fetchone():
+        #         hashed_pw = generate_password_hash("testone25", method='pbkdf2:sha256')
+        #         cur.execute(
+        #             "INSERT INTO users (username, password, email) VALUES (?, ?, ?)",
+        #             ("test", hashed_pw, "pierfrancesco.rocci@yahoo.fr"),
+        #         )
+        #         conn.commit()
+        #         print("Default user 'test' added successfully.")
+        #     else:
+        #         print("Default user 'test' already exists.")
+        #     conn.close()
+        # except Exception as e:
+        #     print(f"Error adding default user: {e}")
+
     except Exception as e:
         print(f"Database initialization error: {e}")
         raise
