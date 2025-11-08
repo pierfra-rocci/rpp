@@ -15,7 +15,6 @@ from astropy.time import Time
 from photutils.psf import fit_fwhm
 from astropy.visualization import ZScaleInterval
 
-
 import astropy.units as u
 from astropy.io import fits
 from photutils.utils import calc_total_error
@@ -1070,7 +1069,6 @@ def detection_and_photometry(
         return None, None, daofind, bkg, wcs_obj
 
 
-# Visual check of the background-subtracted image
 def show_subtracted_image(image_sub):
     """
     Display the background-subtracted image using Streamlit.
@@ -1330,85 +1328,3 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         st.error(f"Error calculating zero point: {e}")
         return None, None, None
 
-
-def validate_wcs_orientation(original_header, solved_header, test_pixel_coords):
-    """
-    Validate that WCS transformation preserves expected orientation
-    """
-    try:
-        orig_wcs = WCS(original_header)
-        solved_wcs = WCS(solved_header)
-
-        # Test a few pixel positions
-        orig_sky = orig_wcs.pixel_to_world_values(
-            test_pixel_coords[:, 0], test_pixel_coords[:, 1]
-        )
-        solved_sky = solved_wcs.pixel_to_world_values(
-            test_pixel_coords[:, 0], test_pixel_coords[:, 1]
-        )
-
-        # Check if coordinates are consistent (within reasonable tolerance)
-        ra_diff = np.abs(orig_sky[0] - solved_sky[0])
-        dec_diff = np.abs(orig_sky[1] - solved_sky[1])
-
-        if np.any(ra_diff > 0.1) or np.any(dec_diff > 0.1):  # 0.1 degree tolerance
-            st.warning("WCS orientation may have changed during plate solving")
-            return False
-
-        return True
-    except Exception as e:
-        st.warning(f"Could not validate WCS orientation: {e}")
-        return True  # Assume OK if validation fails
-
-
-def validate_cross_match_results(phot_table, matched_table, header):
-    """
-    Validate that cross-matching results make sense
-    """
-    if len(matched_table) == 0:
-        return False
-
-    # Check if matched sources are distributed across the field
-    ra_range = matched_table["ra"].max() - matched_table["ra"].min()
-    dec_range = matched_table["dec"].max() - matched_table["dec"].min()
-
-    # Expect some reasonable spread for a real field
-    if ra_range < 0.001 or dec_range < 0.001:  # Less than ~4 arcsec
-        st.warning("Matched sources seem too clustered - possible coordinate issue")
-        return False
-
-    # Check separation distribution
-    separations = matched_table.get("gaia_separation_arcsec", [])
-    if len(separations) > 0:
-        median_sep = np.median(separations)
-        if median_sep > 10:  # More than 10 arcsec median separation
-            st.warning(
-                f"Large median separation ({median_sep:.1f}) suggests coordinate problems"
-            )
-            return False
-
-    return True
-
-
-def get_field_center_coordinates(header):
-    """
-    Consistently extract field center coordinates with priority order
-    """
-    # Priority order for coordinate keywords
-    coord_keywords = [
-        ("CRVAL1", "CRVAL2"),  # Standard WCS
-        ("RA", "DEC"),  # Common telescope keywords
-        ("OBJRA", "OBJDEC"),  # Object coordinates
-    ]
-
-    for ra_key, dec_key in coord_keywords:
-        if ra_key in header and dec_key in header:
-            try:
-                ra = float(header[ra_key])
-                dec = float(header[dec_key])
-                if 0 <= ra <= 360 and -90 <= dec <= 90:
-                    return ra, dec
-            except (ValueError, TypeError):
-                continue
-
-    return None, None

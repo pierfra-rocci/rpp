@@ -35,7 +35,7 @@ from src.tools import (
     zip_rpp_results_on_exit,
     save_header_to_txt,
     fix_header,
-    save_catalog_files,
+    save_catalog_files
 )
 
 from src.pipeline import (

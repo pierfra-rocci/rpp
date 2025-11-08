@@ -24,7 +24,7 @@ from astroquery.vizier import Vizier
 from src.tools import (
     URL,
     safe_catalog_query,
-    write_to_log,
+    write_to_log
 )
 
 
