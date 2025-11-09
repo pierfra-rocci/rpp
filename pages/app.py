@@ -1541,7 +1541,8 @@ if science_file is not None:
         # Show Force Plate Solving checkbox only when valid WCS exists
         force_plate_solve = st.checkbox(
             "Force Plate-Solve",
-            value=st.session_state.analysis_parameters.get("force_plate_solve", False),
+            value=st.session_state.analysis_parameters.get("force_plate_solve",
+                                                           False),
             help=(
                 "Force plate solving even though a valid WCS is present. "
                 "This will replace the existing WCS solution with a new one."
@@ -1788,7 +1789,7 @@ if science_file is not None:
             f"Final pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
         )
         seeing = st.session_state.analysis_parameters["seeing"]
-        st.write("Mean FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
+        st.write("Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f}")
         write_to_log(
             log_buffer,
             f"Final seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
