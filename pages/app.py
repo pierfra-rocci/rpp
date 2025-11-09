@@ -243,7 +243,7 @@ def load_fits_data(_file):
                             fixes_applied.append(f"Fixed {key}")
 
                 if fixes_applied:
-                    st.info(f"Applied header fixes: {', '.join(fixes_applied)}")
+                    st.info("Applied header fixes")
                     if st.session_state.get("log_buffer"):
                         write_to_log(
                             st.session_state["log_buffer"],
@@ -1134,7 +1134,7 @@ st.markdown("[(*RAPAS Home*)](https://rapas.imcce.fr/)", unsafe_allow_html=True)
 # Added: Quick Start Tutorial link (now displayed in an expander)
 with st.expander("📘 Quick Start Tutorial — A short guide on how to use this app"):
     try:
-        with open(os.path.join("doc", "TUTORIAL.md"), "r", encoding="utf-8") as f:
+        with open(os.path.join("docs", "TUTORIAL.md"), "r", encoding="utf-8") as f:
             st.markdown(f.read(), unsafe_allow_html=True)
     except FileNotFoundError:
         st.warning("TUTORIAL.md not found. It should be in the `doc` folder.")
@@ -1527,11 +1527,11 @@ if science_file is not None:
         )
         proceed_without_wcs = True
     elif wcs_obj is None:
-        st.warning(f"No valid WCS found in the FITS header: {wcs_error}")
+        st.warning(f"No valid WCS found : {wcs_error}")
         st.write("Attempt plate solving...")
         use_astrometry = True
     else:
-        st.success("Valid WCS found in the FITS header.")
+        st.success("Valid WCS found.")
 
         # Show Force Plate Solving checkbox only when valid WCS exists
         force_plate_solve = st.checkbox(

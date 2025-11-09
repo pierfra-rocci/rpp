@@ -1060,7 +1060,7 @@ def save_catalog_files(final_table, catalog_name, output_dir):
                         df_for_votable[col] = df_for_votable[col].astype(str)
                         df_for_votable[col] = df_for_votable[col].replace("nan", "")
                         df_for_votable[col] = df_for_votable[col].replace("None", "")
-                    except:
+                    except Exception:
                         problematic_columns.append(col)
 
             # Remove columns that still cause issues

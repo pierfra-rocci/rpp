@@ -17,14 +17,16 @@ from astropy.visualization import ZScaleInterval
 import astropy.units as u
 from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
-from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photometry
+from photutils.aperture import (CircularAperture, CircularAnnulus,
+                                aperture_photometry)
 
 from src.tools import safe_wcs_create, ensure_output_directory
 
 from typing import Union, Optional, Dict, Tuple
 
 from src.psf import perform_psf_photometry
-from src.utils_common import refine_astrometry_with_stdpipe, estimate_background
+from src.utils_common import (refine_astrometry_with_stdpipe,
+                              estimate_background)
 
 
 def detect_remove_cosmic_rays(

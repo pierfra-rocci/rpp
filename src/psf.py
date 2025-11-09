@@ -7,12 +7,13 @@ import matplotlib.pyplot as plt
 from astropy.table import Table
 from photutils.background import LocalBackground, MMMBackground
 from astropy.nddata import NDData
+from astropy.io import fits
 from astropy.visualization import simple_norm
 
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from photutils.psf import SourceGrouper
 
-from src.tools import FIGURE_SIZES
+from src.tools import FIGURE_SIZES, ensure_output_directory
 
 from typing import Any, Optional, Tuple
 
