@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 
 
 st.set_page_config(
-    page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide"
+    page_title="RAPAS Photometry Pipeline", page_icon=":star:", layout="wide"
 )
 
 # Use session state to track login status - Keep these basic initializations
@@ -22,7 +22,7 @@ if "recovery_step" not in st.session_state:  # Keep for password recovery logic
 backend_url = "http://localhost:5000"
 
 if not st.session_state.logged_in:
-    st.title("🔭 _RAPAS Photometry Pipeline_")
+    st.title(":star: _RAPAS Photometry Pipeline_")
     st.sidebar.markdown("## User Credentials")
 
     username = st.sidebar.text_input(

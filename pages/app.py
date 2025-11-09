@@ -1129,7 +1129,7 @@ if not st.session_state.logged_in:
     st.switch_page("pages/login.py")
 
 # Add application version to the sidebar
-st.title("🔭 RAPAS Photometry Pipeline")
+st.title(":star: RAPAS Photometry Pipeline")
 st.markdown("[**RAPAS Project**](https://rapas.imcce.fr/) / [**Github**](https://github.com/pierfra-rocci/rpp)",
             unsafe_allow_html=True)
 
