@@ -71,8 +71,6 @@ def cross_match_with_gaia(
     - Stores the calibrated photometry table in session state as 'final_phot_table'
     - Creates and saves a plot showing the relation between GAIA and calibrated magnitudes
     """
-    st.write("Cross-matching with Gaia DR3...")
-
     if science_header is None:
         st.warning("No header information available. Cannot cross-match with Gaia.")
         return None
