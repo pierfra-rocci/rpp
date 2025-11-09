@@ -162,6 +162,7 @@ def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
 def refine_astrometry_with_stdpipe(
     image_data: np.ndarray,
     science_header: dict,
+    wcs: WCS,
     fwhm_estimate: float,
     pixel_scale: float,
     filter_band: str,
