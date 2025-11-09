@@ -1133,7 +1133,7 @@ st.markdown("[**RAPAS Home**](https://rapas.imcce.fr/) / [**Project Home**](http
             unsafe_allow_html=True)
 
 # Added: Quick Start Tutorial link (now displayed in an expander)
-with st.expander("📘 Quick Start Tutorial — A short guide on how to use this app"):
+with st.expander("📘 Quick Start Tutorial"):
     try:
         with open(os.path.join("docs", "TUTORIAL.md"), "r", encoding="utf-8") as f:
             st.markdown(f.read(), unsafe_allow_html=True)
