@@ -1751,14 +1751,13 @@ if science_file is not None:
             else:
                 st.warning("No header information available for Image.")
 
-    st.subheader("Image Statistics")
+    st.subheader("Statistics")
     if science_data is not None:
-        stats_col1, stats_col2, stats_col3, stats_col4, stats_col5 = st.columns(5)
-        stats_col1.metric("Mean", f"{np.mean(science_data):.3f}")
-        stats_col2.metric("Median", f"{np.median(science_data):.3f}")
-        stats_col3.metric("Rms", f"{np.std(science_data):.3f}")
-        stats_col4.metric("Min", f"{np.min(science_data):.3f}")
-        stats_col5.metric("Max", f"{np.max(science_data):.3f}")
+        st.write("Mean", f"{np.mean(science_data):.3f}", )
+        st.write("Median", f"{np.median(science_data):.3f}")
+        st.write("Rms", f"{np.std(science_data):.3f}")
+        st.write("Min", f"{np.min(science_data):.3f}")
+        st.write("Max", f"{np.max(science_data):.3f}")
 
         # Use updated header if available, otherwise use original
         header_for_stats = st.session_state.get("calibrated_header", science_header)
@@ -1780,7 +1779,7 @@ if science_file is not None:
             st.session_state["pixel_size_arcsec"] = pixel_size_arcsec
             st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
 
-        st.metric(
+        st.write(
             "Mean Pixel Scale (arcsec/pixel)",
             f"{pixel_size_arcsec:.2f}",
         )
@@ -1789,7 +1788,7 @@ if science_file is not None:
             f"Final pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
         )
         seeing = st.session_state.analysis_parameters["seeing"]
-        st.metric("Mean FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
+        st.write("Mean FWHM from seeing (pixels)", f"{mean_fwhm_pixel:.2f}")
         write_to_log(
             log_buffer,
             f"Final seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
