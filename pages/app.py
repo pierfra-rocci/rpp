@@ -669,7 +669,6 @@ def provide_download_buttons(folder_path):
         # Reset buffer position to the beginning
         zip_buffer.seek(0)
         st.caption(f"Archive contains {len(files)} files")
-        # Create download button for the zip file
         if st.download_button(
             label="📦 Download Results (ZIP)",
             data=zip_buffer,
@@ -1096,8 +1095,7 @@ def update_observatory_from_fits_header(header):
 ######################
 
 st.set_page_config(
-    page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="wide"
-)
+    page_title="RAPAS Photometry Pipeline", page_icon="🔭")
 
 initialize_session_state()
 
