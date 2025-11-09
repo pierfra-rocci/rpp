@@ -1,13 +1,3 @@
-RPP Quick User Guide
-====================
-
-This guide provides a walkthrough on how to use the RAPAS Photometry Pipeline (RPP) application to perform photometric analysis on your astronomical images.
-
-Getting Started
----------------
-
-The first screen you will see is the login page. If you are a new user, you will need to register for an account to save your results and track your analysis history. Existing users can log in with their credentials.
-
 Step-by-Step Photometry Tutorial
 --------------------------------
 
