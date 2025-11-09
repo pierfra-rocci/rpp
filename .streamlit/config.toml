@@ -61,7 +61,7 @@ gatherUsageStats = false
 
 [client]
 # Default: "full"
-showErrorDetails = "full"
+showErrorDetails = "minimal"
 
 # Change the visibility of items in the toolbar, options menu,
 # and settings dialog (top right of the app).
