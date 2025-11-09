@@ -1793,7 +1793,8 @@ if science_file is not None:
 
         ra_val, dec_val, coord_source = extract_coordinates(science_header)
         if ra_val is not None and dec_val is not None:
-            st.write(f"Target: RA={round(ra_val, 4)}°, DEC={round(dec_val, 4)}°")
+            st.write(f"RA={round(ra_val, 4)}°\n"
+                     f"DEC={round(dec_val, 4)}°")
             write_to_log(
                 log_buffer,
                 f"Target coordinates: RA={ra_val}°, DEC={dec_val}° ({coord_source})",
