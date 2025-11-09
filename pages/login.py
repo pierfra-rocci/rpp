@@ -79,10 +79,10 @@ if not st.session_state.logged_in:
             st.warning("Please enter username, password, and email.")
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("## Recovery Password")
+    st.sidebar.markdown("## Password Recovery")
     recovery_email = st.sidebar.text_input("Email", value="", key="recovery_email")
     if st.session_state.recovery_step == 0:
-        if st.sidebar.button("Send Recovery Code"):
+        if st.sidebar.button("Send Request"):
             if recovery_email:
                 resp = requests.post(
                     f"{backend_url}/recover_request", data={"email": recovery_email}
