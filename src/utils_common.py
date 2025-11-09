@@ -133,11 +133,7 @@ def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
                     "Filter size for background smoothing",
                 )
 
-                # Add RMS as extension
-                hdu_rms = fits.ImageHDU(data=bkg.background_rms)
-                hdu_rms.header["EXTNAME"] = "BACKGROUND_RMS"
-
-                hdul = fits.HDUList([hdu_bkg, hdu_rms])
+                hdul = fits.HDUList([hdu_bkg])
                 hdul.writeto(bkg_filepath, overwrite=True)
 
                 # Write to log if available
