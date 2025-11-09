@@ -49,7 +49,7 @@ enableCORS = true
 # If XSRF protection is enabled and CORS protection is disabled at the
 # same time, Streamlit will enable them both instead.
 # Default: true
-enableXsrfProtection = false
+enableXsrfProtection = true
 
 # Max size, in megabytes, for files uploaded with the file_uploader.
 # Default: 200
@@ -78,7 +78,7 @@ gatherUsageStats = false
 
 [client]
 # Default: "full"
-showErrorDetails = "stacktrace"
+showErrorDetails = "minimal"
 
 # Change the visibility of items in the toolbar, options menu,
 # and settings dialog (top right of the app).
@@ -92,7 +92,7 @@ showErrorDetails = "stacktrace"
 #                 Streamlit Community Cloud) or through st.set_page_config.
 #                 If there are no options left, hide the menu.
 # Default: "auto"
-toolbarMode = "auto"
+toolbarMode = "minimal"
 
 # Controls whether to display the default sidebar page navigation in a
 # multi-page app. This only applies when app's pages are defined by the
