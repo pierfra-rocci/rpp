@@ -112,39 +112,8 @@ def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
                 fig_bkg.tight_layout()
                 st.pyplot(fig_bkg)
 
-                # Save background as FITS file
-                base_filename = st.session_state.get("base_filename", "photometry")
-                username = st.session_state.get("username", "anonymous")
-                output_dir = ensure_output_directory(f"{username}_rpp_results")
-                bkg_filename = f"{base_filename}_bkg.fits"
-                bkg_filepath = os.path.join(output_dir, bkg_filename)
-
-                # Create FITS HDU and save background model
-                hdu_bkg = fits.PrimaryHDU(data=bkg.background)
-                hdu_bkg.header["COMMENT"] = (
-                    "Background model created with photutils.Background2D"
-                )
-                hdu_bkg.header["BOXSIZE"] = (
-                    adjusted_box_size,
-                    "Box size for background estimation",
-                )
-                hdu_bkg.header["FILTSIZE"] = (
-                    adjusted_filter_size,
-                    "Filter size for background smoothing",
-                )
-
-                hdul = fits.HDUList([hdu_bkg])
-                hdul.writeto(bkg_filepath, overwrite=True)
-
-                # Write to log if available
-                log_buffer = st.session_state.get("log_buffer")
-                if log_buffer is not None:
-                    write_to_log(
-                        log_buffer, f"Background model saved to {bkg_filename}"
-                    )
-
             except Exception as e:
-                st.warning(f"Error creating or saving background plot: {str(e)}")
+                st.warning(f"Error creating plot: {str(e)}")
             finally:
                 # Clean up matplotlib figure to prevent memory leaks
                 if fig_bkg is not None:
