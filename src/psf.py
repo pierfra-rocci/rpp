@@ -364,12 +364,10 @@ def perform_psf_photometry(
         else:
             stars_for_builder = EPSFStars(valid_stars)
 
-        st.write("DEBUG: stars_for_builder is an EPSFStars object containing Star objects.")
-
         # Try EPSFBuilder with retries and progressively simpler parameters
         epsf = None
         builder_attempts = [
-            dict(oversampling=2, maxiters=2),
+            dict(oversampling=2, maxiters=3),
         ]
         from types import SimpleNamespace # Keep this import as it's used later for fallback
 
@@ -426,7 +424,8 @@ def perform_psf_photometry(
                 x0 = (arr.shape[1] - shp[1]) // 2
                 if y0 >= 0 and x0 >= 0:
                     # crop
-                    out = arr[y0 : y0 + shp[0], x0 : x0 + shp[1]]
+                    out = arr[y0: y0 + shp[0],
+                              x0: x0 + shp[1]]
                 else:
                     # pad
                     y_off = max(0, -y0)
@@ -565,15 +564,6 @@ def perform_psf_photometry(
         bkgstat = MMMBackground()
         localbkg_estimator = LocalBackground(2.0 * fwhm, 2.5 * fwhm, bkgstat)
 
-        # psfphot = PSFPhotometry(
-        #     psf_model=psf_for_phot,
-        #     fit_shape=fit_shape,
-        #     finder=daostarfind,
-        #     aperture_radius=float(fit_shape) / 2.0,
-        #     grouper=grouper,
-        #     localbkg_estimator=localbkg_estimator,
-        # )
-
         psfphot = IterativePSFPhotometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,
@@ -590,7 +580,6 @@ def perform_psf_photometry(
         initial_params["y"] = photo_table["ycentroid"]
         if "flux" in photo_table.colnames:
             initial_params["flux"] = photo_table["flux"]
-        # also provide legacy names for compatibility
         initial_params["x_0"] = initial_params["x"]
         initial_params["y_0"] = initial_params["y"]
 
