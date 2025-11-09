@@ -371,7 +371,6 @@ def perform_psf_photometry(
         builder_attempts = [
             dict(oversampling=3, maxiters=3),
             dict(oversampling=2, maxiters=2),
-            dict(oversampling=1, maxiters=1),
         ]
         from types import SimpleNamespace # Keep this import as it's used later for fallback
 
