@@ -443,7 +443,7 @@ def enhance_catalog(
                 elif "DATE" in header:
                     observation_date = header["DATE"]
 
-            # Set time range to ±7 days from observation date or current date
+            # Set time range to ±28 days from observation date or current date
             if observation_date:
                 try:
                     base_date = datetime.fromisoformat(
