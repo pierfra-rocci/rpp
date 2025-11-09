@@ -335,48 +335,36 @@ def perform_psf_photometry(
         raise
 
     try:
-        # Prepare a cleaned list of star cutouts suitable for EPSFBuilder
-        clean_cutouts = []
+        # Filter out invalid Star objects and select brightest for EPSFBuilder
+        valid_stars = []
         try:
-            # Iterate robustly through stars and extract numeric arrays
-            for i in range(len(stars)):
-                try:
-                    star = stars[i]
-                    # star may be a simple array or an object with .data
-                    if hasattr(star, "data"):
-                        arr = np.asarray(star.data)
-                    else:
-                        arr = np.asarray(star)
-
-                    # skip empty/NaN/all-zero cutouts
-                    if arr.size == 0:
+            for star in stars: # stars is already an EPSFStars object
+                if hasattr(star, "data") and star.data is not None:
+                    arr = np.asarray(star.data)
+                    if arr.size == 0 or np.isnan(arr).any() or np.all(arr == 0):
                         continue
-                    if np.isnan(arr).all() or np.all(arr == 0):
-                        continue
+                    valid_stars.append(star)
+        except Exception as e:
+            st.warning(f"Error during initial filtering of stars for EPSF: {e}")
+            valid_stars = []
 
-                    clean_cutouts.append(arr)
-                except Exception:
-                    # skip problematic entries rather than aborting
-                    continue
-        except Exception:
-            clean_cutouts = []
+        n_valid = len(valid_stars)
+        st.write(f"Using {n_valid} valid Star objects for EPSF construction")
 
-        n_clean = len(clean_cutouts)
-        st.write(f"Using {n_clean} valid cutouts for EPSF construction")
+        if n_valid < 5:
+            raise ValueError("Too few valid Star objects for EPSF building")
 
-        if n_clean < 5:
-            raise ValueError("Too few valid star cutouts for EPSF building")
-
-        # If there are a lot of stars, pick the brightest cutouts (by peak) to avoid
-        # confusing the builder with many low-S/N objects which can trigger internal
-        # ambiguous-array checks in some photutils versions.
+        # If there are a lot of stars, pick the brightest (by peak)
         max_use = 200
-        if n_clean > max_use:
-            peaks = np.array([c.max() for c in clean_cutouts])
+        if n_valid > max_use:
+            peaks = np.array([s.data.max() for s in valid_stars])
             top_idx = np.argsort(peaks)[-max_use:][::-1]
-            selected = [clean_cutouts[i] for i in top_idx]
+            stars_for_builder = EPSFStars([valid_stars[i] for i in top_idx])
+            st.write(f"Selected {len(stars_for_builder)} brightest stars for EPSF construction.")
         else:
-            selected = clean_cutouts
+            stars_for_builder = EPSFStars(valid_stars)
+
+        st.write("DEBUG: stars_for_builder is an EPSFStars object containing Star objects.")
 
         # Try EPSFBuilder with retries and progressively simpler parameters
         epsf = None
@@ -385,25 +373,7 @@ def perform_psf_photometry(
             dict(oversampling=2, maxiters=2),
             dict(oversampling=1, maxiters=1),
         ]
-        from types import SimpleNamespace
-
-        # Build stars_for_builder in a way compatible with photutils.EPSFBuilder
-        try:
-            try:
-                stars_for_builder = EPSFStars(selected)
-                st.write("DEBUG: wrapped selected into EPSFStars")
-            except Exception as epsfstars_err:
-                stars_for_builder = [
-                    SimpleNamespace(data=np.asarray(c)) for c in selected
-                ]
-                st.write(
-                    f"DEBUG: using SimpleNamespace wrappers for selected (EPSFStars failed: {epsfstars_err})"
-                )
-        except Exception as import_err:
-            stars_for_builder = [SimpleNamespace(data=np.asarray(c)) for c in selected]
-            st.write(
-                f"DEBUG: EPSFStars import failed ({import_err}); using SimpleNamespace wrappers"
-            )
+        from types import SimpleNamespace # Keep this import as it's used later for fallback
 
         for params in builder_attempts:
             try:
