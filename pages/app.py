@@ -1095,7 +1095,7 @@ def update_observatory_from_fits_header(header):
 ######################
 
 st.set_page_config(
-    page_title="RAPAS Photometry Pipeline", page_icon="🔭", layout="centered"
+    page_title="RAPAS Photometry Pipeline", page_icon=":star:", layout="centered"
 )
 
 initialize_session_state()
@@ -1129,7 +1129,7 @@ if not st.session_state.logged_in:
     st.switch_page("pages/login.py")
 
 # Add application version to the sidebar
-st.title(":star: RAPAS Photometry Pipeline")
+st.title("**RAPAS Photometry Pipeline**")
 st.markdown("[**RAPAS Project**](https://rapas.imcce.fr/) / [**Github**](https://github.com/pierfra-rocci/rpp)",
             unsafe_allow_html=True)
 
