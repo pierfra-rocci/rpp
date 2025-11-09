@@ -56,7 +56,6 @@ if not st.session_state.logged_in:
             if response.status_code == 200:
                 st.session_state.logged_in = True
                 st.session_state.username = username
-                st.success("Login successful! Redirecting...")
                 st.rerun()
             else:
                 st.error(response.text)
