@@ -178,7 +178,6 @@ node_modules/**
 RPP-win32-x64/**
 setup_database.py
 add_user.py
-run_all_cmd.bat
 users.db
 dev_test/**
 dev_test
