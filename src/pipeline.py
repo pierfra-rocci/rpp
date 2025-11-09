@@ -355,10 +355,10 @@ def airmass(
             },
         }
 
-        st.write(f"Date & UTC-Time: {obstime.iso}")
+        st.write(f"Date and time of observation (UTC) : {obstime.iso}")
         st.write(
-            f"Altitude: {details['altaz']['altitude']}°, "
-            f" Azimuth: {details['altaz']['azimuth']}°"
+            f"Altitude : {details['altaz']['altitude']}° \n"
+            f"Azimuth : {details['altaz']['azimuth']}°"
         )
 
         if return_details:

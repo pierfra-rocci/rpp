@@ -1129,7 +1129,8 @@ if not st.session_state.logged_in:
 
 # Add application version to the sidebar
 st.title("🔭 RAPAS Photometry Pipeline")
-st.markdown("[(*RAPAS Home*)](https://rapas.imcce.fr/)", unsafe_allow_html=True)
+st.markdown("[**RAPAS Home**](https://rapas.imcce.fr/) / [**Project Home**](https://github.com/pierfra-rocci/rpp)]",
+            unsafe_allow_html=True)
 
 # Added: Quick Start Tutorial link (now displayed in an expander)
 with st.expander("📘 Quick Start Tutorial — A short guide on how to use this app"):
@@ -1910,7 +1911,7 @@ if science_file is not None:
             }
 
             air = airmass(science_header, observatory=observatory_data)
-            st.write(f"Airmass: {air:.2f}")
+            st.write(f"Airmass : {air:.2f}")
         except Exception as e:
             st.warning(f"Error calculating airmass: {e}")
             air = 0.0
