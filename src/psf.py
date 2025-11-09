@@ -11,7 +11,7 @@ from astropy.io import fits
 from astropy.visualization import simple_norm
 
 from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
-from photutils.psf import SourceGrouper
+from photutils.psf import SourceGrouper, EPSFStars
 
 from src.tools import FIGURE_SIZES, ensure_output_directory
 
@@ -192,10 +192,7 @@ def perform_psf_photometry(
 
         # Apply filters
         filtered_photo_table = photo_table[good_stars_mask]
-
-        st.write(f"Original sources: {len(photo_table)}")
-        st.write(f"Filtered sources for PSF model: {len(filtered_photo_table)}")
-        st.write(f"Flux range for PSF stars: {flux_min:.1f} - {flux_max:.1f}")
+        st.write(f"Flux range for PSF stars : {flux_min:.1f} -> {flux_max:.1f}")
 
         # Check if we have enough stars for PSF construction
         if len(filtered_photo_table) < 10:
@@ -245,7 +242,6 @@ def perform_psf_photometry(
         # extract_stars expects 'x' and 'y' column names
         stars_table["x"] = filtered_photo_table["xcentroid"]
         stars_table["y"] = filtered_photo_table["ycentroid"]
-        st.write("Star positions table prepared from filtered sources.")
     except Exception as e:
         st.error(f"Error preparing star positions table: {e}")
         raise
@@ -276,7 +272,7 @@ def perform_psf_photometry(
         if hasattr(stars, "data") and stars.data is not None:
             if isinstance(stars.data, list) and len(stars.data) > 0:
                 has_nan = any(np.isnan(star_data).any() for star_data in stars.data)
-                st.write(f"NaN in star data: {has_nan}")
+                st.write(f"NaN : {has_nan}")
             else:
                 st.write("Stars data is empty or not a list")
         else:
@@ -391,18 +387,8 @@ def perform_psf_photometry(
         ]
         from types import SimpleNamespace
 
-        # DEBUG: report selected summary before wrapping
-        try:
-            st.write(
-                f"DEBUG: selected type: {type(selected)}, n_selected={len(selected)}"
-            )
-        except Exception:
-            st.write("DEBUG: selected summary unavailable")
-
         # Build stars_for_builder in a way compatible with photutils.EPSFBuilder
         try:
-            from photutils.psf import EPSFStars
-
             try:
                 stars_for_builder = EPSFStars(selected)
                 st.write("DEBUG: wrapped selected into EPSFStars")
