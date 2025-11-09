@@ -226,11 +226,6 @@ def refine_astrometry_with_stdpipe(
                 del clean_header[key]
                 removed_count += 1
 
-        if removed_count > 0:
-            st.info(
-                f"Removed {removed_count} problematic or distortion-related keywords from header."
-            )
-
         # Validate and, if necessary, fix the core WCS parameters
         try:
             # Ensure CTYPEs are present and valid
@@ -272,9 +267,9 @@ def refine_astrometry_with_stdpipe(
         # Test the cleaned WCS before proceeding
         try:
             test_wcs = WCS(clean_header)
-            st.info("Cleaned WCS passes basic validation")
+            st.info("WCS validated successfully")
         except Exception as wcs_test_error:
-            st.error(f"Cleaned WCS still has issues: {wcs_test_error}")
+            st.error(f"WCS has issues : {wcs_test_error}")
             return None
 
         def _ensure_native_byteorder(arr: np.ndarray) -> np.ndarray:

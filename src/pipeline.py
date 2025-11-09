@@ -437,7 +437,7 @@ def fwhm_fit(
 
         filtered_sources = filtered_sources[~np.isnan(filtered_sources["flux"])]
 
-        st.write(f"Sources after flux filtering: {len(filtered_sources)}")
+        st.write(f"Sources after filtering : {len(filtered_sources)}")
 
         if len(filtered_sources) == 0:
             msg = "No valid sources for fitting found after filtering."
@@ -452,7 +452,7 @@ def fwhm_fit(
         fwhms = fit_fwhm(_img, xypos=xypos, fit_shape=box_size)
 
         mean_fwhm = np.median(fwhms)
-        st.success(f"FWHM based on Gaussian model: {round(mean_fwhm, 2)} pixels")
+        st.success(f"FWHM using gaussian model : {round(mean_fwhm, 2)} pixels")
 
         return round(mean_fwhm, 2), clipped_std
     except ValueError as e:
@@ -565,7 +565,7 @@ def detection_and_photometry(
         image_sub.astype(np.float64), bkg_error.astype(np.float64), effective_gain
     )
 
-    st.write("Estimating FWHM...")
+    st.write("Estimating FWHM ...")
     fwhm_estimate, clipped_std = fwhm_fit(image_sub, mean_fwhm_pixel, mask)
 
     if fwhm_estimate is None:

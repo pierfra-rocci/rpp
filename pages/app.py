@@ -1935,9 +1935,6 @@ if science_file is not None:
                 )
                 st.stop()
 
-            # Debug: Show what header we're using
-            st.write(f"Using header with {len(header_to_process)} keywords")
-
             # Get the correct pixel scale and FWHM values
             if (
                 "pixel_size_arcsec" in st.session_state
