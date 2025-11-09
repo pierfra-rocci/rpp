@@ -207,7 +207,6 @@ def cross_match_with_gaia(
             )
             return None
 
-        st.write(f"Filtered Gaia catalog to {len(gaia_table_filtered)} sources.")
     except Exception as e:
         st.error(f"Error filtering Gaia catalog: {e}")
         return None
