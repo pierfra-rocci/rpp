@@ -5,7 +5,7 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 ## Features
 
 ### 🔭 Core Photometry
-- **Multi-aperture photometry**: Automatic aperture photometry with multiple radii (1.5×, 2.0×, 2.5×, 3.0× FWHM)
+- **Multi-aperture photometry**: Automatic aperture photometry with multiple radii (1.5×, 2.0×, 2.5× FWHM)
 - **PSF photometry**: Effective Point Spread Function (ePSF) modeling and fitting
 - **Background estimation**: Advanced 2D background modeling with SExtractor algorithm
 - **Source detection**: DAOStarFinder with configurable detection thresholds
@@ -51,10 +51,11 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 - SCAMP installation (for astrometric refinement)
 
 ### Required Python Packages
+The required packages are listed in the `pyproject.toml` file. You can install them using pip:
 ```bash
-pip install streamlit astropy photutils astroquery matplotlib pandas numpy
-pip install astroscrappy stdpipe requests scikit-image
+pip install -e .
 ```
+This will install the project in editable mode and all the dependencies.
 
 ### System Dependencies
 - **Astrometry.net**: For local plate solving
@@ -131,7 +132,7 @@ For images with existing WCS, the pipeline can refine the solution:
 
 The pipeline generates comprehensive output files:
 
-- **Photometry Catalog** (CSV): Complete source catalog with multi-aperture photometry
+- **Photometry Catalog** (CSV and VOTable): Complete source catalog with multi-aperture photometry
 - **Log File**: Detailed processing log with timestamps
 - **Background Model** (FITS): 2D background and RMS maps
 - **PSF Model** (FITS): Empirical PSF for the field
@@ -225,35 +226,20 @@ Firefox may not properly handle autocomplete with Streamlit's login form. Try th
 - Ensure adequate RAM (8GB+ recommended)
 - Close other applications during processing
 
-## Recent changes / Changelog (last update: 2025-10-19)
+## Recent changes / Changelog (last update: 2025-11-09)
 
-- Improved WCS handling and robustness:
-  - safe_wcs_create and fix_header functions now better detect and remove problematic keywords (CD/PC matrices, fake coordinates, singular matrices) and optionally add a minimal default WCS when necessary.
-  - refine_astrometry_with_stdpipe includes header cleaning, stronger validation and fallbacks before calling SCAMP/stdpipe.
-- Photometry workflow updates:
-  - Multi-aperture photometry saved in columns named instrumentally like instrumenta­l_mag_r1.5, aperture_mag_r1.5, aperture_mag_err_r1.5 (also for 2.0, 2.5, 3.0× FWHM).
-  - PSF photometry uses an empirical PSF (EPSFBuilder) with more robust star filtering and error handling; PSF model saved as a FITS file.
-  - Aperture background estimation uses annuli with robust sigma-clipping and MAD-based thresholds.
-- Astrometry and catalog matching:
-  - Local blind plate solving via stdpipe/astrometry.net (solve_with_astrometrynet).
-  - GAIA DR3 cross-matching with per-source quality filters (ruwe, variability, color index) and optional synthetic photometry queries.
-  - SCAMP-based WCS refinement available with conservative retry strategies.
-- Transient detection and image subtraction:
-  - TransientFinder integration: retrieve reference image, perform subtraction and detect transient candidates (optional, controlled in sidebar).
-- UI / UX and outputs:
-  - Embedded Aladin Lite v3 viewer for catalog overlay (display_catalog_in_aladin).
-  - Results saved to a per-user output directory: <username>_rpp_results; catalog saved as both CSV and VOTable (XML) when possible.
-  - Zip/archive utilities: provide_download_buttons, display_archived_files_browser, zip_rpp_results_on_exit.
-  - Temporary files are stored in OS temp under a user-specific subdirectory and cleaned up by cleanup_temp_files.
-- Logging:
-  - In-memory log buffer created by initialize_log and written at end of processing. Log file saved to output directory.
-- Backend and session:
-  - Login/registration/recover flow in pages/login.py using a local backend (default http://localhost:5000). Configuration save endpoint used at /save_config and get_config for loading user settings.
-- Robustness and safety:
-  - Many functions use safe_* wrappers (safe_catalog_query, safe_wcs_create) and graceful fallbacks to avoid hard failures.
-  - Improved checks on header keywords and numeric ranges (RA/DEC, CRPIX, CRVAL, pixel scale).
-- Small but important API/column changes:
-  - Column names now include multi-aperture suffixes (_r1.5, _r2.0, etc.). The app keeps backward-compatible legacy columns where possible (calib_mag, aperture_mag) but new processing prefers per-radius columns.
+- **Version 1.3.3**
+- Updated `README.md` to reflect the current state of the project.
+- Updated `pyproject.toml` with the dependencies from `requirements.txt`.
+- The `src` and `pages` directories have been updated with the latest changes.
+- The `astrometry.py` script now uses `stdpipe` for local astrometric plate solving.
+- The `pipeline.py` script has been updated with the latest changes in the photometry workflow.
+- The `psf.py` script has been updated with the latest changes in the PSF photometry workflow.
+- The `tools.py` script has been updated with the latest changes in the utility functions.
+- The `utils_common.py` script has been updated with the latest changes in the utility functions.
+- The `xmatch_catalogs.py` script has been updated with the latest changes in the cross-matching workflow.
+- The `app.py` script has been updated with the latest changes in the Streamlit application.
+- The `login.py` script has been updated with the latest changes in the login page.
 
 ## Quick run (minimal)
 1. Ensure system dependencies:
@@ -261,8 +247,7 @@ Firefox may not properly handle autocomplete with Streamlit's login form. Try th
    - Astrometry.net (solve-field) and required index files
    - SCAMP (optional, for high-order WCS refinement)
 2. Install Python packages:
-   - pip install -r requirements.txt
-   - If no requirements.txt, the main packages required include: streamlit astropy photutils astroquery matplotlib pandas numpy astroscrappy stdpipe requests scikit-image
+   - pip install -e .
 3. Start the Streamlit app:
    - streamlit run pages/app.py
    - Default Streamlit port: 8501 (change with --server.port)
