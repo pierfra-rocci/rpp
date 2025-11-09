@@ -1781,7 +1781,7 @@ if science_file is not None:
             st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
 
         st.write(
-            "Mean Pixel Scale (arcsec/pixel)",
+            "Mean Pixel Scale (arcsec)",
             f"{pixel_size_arcsec:.2f}",
         )
         write_to_log(
