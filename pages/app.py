@@ -35,14 +35,14 @@ from src.tools import (
     zip_rpp_results_on_exit,
     save_header_to_txt,
     fix_header,
-    save_catalog_files
+    save_catalog_files,
 )
 
 from src.pipeline import (
     calculate_zero_point,
     detection_and_photometry,
     detect_remove_cosmic_rays,
-    airmass
+    airmass,
 )
 
 from src.astrometry import solve_with_astrometrynet
@@ -97,7 +97,7 @@ def clear_all_caches():
                 del st.session_state["uploaded_name"]
             except Exception:
                 pass
-            
+
         # Clear file-related session state
         if "science_file_path" in st.session_state:
             try:
@@ -1318,7 +1318,7 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
 
 #     # Add a checkbox to enable/disable the transient finder
 #     st.session_state.analysis_parameters['run_transient_finder'] = st.checkbox(
-#         "Enable Transient Finder", 
+#         "Enable Transient Finder",
 #         value=st.session_state.analysis_parameters.get('run_transient_finder', False)
 #     )
 
@@ -1431,7 +1431,8 @@ science_file_path = None
 
 # Runtime logic to update the sessions state parameters
 st.session_state["calibrate_cosmic_rays"] = st.session_state.analysis_parameters[
-    "calibrate_cosmic_rays"]
+    "calibrate_cosmic_rays"
+]
 
 # Update observatory_data dictionary with current session state values
 st.session_state.observatory_data = {
@@ -2431,22 +2432,33 @@ if science_file is not None:
 
                     # Run Transient Finder if enabled
                     if st.session_state.analysis_parameters.get("run_transient_finder"):
-                        if "science_file_path" in st.session_state and st.session_state["science_file_path"]:
-                            with st.spinner("Running Image Subtraction... This may take a moment."):
+                        if (
+                            "science_file_path" in st.session_state
+                            and st.session_state["science_file_path"]
+                        ):
+                            with st.spinner(
+                                "Running Image Subtraction... This may take a moment."
+                            ):
                                 try:
                                     # Initialize the TransientFinder
                                     finder = TransientFinder(
-                                        science_fits_path=st.session_state["science_file_path"],
+                                        science_fits_path=st.session_state[
+                                            "science_file_path"
+                                        ],
                                         output_dir=st.session_state["output_dir"],
                                     )
 
                                     # 1. Get reference image
-                                    st.write(f"Retrieving reference image from {st.session_state.transient_survey} ({st.session_state.transient_filter} band)...")
+                                    st.write(
+                                        f"Retrieving reference image from {st.session_state.transient_survey} ({st.session_state.transient_filter} band)..."
+                                    )
                                     if not finder.get_reference_image(
                                         survey=st.session_state.transient_survey,
                                         filter_band=st.session_state.transient_filter,
                                     ):
-                                        st.error("❌ Failed to retrieve the reference image. Please try another survey or filter.")
+                                        st.error(
+                                            "❌ Failed to retrieve the reference image. Please try another survey or filter."
+                                        )
                                         st.stop()
                                     st.write("✅ Reference image retrieved.")
 
@@ -2462,35 +2474,53 @@ if science_file is not None:
                                     transients = finder.detect_transients(threshold=5.0)
 
                                     if transients is not None and len(transients) > 0:
-                                        st.success(f"🎉 Found {len(transients)} transient candidate(s)!")
+                                        st.success(
+                                            f"🎉 Found {len(transients)} transient candidate(s)!"
+                                        )
                                         st.dataframe(transients.to_pandas())
 
                                         # 4. Plot results
                                         st.write("Generating result plots...")
                                         plot_path = finder.plot_results(show=False)
                                         if plot_path and os.path.exists(plot_path):
-                                            st.image(plot_path, caption="Transient Detection: Science, Reference, and Difference Images")
+                                            st.image(
+                                                plot_path,
+                                                caption="Transient Detection: Science, Reference, and Difference Images",
+                                            )
 
                                         # 5. Plot cutouts
-                                        cutout_paths = finder.plot_transient_cutouts(show=False)
+                                        cutout_paths = finder.plot_transient_cutouts(
+                                            show=False
+                                        )
                                         if cutout_paths:
                                             st.write("Cutouts for each transient:")
                                             for path in cutout_paths:
                                                 if os.path.exists(path):
-                                                    st.image(path, caption=os.path.basename(path))
+                                                    st.image(
+                                                        path,
+                                                        caption=os.path.basename(path),
+                                                    )
                                     else:
-                                        st.info("✅ No significant transient sources were detected.")
+                                        st.info(
+                                            "✅ No significant transient sources were detected."
+                                        )
 
                                     # 6. Cleanup temporary files
-                                    if not st.session_state.get("keep_temp_files", False):
+                                    if not st.session_state.get(
+                                        "keep_temp_files", False
+                                    ):
                                         finder.cleanup_temp_files()
                                         st.write("Temporary files cleaned up.")
 
                                 except Exception as e:
-                                    st.error(f"An error occurred during the transient finding process: {e}")
+                                    st.error(
+                                        f"An error occurred during the transient finding process: {e}"
+                                    )
                                     st.exception(e)
                         else:
-                            st.warning("Please upload a science FITS file first before running the transient finder.")
+                            st.warning(
+                                "Please upload a science FITS file first before running the transient finder."
+                            )
 
                     # Only provide download buttons if processing was completed
                     if final_phot_table is not None:

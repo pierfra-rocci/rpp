@@ -23,16 +23,11 @@ def _try_source_detection(
             threshold = thresh_mult * np.std(image_sub)
 
             try:
-                st.write(
-                    f"Trying FWHM={fwhm_est}, threshold={threshold:.1f}..."
-                )
+                st.write(f"Trying FWHM={fwhm_est}, threshold={threshold:.1f}...")
                 daofind = DAOStarFinder(fwhm=fwhm_est, threshold=threshold)
                 temp_sources = daofind(image_sub)
 
-                if (
-                    temp_sources is not None
-                    and len(temp_sources) >= min_sources
-                ):
+                if temp_sources is not None and len(temp_sources) >= min_sources:
                     st.success(
                         f"Photutils found {len(temp_sources)} sources with "
                         f"FWHM={fwhm_est}, threshold={threshold:.1f}"
@@ -115,7 +110,7 @@ def solve_with_astrometrynet(file_path):
             return None, None
 
         image_sub = image_data - bkg.background
-        
+
         # Try standard detection parameters first
         sources = _try_source_detection(
             image_sub,
@@ -148,7 +143,7 @@ def solve_with_astrometrynet(file_path):
             try:
                 center_y, center_x = image_data.shape[0] // 2, image_data.shape[1] // 2
                 sample_region = image_data[
-                    center_y - 50: center_y + 50, center_x - 50: center_x + 50
+                    center_y - 50 : center_y + 50, center_x - 50 : center_x + 50
                 ]
 
                 fig_sample, ax_sample = plt.subplots(figsize=(6, 6))
@@ -409,4 +404,3 @@ def solve_with_astrometrynet(file_path):
     except Exception as e:
         st.error(f"Error in plate solving setup: {str(e)}")
         return None, None
-

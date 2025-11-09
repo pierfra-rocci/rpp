@@ -39,7 +39,7 @@ GAIA_BANDS = [
     ("g", "g_sdss_mag"),
     ("r", "r_sdss_mag"),
     ("i", "i_sdss_mag"),
-    ("z", "z_sdss_mag")
+    ("z", "z_sdss_mag"),
 ]
 
 

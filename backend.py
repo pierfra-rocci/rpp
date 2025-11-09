@@ -52,7 +52,7 @@ def init_db():
             print("Confirmed 'users' table exists")
         else:
             print("WARNING: 'users' table was not created!")
-        
+
         cursor.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='recovery_codes'"
         )
@@ -101,7 +101,6 @@ def send_email(to_email, subject, body):
         return False
 
 
-
 @app.route("/register", methods=["POST"])
 def register():
     data = request.form
@@ -119,7 +118,7 @@ def register():
     if cur.fetchone():
         conn.close()
         return "Username or email is already taken.", 409
-    hashed_pw = generate_password_hash(password, method='pbkdf2:sha256')
+    hashed_pw = generate_password_hash(password, method="pbkdf2:sha256")
     # Check if password hash already exists
     cur.execute("SELECT * FROM users WHERE password = ?", (hashed_pw,))
     if cur.fetchone():
@@ -198,11 +197,13 @@ def recover_confirm():
     cur = conn.cursor()
     cur.execute("SELECT * FROM recovery_codes WHERE email = ?", (email,))
     recovery_codes = cur.fetchall()
-    
+
     valid_code_found = False
     for recovery_code in recovery_codes:
         if check_password_hash(recovery_code["code"], code):
-            expires_at = datetime.datetime.strptime(recovery_code["expires_at"], "%Y-%m-%d %H:%M:%S.%f")
+            expires_at = datetime.datetime.strptime(
+                recovery_code["expires_at"], "%Y-%m-%d %H:%M:%S.%f"
+            )
             if datetime.datetime.now() > expires_at:
                 continue  # Expired code
             valid_code_found = True
@@ -212,7 +213,7 @@ def recover_confirm():
         conn.close()
         return "Invalid or expired recovery code.", 400
 
-    hashed_pw = generate_password_hash(new_password, method='pbkdf2:sha256')
+    hashed_pw = generate_password_hash(new_password, method="pbkdf2:sha256")
     cur.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, email))
     cur.execute("DELETE FROM recovery_codes WHERE email = ?", (email,))
     conn.commit()

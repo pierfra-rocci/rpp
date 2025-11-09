@@ -9,8 +9,7 @@ from photutils.background import LocalBackground, MMMBackground
 from astropy.nddata import NDData
 from astropy.visualization import simple_norm
 
-from photutils.psf import (EPSFBuilder, extract_stars,
-                           IterativePSFPhotometry)
+from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
 from photutils.psf import SourceGrouper
 
 from src.tools import FIGURE_SIZES
@@ -81,8 +80,7 @@ def perform_psf_photometry(
             nd_unc = None
 
         nddata = NDData(
-            data=img, mask=mask if mask is not None else None,
-            uncertainty=nd_unc
+            data=img, mask=mask if mask is not None else None, uncertainty=nd_unc
         )
     except Exception as e:
         st.error(f"Error in initial validation: {e}")
@@ -276,8 +274,7 @@ def perform_psf_photometry(
         # basic inspection of cutouts for NaN/all-zero
         if hasattr(stars, "data") and stars.data is not None:
             if isinstance(stars.data, list) and len(stars.data) > 0:
-                has_nan = any(np.isnan(star_data).any()
-                              for star_data in stars.data)
+                has_nan = any(np.isnan(star_data).any() for star_data in stars.data)
                 st.write(f"NaN in star data: {has_nan}")
             else:
                 st.write("Stars data is empty or not a list")
@@ -323,7 +320,6 @@ def perform_psf_photometry(
 
         # Only filter if we have any invalid stars
         if not np.all(mask_valid):
-
             filtered_stars = stars[mask_valid]
             if not isinstance(filtered_stars, EPSFStars):
                 filtered_stars = EPSFStars(list(filtered_stars))
@@ -396,22 +392,31 @@ def perform_psf_photometry(
 
         # DEBUG: report selected summary before wrapping
         try:
-            st.write(f"DEBUG: selected type: {type(selected)}, n_selected={len(selected)}")
+            st.write(
+                f"DEBUG: selected type: {type(selected)}, n_selected={len(selected)}"
+            )
         except Exception:
             st.write("DEBUG: selected summary unavailable")
 
         # Build stars_for_builder in a way compatible with photutils.EPSFBuilder
         try:
             from photutils.psf import EPSFStars
+
             try:
                 stars_for_builder = EPSFStars(selected)
                 st.write("DEBUG: wrapped selected into EPSFStars")
             except Exception as epsfstars_err:
-                stars_for_builder = [SimpleNamespace(data=np.asarray(c)) for c in selected]
-                st.write(f"DEBUG: using SimpleNamespace wrappers for selected (EPSFStars failed: {epsfstars_err})")
+                stars_for_builder = [
+                    SimpleNamespace(data=np.asarray(c)) for c in selected
+                ]
+                st.write(
+                    f"DEBUG: using SimpleNamespace wrappers for selected (EPSFStars failed: {epsfstars_err})"
+                )
         except Exception as import_err:
             stars_for_builder = [SimpleNamespace(data=np.asarray(c)) for c in selected]
-            st.write(f"DEBUG: EPSFStars import failed ({import_err}); using SimpleNamespace wrappers")
+            st.write(
+                f"DEBUG: EPSFStars import failed ({import_err}); using SimpleNamespace wrappers"
+            )
 
         for params in builder_attempts:
             try:
@@ -419,15 +424,21 @@ def perform_psf_photometry(
                 # Pass the wrapped object (not a raw Python list) to EPSFBuilder
                 epsf, _ = epsf_builder(stars_for_builder)
                 if epsf is not None:
-                    st.write(f"EPSFBuilder succeeded with oversampling={params.get('oversampling')}")
+                    st.write(
+                        f"EPSFBuilder succeeded with oversampling={params.get('oversampling')}"
+                    )
                     break
             except Exception as build_error:
-                st.warning(f"EPSFBuilder attempt oversampling={params.get('oversampling')} failed: {build_error}")
+                st.warning(
+                    f"EPSFBuilder attempt oversampling={params.get('oversampling')} failed: {build_error}"
+                )
                 epsf = None
 
         # If EPSFBuilder failed entirely, fall back to a median-stacked empirical PSF
         if epsf is None:
-            st.warning("EPSFBuilder failed on all attempts — constructing median empirical PSF as fallback")
+            st.warning(
+                "EPSFBuilder failed on all attempts — constructing median empirical PSF as fallback"
+            )
             # normalize each cutout by its sum (avoid divide-by-zero)
             norm_cutouts = []
             for c in selected:
@@ -437,12 +448,16 @@ def perform_psf_photometry(
                 norm_cutouts.append(c.astype(float) / ssum)
 
             if len(norm_cutouts) == 0:
-                raise ValueError("No valid normalized cutouts available for median PSF fallback")
+                raise ValueError(
+                    "No valid normalized cutouts available for median PSF fallback"
+                )
 
             # ensure consistent shapes by cropping/padding to median shape
             shapes = np.array([c.shape for c in norm_cutouts])
             # pick the most common shape
-            uniq_shapes, counts = np.unique(shapes.reshape(len(shapes), -1), axis=0, return_counts=True)
+            uniq_shapes, counts = np.unique(
+                shapes.reshape(len(shapes), -1), axis=0, return_counts=True
+            )
             # fallback to using the first shape if uniqueness fails
             try:
                 chosen_shape = tuple(uniq_shapes[np.argmax(counts)])
@@ -456,14 +471,14 @@ def perform_psf_photometry(
                 x0 = (arr.shape[1] - shp[1]) // 2
                 if y0 >= 0 and x0 >= 0:
                     # crop
-                    out = arr[y0: y0 + shp[0], x0: x0 + shp[1]]
+                    out = arr[y0 : y0 + shp[0], x0 : x0 + shp[1]]
                 else:
                     # pad
                     y_off = max(0, -y0)
                     x_off = max(0, -x0)
                     yy = min(arr.shape[0], shp[0] - y_off)
                     xx = min(arr.shape[1], shp[1] - x_off)
-                    out[y_off: y_off + yy, x_off: x_off + xx] = arr[0:yy, 0:xx]
+                    out[y_off : y_off + yy, x_off : x_off + xx] = arr[0:yy, 0:xx]
                 return out
 
             aligned = [fit_to_shape(c, chosen_shape) for c in norm_cutouts]
@@ -477,11 +492,17 @@ def perform_psf_photometry(
             epsf = SimpleNamespace()
             epsf.data = epsf_array
             epsf.oversampling = 1
-            epsf.fwhm = getattr(epsf, 'fwhm', float(fwhm))
+            epsf.fwhm = getattr(epsf, "fwhm", float(fwhm))
 
         # Validate epsf.data
-        if not hasattr(epsf, "data") or epsf.data is None or np.asarray(epsf.data).size == 0:
-            raise ValueError("EPSF data is invalid or empty after attempts and fallback")
+        if (
+            not hasattr(epsf, "data")
+            or epsf.data is None
+            or np.asarray(epsf.data).size == 0
+        ):
+            raise ValueError(
+                "EPSF data is invalid or empty after attempts and fallback"
+            )
 
         epsf_array = np.asarray(epsf.data)
         if epsf_array.size > 0 and np.isnan(epsf_array).any():
@@ -584,10 +605,10 @@ def perform_psf_photometry(
             error = None
 
         # Create a SourceGrouper
-        min_separation = 2. * fwhm
+        min_separation = 2.0 * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
         bkgstat = MMMBackground()
-        localbkg_estimator = LocalBackground(2. * fwhm, 2.5 * fwhm, bkgstat)
+        localbkg_estimator = LocalBackground(2.0 * fwhm, 2.5 * fwhm, bkgstat)
 
         # psfphot = PSFPhotometry(
         #     psf_model=psf_for_phot,
@@ -597,7 +618,7 @@ def perform_psf_photometry(
         #     grouper=grouper,
         #     localbkg_estimator=localbkg_estimator,
         # )
-        
+
         psfphot = IterativePSFPhotometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,

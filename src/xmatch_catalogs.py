@@ -21,11 +21,7 @@ from astroquery.gaia import Gaia
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 
-from src.tools import (
-    URL,
-    safe_catalog_query,
-    write_to_log
-)
+from src.tools import URL, safe_catalog_query, write_to_log
 
 
 def cross_match_with_gaia(
@@ -350,7 +346,7 @@ def enhance_catalog(
     # Compute field of view (arcmin) ONCE and use everywhere
     field_center_ra = None
     field_center_dec = None
-    field_width_arcmin = 35.  # fallback default
+    field_width_arcmin = 35.0  # fallback default
     if header is not None:
         if "CRVAL1" in header and "CRVAL2" in header:
             field_center_ra = float(header["CRVAL1"])
@@ -556,7 +552,7 @@ def enhance_catalog(
                             continue
                     except Exception:
                         # fallback if matches is a masked/quantity array
-                        if getattr(matches[i], 'value', False) is False:
+                        if getattr(matches[i], "value", False) is False:
                             continue
 
                     original_idx = valid_indices[i]
@@ -580,13 +576,13 @@ def enhance_catalog(
                         )
 
                     try:
-                        enhanced_table.loc[original_idx, "astrocolibri_classification"] = (
-                            astrostars.iloc[int(match_idx)]["classification"]
-                        )
+                        enhanced_table.loc[
+                            original_idx, "astrocolibri_classification"
+                        ] = astrostars.iloc[int(match_idx)]["classification"]
                     except Exception:
-                        enhanced_table.loc[original_idx, "astrocolibri_classification"] = (
-                            astrostars["classification"].iloc[int(match_idx)]
-                        )
+                        enhanced_table.loc[
+                            original_idx, "astrocolibri_classification"
+                        ] = astrostars["classification"].iloc[int(match_idx)]
 
                 st.success("Astro-Colibri matched objects in field.")
             else:
@@ -742,7 +738,9 @@ def enhance_catalog(
                     )
                 else:
                     response_text = response.text.strip()
-                    if not (response_text.startswith("{") or response_text.startswith("[")):
+                    if not (
+                        response_text.startswith("{") or response_text.startswith("[")
+                    ):
                         st.info("SkyBoT returned non-JSON or empty response.")
                     else:
                         try:
@@ -751,7 +749,11 @@ def enhance_catalog(
                             st.warning(f"SkyBoT JSON parse failed: {e_json}")
                             skybot_result = {}
 
-                        data = skybot_result.get("data") or skybot_result.get("result") or []
+                        data = (
+                            skybot_result.get("data")
+                            or skybot_result.get("result")
+                            or []
+                        )
                         if not data:
                             st.info("No solar system objects found in the field.")
                         else:
@@ -762,8 +764,16 @@ def enhance_catalog(
                             for i_obj, obj in enumerate(data):
                                 try:
                                     # handle different possible key names and types
-                                    ra_val = obj.get("RA") or obj.get("ra") or obj.get("raj2000")
-                                    dec_val = obj.get("DEC") or obj.get("dec") or obj.get("decj2000")
+                                    ra_val = (
+                                        obj.get("RA")
+                                        or obj.get("ra")
+                                        or obj.get("raj2000")
+                                    )
+                                    dec_val = (
+                                        obj.get("DEC")
+                                        or obj.get("dec")
+                                        or obj.get("decj2000")
+                                    )
                                     if ra_val is None or dec_val is None:
                                         continue
                                     ra_f = float(ra_val)
@@ -775,14 +785,20 @@ def enhance_catalog(
                                     continue
 
                             if len(ra_list) == 0:
-                                st.info("SkyBoT returned entries but no usable coordinates.")
+                                st.info(
+                                    "SkyBoT returned entries but no usable coordinates."
+                                )
                             else:
-                                skybot_coords = SkyCoord(ra=ra_list, dec=dec_list, unit=u.deg)
+                                skybot_coords = SkyCoord(
+                                    ra=ra_list, dec=dec_list, unit=u.deg
+                                )
 
                                 # Filter valid coordinates for SkyBoT matching
                                 valid_final_coords = enhanced_table[valid_coords_mask]
                                 if len(valid_final_coords) == 0:
-                                    st.info("No valid coordinates available for SkyBoT matching")
+                                    st.info(
+                                        "No valid coordinates available for SkyBoT matching"
+                                    )
                                 else:
                                     source_coords = SkyCoord(
                                         ra=valid_final_coords["ra"].values,
@@ -791,7 +807,9 @@ def enhance_catalog(
                                     )
 
                                     # Use 2D sky matching
-                                    idx, d2d, _ = source_coords.match_to_catalog_sky(skybot_coords)
+                                    idx, d2d, _ = source_coords.match_to_catalog_sky(
+                                        skybot_coords
+                                    )
                                     max_sep = 10.0 * u.arcsec
                                     matches = d2d <= max_sep
 
@@ -808,16 +826,38 @@ def enhance_catalog(
                                         skybot_idx = good_indices[int(idx[src_i])]
                                         rec = data[skybot_idx]
                                         # case-insensitive safe extraction
-                                        name = rec.get("NAME") or rec.get("Name") or rec.get("name")
-                                        objtype = rec.get("OBJECT_TYPE") or rec.get("OBJECT") or rec.get("object_type")
-                                        magv = rec.get("MAGV") or rec.get("magv") or rec.get("VMAG")
-                                        enhanced_table.loc[original_idx, "skybot_NAME"] = name
-                                        enhanced_table.loc[original_idx, "skybot_OBJECT_TYPE"] = objtype
-                                        enhanced_table.loc[original_idx, "skybot_MAGV"] = magv
+                                        name = (
+                                            rec.get("NAME")
+                                            or rec.get("Name")
+                                            or rec.get("name")
+                                        )
+                                        objtype = (
+                                            rec.get("OBJECT_TYPE")
+                                            or rec.get("OBJECT")
+                                            or rec.get("object_type")
+                                        )
+                                        magv = (
+                                            rec.get("MAGV")
+                                            or rec.get("magv")
+                                            or rec.get("VMAG")
+                                        )
+                                        enhanced_table.loc[
+                                            original_idx, "skybot_NAME"
+                                        ] = name
+                                        enhanced_table.loc[
+                                            original_idx, "skybot_OBJECT_TYPE"
+                                        ] = objtype
+                                        enhanced_table.loc[
+                                            original_idx, "skybot_MAGV"
+                                        ] = magv
 
                                     has_skybot = enhanced_table["skybot_NAME"].notna()
-                                    enhanced_table.loc[has_skybot, "catalog_matches"] += "SkyBoT; "
-                                    st.success(f"Found {int(has_skybot.sum())} solar system objects in field.")
+                                    enhanced_table.loc[
+                                        has_skybot, "catalog_matches"
+                                    ] += "SkyBoT; "
+                                    st.success(
+                                        f"Found {int(has_skybot.sum())} solar system objects in field."
+                                    )
             except requests.exceptions.RequestException as req_err:
                 st.warning(f"Request to SkyBoT failed: {req_err}")
             except Exception as e:

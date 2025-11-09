@@ -15,10 +15,7 @@ from astropy.io import fits
 from photutils.detection import DAOStarFinder
 from photutils.background import Background2D, SExtractorBackground
 
-from src.tools import (
-    ensure_output_directory,
-    write_to_log
-)
+from src.tools import ensure_output_directory, write_to_log
 
 from typing import Optional
 
@@ -209,23 +206,33 @@ def refine_astrometry_with_stdpipe(
 
         # Remove known problematic keywords
         keys_to_remove = [
-            "HISTORY", "COMMENT", "CONTINUE",  # General metadata
-            "XPIXELSZ", "YPIXELSZ", "CDELTM1", "CDELTM2",
+            "HISTORY",
+            "COMMENT",
+            "CONTINUE",  # General metadata
+            "XPIXELSZ",
+            "YPIXELSZ",
+            "CDELTM1",
+            "CDELTM2",
         ]
 
         # Add distortion-related keywords to the removal list
         for key in list(clean_header.keys()):
-            if any(pattern in str(key).upper() for pattern in ["DSS", "SIP", "PV", "DISTORT", "A_", "B_", "AP_", "BP_"]):
+            if any(
+                pattern in str(key).upper()
+                for pattern in ["DSS", "SIP", "PV", "DISTORT", "A_", "B_", "AP_", "BP_"]
+            ):
                 keys_to_remove.append(key)
 
         removed_count = 0
-        for key in set(keys_to_remove): # Use set to avoid duplicates
+        for key in set(keys_to_remove):  # Use set to avoid duplicates
             if key in clean_header:
                 del clean_header[key]
                 removed_count += 1
 
         if removed_count > 0:
-            st.info(f"Removed {removed_count} problematic or distortion-related keywords from header.")
+            st.info(
+                f"Removed {removed_count} problematic or distortion-related keywords from header."
+            )
 
         # Validate and, if necessary, fix the core WCS parameters
         try:

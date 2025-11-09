@@ -17,19 +17,14 @@ from astropy.visualization import ZScaleInterval
 import astropy.units as u
 from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
-from photutils.aperture import (CircularAperture, CircularAnnulus,
-                                aperture_photometry)
+from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photometry
 
-from src.tools import (
-    safe_wcs_create,
-    ensure_output_directory
-)
+from src.tools import safe_wcs_create, ensure_output_directory
 
 from typing import Union, Optional, Dict, Tuple
 
 from src.psf import perform_psf_photometry
-from src.utils_common import (refine_astrometry_with_stdpipe,
-                              estimate_background)
+from src.utils_common import refine_astrometry_with_stdpipe, estimate_background
 
 
 def detect_remove_cosmic_rays(
@@ -565,8 +560,8 @@ def detection_and_photometry(
 
     # Convert to float64 to ensure compatibility with calc_total_error
     total_error = calc_total_error(
-        image_sub.astype(np.float64), bkg_error.astype(np.float64),
-        effective_gain)
+        image_sub.astype(np.float64), bkg_error.astype(np.float64), effective_gain
+    )
 
     st.write("Estimating FWHM...")
     fwhm_estimate, clipped_std = fwhm_fit(image_sub, mean_fwhm_pixel, mask)
@@ -645,8 +640,7 @@ def detection_and_photometry(
         # Perform photometry for all apertures
         phot_tables = []
 
-        for i, (aperture, annulus) in enumerate(zip(apertures,
-                                                    annulus_apertures)):
+        for i, (aperture, annulus) in enumerate(zip(apertures, annulus_apertures)):
             # Aperture photometry
             phot_result = aperture_photometry(
                 image_sub, aperture, error=total_error, wcs=wcs_obj
@@ -760,10 +754,8 @@ def detection_and_photometry(
             # Calculate background-corrected photometry
             if "aperture_sum" in bkg_result.colnames:
                 # Ensure we handle both scalar and array cases
-                annulus_area = getattr(annulus, "area",
-                                       [a.area for a in annulus])
-                aperture_area = getattr(aperture, "area",
-                                        [a.area for a in aperture])
+                annulus_area = getattr(annulus, "area", [a.area for a in annulus])
+                aperture_area = getattr(aperture, "area", [a.area for a in aperture])
 
                 # Avoid division by zero
                 with np.errstate(divide="ignore", invalid="ignore"):
@@ -1185,4 +1177,3 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
     except Exception as e:
         st.error(f"Error calculating zero point: {e}")
         return None, None, None
-
