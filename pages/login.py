@@ -43,13 +43,11 @@ if not st.session_state.logged_in:
         "Email", value="", help="Required for registration and password recovery."
     )
 
-    login_col, register_col = st.sidebar.columns([1, 1])
+    login_col, register_col = st.sidebar.columns([1, 3, 1])
     with login_col:
         login_clicked = st.button("Login")
     with register_col:
-        st.markdown("<div style='text-align: right;'>", unsafe_allow_html=True)
         register_clicked = st.button("Register")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     if login_clicked:
         if username and password:
