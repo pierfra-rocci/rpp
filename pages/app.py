@@ -1129,7 +1129,7 @@ if not st.session_state.logged_in:
 
 # Add application version to the sidebar
 st.title("🔭 RAPAS Photometry Pipeline")
-st.markdown("[**RAPAS Home**](https://rapas.imcce.fr/) / [**Project Home**](https://github.com/pierfra-rocci/rpp)]",
+st.markdown("[**RAPAS**](https://rapas.imcce.fr/) / [**Github**](https://github.com/pierfra-rocci/rpp)]",
             unsafe_allow_html=True)
 
 # Added: Quick Start Tutorial link (now displayed in an expander)
