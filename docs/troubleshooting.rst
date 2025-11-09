@@ -1,7 +1,7 @@
 Troubleshooting
 =============
 
-This section addresses common issues and provides solutions for Photometry Factory for RAPAS.
+This section addresses common issues and provides solutions for RAPAS Photometry Pipeline.
 
 Installation & Setup Issues
 -------------------------
@@ -10,16 +10,16 @@ Installation & Setup Issues
 
 *   **Problem**: Required Python packages are not installed or not found in the current environment.
 *   **Solution**:
-    1.  Ensure your virtual environment is activated (`source pfr-env/bin/activate` or `pfr-env\Scripts\activate`).
+    1.  Ensure your virtual environment is activated (`source .venv/bin/activate` or `.venv\Scripts\activate`).
     2.  Run `pip install -r requirements.txt` from the application's root directory.
 
 **Error: Could not connect to backend at http://localhost:5000** (on Login page)
 
-*   **Problem**: The Flask backend server (`backend_dev.py`) is not running or is inaccessible.
+*   **Problem**: The Flask backend server (`backend.py`) is not running or is inaccessible.
 *   **Solution**:
     1.  Open a separate terminal in the application's root directory.
     2.  Activate the virtual environment.
-    3.  Run `python backend_dev.py`.
+    3.  Run `python backend.py`.
     4.  Check the terminal output for errors. Ensure no other process is using port 5000.
 
 **Error: DLL load failed while importing...** (Windows)
@@ -49,7 +49,7 @@ Login & Registration Issues
 
 *   **Problem**: Email sending is not configured correctly on the backend.
 *   **Solution**:
-    1.  Ensure the backend server (`backend_dev.py`) is running.
+    1.  Ensure the backend server (`backend.py`) is running.
     2.  Verify that the SMTP environment variables (`SMTP_SERVER`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`) are correctly set in the environment where the backend is running.
     3.  Check the backend terminal output for email sending errors.
     4.  Check your email spam folder.
@@ -70,14 +70,14 @@ Image Loading & Processing Issues
 
 *   **Problem**: The FITS header lacks the necessary keywords (like CTYPE, CRVAL, CRPIX) for `astropy.wcs` to build a coordinate system.
 *   **Solution**:
-    *   Enable plate solving using Siril (requires Siril installation and the `plate_solve.ps1`/`.sh` script). Ensure Siril is correctly installed and accessible. Check the `plate_solve` script for correct paths if needed.
+    *   Enable plate solving using Astrometry.net (via stdpipe). Ensure Astrometry.net is correctly installed and accessible.
     *   Alternatively, use external software to add WCS information to the FITS header before uploading.
 
 **Astrometry+ / WCS Refinement Fails**
 
 *   **Problem**: The `stdpipe` refinement process could not find enough matches between detected sources and the GAIA catalog, or the initial WCS was too inaccurate.
 *   **Solution**:
-    *   Ensure the initial WCS (from header or Siril) is roughly correct (within a few arcminutes).
+    *   Ensure the initial WCS (from header or Astrometry.net) is roughly correct (within a few arcminutes).
     *   Check internet connectivity (required for GAIA query).
     *   Try adjusting the "Seeing" parameter, as it affects detection.
     *   If the field is very sparse or very crowded, refinement might struggle. Consider disabling Astrometry+.
@@ -110,7 +110,7 @@ Image Loading & Processing Issues
 
 *   **Problem**: Could not match detected sources to the GAIA catalog or calculate a reliable zero point.
 *   **Solution**:
-    *   Verify WCS accuracy. If WCS is significantly off, matching will fail. Try enabling Astrometry+ or using Siril solving.
+    *   Verify WCS accuracy. If WCS is significantly off, matching will fail. Try enabling Astrometry+ or using Astrometry.net solving.
     *   Check internet connection for GAIA query.
     *   Adjust GAIA "Filter Max Magnitude" – if set too bright (low number), might exclude usable calibration stars.
     *   Ensure the selected "Filter Band" is appropriate for the image filter (if known).

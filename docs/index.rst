@@ -110,75 +110,111 @@ System Architecture
    - Integration with external tools and services
 
 **External Integration**:
+
    - Astrometry.net via stdpipe for local plate solving
+
    - SCAMP for astrometric refinement
+
    - Multiple astronomical catalog services
+
    - Aladin Lite for interactive sky visualization
 
+
+
 Supported Data Formats
+
 ---------------------
-   RAPAS Photometry Pipeline
-   ==========================
 
-   Simple, minimal documentation to get started with the RAPAS Photometry Pipeline.
+   - FITS (.fits, .fit, .fts, .fits.gz)
 
-   This project provides a small toolkit and web front-end for running a photometry
-   pipeline. The documentation here is intentionally short and focused on a quick
-   start and a tiny example so you can try the project locally.
+   - Multi-extension FITS (MEF)
 
-   Quick links
-   -----------
+   - Data cubes (first plane is used)
 
-   .. toctree::
-       :maxdepth: 2
+   - RGB astronomical images (first color channel is used)
 
-       installation
-       usage
-       examples
-       api
-       features
-       advanced_features
-       troubleshooting
-       api_reference
 
-   Indices and tables
-   ------------------
 
-   * :ref:`genindex`
-   * :ref:`modindex`
-   * :ref:`search`
+Use Cases
+
+---------
+
+
+
+**Research**:
+
+   - High-precision photometry for variable star studies
+
+   - Asteroid and comet light curve analysis
+
+   - Transient event follow-up and characterization
+
    - Coordinate system calibration
+
    - Multi-epoch analysis support
 
+
+
 **Survey Work**:
+
    - Large-scale source catalog generation
+
    - Cross-identification with existing catalogs
+
    - Quality assessment and filtering
+
    - Transient detection and classification
 
+
+
 **Educational Use**:
+
    - Teaching astronomical data analysis techniques
+
    - Demonstrating photometric principles
+
    - Hands-on experience with professional tools
+
    - Research project development
 
+
+
 Performance Characteristics
+
 --------------------------
 
+
+
 **Processing Speed**:
+
    - Typical 2K×2K image: 2-5 minutes complete analysis
+
    - Multi-aperture photometry with background modeling
+
    - Efficient memory management for large files
+
    - Streamlit caching for improved performance
 
+
+
 **Accuracy**:
+
    - Sub-arcsecond astrometric precision with plate solving
+
    - Millimagnitude photometric precision with proper calibration
+
    - Robust error propagation and uncertainty estimation
 
+
+
 Indices and tables
+
 ==================
 
+
+
 * :ref:`genindex`
+
 * :ref:`modindex`
+
 * :ref:`search`

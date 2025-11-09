@@ -56,7 +56,7 @@ Step 3: Image Processing
    * Display image statistics and coordinate information
    * Calculate airmass based on observation time and location
 
-3. If WCS information is missing, the application will attempt plate solving using SIRIL.
+3. If WCS information is missing, the application will attempt plate solving using Astrometry.net (via stdpipe).
 4. You can optionally force re-solving even if WCS exists.
 
 Step 4: Run Photometric Calibration
@@ -122,7 +122,7 @@ Advanced Features
 
 Troubleshooting Tips
 -------------------
-* Ensure SIRIL is installed and accessible for plate solving
+* Ensure Astrometry.net (via stdpipe) is installed and accessible for plate solving
 * Check internet connectivity for catalog queries
 * Verify FITS file format and header completeness
 * Use manual coordinate entry if header coordinates are missing

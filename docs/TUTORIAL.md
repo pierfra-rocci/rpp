@@ -38,7 +38,7 @@ Below the image preview, you will find several parameters to control the analysi
 -   **Seeing (FWHM)**: The Full-Width at Half-Maximum of the stellar profiles in your image, measured in pixels. This is a crucial parameter for accurate source extraction and PSF photometry. You can estimate this value using an image inspection tool or by examining a few unsaturated stars in the preview.
 -   **Detection Threshold**: The signal-to-noise ratio threshold for detecting sources above the background noise. A value between 3.0 and 5.0 is typical. Lowering this value may detect fainter sources but also risks including more spurious noise detections.
 -   **Border Mask (pixels)**: The width of a border around the image to exclude from source detection. This helps avoid detecting partial or distorted sources at the very edges of the frame.
--   **Calibration Band**: Select the photometric band (e.g., V, R, I) that matches the filter used for your image. This selection determines which reference catalog data (from APASS or other configured catalogs) is used for photometric calibration.
+-   **Calibration Band**: Select the photometric band (e.g., V, R, I) that matches the filter used for your image. This selection determines which reference catalog data (from GAIA) is used for photometric calibration.
 -   **Max Calibration Magnitude**: The brightest magnitude for stars from the reference catalog to be used for calibration. This helps exclude saturated or non-linear stars from the calibration process, leading to a more reliable zero-point calculation.
 
 ### 4. Advanced Options (Optional)
@@ -48,7 +48,7 @@ Below the image preview, you will find several parameters to control the analysi
 
 ### 5. Run the Analysis
 
-Once you have set all the parameters, click the "Run Photometry" button to start the analysis. The process may take a few minutes depending on the image size, the number of sources, and the options selected. You can monitor the progress through the application's status indicators.
+Once you have set all the parameters, click the "Photometric Calibration" button to start the analysis. The process may take a few minutes depending on the image size, the number of sources, and the options selected. You can monitor the progress through the application's status indicators.
 
 Understanding the Outputs
 -------------------------
@@ -58,7 +58,6 @@ After the analysis is complete, the results will be available for download. The 
 A `*.zip` file containing all output files will be created for easy download. Key files inside the archive include:
 
 -   `*_catalog.csv`: A CSV file containing the list of all detected sources. It includes instrumental magnitudes, calibrated magnitudes, errors, positions (pixel and celestial coordinates), and other photometric parameters for each source.
--   `*_image.png`: A diagnostic PNG image showing the detected sources circled, which is useful for visually verifying the source detection process.
 -   `*_psf.fits`: A FITS image of the effective Point Spread Function (PSF) model that was derived from bright, non-saturated stars in your image.
 -   `*_bkg.fits`: A FITS image of the calculated background model that was subtracted from your original image before source detection.
 -   `*.log`: A detailed log file of the entire analysis process, including all parameters used and steps taken. This file is invaluable for troubleshooting any issues or for documenting your analysis.

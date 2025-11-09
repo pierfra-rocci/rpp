@@ -1,12 +1,12 @@
 Advanced Features
 ===============
 
-This section covers advanced features and specialized use cases for Photometry Factory for RAPAS.
+This section covers advanced features and specialized use cases for RAPAS Photometry Pipeline.
 
 PSF Photometry
 ------------
 
-While aperture photometry works well for isolated stars, PSF (Point Spread Function) photometry, performed automatically by PFR using `photutils`, offers advantages for:
+While aperture photometry works well for isolated stars, PSF (Point Spread Function) photometry, performed automatically by RPP using `photutils`, offers advantages for:
 
 *   Crowded fields where stars overlap.
 *   Faint sources where aperture photometry is noise-limited.
@@ -54,7 +54,7 @@ Working with Time-Series Data
 
 For variable stars, asteroids, or other time-variable objects, you can process multiple images taken over time and combine the results:
 
-1.  Process each image individually through the PFR application, ensuring consistent analysis parameters.
+1.  Process each image individually through the RPP application, ensuring consistent analysis parameters.
 2.  Download the results ZIP archive for each processed image.
 3.  Extract the `*_catalog.csv` and `*_header.txt` files for each observation.
 4.  Use a script (like the one in `examples.rst`) to:
@@ -69,7 +69,7 @@ Differential Photometry
 
 For high-precision relative photometry, especially useful for detecting small variations:
 
-1.  Process your image with PFR to get a calibrated catalog (`*_catalog.csv`).
+1.  Process your image with RPP to get a calibrated catalog (`*_catalog.csv`).
 2.  Identify your target star in the catalog.
 3.  Select several (e.g., 3-10) suitable comparison stars:
     *   They should be close in brightness to your target.
@@ -161,9 +161,9 @@ Example workflow snippet:
 Custom Pipeline Integration
 -------------------------
 
-While PFR provides an integrated web UI, its outputs can be used as inputs for larger, custom analysis pipelines:
+While RPP provides an integrated web UI, its outputs can be used as inputs for larger, custom analysis pipelines:
 
-1.  **Process Images**: Use the PFR web application to process your FITS images individually or in batches.
+1.  **Process Images**: Use the RPP web application to process your FITS images individually or in batches.
 2.  **Collect Outputs**: Download the results ZIP archives containing the calibrated catalogs (`*_catalog.csv`), logs, and other metadata.
 3.  **Ingest Catalogs**: Write custom Python scripts (using `pandas`, `astropy`, etc.) to read these CSV catalogs.
 4.  **Perform Further Analysis**: Implement specialized analysis not covered by PFR, such as:
@@ -181,11 +181,11 @@ Example integration concept:
     import glob
     import os
 
-    # Directory where PFR results ZIPs were extracted
-    pfr_output_dir = 'path/to/extracted/pfr_results'
+    # Directory where RPP results ZIPs were extracted
+    rpp_output_dir = 'path/to/extracted/rpp_results'
 
     all_catalogs = []
-    catalog_files = glob.glob(os.path.join(pfr_output_dir, '*_catalog.csv'))
+    catalog_files = glob.glob(os.path.join(rpp_output_dir, '*_catalog.csv'))
 
     for cat_file in catalog_files:
         try:
@@ -213,7 +213,7 @@ Example integration concept:
         # print(matched_target[['source_image_base', 'aperture_calib_mag']])
         #
         # Example: Save the combined catalog
-        # master_catalog.to_csv('combined_pfr_catalog.csv', index=False)
+        # master_catalog.to_csv('combined_rpp_catalog.csv', index=False)
     else:
         print("No catalogs found or loaded.")
 

@@ -32,16 +32,23 @@ Frontend Application (pages/app.py)
 Pipeline Processing (src/pipeline.py)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Astrometric Functions
-~~~~~~~~~~~~~~~~~~~
+Astrometry Functions (src/astrometry.py)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: src.pipeline.solve_with_astrometrynet
+.. autofunction:: src.astrometry.solve_with_astrometrynet
    
    Solve astrometric plate using local Astrometry.Net installation via stdpipe. Performs blind plate solving with automatic parameter optimization and WCS validation.
 
-.. autofunction:: src.pipeline.refine_astrometry_with_stdpipe
-   
-   Perform astrometry refinement using stdpipe SCAMP and GAIA DR3 catalog. Provides high-precision astrometric solutions with distortion correction.
+.. autofunction:: src.astrometry._try_source_detection
+
+   A helper function to try different detection parameters to find sources in an image. It iterates through a list of FWHM estimates and threshold multipliers to find a combination that yields a sufficient number of sources.
+
+Pipeline Processing (src/pipeline.py)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Astrometric Functions
+~~~~~~~~~~~~~~~~~~~
+
 
 Image Processing Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -50,13 +57,38 @@ Image Processing Functions
    
    Detect and remove cosmic rays from astronomical images using astroscrappy L.A.Cosmic algorithm. Configurable parameters for different detector types.
 
-.. autofunction:: src.pipeline.estimate_background
-   
-   Estimate sky background and RMS using photutils.Background2D with SExtractor algorithm. Includes visualization and FITS output generation.
-
 .. autofunction:: src.pipeline.make_border_mask
    
    Create binary mask for excluding border regions from analysis. Supports flexible border specifications and handles edge artifacts.
+
+PSF Photometry (src/psf.py)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autofunction:: src.psf.perform_psf_photometry
+
+   Perform PSF (Point Spread Function) photometry using an empirically-constructed PSF model. This function builds an empirical PSF (EPSF) from bright stars in the image and then uses this model to perform PSF photometry on all detected sources.
+
+Common Utilities (src/utils_common.py)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autofunction:: src.utils_common.estimate_background
+
+   Estimate the background and background RMS of an astronomical image. Uses photutils.Background2D to create a 2D background model with sigma-clipping and the SExtractor background estimation algorithm. Includes error handling and automatic adjustment for small images.
+
+.. autofunction:: src.utils_common.refine_astrometry_with_stdpipe
+
+   Perform astrometry refinement using stdpipe SCAMP and GAIA DR3 catalog.
+
+Catalog Cross-Matching (src/xmatch_catalogs.py)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autofunction:: src.xmatch_catalogs.cross_match_with_gaia
+
+   Cross-match detected sources with the GAIA DR3 star catalog. This function queries the GAIA catalog for a region matching the image field of view, applies filtering based on magnitude range, and matches GAIA sources to the detected sources. It also applies quality filters including variability, color index, and astrometric quality to ensure reliable photometric calibration stars.
+
+.. autofunction:: src.xmatch_catalogs.enhance_catalog
+
+   Enhance a photometric catalog with cross-matches from multiple astronomical databases.
 
 Photometry Functions
 ~~~~~~~~~~~~~~~~~~
@@ -76,10 +108,6 @@ Photometry Functions
 Calibration Functions
 ~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: src.pipeline.cross_match_with_gaia
-   
-   Cross-match detected sources with GAIA DR3 catalog. Includes quality filtering and support for synthetic photometry bands.
-
 .. autofunction:: src.pipeline.calculate_zero_point
    
    Calculate photometric zero point from GAIA-matched sources. Robust calibration with outlier rejection and atmospheric extinction correction.
@@ -87,10 +115,6 @@ Calibration Functions
 .. autofunction:: src.pipeline.airmass
    
    Calculate airmass for celestial objects from observation parameters. Handles multiple coordinate formats and observatory locations.
-
-.. autofunction:: src.pipeline.enhance_catalog
-   
-   Enhance photometric catalog with cross-matches from multiple astronomical databases including SIMBAD, Astro-Colibri, SkyBoT, AAVSO VSX, and Milliquas.
 
 Utility Functions (src/tools.py)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

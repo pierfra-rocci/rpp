@@ -1,7 +1,7 @@
 Examples
 ========
 
-This page provides examples of using the Photometry Factory for RAPAS for various astronomical analysis tasks.
+This page provides examples of using the RAPAS Photometry Pipeline for various astronomical analysis tasks.
 
 Basic Photometry Example
 ---------------------
@@ -22,16 +22,16 @@ This example demonstrates how to perform basic photometry on a single FITS image
 Variable Star Analysis
 -------------------
 
-This example shows how to analyze a variable star using PFR outputs:
+This example shows how to analyze a variable star using RPP outputs:
 
-1. Upload and process a sequence of science images of the same field individually through the PFR application. Ensure consistent parameters.
+1. Upload and process a sequence of science images of the same field individually through the RPP application. Ensure consistent parameters.
 2. Download the results ZIP for each image.
 3. Extract the `*_catalog.csv` files.
 4. Use a script like the one below to combine catalogs and plot a light curve.
 
 .. code-block:: python
 
-   # Example script for processing multiple PFR catalogs
+   # Example script for processing multiple RPP catalogs
    import pandas as pd
    import matplotlib.pyplot as plt
    import glob
@@ -165,17 +165,17 @@ This step-by-step tutorial covers a complete workflow:
    * Download the complete results using the ZIP button.
    * Use the `*_catalog.csv` file for your scientific analysis.
 
-Advanced: Scripting with PFR Functions
+Advanced: Scripting with RPP Functions
 -----------------------------------
 
-While PFR is primarily a web app, some core functions from `pages/app.py` and `tools.py` can potentially be used in standalone Python scripts if dependencies are managed correctly.
+While RPP is primarily a web app, some core functions from `pages/app.py` and `tools.py` can potentially be used in standalone Python scripts if dependencies are managed correctly.
 
 .. warning::
    Directly calling Streamlit-cached functions or functions relying heavily on `st.session_state` or `st.` calls outside the Streamlit environment might not work as expected or require significant adaptation.
 
 .. code-block:: python
 
-   # Example of potentially using some PFR functions in a script
+   # Example of potentially using some RPP functions in a script
    # NOTE: This requires careful dependency management and adaptation.
    # Functions relying on Streamlit state or UI elements will fail.
 
@@ -183,10 +183,10 @@ While PFR is primarily a web app, some core functions from `pages/app.py` and `t
    from astropy.io import fits
    from astropy.table import Table
    # Adjust imports based on actual file structure and needs
-   from tools import safe_wcs_create, extract_pixel_scale, airmass
-   from pages.app import (estimate_background, fwhm_fit, make_border_mask,
-                          detection_and_photometry, cross_match_with_gaia,
-                          calculate_zero_point, enhance_catalog)
+   from src.tools import safe_wcs_create, extract_pixel_scale
+   from src.pipeline import airmass, fwhm_fit, make_border_mask, detection_and_photometry, calculate_zero_point
+   from src.utils_common import estimate_background
+   from src.xmatch_catalogs import cross_match_with_gaia, enhance_catalog
 
    # --- Configuration (Mimic Streamlit inputs) ---
    fits_filepath = 'my_image.fits'
@@ -206,31 +206,6 @@ Python example that shows how to call core library functions. The production
 app is a Streamlit frontend backed by a Flask backend; the example below is
 meant to be runnable in a simple development environment (with appropriate
 dependencies and a FITS file if you want real results).
-
-Minimal Python example
-----------------------
-
-Save the following as `run_example.py` in the project root and run it with
-`python run_example.py`. It demonstrates the call pattern used by the
-application; if you don't have a FITS file handy it will print a friendly
-message instead.
-
-.. code-block:: python
-
-    # run_example.py
-    from src.pipeline import process_image_batch
-    from src.tools import load_fits_image
-
-    fits_path = 'example.fits'  # replace with a real .fits file to actually run
-
-    try:
-        image = load_fits_image(fits_path)
-        results = process_image_batch([image])
-        print('Processed', len(results), 'images')
-        for r in results:
-            print(r)
-    except FileNotFoundError:
-        print('example.fits not found. This example demonstrates the call pattern only.')
 
 Notes and next steps
 --------------------

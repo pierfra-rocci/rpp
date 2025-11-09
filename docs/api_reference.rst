@@ -19,48 +19,53 @@ Image Processing
    :return: Tuple of (image_data, header)
    :rtype: tuple(numpy.ndarray, astropy.io.fits.Header)
 
-.. py:function:: calibrate_image_streamlit(science_data, science_header, bias_data, dark_data, flat_data, exposure_time_science, exposure_time_dark, apply_bias, apply_dark, apply_flat)
+.. py:function:: detect_remove_cosmic_rays(image_data, gain=1.0, readnoise=6.5, sigclip=4.5, sigfrac=0.3, objlim=5.0, verbose=True)
 
-   Calibrates an astronomical image using bias, dark, and flat-field frames.
+   Detect and remove cosmic rays from an astronomical image using astroscrappy.
    
-   :param science_data: Raw science image data
-   :type science_data: numpy.ndarray
-   :param science_header: FITS header
-   :type science_header: dict or astropy.io.fits.Header
-   :param bias_data: Bias frame data
-   :type bias_data: numpy.ndarray or None
-   :param dark_data: Dark frame data
-   :type dark_data: numpy.ndarray or None
-   :param flat_data: Flat field data
-   :type flat_data: numpy.ndarray or None
-   :param exposure_time_science: Exposure time of science image in seconds
-   :type exposure_time_science: float
-   :param exposure_time_dark: Exposure time of dark frame in seconds
-   :type exposure_time_dark: float
-   :param apply_bias: Whether to apply bias subtraction
-   :type apply_bias: bool
-   :param apply_dark: Whether to apply dark subtraction
-   :type apply_dark: bool
-   :param apply_flat: Whether to apply flat field correction
-   :type apply_flat: bool
-   :return: Tuple of (calibrated_data, header)
-   :rtype: tuple(numpy.ndarray, dict)
+   :param image_data: The 2D image array
+   :type image_data: numpy.ndarray
+   :param gain: CCD gain (electrons/ADU)
+   :type gain: float
+   :param readnoise: CCD read noise (electrons)
+   :type readnoise: float
+   :param sigclip: Detection sigma threshold
+   :type sigclip: float
+   :param sigfrac: Fractional detection threshold
+   :type sigfrac: float
+   :param objlim: Minimum contrast between cosmic ray and underlying object
+   :type objlim: float
+   :param verbose: Whether to print verbose output
+   :type verbose: bool
+   :return: Tuple of (cleaned_image, mask)
+   :rtype: tuple(numpy.ndarray, numpy.ndarray)
+
+.. py:function:: make_border_mask(image, border=50, invert=True, dtype=bool)
+
+   Create a binary mask for an image excluding one or more border regions.
+   
+   :param image: The input image as a NumPy array
+   :type image: numpy.ndarray
+   :param border: Border size(s) to exclude from the mask
+   :type border: int or tuple of int
+   :param invert: If True, the mask will be inverted (False for border regions)
+   :type invert: bool
+   :param dtype: Data type of the output mask
+   :type dtype: numpy.dtype
+   :return: Binary mask with the same height and width as the input image
+   :rtype: numpy.ndarray
 
 Astrometry
 ^^^^^^^^^
 
-.. py:function:: solve_with_astrometry_net(image_data, header=None, api_key=None)
+.. py:function:: solve_with_astrometrynet(file_path)
 
-   Solve astrometric plate using the astrometry.net web API.
+   Solve astrometric plate using local Astrometry.Net installation via stdpipe.
    
-   :param image_data: The 2D image array to solve
-   :type image_data: numpy.ndarray
-   :param header: FITS header with metadata to help the solver
-   :type header: astropy.io.fits.Header or dict, optional
-   :param api_key: Astrometry.net API key
-   :type api_key: str, optional
-   :return: Tuple of (wcs_object, updated_header, status_message)
-   :rtype: tuple(astropy.wcs.WCS, dict, str)
+   :param file_path: Path to the FITS image file
+   :type file_path: str
+   :return: Tuple of (wcs_object, updated_header)
+   :rtype: tuple(astropy.wcs.WCS, astropy.io.fits.Header)
 
 .. py:function:: safe_wcs_create(header)
 
@@ -74,37 +79,41 @@ Astrometry
 Source Detection & Photometry
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. py:function:: find_sources_and_photometry_streamlit(image_data, _science_header, mean_fwhm_pixel, threshold_sigma, detection_mask)
+.. py:function:: detection_and_photometry(image_data, science_header, mean_fwhm_pixel, threshold_sigma, detection_mask, filter_band)
 
-   Find astronomical sources and perform both aperture and PSF photometry.
+   Perform a complete photometry workflow on an astronomical image.
    
-   :param image_data: Science image data
+   :param image_data: 2D array of the image data.
    :type image_data: numpy.ndarray
-   :param _science_header: FITS header information
-   :type _science_header: dict or astropy.io.fits.Header
-   :param mean_fwhm_pixel: Estimated FWHM in pixels
+   :param science_header: FITS header or dictionary with image metadata.
+   :type science_header: dict or astropy.io.fits.Header
+   :param mean_fwhm_pixel: Estimated FWHM in pixels, used for aperture and PSF sizing
    :type mean_fwhm_pixel: float
-   :param threshold_sigma: Detection threshold in sigma units
+   :param threshold_sigma: Detection threshold in sigma above background.
    :type threshold_sigma: float
-   :param detection_mask: Border size to mask in pixels
+   :param detection_mask: Border size in pixels to mask during detection.
    :type detection_mask: int
-   :return: Tuple of (phot_table, epsf_table, daofind, bkg)
-   :rtype: tuple(astropy.table.Table, astropy.table.Table, object, object)
+   :param filter_band: Photometric band for catalog matching and calibration.
+   :type filter_band: str
+   :return: Tuple of (phot_table, epsf_table, daofind, bkg, wcs_obj)
+   :rtype: tuple(astropy.table.Table, astropy.table.Table, photutils.detection.DAOStarFinder, photutils.background.Background2D, astropy.wcs.WCS)
 
-.. py:function:: perform_epsf_photometry(img, phot_table, fwhm, daostarfind, mask=None)
+.. py:function:: perform_psf_photometry(img, photo_table, fwhm, daostarfind, mask=None, error=None)
 
    Perform PSF photometry using an empirically-constructed PSF model.
    
    :param img: Image with sky background subtracted
    :type img: numpy.ndarray
-   :param phot_table: Table containing source positions
-   :type phot_table: astropy.table.Table
+   :param photo_table: Table containing source positions
+   :type photo_table: astropy.table.Table
    :param fwhm: Full Width at Half Maximum in pixels
    :type fwhm: float
    :param daostarfind: Star detection function
    :type daostarfind: callable
    :param mask: Mask to exclude image areas
    :type mask: numpy.ndarray, optional
+   :param error: Error array for the image
+   :type error: numpy.ndarray, optional
    :return: Tuple of (phot_epsf_result, epsf)
    :rtype: tuple(astropy.table.Table, photutils.psf.EPSFModel)
 
@@ -130,28 +139,28 @@ Source Detection & Photometry
 Catalog Operations
 ^^^^^^^^^^^^^^^^
 
-.. py:function:: cross_match_with_gaia_streamlit(_phot_table, _science_header, pixel_size_arcsec, mean_fwhm_pixel, gaia_band, gaia_min_mag, gaia_max_mag)
+.. py:function:: cross_match_with_gaia(_phot_table, science_header, pixel_size_arcsec, mean_fwhm_pixel, filter_band, filter_max_mag, refined_wcs=None)
 
    Cross-match detected sources with the GAIA DR3 star catalog.
    
    :param _phot_table: Table with detected source positions
    :type _phot_table: astropy.table.Table
-   :param _science_header: FITS header with WCS information
-   :type _science_header: dict or astropy.io.fits.Header
+   :param science_header: FITS header with WCS information
+   :type science_header: dict or astropy.io.fits.Header
    :param pixel_size_arcsec: Pixel scale in arcseconds per pixel
    :type pixel_size_arcsec: float
    :param mean_fwhm_pixel: FWHM in pixels
    :type mean_fwhm_pixel: float
-   :param gaia_band: GAIA magnitude band to use
-   :type gaia_band: str
-   :param gaia_min_mag: Minimum magnitude for GAIA filtering
-   :type gaia_min_mag: float
-   :param gaia_max_mag: Maximum magnitude for GAIA filtering
-   :type gaia_max_mag: float
+   :param filter_band: GAIA magnitude band to use
+   :type filter_band: str
+   :param filter_max_mag: Maximum magnitude for GAIA filtering
+   :type filter_max_mag: float
+   :param refined_wcs: Refined WCS object
+   :type refined_wcs: astropy.wcs.WCS, optional
    :return: DataFrame with matched sources or None
    :rtype: pandas.DataFrame or None
 
-.. py:function:: calculate_zero_point_streamlit(_phot_table, _matched_table, gaia_band, air)
+.. py:function:: calculate_zero_point(_phot_table, _matched_table, filter_band, air)
 
    Calculate photometric zero point from matched sources with GAIA.
    
@@ -159,17 +168,19 @@ Catalog Operations
    :type _phot_table: astropy.table.Table or pandas.DataFrame
    :param _matched_table: Table of GAIA cross-matched sources
    :type _matched_table: pandas.DataFrame
-   :param gaia_band: GAIA magnitude band used
-   :type gaia_band: str
+   :param filter_band: GAIA magnitude band used
+   :type filter_band: str
    :param air: Airmass value for atmospheric extinction
    :type air: float
    :return: Tuple of (zero_point_value, zero_point_std, matplotlib_figure)
    :rtype: tuple(float, float, matplotlib.figure.Figure)
 
-.. py:function:: enhance_catalog_with_crossmatches(final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=6.0)
+.. py:function:: enhance_catalog(api_key, final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=60)
 
    Enhance a photometric catalog with cross-matches from multiple databases.
    
+   :param api_key: API key for Astro-Colibri
+   :type api_key: str
    :param final_table: Final photometry catalog
    :type final_table: pandas.DataFrame
    :param matched_table: Table of matched GAIA sources
@@ -185,6 +196,38 @@ Catalog Operations
 
 Utilities
 ^^^^^^^^
+
+.. py:function:: estimate_background(image_data, box_size=100, filter_size=5, figure=True)
+
+   Estimate the background and background RMS of an astronomical image.
+   
+   :param image_data: The 2D image array
+   :type image_data: numpy.ndarray
+   :param box_size: The box size in pixels for the local background estimation
+   :type box_size: int
+   :param filter_size: Size of the filter for smoothing the background
+   :type filter_size: int
+   :param figure: Whether to display a figure of the background
+   :type figure: bool
+   :return: Tuple of (background_2d_object, error_message)
+   :rtype: tuple(photutils.background.Background2D, str)
+
+.. py:function:: refine_astrometry_with_stdpipe(image_data, science_header, fwhm_estimate, pixel_scale, filter_band)
+
+   Perform astrometry refinement using stdpipe SCAMP and GAIA DR3 catalog.
+   
+   :param image_data: The 2D image array
+   :type image_data: numpy.ndarray
+   :param science_header: FITS header with WCS information
+   :type science_header: dict
+   :param fwhm_estimate: FWHM estimate in pixels
+   :type fwhm_estimate: float
+   :param pixel_scale: Pixel scale in arcseconds per pixel
+   :type pixel_scale: float
+   :param filter_band: Gaia magnitude band to use for catalog matching
+   :type filter_band: str
+   :return: Refined WCS object if successful, None otherwise
+   :rtype: astropy.wcs.WCS or None
 
 .. py:function:: airmass(_header, observatory=None, return_details=False)
 
