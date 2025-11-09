@@ -1229,7 +1229,6 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         band_labels = [b[0] for b in GAIA_BANDS]
         band_fields = [b[1] for b in GAIA_BANDS]
     except Exception:
-        # Fallback if GAIA_BANDS is not in expected format
         band_labels = [str(b) for b in GAIA_BANDS]
         band_fields = band_labels
 
@@ -1374,15 +1373,6 @@ if st.sidebar.button("💾 Save Configuration"):
     except Exception as e:
         st.sidebar.warning(f"Could not connect to backend: {e}")
 
-# Add logout button at the top right if user is logged in
-if st.session_state.logged_in:
-    st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
-    if st.sidebar.button("Logout"):
-        st.session_state.logged_in = False
-        st.session_state.username = None
-        st.success("Logged out successfully.")
-        st.switch_page("pages/login.py")
-
 # Add archived files browser to sidebar
 with st.sidebar.expander("📁 Archived Results", expanded=False):
     username = st.session_state.get("username", "anonymous")
@@ -1392,6 +1382,19 @@ with st.sidebar.expander("📁 Archived Results", expanded=False):
 with st.sidebar:
     if st.button("🧹 Clear Cache & Reset Upload"):
         clear_all_caches()
+
+# Add logout button at the top right if user is logged in
+if st.session_state.logged_in:
+    st.sidebar.markdown("")
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
+    if st.sidebar.button("Logout"):
+        st.session_state.logged_in = False
+        st.session_state.username = None
+        st.success("Logged out successfully.")
+        st.switch_page("pages/login.py")
+
+###########################################################################
 
 # Persistent uploader: keep uploaded file bytes across reruns until cleared
 if "uploaded_bytes" not in st.session_state:
