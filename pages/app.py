@@ -1141,7 +1141,7 @@ with st.expander("📘 Quick Start Tutorial"):
     except FileNotFoundError:
         st.warning("TUTORIAL.md not found. It should be in the `doc` folder.")
 
-st.sidebar.markdown(f"**App Version:** _{version}_")
+st.sidebar.markdown(f"**Version:** _{version}_")
 
 with st.sidebar.expander("🔭 Observatory Data", expanded=False):
     st.session_state.observatory_name = st.text_input(

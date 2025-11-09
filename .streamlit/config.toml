@@ -1,31 +1,14 @@
 [theme]
-base = "dark"
-primaryColor = "#268bd2"               # Solarized blue
-backgroundColor = "#002b36"             # App main background
-secondaryBackgroundColor = "#073642"    # Widget background
-textColor = "#839496"                   # Main text
-linkColor = "#2aa198"                   # Links
-codeBackgroundColor = "#073642"          # Code blocks
+base="dark"
 
-# Font settings
-font = "sans-serif"                     # For normal text
-codeFont = "Source Code Pro, monospace"  # For code
-headingFont = "sans-serif"               # For headings
+# ---- Main area ----
+primaryColor="#268bd2"              # Solarized blue for highlights
+backgroundColor="#002b36"           # Base03: very dark cyan
+textColor="#93a1a1"                 # Base1: light grey-cyan
+font="monospace"
 
-# Visual Tweaks
-baseRadius = "0.5rem"                    # Rounded elements
-borderColor = "#586e75"                  # Subtle border
-showWidgetBorder = true
-baseFontSize = 16
-showSidebarBorder = false                # No hard sidebar border
-
-
-# Specific colors for sidebar
-[theme.sidebar]
-backgroundColor = "#001a22"             # Slightly darker than page background
-textColor = "#839496"                   # Same text color
-borderColor = "#586e75"                 # Subtle border if needed
-
+# ---- Sidebar variation ----
+secondaryBackgroundColor="#073642"  # Base02: slightly lighter, for sidebar contrast
 
 [global]
 developmentMode = false
