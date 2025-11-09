@@ -207,7 +207,7 @@ def airmass(
         - Observation date (DATE-OBS)
     observatory : Dict, optional
         Information about the observatory. If not provided, uses the default.
-        Format: {
+        mat: {
             'name': str,           # Observatory name
             'latitude': float,     # Latitude in degrees
             'longitude': float,    # Longitude in degrees

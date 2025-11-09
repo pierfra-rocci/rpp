@@ -1551,7 +1551,7 @@ if science_file is not None:
         )
 
         if force_plate_solve:
-            st.info("🔄 Force plate solve enabled - will re-solve astrometry")
+            st.info("Force plate solve enabled - will re-solve astrometry")
             use_astrometry = True
             wcs_obj = None  # Reset to trigger plate solving
         else:
@@ -1598,7 +1598,7 @@ if science_file is not None:
                     solve_type = (
                         "Forced plate-solve" if force_plate_solve else "Initial solve"
                     )
-                    st.success(f"✅ {solve_type} successful!")
+                    st.success(f"{solve_type} successful!")
                     write_to_log(
                         log_buffer, f"Plate solving completed ({plate_solve_reason})"
                     )
@@ -2458,17 +2458,17 @@ if science_file is not None:
                     #                     filter_band=st.session_state.transient_filter,
                     #                 ):
                     #                     st.error(
-                    #                         "❌ Failed to retrieve the reference image. Please try another survey or filter."
+                    #                         "Failed to retrieve the reference image. Please try another survey or filter."
                     #                     )
                     #                     st.stop()
-                    #                 st.write("✅ Reference image retrieved.")
+                    #                 st.write("Reference image retrieved.")
 
                     #                 # 2. Perform subtraction
                     #                 st.write("Performing image subtraction...")
                     #                 if not finder.perform_subtraction(method="proper"):
-                    #                     st.error("❌ Image subtraction failed.")
+                    #                     st.error("Image subtraction failed.")
                     #                     st.stop()
-                    #                 st.write("✅ Image subtraction complete.")
+                    #                 st.write("Image subtraction complete.")
 
                     #                 # 3. Detect transients
                     #                 st.write("Detecting transient sources...")
@@ -2476,7 +2476,7 @@ if science_file is not None:
 
                     #                 if transients is not None and len(transients) > 0:
                     #                     st.success(
-                    #                         f"🎉 Found {len(transients)} transient candidate(s)!"
+                    #                         f"Found {len(transients)} transient candidate(s)!"
                     #                     )
                     #                     st.dataframe(transients.to_pandas())
 
@@ -2503,7 +2503,7 @@ if science_file is not None:
                     #                                 )
                     #                 else:
                     #                     st.info(
-                    #                         "✅ No significant transient sources were detected."
+                    #                         "No significant transient sources were detected."
                     #                     )
 
                     #                 # 6. Cleanup temporary files
