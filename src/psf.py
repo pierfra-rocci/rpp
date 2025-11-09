@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from astropy.table import Table
+from astropy.stats import SigmaClip
 from photutils.background import LocalBackground, MMMBackground
 from astropy.nddata import NDData
 from astropy.io import fits
@@ -561,7 +562,8 @@ def perform_psf_photometry(
         # Create a SourceGrouper
         min_separation = 2.0 * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
-        bkgstat = MMMBackground()
+        sigma_clip = SigmaClip(sigma=3.0)
+        bkgstat = MMMBackground(sigma_clip=sigma_clip)
         localbkg_estimator = LocalBackground(2.0 * fwhm, 2.5 * fwhm, bkgstat)
 
         psfphot = IterativePSFPhotometry(
@@ -569,6 +571,7 @@ def perform_psf_photometry(
             fit_shape=fit_shape,
             finder=daostarfind,
             maxiters=2,
+            mode="all",
             aperture_radius=float(fit_shape) / 2.0,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
