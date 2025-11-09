@@ -43,7 +43,7 @@ if not st.session_state.logged_in:
         "Email", value="", help="Required for registration and password recovery."
     )
 
-    login_col, register_col = st.sidebar.columns([1, 1])
+    login_col, register_col = st.sidebar.columns([1,1], width=1)
     login_clicked = login_col.button("Login")
     register_clicked = register_col.button("Register")
 
