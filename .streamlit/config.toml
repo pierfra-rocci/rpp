@@ -58,7 +58,6 @@ gatherUsageStats = false
 # Default: 'localhost'
 # serverAddress = "0.0.0.0"
 
-
 [client]
 # Default: "full"
 showErrorDetails = "minimal"
@@ -75,7 +74,7 @@ showErrorDetails = "minimal"
 #                 Streamlit Community Cloud) or through st.set_page_config.
 #                 If there are no options left, hide the menu.
 # Default: "auto"
-toolbarMode = "developer"
+toolbarMode = "auto"
 
 # Controls whether to display the default sidebar page navigation in a
 # multi-page app. This only applies when app's pages are defined by the
