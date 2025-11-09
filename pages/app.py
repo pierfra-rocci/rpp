@@ -1388,7 +1388,7 @@ with st.sidebar:
 if st.session_state.logged_in:
     st.sidebar.markdown("")
     st.sidebar.markdown("---")
-    st.sidebar.markdown(f"**Logged in as:** {st.session_state.username}")
+    st.sidebar.markdown(f"**Logged in as:** _{st.session_state.username}_")
     if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
         st.session_state.username = None
@@ -2534,7 +2534,7 @@ if science_file is not None:
                     )
 else:
     st.text(
-        "👆 Please upload an image FITS file to start.",
+        "👆 Upload an Image FITS file to Start",
     )
 
 if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not None:
@@ -2565,4 +2565,3 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
         f.write(log_buffer.getvalue())
     write_to_log(log_buffer, f"Log saved to {log_filepath}")
 
-st.markdown("---")
