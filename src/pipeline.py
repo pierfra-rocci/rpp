@@ -585,33 +585,6 @@ def detection_and_photometry(
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
 
-    # Check Astrometry option before refinement
-    if hasattr(st, "session_state") and st.session_state.get("astrometry_check",
-                                                             False):
-
-        # _, refined_wcs = refine_astrometry_with_stdpipe(
-        #     image_data=image_sub,
-        #     science_header=science_header,
-        #     wcs=w,
-        #     fwhm_estimate=fwhm_estimate,
-        #     pixel_scale=pixel_scale,
-        #     filter_band=filter_band,
-        # )
-
-        # Step 1: Build minimal safe WCS
-        wcs_safe, header_clean = build_minimal_tan_wcs(science_header,
-                                                       image_sub,
-                                                       pixel_scale_arcsec=pixel_scale)
-
-        # Step 2: Pass wcs_safe to SCAMP for refinement
-        _, refined_wcs = refine_wcs_in_memory(image_sub,
-                                              wcs_safe,
-                                              header_clean,
-                                              pixel_scale=pixel_scale)
-        w = refined_wcs
-    else:
-        st.info("Refine Astrometry is disabled. Skipping astrometry refinement")
-
     # Create multiple circular apertures with different radii
     aperture_radii = [1.5, 2.0, 2.5]
     apertures = [
