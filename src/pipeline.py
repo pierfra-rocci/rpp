@@ -599,8 +599,8 @@ def detection_and_photometry(
         #     filter_band=filter_band,
         # )
 
-        _, refined_wcs = refine_wcs_in_memory(image_data=image_sub,
-                                              science_header=science_header)
+        _, refined_wcs = refine_wcs_in_memory(image_sub,
+                                              science_header)
 
         w = refined_wcs
     else:
