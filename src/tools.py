@@ -924,15 +924,11 @@ def zip_results_on_exit(science_file_obj, outputdir):
                             zip_filename)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for file in files:
-            file_path = os.path.join(output_dir+"\\rpp_results", file)
-            if ".log" in file:
-                file_path = os.path.join(output_dir, file)
+            file_path = os.path.join(output_dir, file)
             zipf.write(file_path, arcname=file)
     for file in files:
         try:
-            os.remove(os.path.join(output_dir+"\\rpp_results", file))
-            if ".log" in file:
-                os.remove(os.path.join(output_dir, file))
+            os.remove(os.path.join(output_dir, file))
         except Exception as e:
             print(f"Warning: Could not remove file {file} after zipping: {e}")
 
