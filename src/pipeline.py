@@ -26,7 +26,7 @@ from typing import Union, Optional, Dict, Tuple
 
 from src.psf import perform_psf_photometry
 from src.utils_common import (refine_astrometry_with_stdpipe,
-                              estimate_background)
+                              estimate_background, refine_wcs_in_memory)
 
 
 def detect_remove_cosmic_rays(
@@ -589,14 +589,18 @@ def detection_and_photometry(
 
     # Check Astrometry option before refinement
     if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
-        refined_wcs = refine_astrometry_with_stdpipe(
-            image_data=image_sub,
-            science_header=science_header,
-            wcs=w,
-            fwhm_estimate=fwhm_estimate,
-            pixel_scale=pixel_scale,
-            filter_band=filter_band,
-        )
+
+        # _, refined_wcs = refine_astrometry_with_stdpipe(
+        #     image_data=image_sub,
+        #     science_header=science_header,
+        #     wcs=w,
+        #     fwhm_estimate=fwhm_estimate,
+        #     pixel_scale=pixel_scale,
+        #     filter_band=filter_band,
+        # )
+
+        _, refined_wcs = refine_wcs_in_memory(image_data=image_sub,
+                                              science_header=science_header)
 
         w = refined_wcs
     else:
