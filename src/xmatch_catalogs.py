@@ -322,24 +322,6 @@ def enhance_catalog(
     # Make a copy to avoid modifying the original table
     enhanced_table = final_table.copy()
 
-    # Filter out sources with NaN coordinates at the beginning
-    valid_coords_mask = (
-        pd.notna(enhanced_table["ra"])
-        & pd.notna(enhanced_table["dec"])
-        & np.isfinite(enhanced_table["ra"])
-        & np.isfinite(enhanced_table["dec"])
-    )
-
-    if not valid_coords_mask.any():
-        st.error("No sources with valid RA/Dec coordinates found for cross-matching")
-        return enhanced_table
-
-    num_invalid = len(enhanced_table) - valid_coords_mask.sum()
-    if num_invalid > 0:
-        st.warning(
-            f"Excluding {num_invalid} sources with invalid coordinates from cross-matching"
-        )
-
     # Compute field of view (arcmin) ONCE and use everywhere
     field_center_ra = None
     field_center_dec = None
