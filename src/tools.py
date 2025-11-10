@@ -925,8 +925,9 @@ def zip_results_on_exit(science_file_obj, outputdir):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for file in files:
             file_path = os.path.join(output_dir+"\\rpp_results", file)
+            if ".log" in file:
+                file_path = os.path.join(output_dir, file)
             zipf.write(file_path, arcname=file)
-    # Do not remove .zip files, only remove the files that were zipped (non-zip)
     for file in files:
         try:
             os.remove(os.path.join(output_dir, file))
