@@ -25,8 +25,7 @@ from src.tools import safe_wcs_create, ensure_output_directory
 from typing import Union, Optional, Dict, Tuple
 
 from src.psf import perform_psf_photometry
-from src.utils_common import (build_minimal_tan_wcs,
-                              estimate_background, refine_wcs_in_memory)
+from src.utils_common import estimate_background
 
 
 def detect_remove_cosmic_rays(
