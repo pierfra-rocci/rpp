@@ -25,7 +25,7 @@ from src.tools import safe_wcs_create, ensure_output_directory
 from typing import Union, Optional, Dict, Tuple
 
 from src.psf import perform_psf_photometry
-from src.utils_common import (refine_astrometry_with_stdpipe,
+from src.utils_common import (build_minimal_tan_wcs,
                               estimate_background, refine_wcs_in_memory)
 
 
@@ -588,7 +588,8 @@ def detection_and_photometry(
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
 
     # Check Astrometry option before refinement
-    if hasattr(st, "session_state") and st.session_state.get("astrometry_check", False):
+    if hasattr(st, "session_state") and st.session_state.get("astrometry_check",
+                                                             False):
 
         # _, refined_wcs = refine_astrometry_with_stdpipe(
         #     image_data=image_sub,
@@ -598,9 +599,18 @@ def detection_and_photometry(
         #     pixel_scale=pixel_scale,
         #     filter_band=filter_band,
         # )
+        
 
-        _, refined_wcs = refine_wcs_in_memory(image_sub,
-                                              science_header)
+        # Step 1: Build minimal safe WCS
+        wcs_safe, header_clean = build_minimal_tan_wcs(header, data, wcs=w,
+                                                       pixel_scale_arcsec=pixel_scale)
+
+        # Step 2: Pass wcs_safe to SCAMP for refinement
+         _, refined_wcs = refine_wcs_in_memory(image_sub,
+                                               wcs_safe,
+                                               header_clean,
+                                               pixel_scale=pixel_scale)
+
 
         w = refined_wcs
     else:
