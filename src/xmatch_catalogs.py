@@ -322,6 +322,24 @@ def enhance_catalog(
     # Make a copy to avoid modifying the original table
     enhanced_table = final_table.copy()
 
+    # Filter out sources with NaN coordinates at the beginning
+    valid_coords_mask = (
+        pd.notna(enhanced_table["ra"])
+        & pd.notna(enhanced_table["dec"])
+        & np.isfinite(enhanced_table["ra"])
+        & np.isfinite(enhanced_table["dec"])
+    )
+
+    if not valid_coords_mask.any():
+        st.error("No sources with valid RA/Dec coordinates found for cross-matching")
+        return enhanced_table
+
+    num_invalid = len(enhanced_table) - valid_coords_mask.sum()
+    if num_invalid > 0:
+        st.warning(
+            f"Excluding {num_invalid} sources with invalid coordinates from cross-matching"
+        )
+
     # Compute field of view (arcmin) ONCE and use everywhere
     field_center_ra = None
     field_center_dec = None
@@ -500,7 +518,7 @@ def enhance_catalog(
             st.dataframe(astrostars)
 
             # Filter valid coordinates for astro-colibri matching
-            valid_final_coords = enhanced_table
+            valid_final_coords = enhanced_table[valid_coords_mask]
 
             if len(valid_final_coords) > 0 and len(astrostars) > 0:
                 source_coords = SkyCoord(
@@ -598,7 +616,7 @@ def enhance_catalog(
                 enhanced_table["simbad_V"] = None
 
                 # Filter valid coordinates for SIMBAD matching
-                valid_final_coords = enhanced_table
+                valid_final_coords = enhanced_table[valid_coords_mask]
 
                 if len(valid_final_coords) > 0:
                     source_coords = SkyCoord(
@@ -773,7 +791,7 @@ def enhance_catalog(
                                 )
 
                                 # Filter valid coordinates for SkyBoT matching
-                                valid_final_coords = enhanced_table
+                                valid_final_coords = enhanced_table[valid_coords_mask]
                                 if len(valid_final_coords) == 0:
                                     st.info(
                                         "No valid coordinates available for SkyBoT matching"
@@ -868,7 +886,7 @@ def enhance_catalog(
                 )
 
                 # Filter valid coordinates for AAVSO matching
-                valid_final_coords = enhanced_table
+                valid_final_coords = enhanced_table[valid_coords_mask]
 
                 if len(valid_final_coords) > 0:
                     source_coords = SkyCoord(
@@ -932,7 +950,7 @@ def enhance_catalog(
                 )
 
                 # Filter valid coordinates for QSO matching
-                valid_final_coords = enhanced_table
+                valid_final_coords = enhanced_table[valid_coords_mask]
 
                 if len(valid_final_coords) > 0:
                     # Create source coordinates for matching
