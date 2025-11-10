@@ -181,3 +181,4 @@ add_user.py
 users.db
 dev_test/**
 dev_test
+src/test_wcs.py

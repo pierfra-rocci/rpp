@@ -1,4 +1,4 @@
-import os
+# import os
 import streamlit as st
 
 import numpy as np
@@ -11,11 +11,11 @@ from astropy.visualization import ZScaleInterval
 
 from stdpipe import photometry, astrometry, catalogs
 
-from astropy.io import fits
+# from astropy.io import fits
 from photutils.detection import DAOStarFinder
 from photutils.background import Background2D, SExtractorBackground
 
-from src.tools import ensure_output_directory, write_to_log
+from src.tools import write_to_log
 
 from typing import Optional
 
@@ -236,7 +236,30 @@ def refine_astrometry_with_stdpipe(
         # Test the cleaned WCS before proceeding
         try:
             test_wcs = WCS(clean_header)
+            has_cd = all(k in test_wcs.wcs.__dict__ for k in ["cd"])
+            if hasattr(test_wcs.wcs, "cd") and test_wcs.wcs.cd is not None:
+                M = test_wcs.wcs.cd
+            elif hasattr(test_wcs.wcs, "pc") and test_wcs.wcs.pc is not None:
+                M = test_wcs.wcs.pc
+            else:
+                M = np.array([[1.0, 0.0], [0.0, 1.0]])
+
+            det = np.linalg.det(M)
+            if not np.isfinite(det) or abs(det) < 1e-12:
+                st.warning(f"Detected singular or invalid WCS matrix (det={det}). Replacing with nominal one.")
+                # Build a minimal valid matrix using the pixel scale
+                scale_deg = pixel_scale / 3600.0
+                # Assume North up, East left (negative in RA)
+                M = np.array([[-scale_deg, 0.0],
+                              [0.0, scale_deg]])
+                test_wcs.wcs.pc = M / scale_deg
+                test_wcs.wcs.cd = M
+                test_wcs.wcs.set()
+                clean_header.update(test_wcs.to_header(relax=True))
+                st.info("Replaced invalid WCS matrix with nominal tangent-plane projection.")
             st.info("WCS validated successfully")
+        except Exception as mat_check_error:
+            st.warning(f"Failed to check/fix WCS matrix: {mat_check_error}")
         except Exception as wcs_test_error:
             st.error(f"WCS has issues : {wcs_test_error}")
             return None
@@ -542,6 +565,15 @@ def refine_astrometry_with_stdpipe(
 
         else:
             st.warning("SCAMP did not return a valid WCS solution")
+            if wcs_result is None:
+                st.warning("SCAMP returned invalid WCS. Dumping matrix diagnostic...")
+                try:
+                    hdr = clean_header.copy()
+                    keys = [k for k in hdr if k.startswith(("CD", "PC"))]
+                    for k in keys:
+                        st.write(f"{k} = {hdr[k]}")
+                except Exception:
+                    pass
             return None
 
     except ImportError as import_error:
