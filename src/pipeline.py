@@ -550,12 +550,10 @@ def detection_and_photometry(
         image_sub, bkg.background_rms.astype(np.float64), dtype=np.float64
     )
 
-    exposure_time = 1.0
-    if (np.max(image_data) - np.min(image_data)) > 1:
-        exposure_time = science_header.get(
-            "EXPTIME",
-            science_header.get("EXPOSURE", science_header.get("EXP_TIME", 1.0)),
-        )
+    exposure_time = science_header.get(
+        "EXPTIME",
+        science_header.get("EXPOSURE", science_header.get("EXP_TIME", 1.0)),
+    )
 
     # Ensure effective_gain is float64
     effective_gain = np.float64(2.5 / np.std(image_data) * exposure_time)
@@ -599,19 +597,17 @@ def detection_and_photometry(
         #     pixel_scale=pixel_scale,
         #     filter_band=filter_band,
         # )
-        
 
         # Step 1: Build minimal safe WCS
-        wcs_safe, header_clean = build_minimal_tan_wcs(header, data, wcs=w,
+        wcs_safe, header_clean = build_minimal_tan_wcs(science_header,
+                                                       image_sub, wcs=w,
                                                        pixel_scale_arcsec=pixel_scale)
 
         # Step 2: Pass wcs_safe to SCAMP for refinement
-         _, refined_wcs = refine_wcs_in_memory(image_sub,
-                                               wcs_safe,
-                                               header_clean,
-                                               pixel_scale=pixel_scale)
-
-
+        _, refined_wcs = refine_wcs_in_memory(image_sub,
+                                              wcs_safe,
+                                              header_clean,
+                                              pixel_scale=pixel_scale)
         w = refined_wcs
     else:
         st.info("Refine Astrometry is disabled. Skipping astrometry refinement")
