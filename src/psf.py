@@ -575,7 +575,6 @@ def perform_psf_photometry(
             localbkg_estimator=localbkg_estimator,
         )
 
-        # Prepare initial parameters (use 'x' and 'y' to be compatible with PSFPhotometry)
         initial_params = Table()
         initial_params["x"] = photo_table["xcentroid"]
         initial_params["y"] = photo_table["ycentroid"]
