@@ -903,7 +903,7 @@ def write_to_log(log_buffer, message, level="INFO"):
     log_buffer.write(f"[{timestamp}] {level.upper()}: {message}\n")
 
 
-def zip_rpp_results_on_exit(science_file_obj, outputdir):
+def zip_results_on_exit(science_file_obj, outputdir):
     """Compresses analysis result files into a timestamped ZIP archive."""
     output_dir = outputdir
     if not os.path.exists(output_dir):

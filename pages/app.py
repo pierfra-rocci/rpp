@@ -32,7 +32,7 @@ from src.tools import (
     cleanup_temp_files,
     initialize_log,
     write_to_log,
-    zip_rpp_results_on_exit,
+    zip_results_on_exit,
     save_header_to_txt,
     fix_header,
     save_catalog_files,
@@ -1446,12 +1446,12 @@ st.session_state.observatory_data = {
 
 catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 username = st.session_state.get("username", "anonymous")
-output_dir = ensure_output_directory(f"../rpp{username}_rpp_results")
+output_dir = ensure_output_directory(f"../rpp{username}_results")
 st.session_state["output_dir"] = output_dir
 
 if st.session_state.get("final_phot_table") is not None:
     provide_download_buttons(output_dir)
-    zip_rpp_results_on_exit(science_file, output_dir)
+    zip_results_on_exit(science_file, output_dir)
 
 
 if science_file is not None:
@@ -2251,7 +2251,7 @@ if science_file is not None:
                                                     "username", "anonymous"
                                                 )
                                                 output_dir = ensure_output_directory(
-                                                    f"../rpp_result/{username}_rpp_results"
+                                                    f"../rpp_result/{username}_results"
                                                 )
                                                 hist_filename = (
                                                     f"{base_filename}_histogram_mag.png"
@@ -2518,7 +2518,7 @@ if science_file is not None:
                     if final_phot_table is not None:
                         provide_download_buttons(output_dir)
                         cleanup_temp_files()
-                        zip_rpp_results_on_exit(science_file, output_dir)
+                        zip_results_on_exit(science_file, output_dir)
                 else:
                     st.warning(
                         "Could not determine coordinates from image header. Cannot display ESASky or Aladin Viewer."
