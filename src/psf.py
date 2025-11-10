@@ -11,7 +11,7 @@ from astropy.nddata import NDData
 from astropy.io import fits
 from astropy.visualization import simple_norm
 
-from photutils.psf import EPSFBuilder, extract_stars, IterativePSFPhotometry
+from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from photutils.psf import SourceGrouper, EPSFStars
 
 from src.tools import FIGURE_SIZES, ensure_output_directory
@@ -566,12 +566,10 @@ def perform_psf_photometry(
         bkgstat = MMMBackground(sigma_clip=sigma_clip)
         localbkg_estimator = LocalBackground(2.0 * fwhm, 2.5 * fwhm, bkgstat)
 
-        psfphot = IterativePSFPhotometry(
+        psfphot = PSFPhotometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,
             finder=daostarfind,
-            maxiters=2,
-            mode="all",
             aperture_radius=float(fit_shape) / 2.0,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
