@@ -191,8 +191,7 @@ def refine_wcs_in_memory(data, header, detect_thresh=3.0, detect_minarea=5,
         header["CDELT1"] = -pixel_scale/3600.0
         header["CDELT2"] = pixel_scale/3600.0
 
-        wcs_init = WCS(header)
-        
+        # wcs_init = WCS(header)
         try:
             wcs_init = _make_safe_wcs(header, data, pixel_scale)
             st.success("Safe WCS rebuilt successfully")
