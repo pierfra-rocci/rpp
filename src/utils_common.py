@@ -127,6 +127,41 @@ def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
         return None, f"Background estimation error: {str(e)}"
 
 
+def _make_safe_wcs(header, data, pixel_scale):
+    # Remove problematic distortion or DSS-related keys
+    bad_patterns = ["DSS", "DS", "DISTORT", "PV", "A_", "B_", "AP_", "BP_", "SIP"]
+    for key in list(header.keys()):
+        if any(pat in key.upper() for pat in bad_patterns):
+            del header[key]
+
+    # Ensure mandatory fields exist
+    header["CTYPE1"] = "RA---TAN"
+    header["CTYPE2"] = "DEC--TAN"
+    header["CUNIT1"] = "deg"
+    header["CUNIT2"] = "deg"
+    header["CRPIX1"] = header.get("CRPIX1", data.shape[1] / 2)
+    header["CRPIX2"] = header.get("CRPIX2", data.shape[0] / 2)
+    header["CRVAL1"] = header.get("CRVAL1", 0.0)
+    header["CRVAL2"] = header.get("CRVAL2", 0.0)
+
+    # Delete all WCS matrix variants to avoid mixups
+    for key in ["CD1_1","CD1_2","CD2_1","CD2_2","PC1_1","PC1_2","PC2_1","PC2_2","CDELT1","CDELT2"]:
+        if key in header:
+            del header[key]
+
+    # Build a new minimal linear scale matrix
+    header["CDELT1"] = -pixel_scale / 3600.0
+    header["CDELT2"] =  pixel_scale / 3600.0
+
+    try:
+        w = WCS(header)
+        _ = w.pixel_scale_matrix  # force validation
+    except Exception as e:
+        raise ValueError(f"Failed to build safe WCS: {e}")
+
+    return w
+
+
 def refine_wcs_in_memory(data, header, detect_thresh=3.0, detect_minarea=5,
                          pixel_scale=0.5, scamp_timeout=300):
     """
@@ -154,10 +189,16 @@ def refine_wcs_in_memory(data, header, detect_thresh=3.0, detect_minarea=5,
         header["CRVAL1"] = header.get("CRVAL1", 0.0)
         header["CRVAL2"] = header.get("CRVAL2", 0.0)
         header["CDELT1"] = -pixel_scale/3600.0
-        header["CDELT2"] =  pixel_scale/3600.0
+        header["CDELT2"] = pixel_scale/3600.0
 
         wcs_init = WCS(header)
-        st.success("WCS header initialized successfully")
+        
+        try:
+            wcs_init = _make_safe_wcs(header, data, pixel_scale)
+            st.success("Safe WCS rebuilt successfully")
+        except Exception as e:
+            st.error(f"Failed to initialize safe WCS: {e}")
+            return header, None
 
         # --- Step 2: Detect sources with SExtractor ---
         st.info("Running source extraction (SExtractor)...")
