@@ -192,7 +192,7 @@ def _make_safe_wcs(header, data, pixel_scale):
 
 
 def refine_wcs_in_memory(data, header, wcs=None, detect_thresh=3.0,
-                         detect_minarea=5, pixel_scale=0.5, scamp_timeout=300):
+                         detect_minarea=5, pixel_scale=0.5):
     """
     Refine the WCS of an image in memory using stdpipe (SExtractor + SCAMP).
     Does NOT write any files — returns updated header and WCS object.
