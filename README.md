@@ -255,7 +255,7 @@ Firefox may not properly handle autocomplete with Streamlit's login form. Try th
    - Local backend assumed at http://localhost:5000 for login/config endpoints. If not used, the app continues in anonymous mode and saves config locally to output directory.
 
 ## Files & outputs
-- <username>_rpp_results/
+- <username>_results
   - *_catalog.csv  (CSV catalog)
   - *_catalog.xml  (VOTable, when conversion succeeds)
   - *_bkg.fits     (background model and RMS)

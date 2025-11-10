@@ -32,7 +32,7 @@ To optimize PSF photometry:
     from astropy.visualization import simple_norm
 
     # Load the PSF model (adjust filename as needed)
-    psf_filename = 'rpp_results/your_image_base_name_psf.fits'
+    psf_filename = 'rppyour_image_base_name_psf.fits'
     try:
         psf_data = fits.getdata(psf_filename)
 
@@ -86,7 +86,7 @@ Example workflow snippet:
     import numpy as np
 
     # Load the calibrated catalog
-    catalog_file = 'rpp_results/your_image_base_name_catalog.csv'
+    catalog_file = 'rppyour_image_base_name_catalog.csv'
     catalog = pd.read_csv(catalog_file)
 
     # --- Identify Target and Potential Comparison Stars ---
@@ -233,7 +233,7 @@ Example using `matplotlib` for a density scatter plot:
     from scipy.stats import gaussian_kde
 
     # Load catalog
-    catalog_file = 'rpp_results/your_image_base_name_catalog.csv'
+    catalog_file = 'rppyour_image_base_name_catalog.csv'
     catalog = pd.read_csv(catalog_file)
 
     # Filter out invalid magnitudes if necessary

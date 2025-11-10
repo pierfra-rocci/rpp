@@ -43,7 +43,7 @@ Once you have set all the parameters, click the "Photometric Calibration" button
 Understanding the Outputs
 -------------------------
 
-After the analysis is complete, the results will be available for download. The results are saved in a user-specific folder on the server (`<username>_rpp_results/`) to keep your data private.
+After the analysis is complete, the results will be available for download. The results are saved in a user-specific folder on the server (`<username>_results`) to keep your data private.
 
 A `*.zip` file containing all output files will be created for easy download. Key files inside the archive include:
 

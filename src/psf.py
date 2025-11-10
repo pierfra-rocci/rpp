@@ -522,7 +522,7 @@ def perform_psf_photometry(
             )
             username = st.session_state.get("username", "anonymous")
             psf_filepath = os.path.join(
-                ensure_output_directory(f"../rpp_results/{username}_results"), psf_filename
+                ensure_output_directory(f"../rpp{username}_results"), psf_filename
             )
             hdu.writeto(psf_filepath, overwrite=True)
             st.write("PSF model saved as FITS file")

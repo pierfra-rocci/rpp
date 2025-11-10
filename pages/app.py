@@ -947,7 +947,7 @@ def initialize_session_state():
     # Output directory
     if "output_dir" not in st.session_state:
         username = st.session_state.get("username", "anonymous")
-        st.session_state.output_dir = ensure_output_directory(f"../rpp_results/{username}_results")
+        st.session_state.output_dir = ensure_output_directory(f"../rpp{username}_results")
 
     # Analysis Parameters
     default_analysis_params = {
@@ -1353,7 +1353,7 @@ if st.sidebar.button("💾 Save Configuration"):
     name = st.session_state.get("username", "user")
     config_filename = f"{name}_config.json"
     config_path = os.path.join(
-        st.session_state.get("output_dir", f"../rpp_results/{name}_results"), config_filename
+        st.session_state.get("output_dir", f"../rpp{name}_results"), config_filename
     )
     try:
         with open(config_path, "w", encoding="utf-8") as f:
@@ -1376,7 +1376,7 @@ if st.sidebar.button("💾 Save Configuration"):
 # Add archived files browser to sidebar
 with st.sidebar.expander("📁 Archived Results", expanded=False):
     username = st.session_state.get("username", "anonymous")
-    output_dir = ensure_output_directory(f"../rpp_results/{username}_results")
+    output_dir = ensure_output_directory(f"../rpp{username}_results")
     display_archived_files_browser(output_dir)
 
 with st.sidebar:
@@ -1446,7 +1446,7 @@ st.session_state.observatory_data = {
 
 catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 username = st.session_state.get("username", "anonymous")
-output_dir = ensure_output_directory(f"../rpp_results/{username}_rpp_results")
+output_dir = ensure_output_directory(f"../rpp{username}_rpp_results")
 st.session_state["output_dir"] = output_dir
 
 if st.session_state.get("final_phot_table") is not None:
