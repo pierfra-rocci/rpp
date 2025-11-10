@@ -1149,7 +1149,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         try:
             base_name = st.session_state.get("base_filename", "photometry")
             username = st.session_state.get("username", "anonymous")
-            output_dir = ensure_output_directory(f"{username}_rpp_results")
+            output_dir = ensure_output_directory(f"../rpp_results/{username}_results")
             zero_point_plot_path = os.path.join(
                 output_dir, f"{base_name}_zero_point_plot.png"
             )

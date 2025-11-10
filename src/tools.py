@@ -83,35 +83,24 @@ def get_json(url: str):
         return json.dumps({"error": "invalid json", "message": str(e)})
 
 
-def ensure_output_directory(directory="rpp_results"):
-    """
-    Ensure the specified output directory exists, creating it if necessary.
+def ensure_output_directory(directory=""):
+    # c:\Users\pierf\rpp\src
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # c:\Users\pierf\rpp
+    project_root = os.path.dirname(script_dir)
+    # c:\Users\pierf
+    parent_dir = os.path.dirname(project_root)
+    # c:\Users\pierf\rpp_results
+    results_root = os.path.join(parent_dir, "rpp_results")
+    
+    final_path = os.path.join(results_root, directory)
 
-    Parameters
-    ----------
-    directory : str, optional
-        The path to the directory to ensure exists. Defaults to "rpp_results".
-
-    Returns
-    -------
-    str
-        The absolute path to the created or existing directory. If directory
-        creation fails due to an exception (e.g., permission error), it
-        returns the path to the current working directory (".") and may
-        display a warning using Streamlit if available in the context.
-
-    Notes
-    -----
-    - Uses os.makedirs to create parent directories as needed.
-    - Catches potential exceptions during directory creation.
-    """
-    if not os.path.exists(directory):
+    if not os.path.exists(final_path):
         try:
-            os.makedirs(directory)
-            return directory
+            os.makedirs(final_path)
         except Exception:
             return "."
-    return directory
+    return final_path
 
 
 def safe_wcs_create(header):
@@ -931,7 +920,7 @@ def zip_rpp_results_on_exit(science_file_obj, outputdir):
         return
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_filename = f"{base_name}_{timestamp}.zip"
-    zip_path = os.path.join(output_dir, zip_filename)
+    zip_path = os.path.join(os.path.dirname(output_dir), zip_filename)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for file in files:
             file_path = os.path.join(output_dir, file)
