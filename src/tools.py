@@ -169,7 +169,7 @@ def safe_wcs_create(header):
                 pass
 
     if removed_keywords and hasattr(st, "info"):
-        st.info("Removed problematic WCS keywords")  # {', '.join(removed_keywords)}")
+        st.info("Removed problematic WCS keywords")
 
     required_keys = ["CTYPE1", "CTYPE2", "CRVAL1", "CRVAL2", "CRPIX1", "CRPIX2"]
     missing_keys = [key for key in required_keys if key not in working_header]
@@ -923,7 +923,7 @@ def zip_results_on_exit(science_file_obj, outputdir):
     zip_path = os.path.join(os.path.dirname(output_dir), zip_filename)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for file in files:
-            file_path = os.path.join(output_dir, file)
+            file_path = os.path.join(output_dir+"/rpp_results", file)
             zipf.write(file_path, arcname=file)
     # Do not remove .zip files, only remove the files that were zipped (non-zip)
     for file in files:
