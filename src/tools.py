@@ -920,10 +920,11 @@ def zip_results_on_exit(science_file_obj, outputdir):
         return
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_filename = f"{base_name}_{timestamp}.zip"
-    zip_path = os.path.join(os.path.dirname(output_dir), zip_filename)
+    zip_path = os.path.join(os.path.dirname(output_dir+"\\rpp_results"),
+                            zip_filename)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for file in files:
-            file_path = os.path.join(output_dir+"/rpp_results", file)
+            file_path = os.path.join(output_dir+"\\rpp_results", file)
             zipf.write(file_path, arcname=file)
     # Do not remove .zip files, only remove the files that were zipped (non-zip)
     for file in files:
