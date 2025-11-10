@@ -947,7 +947,7 @@ def initialize_session_state():
     # Output directory
     if "output_dir" not in st.session_state:
         username = st.session_state.get("username", "anonymous")
-        st.session_state.output_dir = ensure_output_directory(f"{username}_results")
+        st.session_state.output_dir = ensure_output_directory(f"../rpp_results/{username}_results")
 
     # Analysis Parameters
     default_analysis_params = {
@@ -1446,7 +1446,7 @@ st.session_state.observatory_data = {
 
 catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 username = st.session_state.get("username", "anonymous")
-output_dir = ensure_output_directory(f"{username}_rpp_results")
+output_dir = ensure_output_directory(f"../rpp_results/{username}_rpp_results")
 st.session_state["output_dir"] = output_dir
 
 if st.session_state.get("final_phot_table") is not None:
@@ -2251,7 +2251,7 @@ if science_file is not None:
                                                     "username", "anonymous"
                                                 )
                                                 output_dir = ensure_output_directory(
-                                                    f"{username}_rpp_results"
+                                                    f"../rpp_result/{username}_rpp_results"
                                                 )
                                                 hist_filename = (
                                                     f"{base_filename}_histogram_mag.png"
