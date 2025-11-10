@@ -1,5 +1,7 @@
-# import os
+import os
 import streamlit as st
+import time
+import tempfile
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,6 +16,7 @@ from stdpipe import photometry, astrometry, catalogs
 # from astropy.io import fits
 from photutils.detection import DAOStarFinder
 from photutils.background import Background2D, SExtractorBackground
+from astropy.wcs.utils import proj_plane_pixel_scales
 
 from src.tools import write_to_log
 
@@ -122,6 +125,121 @@ def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
         return bkg, None
     except Exception as e:
         return None, f"Background estimation error: {str(e)}"
+
+
+def refine_wcs_in_memory(data, header, detect_thresh=3.0, detect_minarea=5,
+                         pixel_scale=0.5, scamp_timeout=300):
+    """
+    Refine the WCS of an image in memory using stdpipe (SExtractor + SCAMP).
+    Does NOT write any files — returns updated header and WCS object.
+    """
+
+    st.info("🔭 Starting in-memory astrometric refinement...")
+    t0 = time.time()
+
+    try:
+        # --- Step 1: Initialize base WCS ---
+        st.write("🧹 Cleaning initial WCS header...")
+        for key in ["CD1_1", "CD1_2", "CD2_1", "CD2_2", "PC1_1",
+                    "PC1_2", "PC2_1", "PC2_2", "CDELT1", "CDELT2"]:
+            if key in header:
+                del header[key]
+
+        header["CTYPE1"] = "RA---TAN"
+        header["CTYPE2"] = "DEC--TAN"
+        header["CUNIT1"] = "deg"
+        header["CUNIT2"] = "deg"
+        header["CRPIX1"] = header.get("CRPIX1", data.shape[1]/2)
+        header["CRPIX2"] = header.get("CRPIX2", data.shape[0]/2)
+        header["CRVAL1"] = header.get("CRVAL1", 0.0)
+        header["CRVAL2"] = header.get("CRVAL2", 0.0)
+        header["CDELT1"] = -pixel_scale/3600.0
+        header["CDELT2"] =  pixel_scale/3600.0
+
+        wcs_init = WCS(header)
+        st.success("WCS header initialized successfully")
+
+        # --- Step 2: Detect sources with SExtractor ---
+        st.info("Running source extraction (SExtractor)...")
+        sources = photometry.get_sextractor_sources(
+            data,
+            detect_thresh=detect_thresh,
+            detect_minarea=detect_minarea
+        )
+        st.write(f"Found {len(sources)} sources")
+
+        # --- Step 3: Retrieve Gaia reference catalog ---
+        st.info("Querying Gaia DR3 reference stars...")
+        cat = astrometry.get_reference_catalog(
+            wcs=wcs_init,
+            catalog="gaia-dr3",
+            limit_mag=18,
+            search_radius_deg=2.0
+        )
+        st.write(f"Retrieved {len(cat)} Gaia sources")
+
+        # --- Step 4: Run SCAMP for refinement ---
+        st.info("Running SCAMP astrometric refinement...")
+        scamp_log = os.path.join(tempfile.gettempdir(), "scamp_debug.log")
+        if os.path.exists(scamp_log):
+            os.remove(scamp_log)
+        os.environ["SCAMP_LOGFILE"] = scamp_log
+
+        start_time = time.time()
+        try:
+            wcs_refined = astrometry.refine_wcs_scamp(
+                data, sources, cat, initial_wcs=wcs_init, plot=False
+            )
+        except Exception as e:
+            st.warning(f"SCAMP raised an internal error: {e}")
+            wcs_refined = None
+
+        elapsed = time.time() - start_time
+        st.write(f"⏱️ SCAMP finished in {elapsed:.1f} seconds")
+
+        if elapsed > scamp_timeout:
+            raise TimeoutError("SCAMP exceeded timeout limit")
+
+        if not wcs_refined:
+            st.error("SCAMP did not produce a valid WCS solution.")
+            if os.path.exists(scamp_log):
+                with open(scamp_log, "r") as f:
+                    st.code("".join(f.readlines()[-25:]))
+            return header, None
+
+        # --- Step 5: Validate the new WCS ---
+        st.info("🔍 Checking refined WCS matrix consistency...")
+        try:
+            det = np.linalg.det(wcs_refined.pixel_scale_matrix)
+            pix_scale = proj_plane_pixel_scales(wcs_refined) * 3600  # arcsec/pixel
+            st.write(f"Pixel scale (arcsec/pix): {pix_scale}")
+            st.write(f"WCS matrix determinant: {det:.3e}")
+            if abs(det) < 1e-12:
+                st.warning("Singular or nearly singular WCS matrix detected.")
+        except Exception as e:
+            st.error(f"WCS validation failed: {e}")
+
+        # --- Step 6: Update FITS header in-memory ---
+        st.info("Updating header with refined WCS (in memory)...")
+        header.update(wcs_refined.to_header())
+        st.success("WCS successfully updated in header (no file written).")
+
+        # --- Step 7: Log tail ---
+        if os.path.exists(scamp_log):
+            with open(scamp_log, "r") as f:
+                tail = f.readlines()[-25:]
+                st.write("SCAMP log tail:")
+                st.code("".join(tail))
+
+        st.success("🎯 Astrometric refinement completed.")
+        st.write(f"Total runtime: {time.time() - t0:.1f} s")
+
+        return header, wcs_refined
+
+    except Exception as e:
+        st.exception(e)
+        st.error(f"Astrometric refinement failed: {e}")
+        return header, None
 
 
 def refine_astrometry_with_stdpipe(
