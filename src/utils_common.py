@@ -167,21 +167,16 @@ def refine_astrometry_with_stdpipe(
             )
             image_data = image_data.astype(np.float32)
 
-        # Clean and prepare header for stdpipe
+                # --- Clean and prepare header for stdpipe & SCAMP ---
         clean_header = science_header.copy()
 
-        # Remove known problematic keywords
+        # Remove known problematic and metadata-only keywords
         keys_to_remove = [
-            "HISTORY",
-            "COMMENT",
-            "CONTINUE",  # General metadata
-            "XPIXELSZ",
-            "YPIXELSZ",
-            "CDELTM1",
-            "CDELTM2",
+            "HISTORY", "COMMENT", "CONTINUE",
+            "XPIXELSZ", "YPIXELSZ", "CDELTM1", "CDELTM2"
         ]
 
-        # Add distortion-related keywords to the removal list
+        # Also remove any old distortion or SIP-related keywords
         for key in list(clean_header.keys()):
             if any(
                 pattern in str(key).upper()
@@ -190,78 +185,81 @@ def refine_astrometry_with_stdpipe(
                 keys_to_remove.append(key)
 
         removed_count = 0
-        for key in set(keys_to_remove):  # Use set to avoid duplicates
+        for key in set(keys_to_remove):
             if key in clean_header:
                 del clean_header[key]
                 removed_count += 1
+        if removed_count > 0:
+            st.info(f"Removed {removed_count} non-essential or conflicting WCS keywords")
 
-        # Validate and, if necessary, fix the core WCS parameters
+        # --- Core WCS validity checks and reconstruction ---
         try:
-            # Ensure CTYPEs are present and valid
+            # Ensure CTYPE keywords exist
             if not clean_header.get("CTYPE1"):
                 clean_header["CTYPE1"] = "RA---TAN"
             if not clean_header.get("CTYPE2"):
                 clean_header["CTYPE2"] = "DEC--TAN"
 
-            # Ensure reference pixels are valid
+            # Ensure CRPIX and CRVAL exist and are finite
             if not np.isfinite(clean_header.get("CRPIX1", np.nan)):
                 clean_header["CRPIX1"] = image_data.shape[1] / 2.0
             if not np.isfinite(clean_header.get("CRPIX2", np.nan)):
                 clean_header["CRPIX2"] = image_data.shape[0] / 2.0
+            if not np.isfinite(clean_header.get("CRVAL1", np.nan)):
+                clean_header["CRVAL1"] = 0.0
+            if not np.isfinite(clean_header.get("CRVAL2", np.nan)):
+                clean_header["CRVAL2"] = 0.0
 
-            # Check for a valid CD matrix, if it exists
-            cd_keys = ["CD1_1", "CD1_2", "CD2_1", "CD2_2"]
-            if all(key in clean_header for key in cd_keys):
-                cd_values = [clean_header.get(key, 0) for key in cd_keys]
-                # Check for non-finite or zero values in the matrix
-                if any(not np.isfinite(v) or v == 0 for v in cd_values):
-                    st.warning("Invalid CD matrix detected. It will be ignored.")
-                    # Remove the invalid CD matrix so astropy can build a new one if possible
-                    for key in cd_keys:
-                        if key in clean_header:
-                            del clean_header[key]
+            # --- Resolve CD / PC / CDELT conflicts ---
+            has_cd = any(k.startswith("CD") for k in clean_header)
+            has_pc = any(k.startswith("PC") for k in clean_header)
+            has_cdelt = any(k.startswith("CDELT") for k in clean_header)
 
-            # If no CD matrix, ensure CDELT is present for WCS creation
-            if "CD1_1" not in clean_header:
+            # 1 If both CD and PC exist → keep CD, remove PC
+            if has_cd and has_pc:
+                for k in list(clean_header.keys()):
+                    if k.startswith("PC"):
+                        del clean_header[k]
+                st.info("Removed PC matrix because CD matrix already exists")
+
+            # 2️ If only PC exists, remove meaningless CDELT=1.0 values
+            elif has_pc and has_cdelt:
+                cdelt1 = clean_header.get("CDELT1", 1.0)
+                cdelt2 = clean_header.get("CDELT2", 1.0)
+                if abs(cdelt1) == 1.0 and abs(cdelt2) == 1.0:
+                    del clean_header["CDELT1"]
+                    del clean_header["CDELT2"]
+                    st.info("Removed identity CDELT values (redundant with PC matrix)")
+
+            # 3️ If no CD matrix, ensure CDELT scale from pixel scale
+            if not any(k.startswith("CD") for k in clean_header):
                 if "CDELT1" not in clean_header:
                     clean_header["CDELT1"] = -pixel_scale / 3600.0
-                    st.info("CDELT1 not found. Setting from pixel scale.")
+                    st.info("Added CDELT1 from pixel scale")
                 if "CDELT2" not in clean_header:
                     clean_header["CDELT2"] = pixel_scale / 3600.0
-                    st.info("CDELT2 not found. Setting from pixel scale.")
+                    st.info("Added CDELT2 from pixel scale")
+
+            # 4️⃣ Remove invalid CD entries (0 or NaN)
+            cd_keys = ["CD1_1", "CD1_2", "CD2_1", "CD2_2"]
+            if all(k in clean_header for k in cd_keys):
+                cd_values = [clean_header.get(k, 0) for k in cd_keys]
+                if any((not np.isfinite(v)) or v == 0 for v in cd_values):
+                    for k in cd_keys:
+                        del clean_header[k]
+                    st.warning("Invalid CD matrix removed — using pixel scale for WCS reconstruction")
+
+            # --- Validate the WCS ---
+            test_wcs = WCS(clean_header)
+            cd_matrix = test_wcs.pixel_scale_matrix
+            det = np.linalg.det(cd_matrix)
+            if abs(det) < 1e-12:
+                st.warning(f"Very small WCS determinant ({det:.2e}) — may indicate near-singular matrix")
+            else:
+                st.info(f"WCS validated successfully (determinant {det:.3e})")
 
         except Exception as header_fix_error:
-            st.warning(f"An error occurred while fixing the header: {header_fix_error}")
-
-        # Test the cleaned WCS before proceeding
-        try:
-            test_wcs = WCS(clean_header)
-            has_cd = all(k in test_wcs.wcs.__dict__ for k in ["cd"])
-            if hasattr(test_wcs.wcs, "cd") and test_wcs.wcs.cd is not None:
-                M = test_wcs.wcs.cd
-            elif hasattr(test_wcs.wcs, "pc") and test_wcs.wcs.pc is not None:
-                M = test_wcs.wcs.pc
-            else:
-                M = np.array([[1.0, 0.0], [0.0, 1.0]])
-
-            det = np.linalg.det(M)
-            if not np.isfinite(det) or abs(det) < 1e-12:
-                st.warning(f"Detected singular or invalid WCS matrix (det={det}). Replacing with nominal one.")
-                # Build a minimal valid matrix using the pixel scale
-                scale_deg = pixel_scale / 3600.0
-                # Assume North up, East left (negative in RA)
-                M = np.array([[-scale_deg, 0.0],
-                              [0.0, scale_deg]])
-                test_wcs.wcs.pc = M / scale_deg
-                test_wcs.wcs.cd = M
-                test_wcs.wcs.set()
-                clean_header.update(test_wcs.to_header(relax=True))
-                st.info("Replaced invalid WCS matrix with nominal tangent-plane projection.")
-            st.info("WCS validated successfully")
-        except Exception as mat_check_error:
-            st.warning(f"Failed to check/fix WCS matrix: {mat_check_error}")
-        except Exception as wcs_test_error:
-            st.error(f"WCS has issues : {wcs_test_error}")
+            st.error(f"Failed to check/fix WCS matrix: {header_fix_error}")
             return None
 
         def _ensure_native_byteorder(arr: np.ndarray) -> np.ndarray:
