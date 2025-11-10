@@ -600,7 +600,7 @@ def detection_and_photometry(
 
         # Step 1: Build minimal safe WCS
         wcs_safe, header_clean = build_minimal_tan_wcs(science_header,
-                                                       image_sub, wcs=w,
+                                                       image_sub,
                                                        pixel_scale_arcsec=pixel_scale)
 
         # Step 2: Pass wcs_safe to SCAMP for refinement
