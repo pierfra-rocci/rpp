@@ -141,13 +141,16 @@ def solve_with_astrometrynet(file_path):
 
             # Show a small region of the image for inspection
             try:
-                center_y, center_x = image_data.shape[0] // 2, image_data.shape[1] // 2
+                center_y, center_x = image_data.shape[0] // 2,
+                image_data.shape[1] // 2
                 sample_region = image_data[
-                    center_y - 50 : center_y + 50, center_x - 50 : center_x + 50
+                    center_y - 50: center_y + 50,
+                    center_x - 50: center_x + 50
                 ]
 
                 fig_sample, ax_sample = plt.subplots(figsize=(6, 6))
-                im = ax_sample.imshow(sample_region, origin="lower", cmap="gray")
+                im = ax_sample.imshow(sample_region, origin="lower",
+                                      cmap="gray")
                 ax_sample.set_title("Central 100x100 pixel region")
                 plt.colorbar(im, ax=ax_sample)
                 st.pyplot(fig_sample)
@@ -280,7 +283,7 @@ def solve_with_astrometrynet(file_path):
 
         # Prepare parameters for stdpipe blind_match_objects
         kwargs = {
-            "order": 2,  # SIP distortion order
+            "order": 3,  # SIP distortion order
             "update": False,  # Don't update object list in place
             "sn": 5,
             "get_header": False,  # Return WCS object, not header

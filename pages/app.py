@@ -1265,11 +1265,10 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         help="Faintest magnitude to use for calibration stars.",
     )
     st.session_state.analysis_parameters["astrometry_check"] = st.toggle(
-        "Refine Astrometry",
+        "Astrometry check",
         value=st.session_state.analysis_parameters["astrometry_check"],
         help=(
-            "Attempt to refine WCS using detected sources before photometry "
-            "(requires external solver)."
+            "Attempt to plate solve and refine WCS before photometry. "
         ),
     )
     st.session_state.analysis_parameters["calibrate_cosmic_rays"] = st.toggle(
@@ -1521,7 +1520,7 @@ if science_file is not None:
     wcs_obj, wcs_error = safe_wcs_create(science_header)
 
     # Initialize force_plate_solve as False by default
-    force_plate_solve = False
+    force_plate_solve = st.session_state.get("astrometry_check", False)
 
     # If WCS creation fails due to singular matrix, try to proceed without WCS for detection
     proceed_without_wcs = False
@@ -1538,20 +1537,8 @@ if science_file is not None:
     else:
         st.success("Valid WCS found.")
 
-        # Show Force Plate Solving checkbox only when valid WCS exists
-        force_plate_solve = st.checkbox(
-            "Force Plate-Solve",
-            value=st.session_state.analysis_parameters.get("force_plate_solve",
-                                                           False),
-            help=(
-                "Force plate solving even though a valid WCS is present. "
-                "This will replace the existing WCS solution with a new one."
-            ),
-            key="force_plate_solve_main",
-        )
-
         if force_plate_solve:
-            st.info("Force plate solve enabled - will re-solve astrometry")
+            st.info("Astrometry check enabled - will re-solve astrometry")
             use_astrometry = True
             wcs_obj = None  # Reset to trigger plate solving
         else:
@@ -1568,13 +1555,13 @@ if science_file is not None:
                 "forced by user" if force_plate_solve else "no valid WCS found"
             )
             with st.spinner(
-                f"Running plate solve ({plate_solve_reason}) - this may take a while..."
+                "Running astrometry check and plate solving - this may take a while..."
             ):
                 result = solve_with_astrometrynet(science_file_path)
                 if result is None:
                     if force_plate_solve:
                         st.error(
-                            "Forced plate solving failed. Will use original WCS if available."
+                            "Plate solving failed. Will use original WCS if available."
                         )
                         # Try to restore original WCS by reloading header
                         _, original_header = load_fits_data(science_file)
@@ -1600,7 +1587,7 @@ if science_file is not None:
                     )
                     st.success(f"{solve_type} successful!")
                     write_to_log(
-                        log_buffer, f"Plate solving completed ({plate_solve_reason})"
+                        log_buffer, f"Astrometry check completed ({plate_solve_reason})"
                     )
 
                     wcs_header_filename = (
@@ -1644,7 +1631,7 @@ if science_file is not None:
     st.session_state["proceed_without_wcs"] = proceed_without_wcs
     if proceed_without_wcs:
         st.warning(
-            "⚠️ Proceeding without valid WCS - photometry will be limited to instrumental magnitudes"
+            "Proceeding without valid WCS - photometry will be limited to instrumental magnitudes"
         )
 
     else:
@@ -2376,7 +2363,7 @@ if science_file is not None:
                         except (ValueError, TypeError):
                             continue
 
-                # Fallback to session state coordinates if header extraction failed
+                # Fallback to session state coordinates if header failed
                 if ra_center is None or dec_center is None:
                     ra_center = st.session_state.get("valid_ra")
                     dec_center = st.session_state.get("valid_dec")
