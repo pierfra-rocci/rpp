@@ -175,7 +175,7 @@ def register():
     success, message = send_email(
         email,
         "Welcome to RAPAS Photometry Pipeline!",
-        f"Hi {username},\n\nThank you for registering for the RAPAS Photometry Pipeline. We are excited to have you on board!\n\nBest,\nThe RAPAS Team",
+        f"Hi {username},\n\nThank you for registering for the RAPAS Photometry Pipeline. Enjoy!\n\nBest,\nThe RPP Team",
     )
     if not success:
         print(f"Warning: Failed to send welcome email: {message}")
