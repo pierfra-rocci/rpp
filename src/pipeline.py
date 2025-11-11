@@ -795,7 +795,7 @@ def detection_and_photometry(
 
                 # Instrumental magnitude for raw aperture sum
                 instrumental_mags = -2.5 * np.log10(
-                    phot_table[aperture_sum_col] / exposure_time
+                    phot_table[aperture_sum_col]     # / exposure_time
                 )
                 phot_table[f"instrumental_mag{radius_suffix}"] = instrumental_mags
 
@@ -834,7 +834,7 @@ def detection_and_photometry(
             epsf_table["psf_mag_err"] = m_err
 
             epsf_instrumental_mags = -2.5 * np.log10(
-                epsf_table["flux_fit"] / exposure_time
+                epsf_table["flux_fit"]     # / exposure_time
             )
             epsf_table["instrumental_mag"] = epsf_instrumental_mags
         except Exception as e:
