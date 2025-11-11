@@ -1313,33 +1313,33 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
     )
     st.markdown("[Get your key](https://www.astro-colibri.science)")
 
-# Add an expander for the Transient Finder
-# with st.sidebar.expander("Transient Finder", expanded=False):
+# Add expander for the Transient Finder
+with st.sidebar.expander("Transient Finder", expanded=False):
 
-#     # Add a checkbox to enable/disable the transient finder
-#     st.session_state.analysis_parameters['run_transient_finder'] = st.checkbox(
-#         "Enable Transient Finder",
-#         value=st.session_state.analysis_parameters.get('run_transient_finder', False)
-#     )
+    # Add a checkbox to enable/disable the transient finder
+    st.session_state.analysis_parameters['run_transient_finder'] = st.checkbox(
+        "Enable Transient Finder",
+        value=st.session_state.analysis_parameters.get('run_transient_finder', False)
+    )
 
-#     # Add survey and filter selection
-#     survey_options = ["PanSTARRS", "DSS2"]
-#     survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'DSS2'))
-#     st.session_state.analysis_parameters['transient_survey'] = st.selectbox(
-#         "Reference Survey",
-#         options=survey_options,
-#         index=survey_index,
-#         help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
-#     )
+    # Add survey and filter selection
+    survey_options = ["PanSTARRS", "DSS2"]
+    survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'DSS2'))
+    st.session_state.analysis_parameters['transient_survey'] = st.selectbox(
+        "Reference Survey",
+        options=survey_options,
+        index=survey_index,
+        help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
+    )
 
-#     filter_options = ["g", "r", "i", "blue", "red"]
-#     filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'red'))
-#     st.session_state.analysis_parameters['transient_filter'] = st.selectbox(
-#         "Reference Filter",
-#         options=filter_options,
-#         index=filter_index,
-#         help="Filter/band for the reference image. Options depend on the selected survey.",
-#     )
+    filter_options = ["g", "r", "i", "blue", "red"]
+    filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'red'))
+    st.session_state.analysis_parameters['transient_filter'] = st.selectbox(
+        "Reference Filter",
+        options=filter_options,
+        index=filter_index,
+        help="Filter/band for the reference image. Options depend on the selected survey.",
+    )
 
 if st.sidebar.button("💾 Save Configuration"):
     analysis_params = dict(st.session_state.get("analysis_parameters", {}))
