@@ -962,7 +962,7 @@ def enhance_catalog(
 
                     # Perform cross-matching
                     idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
-                    matches = d2d.arcsec <= 10
+                    matches = d2d.arcsec < 10
 
                     # Add matched quasar information to the final table
                     enhanced_table["qso_name"] = None
@@ -1016,6 +1016,102 @@ def enhance_catalog(
         write_to_log(
             st.session_state.get("log_buffer"),
             f"Error in Milliquas catalog processing: {str(e)}",
+            "ERROR",
+        )
+        
+    st.info("Querying 10 Parsec Catalog...")
+    try:
+        if field_center_ra is not None and field_center_dec is not None:
+            # Set columns to retrieve from the quasar catalog
+            v = Vizier(columns=["RAICRS", "DEICRS", "Name", "ObjType",
+                                "Gmag", "GBPmag", "GRPmag"])
+            v.ROW_LIMIT = -1  # No row limit
+
+            # Query the VII/294 catalog around the field center
+            result = v.query_region(
+                SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg, u.deg)),
+                width=field_width_arcmin * u.arcmin,
+                catalog="J/A+A/650/A201/tablea1",
+            )
+
+            if result and len(result) > 0:
+                qso_table = result[0]
+
+                # Convert to pandas DataFrame for easier matching
+                qso_df = qso_table.to_pandas()
+                qso_coords = SkyCoord(
+                    ra=qso_df["RAICRS"], dec=qso_df["DEICRS"], unit=u.deg
+                )
+
+                # Filter valid coordinates for QSO matching
+                valid_final_coords = enhanced_table[valid_coords_mask]
+
+                if len(valid_final_coords) > 0:
+                    # Create source coordinates for matching
+                    source_coords = SkyCoord(
+                        ra=valid_final_coords["ra"],
+                        dec=valid_final_coords["dec"],
+                        unit=u.deg,
+                    )
+
+                    # Perform cross-matching
+                    idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
+                    matches = d2d.arcsec < 10
+
+                    # Add matched quasar information to the final table
+                    enhanced_table["10pc_name"] = None
+                    enhanced_table["10pc_type"] = None
+                    enhanced_table["10pc_Gmag"] = None
+                    enhanced_table["10pc_GBPmag"] = None
+                    enhanced_table["10pc_GRPmag"] = None
+
+                    # Initialize catalog_matches column if it doesn't exist
+                    if "catalog_matches" not in enhanced_table.columns:
+                        enhanced_table["catalog_matches"] = ""
+
+                    # Map matches back to the original table indices
+                    valid_indices = valid_final_coords.index
+                    matched_sources = np.where(matches)[0]
+                    matched_qsos = idx[matches]
+
+                    for i, qso_idx in zip(matched_sources, matched_qsos):
+                        original_idx = valid_indices[i]
+                        enhanced_table.loc[original_idx, "10pc_name"] = qso_df.iloc[
+                            qso_idx
+                        ]["Name"]
+                        enhanced_table.loc[original_idx, "10pc_tyope"] = qso_df.iloc[
+                            qso_idx
+                        ]["ObjType"]
+                        enhanced_table.loc[original_idx, "10pc_Gmag"] = qso_df.iloc[
+                            qso_idx
+                        ]["Gmag"]
+
+                    # Update the catalog_matches column for matched quasars
+                    has_qso = enhanced_table["qso_name"].notna()
+                    enhanced_table.loc[has_qso, "catalog_matches"] += "QSO; "
+
+                    st.success(
+                        f"Found {sum(has_qso)} sources in field from 10 Parsec catalog."
+                    )
+                    write_to_log(
+                        st.session_state.get("log_buffer"),
+                        f"Found {sum(has_qso)} sources matches in 10 Parsec catalog",
+                        "INFO",
+                    )
+                else:
+                    st.info("No valid coordinates available for 10 Parsec matching")
+            else:
+                st.warning("No sources found in field from 10 Parsec catalog.")
+                write_to_log(
+                    st.session_state.get("log_buffer"),
+                    "No sources found in field from 10 Parsec catalog",
+                    "INFO",
+                )
+    except Exception as e:
+        st.error(f"Error querying VizieR 10 Parsec: {str(e)}")
+        write_to_log(
+            st.session_state.get("log_buffer"),
+            f"Error in 10 Parsec catalog processing: {str(e)}",
             "ERROR",
         )
 
