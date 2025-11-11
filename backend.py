@@ -3,11 +3,16 @@ import sqlite3
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import random
 import string
 import os
 import base64
 import datetime
+import re
+from contextlib import contextmanager
+import config
 
 app = Flask(__name__)
 app.config["PREFERRED_URL_SCHEME"] = "https"
@@ -17,51 +22,57 @@ CORS(app)
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.db")
 
 
+@contextmanager
 def get_db_connection():
+    """Context manager for database connections"""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
-    return conn
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 # Create users table if it doesn't exist
 def init_db():
     try:
-        conn = get_db_connection()
-        conn.execute("""CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            config_json TEXT
-        )""")
-        conn.execute("""CREATE TABLE IF NOT EXISTS recovery_codes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL,
-            code TEXT NOT NULL,
-            expires_at DATETIME NOT NULL
-        )""")
-        conn.commit()
-        print("Database schema created successfully")
+        with get_db_connection() as conn:
+            conn.execute("""CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                config_json TEXT
+            )""")
+            conn.execute("""CREATE TABLE IF NOT EXISTS recovery_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                expires_at DATETIME NOT NULL
+            )""")
+            print("Database schema created successfully")
 
-        # Verify the tables exist
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
-        )
-        if cursor.fetchone():
-            print("Confirmed 'users' table exists")
-        else:
-            print("WARNING: 'users' table was not created!")
+            # Verify the tables exist
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+            )
+            if cursor.fetchone():
+                print("Confirmed 'users' table exists")
+            else:
+                print("WARNING: 'users' table was not created!")
 
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='recovery_codes'"
-        )
-        if cursor.fetchone():
-            print("Confirmed 'recovery_codes' table exists")
-        else:
-            print("WARNING: 'recovery_codes' table was not created!")
-
-        conn.close()
+            cursor.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='recovery_codes'"
+            )
+            if cursor.fetchone():
+                print("Confirmed 'recovery_codes' table exists")
+            else:
+                print("WARNING: 'recovery_codes' table was not created!")
 
     except Exception as e:
         print(f"Database initialization error: {e}")
@@ -71,34 +82,58 @@ def init_db():
 init_db()
 
 
+def is_valid_email(email):
+    """Validate email format"""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+
+def cleanup_expired_codes():
+    """Remove expired recovery codes from the database"""
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "DELETE FROM recovery_codes WHERE expires_at < datetime('now')"
+            )
+    except Exception as e:
+        print(f"Error cleaning up expired codes: {e}")
+
+
 # Helper send email (configure SMTP as needed)
 def send_email(to_email, subject, body):
-    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", 587))
-    smtp_user = os.environ.get("SMTP_USER")
-    smtp_pass_encoded = os.environ.get("SMTP_PASS_ENCODED")
+    smtp_server = config.SMTP_SERVER
+    smtp_port = config.SMTP_PORT
+    smtp_user = config.SMTP_USER
+    smtp_pass_encoded = config.SMTP_PASS_ENCODED
     smtp_pass = (
         base64.b64decode(smtp_pass_encoded).decode() if smtp_pass_encoded else None
     )
     if not smtp_user or not smtp_pass:
         print("SMTP credentials not set.")
-        return False
+        return False, "Email service is not configured."
+    
     try:
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+        
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
             server.login(smtp_user, smtp_pass)
-            message = f"Subject: {subject}\n\n{body}"
-            server.sendmail(smtp_user, to_email, message)
-        return True
+            server.send_message(msg)
+        return True, "Email sent successfully."
     except smtplib.SMTPAuthenticationError as e:
         print(f"Failed to send email: SMTP authentication error - {e}")
-        return False
+        return False, "Failed to send email due to authentication error."
     except smtplib.SMTPConnectError as e:
         print(f"Failed to send email: Error connecting to the SMTP server - {e}")
-        return False
+        return False, "Failed to connect to the email server."
     except Exception as e:
         print(f"Failed to send email: An unexpected error occurred - {e}")
-        return False
+        return False, "An unexpected error occurred while sending the email."
 
 
 @app.route("/register", methods=["POST"])
@@ -107,38 +142,44 @@ def register():
     username = data.get("username")
     password = data.get("password")
     email = data.get("email")
+    
     if not username or not password or not email:
         return "Username, password, and email required.", 400
-    conn = get_db_connection()
-    cur = conn.cursor()
-    # Check if username or email already exists
-    cur.execute(
-        "SELECT * FROM users WHERE username = ? OR email = ?", (username, email)
-    )
-    if cur.fetchone():
-        conn.close()
-        return "Username or email is already taken.", 409
-    hashed_pw = generate_password_hash(password, method="pbkdf2:sha256")
-    # Check if password hash already exists
-    cur.execute("SELECT * FROM users WHERE password = ?", (hashed_pw,))
-    if cur.fetchone():
-        conn.close()
-        return (
-            "Password is already used by another user. Please choose a different password.",
-            409,
-        )
-    cur.execute(
-        "INSERT INTO users (username, password, email) VALUES (?, ?, ?)",
-        (username, hashed_pw, email),
-    )
-    conn.commit()
-    conn.close()
-    # Send welcome email
-    send_email(
+    
+    if not is_valid_email(email):
+        return "Invalid email format.", 400
+    
+    if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not any(c.isdigit() for c in password):
+        return "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one digit.", 400
+    
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            # Check if username or email already exists
+            cur.execute(
+                "SELECT * FROM users WHERE username = ? OR email = ?", (username, email)
+            )
+            if cur.fetchone():
+                return "Username or email is already taken.", 409
+            
+            hashed_pw = generate_password_hash(password)
+            cur.execute(
+                "INSERT INTO users (username, password, email) VALUES (?, ?, ?)",
+                (username, hashed_pw, email),
+            )
+    except Exception as e:
+        print(f"Registration error: {e}")
+        return "An error occurred during registration.", 500
+    
+    # Send welcome email (don't fail registration if email fails)
+    success, message = send_email(
         email,
         "Welcome to RAPAS Photometry Pipeline!",
         f"Hi {username},\n\nThank you for registering for the RAPAS Photometry Pipeline. We are excited to have you on board!\n\nBest,\nThe RAPAS Team",
     )
+    if not success:
+        print(f"Warning: Failed to send welcome email: {message}")
+    
     return "Registered successfully.", 201
 
 
@@ -147,13 +188,19 @@ def login():
     data = request.form
     username = data.get("username")
     password = data.get("password")
+    
     if not username or not password:
         return "Username and password required.", 400
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE username = ?", (username,))
-    user = cur.fetchone()
-    conn.close()
+    
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM users WHERE username = ?", (username,))
+            user = cur.fetchone()
+    except Exception as e:
+        print(f"Login error: {e}")
+        return "An error occurred during login.", 500
+    
     if user and check_password_hash(user["password"], password):
         return "Logged in successfully.", 200
     return "Invalid username or password.", 401
@@ -163,25 +210,40 @@ def login():
 def recover_request():
     data = request.form
     email = data.get("email")
+    
     if not email:
         return "Email required.", 400
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT username FROM users WHERE email = ?", (email,))
-    user = cur.fetchone()
-    if not user:
-        conn.close()
-        return "Email not found.", 404
-    code = "".join(random.choices(string.digits, k=6))
-    expires_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
-    hashed_code = generate_password_hash(code)
-    cur.execute(
-        "INSERT INTO recovery_codes (email, code, expires_at) VALUES (?, ?, ?)",
-        (email, hashed_code, expires_at),
-    )
-    conn.commit()
-    conn.close()
-    send_email(email, "Password Recovery Code", f"Your recovery code is: {code}")
+    
+    if not is_valid_email(email):
+        return "Invalid email format.", 400
+    
+    # Clean up old expired codes
+    cleanup_expired_codes()
+    
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT username FROM users WHERE email = ?", (email,))
+            user = cur.fetchone()
+            
+            if not user:
+                return "Email not found.", 404
+            
+            code = "".join(random.choices(string.digits, k=6))
+            expires_at = datetime.datetime.now() + datetime.timedelta(minutes=15)
+            hashed_code = generate_password_hash(code)
+            cur.execute(
+                "INSERT INTO recovery_codes (email, code, expires_at) VALUES (?, ?, ?)",
+                (email, hashed_code, expires_at.strftime("%Y-%m-%d %H:%M:%S")),
+            )
+    except Exception as e:
+        print(f"Recovery request error: {e}")
+        return "An error occurred during recovery request.", 500
+    
+    success, message = send_email(email, "Password Recovery Code", f"Your recovery code is: {code}")
+    if not success:
+        return message, 500
+    
     return "Recovery code sent to your email.", 200
 
 
@@ -191,33 +253,45 @@ def recover_confirm():
     email = data.get("email")
     code = data.get("code")
     new_password = data.get("new_password")
+    
     if not email or not code or not new_password:
         return "Email, code, and new password required.", 400
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM recovery_codes WHERE email = ?", (email,))
-    recovery_codes = cur.fetchall()
+    
+    if not is_valid_email(email):
+        return "Invalid email format.", 400
+    
+    if len(new_password) < 8:
+        return "New password must be at least 8 characters long.", 400
+    
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM recovery_codes WHERE email = ?", (email,))
+            recovery_codes = cur.fetchall()
 
-    valid_code_found = False
-    for recovery_code in recovery_codes:
-        if check_password_hash(recovery_code["code"], code):
-            expires_at = datetime.datetime.strptime(
-                recovery_code["expires_at"], "%Y-%m-%d %H:%M:%S.%f"
-            )
-            if datetime.datetime.now() > expires_at:
-                continue  # Expired code
-            valid_code_found = True
-            break
+            valid_code_found = False
+            recovery_code_id = None
+            for recovery_code in recovery_codes:
+                if check_password_hash(recovery_code["code"], code):
+                    expires_at = datetime.datetime.strptime(
+                        recovery_code["expires_at"], "%Y-%m-%d %H:%M:%S"
+                    )
+                    if datetime.datetime.now() > expires_at:
+                        continue  # Expired code
+                    valid_code_found = True
+                    recovery_code_id = recovery_code["id"]
+                    break
 
-    if not valid_code_found:
-        conn.close()
-        return "Invalid or expired recovery code.", 400
+            if not valid_code_found:
+                return "Invalid or expired recovery code.", 400
 
-    hashed_pw = generate_password_hash(new_password, method="pbkdf2:sha256")
-    cur.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, email))
-    cur.execute("DELETE FROM recovery_codes WHERE email = ?", (email,))
-    conn.commit()
-    conn.close()
+            hashed_pw = generate_password_hash(new_password)
+            cur.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, email))
+            cur.execute("DELETE FROM recovery_codes WHERE id = ?", (recovery_code_id,))
+    except Exception as e:
+        print(f"Recovery confirm error: {e}")
+        return "An error occurred during password reset.", 500
+    
     return "Password updated successfully.", 200
 
 
@@ -226,28 +300,39 @@ def save_config():
     data = request.json
     username = data.get("username")
     config_json = data.get("config_json")
+    
     if not username or config_json is None:
         return "Username and config_json required.", 400
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE users SET config_json = ? WHERE username = ?", (config_json, username)
-    )
-    conn.commit()
-    conn.close()
+    
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE users SET config_json = ? WHERE username = ?", (config_json, username)
+            )
+    except Exception as e:
+        print(f"Save config error: {e}")
+        return "An error occurred while saving configuration.", 500
+    
     return "Config saved.", 200
 
 
 @app.route("/get_config", methods=["GET"])
 def get_config():
     username = request.args.get("username")
+    
     if not username:
         return "Username required.", 400
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT config_json FROM users WHERE username = ?", (username,))
-    row = cur.fetchone()
-    conn.close()
+    
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT config_json FROM users WHERE username = ?", (username,))
+            row = cur.fetchone()
+    except Exception as e:
+        print(f"Get config error: {e}")
+        return "An error occurred while retrieving configuration.", 500
+    
     if row and row["config_json"]:
         return row["config_json"], 200
     else:

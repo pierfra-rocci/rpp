@@ -21,6 +21,20 @@ if "recovery_step" not in st.session_state:  # Keep for password recovery logic
 
 backend_url = "http://localhost:5000"
 
+
+def validate_password(password):
+    """Validate password meets all requirements"""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not any(c.isupper() for c in password):
+        return False, "Password must contain at least one uppercase letter."
+    if not any(c.islower() for c in password):
+        return False, "Password must contain at least one lowercase letter."
+    if not any(c.isdigit() for c in password):
+        return False, "Password must contain at least one digit."
+    return True, ""
+
+
 if not st.session_state.logged_in:
     st.title("**RAPAS Photometry Pipeline**")
     st.sidebar.markdown("## User Credentials")
@@ -44,56 +58,72 @@ if not st.session_state.logged_in:
     )
 
     login_col, register_col = st.sidebar.columns([1, 1])
-    login_clicked = st.button("Login")
-    register_clicked = st.button("Register")
+
+    with login_col:
+        login_clicked = st.button("Login")
+    with register_col:
+        register_clicked = st.button("Register")
 
     if login_clicked:
         if username and password:
-            response = requests.post(
-                f"{backend_url}/login",
-                data={"username": username, "password": password},
-            )
-            if response.status_code == 200:
-                st.session_state.logged_in = True
-                st.session_state.username = username
-                st.rerun()
-            else:
-                st.error(response.text)
+            try:
+                response = requests.post(
+                    f"{backend_url}/login",
+                    data={"username": username, "password": password},
+                )
+                if response.status_code == 200:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.rerun()
+                else:
+                    st.error(response.text)
+            except requests.exceptions.RequestException as e:
+                st.error(f"Connection error: Could not reach the backend server. {e}")
         else:
             st.warning("Please enter both username and password.")
 
     if register_clicked:
         if username and password and email:
-            if len(password) < 8:
-                st.warning("Password must be at least 8 characters long.")
+            # Validate password before sending to backend
+            is_valid, error_message = validate_password(password)
+            if not is_valid:
+                st.warning(error_message)
             else:
-                response = requests.post(
-                    f"{backend_url}/register",
-                    data={"username": username, "password": password, "email": email},
-                )
-                if response.status_code == 201:
-                    st.success(response.text)
-                else:
-                    st.error(response.text)
+                try:
+                    response = requests.post(
+                        f"{backend_url}/register",
+                        data={"username": username, "password": password, "email": email},
+                    )
+                    if response.status_code == 201:
+                        st.success(response.text)
+                    else:
+                        st.error(response.text)
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Connection error: Could not reach the backend server. {e}")
         else:
             st.warning("Please enter username, password, and email.")
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("## Password Recovery")
     recovery_email = st.sidebar.text_input("Email", value="", key="recovery_email")
+
     if st.session_state.recovery_step == 0:
         if st.sidebar.button("Send Request"):
             if recovery_email:
-                resp = requests.post(
-                    f"{backend_url}/recover_request", data={"email": recovery_email}
-                )
-                if resp.status_code == 200:
-                    st.session_state.recovery_step = 1
-                    st.success("Recovery code sent to your email.")
-                else:
-                    st.error(resp.text)
+                try:
+                    resp = requests.post(
+                        f"{backend_url}/recover_request", data={"email": recovery_email}
+                    )
+                    if resp.status_code == 200:
+                        st.session_state.recovery_step = 1
+                        st.success("Recovery code sent to your email.")
+                    else:
+                        st.error(resp.text)
+                except requests.exceptions.RequestException as e:
+                    st.error(f"Connection error: Could not reach the backend server. {e}")
             else:
                 st.warning("Please enter your email.")
+
     elif st.session_state.recovery_step == 1:
         code = st.sidebar.text_input("Enter Recovery Code", key="recovery_code")
         new_password = st.sidebar.text_input(
@@ -101,28 +131,38 @@ if not st.session_state.logged_in:
         )
         if st.sidebar.button("Reset Password"):
             if recovery_email and code and new_password:
-                resp = requests.post(
-                    f"{backend_url}/recover_confirm",
-                    data={
-                        "email": recovery_email,
-                        "code": code,
-                        "new_password": new_password,
-                    },
-                )
-                if resp.status_code == 200:
-                    st.success("Password updated successfully. You can now log in.")
-                    st.session_state.recovery_step = 0
+                # Validate new password
+                is_valid, error_message = validate_password(new_password)
+                if not is_valid:
+                    st.warning(error_message)
                 else:
-                    st.error(resp.text)
+                    try:
+                        resp = requests.post(
+                            f"{backend_url}/recover_confirm",
+                            data={
+                                "email": recovery_email,
+                                "code": code,
+                                "new_password": new_password,
+                            },
+                        )
+                        if resp.status_code == 200:
+                            st.success("Password updated successfully. You can now log in.")
+                            st.session_state.recovery_step = 0
+                        else:
+                            st.error(resp.text)
+                    except requests.exceptions.RequestException as e:
+                        st.error(f"Connection error: Could not reach the backend server. {e}")
             else:
                 st.warning("Please enter all fields.")
+
         if st.sidebar.button("Cancel Recovery"):
             st.session_state.recovery_step = 0
+            st.rerun()
 else:
     st.success(f"Welcome, {st.session_state.username}! Redirecting to the main app...")
     # Load config from backend and store the raw dictionaries in session state
     try:
-        config_url = f"{backend_url}/get_config"  # Corrected URL path
+        config_url = f"{backend_url}/get_config"
         resp = requests.get(config_url, params={"username": st.session_state.username})
         if resp.status_code == 200 and resp.text and resp.text != "{}":
             config = json.loads(resp.text)
@@ -130,10 +170,10 @@ else:
             if "analysis_parameters" in config:
                 st.session_state["analysis_parameters"] = config["analysis_parameters"]
 
-            if "observatory_data" in config:  # Use 'observatory_data' key
+            if "observatory_data" in config:
                 st.session_state["observatory_data"] = config["observatory_data"]
 
-            if "colibri_api_key" in config:  # Use 'colibri_api_key' key
+            if "colibri_api_key" in config:
                 st.session_state["colibri_api_key"] = config["colibri_api_key"]
             st.info("User configuration loaded.")
         else:
@@ -144,6 +184,13 @@ else:
             if "observatory_data" not in st.session_state:
                 st.session_state["observatory_data"] = {}
 
+    except requests.exceptions.RequestException as e:
+        st.warning(f"Could not load user config: Connection error - {e}")
+
+        if "analysis_parameters" not in st.session_state:
+            st.session_state["analysis_parameters"] = {}
+        if "observatory_data" not in st.session_state:
+            st.session_state["observatory_data"] = {}
     except Exception as e:
         st.warning(f"Could not load user config: {e}")
 
