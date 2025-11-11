@@ -9,10 +9,14 @@ from astropy.io import fits
 # Third-Party Imports
 import requests
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 from astropy.table import Table
-import streamlit as st  # Keep if directly used, otherwise remove
+
+import streamlit as st
 from astropy.io.votable import from_table, writeto
 
 # Constants
@@ -1185,3 +1189,246 @@ def validate_wcs_orientation(original_header, solved_header, test_pixel_coords):
     except Exception as e:
         st.warning(f"Could not validate WCS orientation: {e}")
         return True  # Assume OK if validation fails
+
+
+# For matching based on RA/Dec
+def match_catalogs_by_position(table1, table2, tolerance_arcsec=1.0):
+    """Match two catalogs using sky coordinates"""
+    coords1 = SkyCoord(ra=table1['ra']*u.deg, dec=table1['dec']*u.deg)
+    coords2 = SkyCoord(ra=table2['ra']*u.deg, dec=table2['dec']*u.deg)
+
+    idx, sep, _ = coords1.match_to_catalog_sky(coords2)
+    # Only keep matches within tolerance
+    matched = sep < tolerance_arcsec * u.arcsec
+
+    return idx, matched
+
+
+# Or for pixel coordinates (simpler, what you're currently trying to do)
+def match_by_pixels(table1, table2, x_col1='xcenter', y_col1='ycenter',
+                    x_col2='x_init', y_col2='y_init', tolerance_pixels=0.5):
+    """Match catalogs by pixel distance"""
+    from scipy.spatial import cKDTree
+
+    coords1 = np.column_stack([table1[x_col1], table1[y_col1]])
+    coords2 = np.column_stack([table2[x_col2], table2[y_col2]])
+
+    tree = cKDTree(coords2)
+    distances, indices = tree.query(coords1)
+    matched = distances < tolerance_pixels
+
+    return indices, matched, distances
+
+
+def clean_final_table(df):
+    """Remove rows with NaN, Inf, or null values in critical columns"""
+
+    # Replace inf with NaN for easier handling
+    df = df.replace([np.inf, -np.inf], np.nan)
+
+    # Define critical columns that must not have NaN
+    critical_cols = ['ra', 'dec', 'xcenter', 'ycenter']
+
+    # Optional: Also check magnitude columns
+    mag_cols = [col for col in df.columns if 'mag' in col.lower()]
+    critical_cols.extend(mag_cols)
+
+    # Keep only columns that exist
+    critical_cols = [col for col in critical_cols if col in df.columns]
+
+    initial_count = len(df)
+
+    # Remove rows with NaN in critical columns
+    df_clean = df.dropna(subset=critical_cols)
+
+    removed = initial_count - len(df_clean)
+    if removed > 0:
+        st.info(f"Removed {removed} rows with NaN/Inf values in critical columns")
+
+    return df_clean
+
+
+def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.0):
+    """
+    Merge aperture and PSF photometry, keeping ALL sources from both.
+
+    Returns:
+    - Sources matched in both: have both aperture_mag and psf_mag
+    - PSF-only sources: have psf_mag but aperture_mag is NaN
+    - Aperture-only sources: have aperture_mag but psf_mag is NaN
+    """
+    from scipy.spatial import cKDTree
+
+    # Determine coordinate columns
+    aper_x = 'xcenter' if 'xcenter' in aperture_table.columns else 'x_0'
+    aper_y = 'ycenter' if 'ycenter' in aperture_table.columns else 'y_0'
+    psf_x = 'x_init' if 'x_init' in psf_table.columns else 'xcenter'
+    psf_y = 'y_init' if 'y_init' in psf_table.columns else 'ycenter'
+
+    # Convert to DataFrames if needed
+    if not isinstance(aperture_table, pd.DataFrame):
+        aperture_table = aperture_table.to_pandas()
+    if not isinstance(psf_table, pd.DataFrame):
+        psf_table = psf_table.to_pandas()
+
+    # Build coordinate arrays
+    aper_coords = np.column_stack([aperture_table[aper_x],
+                                   aperture_table[aper_y]])
+    psf_coords = np.column_stack([psf_table[psf_x], psf_table[psf_y]])
+
+    # Match PSF sources to aperture sources
+    tree = cKDTree(aper_coords)
+    distances, aper_indices = tree.query(psf_coords)
+    matched = distances < tolerance_pixels
+
+    # Create three groups:
+    # 1. PSF sources matched to aperture sources
+    psf_matched_idx = np.where(matched)[0]
+    aper_matched_idx = aper_indices[matched]
+
+    # 2. PSF sources with NO aperture match
+    psf_unmatched_idx = np.where(~matched)[0]
+
+    # 3. Aperture sources with NO PSF match
+    aper_has_match = np.zeros(len(aperture_table), dtype=bool)
+    aper_has_match[aper_matched_idx] = True
+    aper_unmatched_idx = np.where(~aper_has_match)[0]
+
+    # Build final table
+    final_rows = []
+
+    # Add matched sources (have both aperture and PSF)
+    for psf_idx, aper_idx in zip(psf_matched_idx, aper_matched_idx):
+        row = aperture_table.iloc[aper_idx].to_dict()
+        # Add PSF measurements with clear prefixes
+        psf_row = psf_table.iloc[psf_idx]
+        if 'flux_fit' in psf_row:
+            row['psf_flux'] = psf_row['flux_fit']
+        if 'flux_err' in psf_row:
+            row['psf_flux_err'] = psf_row['flux_err']
+        if 'instrumental_mag' in psf_row:
+            row['psf_instrumental_mag'] = psf_row['instrumental_mag']
+
+        # Mark as having both
+        row['phot_method'] = 'both'
+
+        final_rows.append(row)
+
+    # Add PSF-only sources
+    for psf_idx in psf_unmatched_idx:
+        psf_row = psf_table.iloc[psf_idx].to_dict()
+
+        row = {
+            'xcenter': psf_row.get(psf_x),
+            'ycenter': psf_row.get(psf_y),
+            'ra': psf_row.get('ra'),
+            'dec': psf_row.get('dec'),
+            'psf_flux': psf_row.get('flux_fit'),
+            'psf_flux_err': psf_row.get('flux_err'),
+            'psf_instrumental_mag': psf_row.get('instrumental_mag'),
+            'phot_method': 'psf_only'
+        }
+
+        final_rows.append(row)
+
+    # Add aperture-only sources
+    for aper_idx in aper_unmatched_idx:
+        row = aperture_table.iloc[aper_idx].to_dict()
+        row['phot_method'] = 'aperture_only'
+        final_rows.append(row)
+
+    final_table = pd.DataFrame(final_rows)
+
+    st.info(f"""
+    Photometry merge results:
+    - Matched sources (both methods): {len(psf_matched_idx)}
+    - PSF-only sources: {len(psf_unmatched_idx)}
+    - Aperture-only sources: {len(aper_unmatched_idx)}
+    - Total sources: {len(final_table)}
+    """)
+
+    return final_table
+
+
+def add_calibrated_magnitudes(final_table, zero_point, airmass):
+    """
+    Add calibrated magnitudes for both aperture and PSF.
+    Handle cases where only one method is available.
+    """
+    # Aperture magnitude (if available)
+    if 'instrumental_mag' in final_table.columns:
+        final_table['aperture_mag'] = (
+            final_table['instrumental_mag'] + zero_point - 0.1 * airmass
+        )
+
+    # PSF magnitude (if available)
+    if 'psf_instrumental_mag' in final_table.columns:
+        final_table['psf_mag'] = (
+            final_table['psf_instrumental_mag'] + zero_point - 0.1 * airmass
+        )
+
+    # Create a "best" magnitude column using PSF when available, aperture as fallback
+    if 'psf_mag' in final_table.columns and 'aperture_mag' in final_table.columns:
+        final_table['mag_best'] = final_table['psf_mag'].fillna(final_table['aperture_mag'])
+        final_table['mag_method'] = final_table['psf_mag'].notna().map({True: 'psf', False: 'aperture'})
+    elif 'psf_mag' in final_table.columns:
+        final_table['mag_best'] = final_table['psf_mag']
+        final_table['mag_method'] = 'psf'
+    elif 'aperture_mag' in final_table.columns:
+        final_table['mag_best'] = final_table['aperture_mag']
+        final_table['mag_method'] = 'aperture'
+
+    return final_table
+
+
+def clean_photometry_table(df, require_magnitude=True):
+    """
+    Clean table but preserve sources that have valid photometry in at least one method.
+
+    Args:
+        require_magnitude: If True, remove sources without any valid magnitude
+    """
+    # Replace inf with NaN
+    df = df.replace([np.inf, -np.inf], np.nan)
+
+    # Always require valid coordinates
+    coord_cols = ['xcenter', 'ycenter']
+    coord_cols = [col for col in coord_cols if col in df.columns]
+
+    initial_count = len(df)
+
+    # Remove rows with invalid coordinates
+    df = df.dropna(subset=coord_cols)
+    removed_coords = initial_count - len(df)
+
+    if require_magnitude:
+        # Remove sources that don't have ANY valid magnitude measurement
+        mag_cols = [col for col in df.columns if 'mag' in col.lower() and col != 'mag_method']
+
+        if mag_cols:
+            # Keep row if it has at least ONE valid magnitude
+            has_valid_mag = df[mag_cols].notna().any(axis=1)
+            df = df[has_valid_mag]
+            removed_no_mag = initial_count - removed_coords - len(df)
+        else:
+            removed_no_mag = 0
+    else:
+        removed_no_mag = 0
+
+    # Remove rows where ALL numeric columns are NaN (completely empty rows)
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    if len(numeric_cols) > 0:
+        df = df.dropna(subset=numeric_cols, how='all')
+
+    total_removed = initial_count - len(df)
+
+    if total_removed > 0:
+        st.info(f"""
+        Cleaning results:
+        - Removed {removed_coords} sources with invalid coordinates
+        - Removed {removed_no_mag} sources without valid magnitudes
+        - Total removed: {total_removed}
+        - Remaining sources: {len(df)}
+        """)
+
+    return df

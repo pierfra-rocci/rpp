@@ -36,6 +36,9 @@ from src.tools import (
     save_header_to_txt,
     fix_header,
     save_catalog_files,
+    add_calibrated_magnitudes,
+    merge_photometry_catalogs,
+    clean_photometry_table
 )
 
 from src.pipeline import (
@@ -2015,328 +2018,348 @@ if science_file is not None:
                                 if zero_point_value is not None:
                                     write_to_log(
                                         log_buffer,
-                                        f"Zero point: {zero_point_value:.3f} ± {zero_point_std:.3f}",
+                                        f"Zero point: {zero_point_value:.2f} ± {zero_point_std:.2f}",
                                     )
                                     write_to_log(log_buffer, f"Airmass: {air:.2f}")
 
-                                    if "final_phot_table" in st.session_state:
-                                        final_table = st.session_state[
-                                            "final_phot_table"
-                                        ]
+                                    try:
+                                        if "epsf_photometry_result" in st.session_state and epsf_table is not None:
 
-                                        try:
-                                            if (
-                                                "epsf_photometry_result"
-                                                in st.session_state
-                                                and epsf_table is not None
-                                            ):
-                                                epsf_df = (
-                                                    epsf_table.to_pandas()
-                                                    if not isinstance(
-                                                        epsf_table, pd.DataFrame
-                                                    )
-                                                    else epsf_table
-                                                )
+                                            # Convert tables to pandas DataFrames
+                                            epsf_df = epsf_table.to_pandas() if not isinstance(epsf_table, pd.DataFrame) else epsf_table
+                                            final_table = st.session_state["final_phot_table"]
 
-                                                epsf_x_col = (
-                                                    "x_init"
-                                                    if "x_init" in epsf_df.columns
-                                                    else "xcenter"
-                                                )
-                                                epsf_y_col = (
-                                                    "y_init"
-                                                    if "y_init" in epsf_df.columns
-                                                    else "ycenter"
-                                                )
-
-                                                final_x_col = (
-                                                    "xcenter"
-                                                    if "xcenter" in final_table.columns
-                                                    else "x_0"
-                                                )
-                                                final_y_col = (
-                                                    "ycenter"
-                                                    if "ycenter" in final_table.columns
-                                                    else "y_0"
-                                                )
-
-                                                if (
-                                                    epsf_x_col in epsf_df.columns
-                                                    and epsf_y_col in epsf_df.columns
-                                                ):
-                                                    epsf_df["match_id"] = (
-                                                        epsf_df[epsf_x_col]
-                                                        .round(2)
-                                                        .astype(str)
-                                                        + "_"
-                                                        + epsf_df[epsf_y_col]
-                                                        .round(2)
-                                                        .astype(str)
-                                                    )
-
-                                                if (
-                                                    final_x_col in final_table.columns
-                                                    and final_y_col
-                                                    in final_table.columns
-                                                ):
-                                                    final_table["match_id"] = (
-                                                        final_table[final_x_col]
-                                                        .round(2)
-                                                        .astype(str)
-                                                        + "_"
-                                                        + final_table[final_y_col]
-                                                        .round(2)
-                                                        .astype(str)
-                                                    )
-                                                else:
-                                                    st.warning(
-                                                        f"Coordinate columns not found in final table. Available columns: {final_table.columns.tolist()}"
-                                                    )
-
-                                                epsf_cols = {}
-                                                epsf_cols["match_id"] = "match_id"
-                                                epsf_cols["flux_fit"] = "psf_flux_fit"
-                                                epsf_cols["flux_err"] = "psf_flux_err"
-                                                epsf_cols["instrumental_mag"] = (
-                                                    "psf_instrumental_mag"
-                                                )
-
-                                                if (
-                                                    len(epsf_cols) > 1
-                                                    and "match_id" in epsf_df.columns
-                                                    and "match_id"
-                                                    in final_table.columns
-                                                ):
-                                                    epsf_subset = epsf_df[
-                                                        [
-                                                            col
-                                                            for col in epsf_cols.keys()
-                                                            if col in epsf_df.columns
-                                                        ]
-                                                    ].rename(columns=epsf_cols)
-
-                                                final_table = pd.merge(
-                                                    final_table,
-                                                    epsf_df,
-                                                    on="match_id",
-                                                    how="outer",
-                                                    indicator=True,
-                                                )
-
-                                                if (
-                                                    "instrumental_mag_y"
-                                                    in final_table.columns
-                                                ):
-                                                    final_table["psf_mag"] = (
-                                                        final_table[
-                                                            "instrumental_mag_y"
-                                                        ]
-                                                        + zero_point_value
-                                                        - 0.1 * air
-                                                    )
-                                                    st.success("Added PSF photometry")
-
-                                                if (
-                                                    "instrumental_mag_x"
-                                                    in final_table.columns
-                                                ):
-                                                    if (
-                                                        "calib_mag"
-                                                        not in final_table.columns
-                                                    ):
-                                                        final_table[
-                                                            "aperture_instrumental_mag"
-                                                        ] = final_table[
-                                                            "instrumental_mag_x"
-                                                        ]
-                                                        final_table["aperture_mag"] = (
-                                                            final_table[
-                                                                "instrumental_mag_x"
-                                                            ]
-                                                            + zero_point_value
-                                                            - 0.1 * air
-                                                        )
-                                                    else:
-                                                        final_table = final_table.rename(
-                                                            columns={
-                                                                "instrumental_mag_x": "aperture_instrumental_mag",
-                                                                "calib_mag": "aperture_mag",
-                                                                "instrumental_mag_y": "psf_instrumental_mag",
-                                                                "ra_y": "ra",
-                                                                "dec_y": "dec",
-                                                                "id_x": "id",
-                                                            }
-                                                        )
-                                                    st.success(
-                                                        "Added Aperture photometry"
-                                                    )
-
-                                                final_table.drop(
-                                                    "match_id", axis=1, inplace=True
-                                                )
-
-                                            cols_to_drop = []
-                                            for col_name in [
-                                                "ra_x",
-                                                "dec_x",
-                                                "id_y",
-                                                "group_id",
-                                                "group_size",
-                                                "x_init",
-                                                "y_init",
-                                                "flux_init",
-                                                "sky_center.ra",
-                                                "sky_center.dec",
-                                                "inter_detected",
-                                                "local_bkg",
-                                                "npixfit",
-                                                "x_err",
-                                                "y_err",
-                                                "calib_mag",
-                                                "instrumental_mag",
-                                                "snr",
-                                                "_merge",
-                                                "flags",
-                                                "qfit",
-                                                "cfit",
-                                                "match_id",
-                                            ]:
-                                                if col_name in final_table.columns:
-                                                    cols_to_drop.append(col_name)
-
-                                            if cols_to_drop:
-                                                final_table = final_table.drop(
-                                                    columns=cols_to_drop
-                                                )
-
-                                            if "match_id" in final_table.columns:
-                                                final_table.drop(
-                                                    "match_id", axis=1, inplace=True
-                                                )
-
-                                            final_table["zero_point"] = zero_point_value
-                                            final_table["zero_point_std"] = (
-                                                zero_point_std
-                                            )
-                                            final_table["airmass"] = air
-
-                                            st.session_state["final_phot_table"] = (
-                                                final_table
+                                            # Merge keeping all sources
+                                            final_table = merge_photometry_catalogs(
+                                                aperture_table=final_table,
+                                                psf_table=epsf_df,
+                                                tolerance_pixels=1.0
                                             )
 
+                                            # Add calibrated magnitudes
+                                            final_table = add_calibrated_magnitudes(
+                                                final_table,
+                                                zero_point=zero_point_value,
+                                                airmass=air
+                                            )
+
+                                            # Add metadata
+                                            final_table['zero_point'] = zero_point_value
+                                            final_table['zero_point_std'] = zero_point_std
+                                            final_table['airmass'] = air
+
+                                            # Clean the table
+                                            final_table = clean_photometry_table(final_table, require_magnitude=True)
+
+                                            # Save to session state
+                                            st.session_state["final_phot_table"] = final_table
+
+                                            # Display results
                                             st.subheader("Final Photometry Catalog")
-                                            st.dataframe(final_table.head(10))
+                                            st.dataframe(final_table.head(20))
 
-                                            st.success(
-                                                f"Catalog includes {len(final_table)} sources."
-                                            )
+                                            # Show breakdown by method
+                                            if 'phot_method' in final_table.columns:
+                                                method_counts = final_table['phot_method'].value_counts()
+                                                st.write("Sources by photometry method:")
+                                                st.write(method_counts)
 
-                                            # Plot histogram of aperture_mag and psf_mag before catalog enhancement
-                                            st.subheader(
-                                                "Magnitude Distribution (Aperture & PSF)"
-                                            )
+                                            st.success(f"Catalog includes {len(final_table)} sources.")
 
-                                            # Create and display the magnitude distribution plots
-                                            fig_mag = plot_magnitude_distribution(
-                                                final_table, log_buffer
-                                            )
-                                            st.pyplot(fig_mag)
+                                    except Exception as e:
+                                        st.error(f"Error merging photometry: {e}")
+                                        import traceback
+                                        st.code(traceback.format_exc())
 
-                                            # Save the histogram as an image file
-                                            try:
-                                                base_filename = st.session_state.get(
-                                                    "base_filename", "photometry"
-                                                )
-                                                username = st.session_state.get(
-                                                    "username", "anonymous"
-                                                )
-                                                output_dir = ensure_output_directory(
-                                                    directory=f"{username}_results"
-                                                )
-                                                hist_filename = (
-                                                    f"{base_filename}_histogram_mag.png"
-                                                )
-                                                hist_filepath = os.path.join(
-                                                    output_dir, hist_filename
-                                                )
-                                                fig_mag.savefig(
-                                                    hist_filepath,
-                                                    dpi=120,
-                                                    bbox_inches="tight",
-                                                )
-                                                write_to_log(
-                                                    log_buffer,
-                                                    f"Saved magnitude histogram plot: {hist_filename}",
-                                                )
-                                            except Exception as e:
-                                                st.warning(
-                                                    f"Could not save magnitude histogram plot: {e}"
-                                                )
+                                    # if "final_phot_table" in st.session_state:
+                                    #     final_table = st.session_state[
+                                    #         "final_phot_table"
+                                    #     ]
 
-                                            # Clean up the figure
-                                            plt.close(fig_mag)
+                                    #     try:
+                                    #         if (
+                                    #             "epsf_photometry_result"
+                                    #             in st.session_state
+                                    #             and epsf_table is not None
+                                    #         ):
+                                    #             epsf_df = (
+                                    #                 epsf_table.to_pandas()
+                                    #                 if not isinstance(
+                                    #                     epsf_table, pd.DataFrame
+                                    #                 )
+                                    #                 else epsf_table
+                                    #             )
 
-                                            if (
-                                                final_table is not None
-                                                and "ra" in final_table.columns
-                                                and "dec" in final_table.columns
-                                            ):
-                                                st.subheader(
-                                                    "Cross-matching with Astronomical Catalogs"
-                                                )
-                                                search_radius = (
-                                                    max(
-                                                        header_to_process["NAXIS1"],
-                                                        header_to_process["NAXIS2"],
-                                                    )
-                                                    * pixel_size_arcsec
-                                                    / 2.0
-                                                )
-                                                # Get colibri API key from session state
-                                                colibri_api_key = st.session_state.get(
-                                                    "colibri_api_key", ""
-                                                )
-                                                # Ensure final_table exists before enhancement
-                                                if final_table is None:
-                                                    st.error(
-                                                        "Final photometry table is None - cannot perform catalog enhancement"
-                                                    )
-                                                    final_table = st.session_state.get(
-                                                        "final_phot_table"
-                                                    )
+                                    #             epsf_x_col = (
+                                    #                 "x_init"
+                                    #                 if "x_init" in epsf_df.columns
+                                    #                 else "xcenter"
+                                    #             )
+                                    #             epsf_y_col = (
+                                    #                 "y_init"
+                                    #                 if "y_init" in epsf_df.columns
+                                    #                 else "ycenter"
+                                    #             )
 
-                                                if (
-                                                    final_table is not None
-                                                    and len(final_table) > 0
-                                                ):
-                                                    final_table = enhance_catalog(
-                                                        colibri_api_key,
-                                                        final_table,
-                                                        matched_table,
-                                                        header_to_process,
-                                                        pixel_size_arcsec,
-                                                        search_radius_arcsec=search_radius,
-                                                    )
-                                            elif final_table is not None:
-                                                st.warning(
-                                                    "RA/DEC coordinates not available for catalog cross-matching"
-                                                )
-                                            else:
-                                                st.error(
-                                                    "Final photometry table is None - cannot perform cross-matching"
-                                                )
+                                    #             final_x_col = (
+                                    #                 "xcenter"
+                                    #                 if "xcenter" in final_table.columns
+                                    #                 else "x_0"
+                                    #             )
+                                    #             final_y_col = (
+                                    #                 "ycenter"
+                                    #                 if "ycenter" in final_table.columns
+                                    #                 else "y_0"
+                                    #             )
 
-                                            # Call the new function here
-                                            save_catalog_files(
-                                                final_table, catalog_name, output_dir
-                                            )
+                                    #             if (
+                                    #                 epsf_x_col in epsf_df.columns
+                                    #                 and epsf_y_col in epsf_df.columns
+                                    #             ):
+                                    #                 epsf_df["match_id"] = (
+                                    #                     epsf_df[epsf_x_col]
+                                    #                     .round(2)
+                                    #                     .astype(str)
+                                    #                     + "_"
+                                    #                     + epsf_df[epsf_y_col]
+                                    #                     .round(2)
+                                    #                     .astype(str)
+                                    #                 )
 
-                                        except Exception as e:
-                                            st.error(f"{e}")
-                                else:
-                                    st.error(
-                                        "Failed to cross-match with Gaia catalog. Check WCS information in image header."
+                                    #             # final_table = pd.merge(
+                                    #             #     final_table,
+                                    #             #     epsf_df,
+                                    #             #     on="match_id",
+                                    #             #     how="outer",
+                                    #             #     indicator=True,
+                                    #             # )
+
+                                    #             if (
+                                    #                 "instrumental_mag_y"
+                                    #                 in final_table.columns
+                                    #             ):
+                                    #                 final_table["psf_mag"] = (
+                                    #                     final_table[
+                                    #                         "instrumental_mag_y"
+                                    #                     ]
+                                    #                     + zero_point_value
+                                    #                     - 0.1 * air
+                                    #                 )
+                                    #                 st.success("Added PSF photometry")
+
+                                    #             if (
+                                    #                 "instrumental_mag_x"
+                                    #                 in final_table.columns
+                                    #             ):
+                                    #                 if (
+                                    #                     "calib_mag"
+                                    #                     not in final_table.columns
+                                    #                 ):
+                                    #                     final_table[
+                                    #                         "aperture_instrumental_mag"
+                                    #                     ] = final_table[
+                                    #                         "instrumental_mag_x"
+                                    #                     ]
+                                    #                     final_table["aperture_mag"] = (
+                                    #                         final_table[
+                                    #                             "instrumental_mag_x"
+                                    #                         ]
+                                    #                         + zero_point_value
+                                    #                         - 0.1 * air
+                                    #                     )
+                                    #                 else:
+                                    #                     final_table = final_table.rename(
+                                    #                         columns={
+                                    #                             "instrumental_mag_x": "aperture_instrumental_mag",
+                                    #                             "calib_mag": "aperture_mag",
+                                    #                             "instrumental_mag_y": "psf_instrumental_mag",
+                                    #                             "ra_y": "ra",
+                                    #                             "dec_y": "dec",
+                                    #                             "id_x": "id",
+                                    #                         }
+                                    #                     )
+                                    #                 st.success(
+                                    #                     "Added Aperture photometry"
+                                    #                 )
+
+                                    #             final_table.drop(
+                                    #                 "match_id", axis=1, inplace=True
+                                    #             )
+
+                                    #         cols_to_drop = []
+                                    #         for col_name in [
+                                    #             "ra_x",
+                                    #             "dec_x",
+                                    #             "id_y",
+                                    #             "group_id",
+                                    #             "group_size",
+                                    #             "x_init",
+                                    #             "y_init",
+                                    #             "flux_init",
+                                    #             "sky_center.ra",
+                                    #             "sky_center.dec",
+                                    #             "inter_detected",
+                                    #             "local_bkg",
+                                    #             "npixfit",
+                                    #             "x_err",
+                                    #             "y_err",
+                                    #             "calib_mag",
+                                    #             "instrumental_mag",
+                                    #             "snr",
+                                    #             "_merge",
+                                    #             "flags",
+                                    #             "qfit",
+                                    #             "cfit",
+                                    #             "match_id",
+                                    #         ]:
+                                    #             if col_name in final_table.columns:
+                                    #                 cols_to_drop.append(col_name)
+
+                                    #         if cols_to_drop:
+                                    #             final_table = final_table.drop(
+                                    #                 columns=cols_to_drop
+                                    #             )
+
+                                    #         if "match_id" in final_table.columns:
+                                    #             final_table.drop(
+                                    #                 "match_id", axis=1, inplace=True
+                                    #             )
+
+                                    #         # Define columns to keep and their final names
+                                    #         COLUMNS_TO_KEEP = {
+                                    #             'ra': 'ra',
+                                    #             'dec': 'dec',
+                                    #             'xcenter': 'x_pix',
+                                    #             'ycenter': 'y_pix',
+                                    #             'aperture_mag': 'mag_aper',
+                                    #             'psf_mag': 'mag_psf',
+                                    #             'flux_fit': 'flux_psf',
+                                    #             'zero_point': 'zp',
+                                    #             'airmass': 'airmass'
+                                    #         }
+                                    #         # At the end, select and rename only what you need
+                                    #         available_cols = [col for col in COLUMNS_TO_KEEP.keys() if col in final_table.columns]
+                                    #         final_table = final_table[available_cols].rename(columns=COLUMNS_TO_KEEP)
+                                    #         final_table["zero_point"] = zero_point_value
+                                    #         final_table["zero_point_std"] = (
+                                    #           zero_point_std
+                                    #           )
+                                    #         final_table["airmass"] = air
+                                    #         st.session_state["final_phot_table"] = (
+                                    #           final_table
+                                    #           )
+
+                                    st.subheader("Final Photometry Catalog")
+                                    st.dataframe(final_table.head(10))
+
+                                    st.success(
+                                        f"Catalog includes {len(final_table)} sources."
                                     )
+
+                                    st.subheader(
+                                        "Magnitude Distribution (Aperture & PSF)"
+                                    )
+
+                                    fig_mag = plot_magnitude_distribution(
+                                        final_table, log_buffer
+                                    )
+                                    st.pyplot(fig_mag)
+
+                                    try:
+                                        base_filename = st.session_state.get(
+                                            "base_filename", "photometry"
+                                        )
+                                        username = st.session_state.get(
+                                            "username", "anonymous"
+                                        )
+                                        output_dir = ensure_output_directory(
+                                            directory=f"{username}_results"
+                                        )
+                                        hist_filename = (
+                                            f"{base_filename}_histogram_mag.png"
+                                        )
+                                        hist_filepath = os.path.join(
+                                            output_dir, hist_filename
+                                        )
+                                        fig_mag.savefig(
+                                            hist_filepath,
+                                            dpi=120,
+                                            bbox_inches="tight",
+                                        )
+                                        write_to_log(
+                                            log_buffer,
+                                            f"Saved magnitude histogram plot: {hist_filename}",
+                                        )
+                                    except Exception as e:
+                                        st.warning(
+                                            f"Could not save magnitude histogram plot: {e}"
+                                        )
+
+                                    # Clean up the figure
+                                    plt.close(fig_mag)
+
+                                    if (
+                                        final_table is not None
+                                        and "ra" in final_table.columns
+                                        and "dec" in final_table.columns
+                                    ):
+                                        st.subheader(
+                                            "Cross-matching with Astronomical Catalogs"
+                                        )
+                                        search_radius = (
+                                            max(
+                                                header_to_process["NAXIS1"],
+                                                header_to_process["NAXIS2"],
+                                            )
+                                            * pixel_size_arcsec
+                                            / 2.0
+                                        )
+                                        # Get colibri API key from session state
+                                        colibri_api_key = st.session_state.get(
+                                            "colibri_api_key", ""
+                                        )
+                                        # Ensure final_table exists before enhancement
+                                        if final_table is None:
+                                            st.error(
+                                                "Final photometry table is None - cannot perform catalog enhancement"
+                                            )
+                                            final_table = st.session_state.get(
+                                                "final_phot_table"
+                                            )
+
+                                        if (
+                                            final_table is not None
+                                            and len(final_table) > 0
+                                        ):
+                                            final_table = enhance_catalog(
+                                                colibri_api_key,
+                                                final_table,
+                                                matched_table,
+                                                header_to_process,
+                                                pixel_size_arcsec,
+                                                search_radius_arcsec=search_radius,
+                                            )
+                                    elif final_table is not None:
+                                        st.warning(
+                                            "RA/DEC coordinates not available for catalog cross-matching"
+                                        )
+                                    else:
+                                        st.error(
+                                            "Final photometry table is None - cannot perform cross-matching"
+                                        )
+
+                                    # Call the new function here
+                                    save_catalog_files(
+                                        final_table, catalog_name, output_dir
+                                    )
+
+                                #         except Exception as e:
+                                #             st.error(f"{e}")
+                                # else:
+                                #     st.error(
+                                #         "Failed to cross-match with Gaia catalog. Check WCS information in image header."
+                                #     )
+
                 except Exception as e:
                     st.error(f"Error during zero point calibration: {str(e)}")
                     st.exception(e)
