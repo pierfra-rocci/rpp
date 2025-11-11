@@ -1135,7 +1135,6 @@ if not st.session_state.logged_in:
 st.title("**RAPAS Photometry Pipeline**")
 st.markdown("[**RAPAS Project**](https://rapas.imcce.fr/) / [**Github**](https://github.com/pierfra-rocci/rpp)",
             unsafe_allow_html=True)
-
 # Added: Quick Start Tutorial link (now displayed in an expander)
 with st.expander("📘 Quick Start Tutorial"):
     try:
@@ -1396,6 +1395,8 @@ if st.session_state.logged_in:
         st.session_state.username = None
         st.success("Logged out successfully.")
         st.switch_page("pages/login.py")
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("_Report feedback and bugs to_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)")
 
 ###########################################################################
 

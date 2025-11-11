@@ -37,6 +37,9 @@ def validate_password(password):
 
 if not st.session_state.logged_in:
     st.title("**RAPAS Photometry Pipeline**")
+    st.markdown("")
+    st.markdown("_Report feedback and bugs to_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)")
+    
     st.sidebar.markdown("## User Credentials")
 
     username = st.sidebar.text_input(
