@@ -466,8 +466,7 @@ def detection_and_photometry(
     science_header,
     mean_fwhm_pixel,
     threshold_sigma,
-    detection_mask,
-    mask_cr=None,
+    detection_mask
 ):
     """
     Perform a complete photometry workflow on an astronomical image.

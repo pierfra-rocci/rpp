@@ -1906,8 +1906,7 @@ if science_file is not None:
                             header_to_process,
                             mean_fwhm_pixel,
                             threshold_sigma,
-                            detection_mask,
-                            mask_cr=mask
+                            detection_mask
                         )
 
                         if isinstance(result, tuple) and len(result) == 5:
