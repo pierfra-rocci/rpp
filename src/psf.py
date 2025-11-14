@@ -368,7 +368,7 @@ def perform_psf_photometry(
         # Try EPSFBuilder with retries and progressively simpler parameters
         epsf = None
         builder_attempts = [
-            dict(oversampling=2, maxiters=3),
+            dict(oversampling=3, maxiters=5),
         ]
 
         for params in builder_attempts:
