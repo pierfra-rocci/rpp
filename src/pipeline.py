@@ -42,7 +42,7 @@ def mask_and_remove_cosmic_rays(
         saturation = None
 
     if saturation is None:
-        saturation = 0.90 * np.nanmax(image_data)
+        saturation = 0.99 * np.nanmax(image_data)
 
     mask = np.isnan(image_data) # mask NaNs in the input image
     mask |= image_data > saturation # mask saturated pixels
