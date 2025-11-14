@@ -26,76 +26,28 @@ from typing import Union, Optional, Dict, Tuple
 
 from src.psf import perform_psf_photometry
 from src.utils_common import estimate_background
+from stdpipe.
 
 
-def detect_remove_cosmic_rays(
+def mask_and_remove_cosmic_rays(
     image_data,
-    gain=1.0,
-    readnoise=6.5,
-    sigclip=4.5,
-    sigfrac=0.3,
-    objlim=5.0,
-    verbose=True,
+    header,
 ):
-    """
-    Detect and remove cosmic rays from an astronomical image using
-    astroscrappy.
+    saturation = header.get('SATURATE') or 0.90*max(image_data) # Guess saturation level from FITS header
 
-    Parameters
-    ----------
-    image_data : numpy.ndarray
-        The 2D image array
-    gain : float, optional
-        CCD gain (electrons/ADU), default=1.0
-    readnoise : float, optional
-        CCD read noise (electrons), default=6.5
-    sigclip : float, optional
-        Detection sigma threshold, default=4.5
-    sigfrac : float, optional
-        Fractional detection threshold, default=0.3
-    objlim : float, optional
-        Minimum contrast between cosmic ray and underlying object, default=5.0
-    verbose : bool, optional
-        Whether to print verbose output, default=False
+    mask = np.isnan(image_data) # mask NaNs in the input image
+    mask |= image_data > saturation # mask saturated pixels
 
-    Returns
-    -------
-    tuple
-        (cleaned_image, mask, num_cosmic_rays) where:
-        - cleaned_image: numpy.ndarray with cosmic rays removed
-        - mask: boolean numpy.ndarray showing cosmic ray locations (True where cosmic rays were detected)
-        - num_cosmic_rays: int, number of cosmic rays detected
+    from astropy.stats import mad_std
+    mask |= image_data > np.median(image_data) + 10.0*mad_std(image_data) # mask hotter pixels
+    gain = header.get('GAIN') or 1.0 # Guess gain from FITS header
 
-    Notes
-    -----
-    Uses the L.A.Cosmic algorithm implemented in astroscrappy.
-    The algorithm detects cosmic rays using Laplacian edge detection.
-    """
-    try:
-        # Ensure the image is in the correct format
-        image_data = image_data.astype(np.float32)
-
-        # Detect and remove cosmic rays using astroscrappy's implementation of L.A.Cosmic
-        mask, cleaned_image = astroscrappy.detect_cosmics(
-            image_data,
-            gain=gain,
-            readnoise=readnoise,
-            sigclip=sigclip,
-            sigfrac=sigfrac,
-            objlim=objlim,
-            verbose=verbose,
-        )
-
-        mask = mask.astype(bool)
-
-        return cleaned_image, mask
-
-    except ImportError:
-        st.error("astroscrappy package is not installed. Cannot remove cosmic rays.")
-        return image_data, None, 0
-    except Exception as e:
-        st.error(f"Error during cosmic ray removal: {str(e)}")
-        return image_data, None, 0
+    # mask cosmic rays using LACosmic algorithm
+    cmask, cimage = astroscrappy.detect_cosmics(image_data, mask, gain=gain, verbose=True)
+    
+    mask |= cmask
+    
+    return mask
 
 
 def make_border_mask(
@@ -467,7 +419,7 @@ def detection_and_photometry(
     mean_fwhm_pixel,
     threshold_sigma,
     detection_mask,
-    filter_band,
+    mask_cr=None,
 ):
     """
     Perform a complete photometry workflow on an astronomical image.
@@ -537,7 +489,27 @@ def detection_and_photometry(
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None
 
-    mask = make_border_mask(image_data, border=detection_mask)
+    border_mask = make_border_mask(image_data, border=detection_mask)
+
+    # if a cosmic-ray / external mask is provided, union it with the border mask
+    final_mask = border_mask
+    if mask_cr is not None:
+        try:
+            # accept 0/1 integer masks or boolean masks; convert to bool
+            mask_cr_bool = mask_cr.astype(bool)
+            if mask_cr_bool.shape != final_mask.shape:
+                st.warning("mask_cr shape does not match image shape; attempting to reshape")
+                if mask_cr_bool.size == final_mask.size:
+                    mask_cr_bool = mask_cr_bool.reshape(final_mask.shape)
+                else:
+                    st.warning("mask_cr ignored due to incompatible shape")
+                    mask_cr_bool = None
+            if mask_cr_bool is not None:
+                final_mask = np.logical_or(final_mask, mask_cr_bool)
+        except Exception as e:
+            st.warning(f"Could not combine mask_cr with border mask: {e}")
+
+    mask = final_mask
 
     # Ensure image_sub is float64 to avoid casting errors
     image_sub = image_data.astype(np.float64) - bkg.background.astype(np.float64)

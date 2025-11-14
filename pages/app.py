@@ -44,7 +44,7 @@ from src.tools import (
 from src.pipeline import (
     calculate_zero_point,
     detection_and_photometry,
-    detect_remove_cosmic_rays,
+    mask_and_remove_cosmic_rays,
     airmass,
 )
 
@@ -1278,31 +1278,6 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         value=st.session_state.analysis_parameters["calibrate_cosmic_rays"],
         help="Detect and remove cosmic rays using the L.A.Cosmic algorithm.",
     )
-    if st.session_state.analysis_parameters["calibrate_cosmic_rays"]:
-        st.session_state.analysis_parameters["cr_gain"] = st.slider(
-            "CRR Gain (e-/ADU)",
-            min_value=0.1,
-            max_value=10.0,
-            value=st.session_state.analysis_parameters["cr_gain"],
-            step=0.5,
-            help="Camera gain in electrons per ADU.",
-        )
-        st.session_state.analysis_parameters["cr_readnoise"] = st.slider(
-            "CRR Read Noise (e-)",
-            min_value=1.0,
-            max_value=20.0,
-            value=st.session_state.analysis_parameters["cr_readnoise"],
-            step=0.5,
-            help="Camera read noise in electrons.",
-        )
-        st.session_state.analysis_parameters["cr_sigclip"] = st.slider(
-            "CRR Sigma Clip",
-            min_value=4.0,
-            max_value=10.0,
-            value=st.session_state.analysis_parameters["cr_sigclip"],
-            step=0.5,
-            help="Sigma clipping threshold for cosmic ray detection.",
-        )
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):
     st.session_state.colibri_api_key = st.text_input(
@@ -1507,20 +1482,14 @@ if science_file is not None:
     if st.session_state.get("calibrate_cosmic_rays", False):
         st.info("Applying cosmic ray removal...")
         try:
-            cr_gain = st.session_state.analysis_parameters.get("cr_gain", 1.0)
-            cr_readnoise = st.session_state.analysis_parameters.get("cr_readnoise", 2.5)
-            cr_sigclip = st.session_state.analysis_parameters.get("cr_sigclip", 6.0)
-            clean_data, _ = detect_remove_cosmic_rays(
+            mask = mask_and_remove_cosmic_rays(
                 science_data,
-                gain=cr_gain,
-                readnoise=cr_readnoise,
-                sigclip=cr_sigclip,
+                science_header
             )
-            if clean_data is not None:
-                science_data = clean_data
-                st.success("Cosmic ray removal applied.")
+            if mask is not None:
+                st.success("Mask for cosmic ray removal applied.")
             else:
-                st.warning("Cosmic ray removal did not return valid data.")
+                st.warning("Mask for cosmic ray removal did not return valid data.")
         except Exception as e:
             st.error(f"Error during cosmic ray removal: {e}")
 
@@ -1971,7 +1940,7 @@ if science_file is not None:
                             mean_fwhm_pixel,
                             threshold_sigma,
                             detection_mask,
-                            filter_band,
+                            mask_cr=mask
                         )
 
                         if isinstance(result, tuple) and len(result) == 5:
