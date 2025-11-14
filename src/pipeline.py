@@ -415,11 +415,10 @@ def fwhm_fit(
     Progress updates and error messages are displayed using Streamlit.
     """
     try:
-        peak = 0.95 * np.nanmax(_img)
         _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
         daofind = DAOStarFinder(
-            fwhm=1.6 * fwhm, threshold=8 * clipped_std, peakmax=peak
+            fwhm=1.5 * fwhm, threshold=8 * clipped_std
         )
         sources = daofind(_img, mask=mask)
         if sources is None:
