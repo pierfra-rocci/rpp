@@ -652,7 +652,8 @@ def detection_and_photometry(
         # Perform photometry for all apertures
         phot_tables = []
 
-        for i, (aperture, annulus) in enumerate(zip(apertures, annulus_apertures)):
+        for i, (aperture, annulus) in enumerate(zip(apertures,
+                                                    annulus_apertures)):
             # Aperture photometry
             phot_result = aperture_photometry(
                 image_sub, aperture, error=total_error, wcs=wcs_obj
@@ -685,7 +686,7 @@ def detection_and_photometry(
                     if annulus_data is None or annulus_data.size == 0:
                         continue
 
-                    # Extract only the non-zero pixels (pixels within the annulus)
+                    # Extract only the non-zero pixels
                     annulus_pixels = annulus_data[annulus_data != 0]
 
                     if (
@@ -704,7 +705,7 @@ def detection_and_photometry(
 
                         # Iterative sigma clipping
                         clipped_pixels = sigma_clip(
-                            valid_pixels, sigma=2.5, maxiters=3, masked=False
+                            valid_pixels, sigma=3, maxiters=3, masked=False
                         )
 
                         if len(clipped_pixels) > 5:
@@ -843,7 +844,7 @@ def detection_and_photometry(
                 phot_table[f"instrumental_mag{radius_suffix}"] = np.nan
 
         # Keep the original columns for backward compatibility (using 1.5*FWHM)
-        if "aperture_sum_r1.5" in phot_table.colnames:
+        if "aperture_sum_1.5" in phot_table.colnames:
             phot_table["aperture_sum"] = phot_table["aperture_sum_1.5"]
             phot_table["aperture_sum_err"] = phot_table["aperture_sum_err_1.5"]
             phot_table["snr"] = phot_table["snr_1.5"]
