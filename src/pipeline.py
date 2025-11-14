@@ -56,32 +56,37 @@ def mask_and_remove_cosmic_rays(
         # fallback to simple sigma if MAD is zero/NaN
         mad = np.nanstd(image_data)
     mask |= (image_data > (median + 10.0 * mad))
-    # Safe parse of gain
+
     gain_hdr = header.get("GAIN", None)
+    
     try:
         gain = float(gain_hdr) if gain_hdr is not None else 1.0
     except (ValueError, TypeError):
         gain = 1.0
-
-    st.info("Detecting cosmic rays using L.A.Cosmic ...")
-    # Run L.A.Cosmic (pass inmask explicitly)
-    try:
-        res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain, verbose=False)
-        # detect_cosmics often returns a tuple; find the boolean CR mask
-        if isinstance(res, tuple):
-            crmask = None
-            for el in res:
-                if isinstance(el, np.ndarray) and el.shape == image_data.shape and el.dtype == bool:
-                    crmask = el
-                    break
-            if crmask is None:
-                crmask = res[0].astype(bool)
-        else:
-            crmask = res.astype(bool)
-        st.success("Saturated pixels and Cosmic ray detection complete.")
-    except Exception:
-        st.warning("Cosmic ray detection failed, proceeding with saturation only mask.")
+    # Skip cosmic ray detection if GAIN header is missing
+    if gain_hdr is None:
+        st.warning("GAIN header not found. Skipping cosmic ray detection.")
         crmask = np.zeros_like(mask, dtype=bool)
+    else:
+        st.info("Detecting cosmic rays using L.A.Cosmic ...")
+        # Run L.A.Cosmic (pass inmask explicitly)
+        try:
+            res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain, verbose=False)
+            # detect_cosmics often returns a tuple; find the boolean CR mask
+            if isinstance(res, tuple):
+                crmask = None
+                for el in res:
+                    if isinstance(el, np.ndarray) and el.shape == image_data.shape and el.dtype == bool:
+                        crmask = el
+                        break
+                if crmask is None:
+                    crmask = res[0].astype(bool)
+            else:
+                crmask = res.astype(bool)
+            st.success("Saturated pixels and Cosmic ray detection complete.")
+        except Exception:
+            st.warning("Cosmic ray detection failed, proceeding with saturation only mask.")
+            crmask = np.zeros_like(mask, dtype=bool)
 
     mask |= crmask
     return mask

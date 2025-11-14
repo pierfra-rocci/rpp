@@ -370,7 +370,6 @@ def perform_psf_photometry(
         builder_attempts = [
             dict(oversampling=2, maxiters=3),
         ]
-        from types import SimpleNamespace # Keep this import as it's used later for fallback
 
         for params in builder_attempts:
             try:
@@ -387,67 +386,6 @@ def perform_psf_photometry(
                     f"EPSFBuilder attempt oversampling={params.get('oversampling')} failed: {build_error}"
                 )
                 epsf = None
-
-        # If EPSFBuilder failed entirely, fall back to a median-stacked empirical PSF
-        if epsf is None:
-            st.warning(
-                "EPSFBuilder failed on all attempts — constructing median empirical PSF as fallback"
-            )
-            # normalize each cutout by its sum (avoid divide-by-zero)
-            norm_cutouts = []
-            for c in selected:
-                ssum = np.nansum(c)
-                if ssum <= 0 or not np.isfinite(ssum):
-                    continue
-                norm_cutouts.append(c.astype(float) / ssum)
-
-            if len(norm_cutouts) == 0:
-                raise ValueError(
-                    "No valid normalized cutouts available for median PSF fallback"
-                )
-
-            # ensure consistent shapes by cropping/padding to median shape
-            shapes = np.array([c.shape for c in norm_cutouts])
-            # pick the most common shape
-            uniq_shapes, counts = np.unique(
-                shapes.reshape(len(shapes), -1), axis=0, return_counts=True
-            )
-            # fallback to using the first shape if uniqueness fails
-            try:
-                chosen_shape = tuple(uniq_shapes[np.argmax(counts)])
-            except Exception:
-                chosen_shape = norm_cutouts[0].shape
-
-            # center-crop or pad to chosen_shape
-            def fit_to_shape(arr, shp):
-                out = np.zeros(shp, dtype=float)
-                y0 = (arr.shape[0] - shp[0]) // 2
-                x0 = (arr.shape[1] - shp[1]) // 2
-                if y0 >= 0 and x0 >= 0:
-                    # crop
-                    out = arr[y0: y0 + shp[0],
-                              x0: x0 + shp[1]]
-                else:
-                    # pad
-                    y_off = max(0, -y0)
-                    x_off = max(0, -x0)
-                    yy = min(arr.shape[0], shp[0] - y_off)
-                    xx = min(arr.shape[1], shp[1] - x_off)
-                    out[y_off : y_off + yy, x_off : x_off + xx] = arr[0:yy, 0:xx]
-                return out
-
-            aligned = [fit_to_shape(c, chosen_shape) for c in norm_cutouts]
-            epsf_array = np.median(np.stack(aligned, axis=0), axis=0)
-            # renormalize
-            s = np.nansum(epsf_array)
-            if s > 0 and np.isfinite(s):
-                epsf_array = epsf_array / s
-
-            # Build a minimal EPSF-like object with attributes expected by downstream code
-            epsf = SimpleNamespace()
-            epsf.data = epsf_array
-            epsf.oversampling = 1
-            epsf.fwhm = getattr(epsf, "fwhm", float(fwhm))
 
         # Validate epsf.data
         if (
@@ -471,7 +409,6 @@ def perform_psf_photometry(
 
     # Ensure we have a usable PSF model for PSFPhotometry
     try:
-        # Try to wrap the EPSF into an ImagePSF (preferred for PSFPhotometry compatibility)
         try:
             from photutils.psf import ImagePSF
 
