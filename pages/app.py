@@ -958,7 +958,7 @@ def initialize_session_state():
         "detection_mask": 10,
         "filter_band": "phot_g_mean_mag",
         "filter_max_mag": 20.0,
-        "astrometry_check": False,
+        "astrometry_check": True,
         "force_plate_solve": False,
         "run_transient_finder": False,
         "transient_survey": "DSS2",
