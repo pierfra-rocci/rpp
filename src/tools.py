@@ -1357,36 +1357,54 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     """
     Add calibrated magnitudes for both aperture and PSF.
     Handle cases where only one method is available.
+    More robust handling for instrumental_mag_bkg_corr_1.5 and _2.0 variants.
     """
-    # Aperture magnitude (if available)
-    if 'instrumental_mag' in final_table.columns:
-        final_table['aperture_mag'] = (
-            final_table['instrumental_mag'] + zero_point - 0.1 * airmass
-        )
+    if final_table is None or len(final_table) == 0:
+        return final_table
+
+    # Helper to compute aperture magnitude for a given radius label (e.g. "1.5", "2.0")
+    def _compute_aperture_mag_for_radius(tbl, radius_label):
+        # candidate instrumental mag column names in preference order
+        candidates = [
+            f"instrumental_mag_bkg_corr_{radius_label}",
+            f"instrumental_mag_{radius_label}",
+            f"instrumental_mag_bkg_corr_{radius_label.replace('.', '_')}",
+            f"instrumental_mag_{radius_label.replace('.', '_')}",
+            "instrumental_mag",
+        ]
+        inst_col = next((c for c in candidates if c in tbl.columns), None)
+        mag_col = f"aperture_mag_{radius_label}"
+        mag_err_col = f"aperture_mag_err_{radius_label}"
+        flux_col = f"aperture_sum_{radius_label}"
+        flux_err_col = f"aperture_sum_err_{radius_label}"
+
+        if inst_col:
+            tbl[mag_col] = tbl[inst_col] + zero_point - 0.1 * airmass
+
+        # try to compute mag error if not present but flux & flux_err exist
+        if mag_err_col not in tbl.columns and flux_col in tbl.columns and flux_err_col in tbl.columns:
+            with np.errstate(divide="ignore", invalid="ignore"):
+                err = 1.0857 * tbl[flux_err_col] / tbl[flux_col]
+                err = err.replace([np.inf, -np.inf], np.nan)
+            tbl[mag_err_col] = err
+        return tbl
+
+    # Attempt to compute for common aperture radii
+    final_table = _compute_aperture_mag_for_radius(final_table, "1.5")
+    final_table = _compute_aperture_mag_for_radius(final_table, "2.0")
 
     # PSF magnitude (if available)
-    if 'psf_instrumental_mag' in final_table.columns:
-        final_table['psf_mag'] = (
-            final_table['psf_instrumental_mag'] + zero_point - 0.1 * airmass
+    if "psf_instrumental_mag" in final_table.columns:
+        final_table["psf_mag"] = (
+            final_table["psf_instrumental_mag"] + zero_point - 0.1 * airmass
         )
 
-    # Create a "best" magnitude column using PSF when available, aperture as fallback
-    if 'psf_mag' in final_table.columns and 'aperture_mag' in final_table.columns:
-        final_table['mag_best'] = final_table['psf_mag'].fillna(final_table['aperture_mag'])
-        final_table['mag_method'] = final_table['psf_mag'].notna().map({True: 'psf', False: 'aperture'})
-    elif 'psf_mag' in final_table.columns:
-        final_table['mag_best'] = final_table['psf_mag']
-        final_table['mag_method'] = 'psf'
-    elif 'aperture_mag' in final_table.columns:
-        final_table['mag_best'] = final_table['aperture_mag']
-        final_table['mag_method'] = 'aperture'
+    # remove columns with all NaN values
+    final_table = final_table.dropna(axis=1, how="all")
 
-    # remove colomns with all NaN values
-    final_table = final_table.dropna(axis=1, how='all')
-
-    # remove columns form a list
+    # remove columns from a list
     cols_to_remove = ["aperture_sum_1.5", "aperture_sum_err_1.5",
-                      "snr_1.5", "aperture_mag_err_1.5", "instrumental_mag_1.5"]
+                      "aperture_sum_2", "aperture_sum_err_2"]
     final_table = final_table.drop(columns=[col for col in cols_to_remove if col in final_table.columns])
 
     return final_table
@@ -1414,7 +1432,8 @@ def clean_photometry_table(df, require_magnitude=True):
 
     if require_magnitude:
         # Remove sources that don't have ANY valid magnitude measurement
-        mag_cols = [col for col in df.columns if 'mag' in col.lower() and col != 'mag_method']
+        mag_cols = [col for col in df.columns if 'mag' in col.lower() 
+                    and col != 'mag_method']
 
         if mag_cols:
             # Keep row if it has at least ONE valid magnitude

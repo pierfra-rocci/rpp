@@ -409,7 +409,7 @@ def fwhm_fit(
         _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
         daofind = DAOStarFinder(
-            fwhm=1.5 * fwhm, threshold=8 * clipped_std
+            fwhm=1.5 * fwhm, threshold=7 * clipped_std
         )
         sources = daofind(_img, mask=mask)
         if sources is None:
@@ -604,7 +604,7 @@ def detection_and_photometry(
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
 
     # Create multiple circular apertures with different radii
-    aperture_radii = [1.5, 2.0, 2.5]
+    aperture_radii = [1.5, 2.0]
     apertures = [
         CircularAperture(positions, r=radius * fwhm_estimate)
         for radius in aperture_radii
@@ -615,7 +615,8 @@ def detection_and_photometry(
     for radius in aperture_radii:
         r_in = 1.5 * radius * fwhm_estimate
         r_out = 2.0 * radius * fwhm_estimate
-        annulus_apertures.append(CircularAnnulus(positions, r_in=r_in, r_out=r_out))
+        annulus_apertures.append(CircularAnnulus(positions, r_in=r_in,
+                                                 r_out=r_out))
 
     try:
         wcs_obj = None
@@ -823,24 +824,15 @@ def detection_and_photometry(
                 if bkg_corr_col in phot_table.colnames:
                     # Handle negative or zero background-corrected fluxes
                     valid_flux = phot_table[bkg_corr_col] > 0
-                    phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"] = np.nan
                     phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"][
                         valid_flux
                     ] = -2.5 * np.log10(
-                        phot_table[bkg_corr_col][valid_flux] / exposure_time
+                        phot_table[bkg_corr_col][valid_flux]
                     )
             else:
                 phot_table[f"snr{radius_suffix}"] = np.nan
                 phot_table[f"aperture_mag_err{radius_suffix}"] = np.nan
                 phot_table[f"instrumental_mag{radius_suffix}"] = np.nan
-
-        # Keep the original columns for backward compatibility (using 1.5*FWHM)
-        if "aperture_sum_1.5" in phot_table.colnames:
-            phot_table["aperture_sum"] = phot_table["aperture_sum_1.5"]
-            phot_table["aperture_sum_err"] = phot_table["aperture_sum_err_1.5"]
-            phot_table["snr"] = phot_table["snr_1.5"]
-            phot_table["aperture_mag_err"] = phot_table["aperture_mag_err_1.5"]
-            phot_table["instrumental_mag"] = phot_table["instrumental_mag_1.5"]
 
         try:
             epsf_table, _ = perform_psf_photometry(
