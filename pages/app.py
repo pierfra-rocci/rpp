@@ -2151,7 +2151,6 @@ if science_file is not None:
                         and len(final_phot_table) > 0
                     ):
                         st.subheader("Aladin Catalog Viewer")
-
                         try:
                             display_catalog_in_aladin(
                                 final_table=final_phot_table,
