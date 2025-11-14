@@ -1119,14 +1119,19 @@ def enhance_catalog(
             "ERROR",
         )
 
-    # Remove rows with snr_2.0 equal to 0
+    # Remove rows with snr_2.0 equal to 0, -1, or -2
     if "snr_2.0" in enhanced_table.columns:
         # coerce to numeric so None/invalid values become NaN
         snr_vals = pd.to_numeric(enhanced_table["snr_2.0"], errors="coerce")
-        zero_mask = snr_vals == 0
-        if zero_mask.any():
-            removed = int(zero_mask.sum())
-            enhanced_table = enhanced_table.loc[~zero_mask].copy()
-            st.info(f"Removed {removed} rows with snr == 0")
+        invalid_mask = snr_vals.isin([0, -1, -2])
+        if invalid_mask.any():
+            removed = int(invalid_mask.sum())
+            enhanced_table = enhanced_table.loc[~invalid_mask].copy()
+            write_to_log(
+                st.session_state.get("log_buffer"),
+                f"Removed {removed} rows with snr_2.0 in [0, -1, -2]",
+                "INFO",
+            )
+            st.info(f"Removed {removed} rows with snr_2.0 in [0, -1, -2]")
 
     return enhanced_table
