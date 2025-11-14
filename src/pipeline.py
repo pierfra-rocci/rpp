@@ -561,15 +561,6 @@ def detection_and_photometry(
         return a.astype(bool)
 
     final_mask = np.logical_or(_to_bool_mask(border_mask, image_data.shape[:2]), _to_bool_mask(cr_mask, image_data.shape[:2]))
-
-    # If user passed an external mask_cr (0/1 or bool), union that too
-    if mask_cr is not None:
-        try:
-            user_mask = _to_bool_mask(mask_cr, image_data.shape[:2])
-            final_mask = np.logical_or(final_mask, user_mask)
-        except Exception as e:
-            st.warning(f"Could not combine user mask_cr: {e}")
-
     mask = final_mask
 
     fig, ax = plt.subplots(figsize=(8, 6))
