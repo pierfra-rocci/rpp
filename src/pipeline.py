@@ -796,26 +796,6 @@ def detection_and_photometry(
         phot_table["xcenter"] = sources["xcentroid"]
         phot_table["ycenter"] = sources["ycentroid"]
 
-        # --- Defensive fixes: ensure canonical aperture_sum columns and prepare
-        # instrumental_mag_bkg_corr columns so later indexing won't KeyError.
-        try:
-            # create canonical 'aperture_sum' / 'aperture_sum_err' from first aperture if missing
-            first_suffix = f"_{aperture_radii[0]:.1f}"
-            if "aperture_sum" not in phot_table.colnames and f"aperture_sum{first_suffix}" in phot_table.colnames:
-                phot_table["aperture_sum"] = phot_table[f"aperture_sum{first_suffix}"]
-            if "aperture_sum_err" not in phot_table.colnames and f"aperture_sum_err{first_suffix}" in phot_table.colnames:
-                phot_table["aperture_sum_err"] = phot_table[f"aperture_sum_err{first_suffix}"]
-
-            # Pre-create any background-corrected magnitude columns as NaN so assignments succeed
-            for radius in aperture_radii:
-                radius_suffix = f"_{radius:.1f}"
-                inst_bkg_col = f"instrumental_mag_bkg_corr{radius_suffix}"
-                if inst_bkg_col not in phot_table.colnames:
-                    phot_table[inst_bkg_col] = np.full(len(phot_table), np.nan, dtype=float)
-        except Exception as e:
-            st.warning(f"Failed to prepare phot_table canonical columns: {e}")
-        # --- end defensive fixes
-
         # Calculate SNR and magnitudes for each aperture
         for i, radius in enumerate(aperture_radii):
             radius_suffix = f"_{radius:.1f}"
@@ -842,18 +822,14 @@ def detection_and_photometry(
 
                 # If background-corrected flux is available, calculate its magnitude
                 if bkg_corr_col in phot_table.colnames:
-                    # Handle negative or zero background-corrected fluxes safely.
-                    inst_bkg_col = f"instrumental_mag_bkg_corr{radius_suffix}"
-                    # ensure column exists (should have been created above, but double-check)
-                    if inst_bkg_col not in phot_table.colnames:
-                        phot_table[inst_bkg_col] = np.full(len(phot_table), np.nan, dtype=float)
+                    # Handle negative or zero background-corrected fluxes
+                    valid_flux = phot_table[bkg_corr_col] > 0
 
-                    # Use numpy arrays for boolean masking (works reliably with astropy Table)
-                    bkg_vals = np.array(phot_table[bkg_corr_col], dtype=float)
-                    valid_flux_mask = np.isfinite(bkg_vals) & (bkg_vals > 0)
-                    if np.any(valid_flux_mask):
-                        mags = -2.5 * np.log10(bkg_vals[valid_flux_mask])
-                        phot_table[inst_bkg_col][valid_flux_mask] = mags
+                    phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"][
+                        valid_flux
+                    ] = -2.5 * np.log10(
+                        phot_table[bkg_corr_col][valid_flux]
+                    )
             else:
                 phot_table[f"snr{radius_suffix}"] = np.nan
                 phot_table[f"aperture_mag_err{radius_suffix}"] = np.nan
