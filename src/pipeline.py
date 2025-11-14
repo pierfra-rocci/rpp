@@ -56,7 +56,6 @@ def mask_and_remove_cosmic_rays(
         # fallback to simple sigma if MAD is zero/NaN
         mad = np.nanstd(image_data)
     mask |= (image_data > (median + 10.0 * mad))
-    
     # Safe parse of gain
     gain_hdr = header.get("GAIN", None)
     try:
@@ -64,6 +63,7 @@ def mask_and_remove_cosmic_rays(
     except (ValueError, TypeError):
         gain = 1.0
 
+    st.info("Detecting cosmic rays using L.A.Cosmic ...")
     # Run L.A.Cosmic (pass inmask explicitly). Be robust to different return shapes.
     try:
         res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain, verbose=False)
@@ -78,12 +78,12 @@ def mask_and_remove_cosmic_rays(
                 crmask = res[0].astype(bool)
         else:
             crmask = res.astype(bool)
+        st.success("Cosmic ray detection complete.")
     except Exception:
-        # If astroscrappy not available or fails, don't raise — return current mask
+        st.warning("Cosmic ray detection failed, proceeding without cosmic ray masking.")
         crmask = np.zeros_like(mask, dtype=bool)
 
     mask |= crmask
-
     return mask
 
 
@@ -182,6 +182,8 @@ def make_border_mask(
           left: width - right] = True
 
     mask = ~inner if invert else inner
+    st.info(f"Border mask created with borders (top={top}, bottom={bottom}, left={left}, right={right})")
+    
     return mask.astype(dtype)
 
 
@@ -534,15 +536,14 @@ def detection_and_photometry(
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None
-    
+
     # border mask (True = masked)
     border_mask = make_border_mask(image_data, border=detection_mask)
 
     # cosmic-ray mask produced by LA Cosmic / custom routine (True = masked)
     try:
         cr_mask = mask_and_remove_cosmic_rays(image_data, science_header)
-    except Exception as e:
-        st.warning(f"Could not build cosmic-ray mask: {e}")
+    except Exception:
         cr_mask = np.zeros_like(border_mask, dtype=bool)
 
     # normalize to boolean and ensure compatible shape
@@ -571,6 +572,10 @@ def detection_and_photometry(
             st.warning(f"Could not combine user mask_cr: {e}")
 
     mask = final_mask
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.imshow(mask, cmap="viridis", origin="lower")
+    st.pyplot(fig)
 
     # Ensure image_sub is float64 to avoid casting errors
     image_sub = image_data.astype(np.float64) - bkg.background.astype(np.float64)
