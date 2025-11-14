@@ -377,7 +377,7 @@ def display_catalog_in_aladin(
                     pass
 
             # Get aperture magnitude (try multiple aperture columns)
-            aperture_mag_cols = ["aperture_mag_1.5", "calib_mag"]
+            aperture_mag_cols = ["aperture_mag_1.5"]
             for ap_col in aperture_mag_cols:
                 if ap_col in present_optional_cols and pd.notna(row[ap_col]):
                     try:
@@ -449,12 +449,10 @@ def display_catalog_in_aladin(
                 source["catalog_id"] = str(row["id"])
 
             # Add additional useful information
-            for info_col in ["snr", "flux_fit", "fwhm"]:
-                if info_col in present_optional_cols and pd.notna(row[info_col]):
-                    try:
-                        source[info_col] = float(row[info_col])
-                    except (ValueError, TypeError):
-                        source[info_col] = str(row[info_col])
+            try:
+                source["snr_1.5"] = float(row[info_col])
+            except (ValueError, TypeError):
+                source["snr_1.5"] = str(row[info_col])
 
             catalog_sources.append(source)
 

@@ -1362,15 +1362,11 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     if final_table is None or len(final_table) == 0:
         return final_table
 
-    # Helper to compute aperture magnitude for a given radius label (e.g. "1.5", "2.0")
+    # Helper to compute aperture magnitude for a given radius label
     def _compute_aperture_mag_for_radius(tbl, radius_label):
         # candidate instrumental mag column names in preference order
         candidates = [
-            f"instrumental_mag_bkg_corr_{radius_label}",
-            f"instrumental_mag_{radius_label}",
-            f"instrumental_mag_bkg_corr_{radius_label.replace('.', '_')}",
-            f"instrumental_mag_{radius_label.replace('.', '_')}",
-            "instrumental_mag",
+            f"instrumental_mag_bkg_corr_{radius_label}"
         ]
         inst_col = next((c for c in candidates if c in tbl.columns), None)
         mag_col = f"aperture_mag_{radius_label}"
@@ -1396,7 +1392,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     # PSF magnitude (if available)
     if "psf_instrumental_mag" in final_table.columns:
         final_table["psf_mag"] = (
-            final_table["psf_instrumental_mag"] + zero_point - 0.1 * airmass
+            final_table["psf_instrumental_mag"] + zero_point - 0.09 * airmass
         )
 
     # remove columns with all NaN values
@@ -1404,8 +1400,17 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
 
     # remove columns from a list
     cols_to_remove = ["aperture_sum_1.5", "aperture_sum_err_1.5",
-                      "aperture_sum_2", "aperture_sum_err_2"]
+                      "aperture_sum_2", "aperture_sum_err_2",
+                      "sky_center_ra", "sky_center_dec",
+                      "background_per_pixel_1.5",
+                      "background_per_pixel_2.0", "aperture_sum_err_2.0",
+                      "aperture_sum_2.0", "instrumental_mag_1.5",
+                      "instrumental_mag_2.0",
+                      "match_id", "simbad_ids", "catalog_matches", "calib_mag"]
+
     final_table = final_table.drop(columns=[col for col in cols_to_remove if col in final_table.columns])
+
+    final_table["id"] = final_table["id"].astype(int)
 
     return final_table
 

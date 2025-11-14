@@ -1016,16 +1016,13 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
             zero_point_std = float("nan")
 
-        # Create calibrated magnitude for the default aperture
-        _matched_table["calib_mag"] = (
-            _matched_table[instrumental_mag_col] + zero_point_value + 0.09 * air
-        )
-
         if not isinstance(_phot_table, pd.DataFrame):
             _phot_table = _phot_table.to_pandas()
 
         # Remove old single-aperture columns if they exist
-        old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
+        old_columns = ["aperture_mag", "aperture_instrumental_mag",
+                       "aperture_mag_err"]
+
         for col in old_columns:
             if col in _phot_table.columns:
                 _phot_table.drop(columns=[col], inplace=True)
@@ -1052,12 +1049,6 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
                     _matched_table[instrumental_col] + zero_point_value + 0.09 * air
                 )
 
-        # Keep the legacy "calib_mag" column using the default aperture for backward compatibility
-        default_instrumental_col = f"instrumental_mag_{default_radius:.1f}"
-        if default_instrumental_col in _phot_table.columns:
-            _phot_table["calib_mag"] = (
-                _phot_table[default_instrumental_col] + zero_point_value + 0.09 * air
-            )
 
         st.session_state["final_phot_table"] = _phot_table
 
@@ -1065,13 +1056,13 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Calculate residuals
         _matched_table["residual"] = (
-            _matched_table[filter_band] - _matched_table["calib_mag"]
+            _matched_table[filter_band] - _matched_table["aperture_mag_1.5"]
         )
 
         # Left plot: Zero point calibration
         ax.scatter(
             _matched_table[filter_band],
-            _matched_table["calib_mag"],
+            _matched_table["aperture_mag_1.5"],
             alpha=0.5,
             label="Matched sources",
             color="blue",
@@ -1079,7 +1070,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Calculate and plot regression line with variance
         x_data = _matched_table[filter_band].values
-        y_data = _matched_table["calib_mag"].values
+        y_data = _matched_table["aperture_mag_1.5"].values
 
         # Remove any NaN values for regression
         valid_mask = np.isfinite(x_data) & np.isfinite(y_data)
@@ -1125,8 +1116,10 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Add a diagonal line for reference
         mag_range = [
-            min(_matched_table[filter_band].min(), _matched_table["calib_mag"].min()),
-            max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max()),
+            min(_matched_table[filter_band].min(),
+                _matched_table["aperture_mag_1.5"].min()),
+            max(_matched_table[filter_band].max(), 
+                _matched_table["aperture_mag_1.5"].max()),
         ]
         ideal_mag = np.linspace(mag_range[0], mag_range[1], 100)
         ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
