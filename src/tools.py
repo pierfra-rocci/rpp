@@ -1408,8 +1408,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     final_table = final_table.drop(columns=[col for col in cols_to_remove if
                                             col in final_table.columns])
 
-    final_table["id"] = final_table["id"].fillna(method="ffill").fillna(method="bfill")
-    final_table["id"] = final_table["id"].astype(int)
+    final_table["id"] = final_table["id"].astype("Int64")
 
     return final_table
 
