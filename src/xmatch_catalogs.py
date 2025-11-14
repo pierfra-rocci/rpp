@@ -231,7 +231,6 @@ def cross_match_with_gaia(
         matched_table_qtable = _phot_table[matched_indices_phot]
 
         matched_table = matched_table_qtable.to_pandas()
-        matched_table["gaia_index"] = matched_indices_gaia
         matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
 
         # Add Gaia source_id so it's available later (prefixed with "gaia_" to match enhance_catalog logic)
