@@ -1308,6 +1308,8 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.0):
             row['psf_flux_err'] = psf_row['flux_err']
         if 'instrumental_mag' in psf_row:
             row['psf_instrumental_mag'] = psf_row['instrumental_mag']
+        if 'psf_mag_err' in psf_row:
+            row['psf_mag_err'] = psf_row['psf_mag_err']
 
         # Mark as having both
         row['phot_method'] = 'both'
@@ -1325,6 +1327,7 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.0):
             'dec': psf_row.get('dec'),
             'psf_flux': psf_row.get('flux_fit'),
             'psf_flux_err': psf_row.get('flux_err'),
+            'psf_mag_err': psf_row.get('psf_mag_err'),
             'psf_instrumental_mag': psf_row.get('instrumental_mag'),
             'phot_method': 'psf_only'
         }
@@ -1377,6 +1380,14 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     elif 'aperture_mag' in final_table.columns:
         final_table['mag_best'] = final_table['aperture_mag']
         final_table['mag_method'] = 'aperture'
+
+    # remove colomns with all NaN values
+    final_table = final_table.dropna(axis=1, how='all')
+
+    # remove columns form a list
+    cols_to_remove = ["aperture_sum_1.5", "aperture_sum_err_1.5",
+                      "snr_1.5", "aperture_mag_err_1.5", "instrumental_mag_1.5"]
+    final_table = final_table.drop(columns=[col for col in cols_to_remove if col in final_table.columns])
 
     return final_table
 

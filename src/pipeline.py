@@ -579,7 +579,8 @@ def detection_and_photometry(
 
     exposure_time = science_header.get(
         "EXPTIME",
-        science_header.get("EXPOSURE", science_header.get("EXP_TIME", 1.0)),
+        science_header.get("EXPOSURE", science_header.get("EXP_TIME",
+                                                          1.0)),
     )
 
     # Ensure effective_gain is float64
@@ -587,7 +588,8 @@ def detection_and_photometry(
 
     # Convert to float64 to ensure compatibility with calc_total_error
     total_error = calc_total_error(
-        image_sub.astype(np.float64), bkg_error.astype(np.float64), effective_gain
+        image_sub.astype(np.float64), bkg_error.astype(np.float64),
+        effective_gain
     )
 
     st.write("Estimating FWHM ...")
@@ -597,11 +599,9 @@ def detection_and_photometry(
         st.warning("Failed to estimate FWHM. Using the initial estimate.")
         fwhm_estimate = mean_fwhm_pixel
 
-    peak_max = 0.95 * np.max(image_sub)
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate,
-        threshold=(threshold_sigma + 0.5) * clipped_std,
-        peakmax=peak_max,
+        threshold=(threshold_sigma + 0.5) * clipped_std
     )
 
     sources = daofind(image_sub, mask=mask)
@@ -751,7 +751,7 @@ def detection_and_photometry(
                     continue
 
             # Add radius information and process results
-            radius_suffix = f"_r{aperture_radii[i]:.1f}"
+            radius_suffix = f"_{aperture_radii[i]:.1f}"
 
             # Rename aperture columns
             if "aperture_sum" in phot_result.colnames:
@@ -805,7 +805,7 @@ def detection_and_photometry(
 
         # Calculate SNR and magnitudes for each aperture
         for i, radius in enumerate(aperture_radii):
-            radius_suffix = f"_r{radius:.1f}"
+            radius_suffix = f"_{radius:.1f}"
             aperture_sum_col = f"aperture_sum{radius_suffix}"
             aperture_err_col = f"aperture_sum_err{radius_suffix}"
             bkg_corr_col = f"aperture_sum_bkg_corr{radius_suffix}"
@@ -823,11 +823,11 @@ def detection_and_photometry(
 
                 # Instrumental magnitude for raw aperture sum
                 instrumental_mags = -2.5 * np.log10(
-                    phot_table[aperture_sum_col]     # / exposure_time
+                    phot_table[aperture_sum_col]
                 )
                 phot_table[f"instrumental_mag{radius_suffix}"] = instrumental_mags
 
-                # If background-corrected flux is available, calculate its magnitude too
+                # If background-corrected flux is available, calculate its magnitude
                 if bkg_corr_col in phot_table.colnames:
                     # Handle negative or zero background-corrected fluxes
                     valid_flux = phot_table[bkg_corr_col] > 0
@@ -842,13 +842,13 @@ def detection_and_photometry(
                 phot_table[f"aperture_mag_err{radius_suffix}"] = np.nan
                 phot_table[f"instrumental_mag{radius_suffix}"] = np.nan
 
-        # Keep the original columns for backward compatibility (using 1.5*FWHM aperture)
+        # Keep the original columns for backward compatibility (using 1.5*FWHM)
         if "aperture_sum_r1.5" in phot_table.colnames:
-            phot_table["aperture_sum"] = phot_table["aperture_sum_r1.5"]
-            phot_table["aperture_sum_err"] = phot_table["aperture_sum_err_r1.5"]
-            phot_table["snr"] = phot_table["snr_r1.5"]
-            phot_table["aperture_mag_err"] = phot_table["aperture_mag_err_r1.5"]
-            phot_table["instrumental_mag"] = phot_table["instrumental_mag_r1.5"]
+            phot_table["aperture_sum"] = phot_table["aperture_sum_1.5"]
+            phot_table["aperture_sum_err"] = phot_table["aperture_sum_err_1.5"]
+            phot_table["snr"] = phot_table["snr_1.5"]
+            phot_table["aperture_mag_err"] = phot_table["aperture_mag_err_1.5"]
+            phot_table["instrumental_mag"] = phot_table["instrumental_mag_1.5"]
 
         try:
             epsf_table, _ = perform_psf_photometry(
@@ -862,7 +862,7 @@ def detection_and_photometry(
             epsf_table["psf_mag_err"] = m_err
 
             epsf_instrumental_mags = -2.5 * np.log10(
-                epsf_table["flux_fit"]     # / exposure_time
+                epsf_table["flux_fit"]
             )
             epsf_table["instrumental_mag"] = epsf_instrumental_mags
         except Exception as e:
@@ -1018,7 +1018,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             _phot_table = _phot_table.to_pandas()
 
         # Apply calibration to all aperture radii
-        aperture_radii = [1.5, 2.0, 2.5, 3.0]
+        aperture_radii = [1.5, 2.0, 2.5]
 
         # Remove old single-aperture columns if they exist
         old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
