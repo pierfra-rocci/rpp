@@ -1398,7 +1398,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     # remove columns from a list
     cols_to_remove = ["aperture_sum_1.5", "aperture_sum_err_1.5",
                       "aperture_sum_2", "aperture_sum_err_2",
-                      "sky_center_ra", "sky_center_dec",
+                      "sky_center.ra", "sky_center.dec",
                       "background_per_pixel_1.5",
                       "background_per_pixel_2.0", "aperture_sum_err_2.0",
                       "aperture_sum_2.0", "instrumental_mag_1.5",
