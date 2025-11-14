@@ -1395,9 +1395,6 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
             final_table["psf_instrumental_mag"] + zero_point - 0.09 * airmass
         )
 
-    # remove columns with all NaN values
-    final_table = final_table.dropna(axis=1, how="all")
-
     # remove columns from a list
     cols_to_remove = ["aperture_sum_1.5", "aperture_sum_err_1.5",
                       "aperture_sum_2", "aperture_sum_err_2",
@@ -1408,8 +1405,10 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
                       "instrumental_mag_2.0",
                       "match_id", "simbad_ids", "catalog_matches", "calib_mag"]
 
-    final_table = final_table.drop(columns=[col for col in cols_to_remove if col in final_table.columns])
+    final_table = final_table.drop(columns=[col for col in cols_to_remove if
+                                            col in final_table.columns])
 
+    final_table["id"] = final_table["id"].fillna(method="ffill").fillna(method="bfill")
     final_table["id"] = final_table["id"].astype(int)
 
     return final_table

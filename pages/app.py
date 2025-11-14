@@ -450,9 +450,9 @@ def display_catalog_in_aladin(
 
             # Add additional useful information
             try:
-                source["snr_1.5"] = float(row[info_col])
+                source["snr_1.5"] = float(row["snr_1.5"])
             except (ValueError, TypeError):
-                source["snr_1.5"] = str(row[info_col])
+                source["snr_1.5"] = str(row["snr_1.5"])
 
             catalog_sources.append(source)
 
