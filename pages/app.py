@@ -44,7 +44,6 @@ from src.tools import (
 from src.pipeline import (
     calculate_zero_point,
     detection_and_photometry,
-    mask_and_remove_cosmic_rays,
     airmass,
 )
 
@@ -961,10 +960,6 @@ def initialize_session_state():
         "filter_max_mag": 20.0,
         "astrometry_check": False,
         "force_plate_solve": False,
-        "calibrate_cosmic_rays": False,
-        "cr_gain": 1.0,
-        "cr_readnoise": 2.5,
-        "cr_sigclip": 6.0,
         "run_transient_finder": False,
         "transient_survey": "DSS2",
         "transient_filter": "red",
@@ -1014,10 +1009,7 @@ def initialize_session_state():
             "threshold_sigma",
             "detection_mask",
             "astrometry_check",
-            "calibrate_cosmic_rays",
-            "cr_gain",
-            "cr_readnoise",
-            "cr_sigclip",
+            "force_plate_solve",
             "filter_band",
             "filter_max_mag",
             "run_transient_finder",
@@ -1273,11 +1265,6 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
             "Attempt to plate solve and refine WCS before photometry. "
         ),
     )
-    st.session_state.analysis_parameters["calibrate_cosmic_rays"] = st.toggle(
-        "Remove Cosmic Rays",
-        value=st.session_state.analysis_parameters["calibrate_cosmic_rays"],
-        help="Detect and remove cosmic rays using the L.A.Cosmic algorithm.",
-    )
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):
     st.session_state.colibri_api_key = st.text_input(
@@ -1410,11 +1397,6 @@ else:
 
 science_file_path = None
 
-# Runtime logic to update the sessions state parameters
-st.session_state["calibrate_cosmic_rays"] = st.session_state.analysis_parameters[
-    "calibrate_cosmic_rays"
-]
-
 # Update observatory_data dictionary with current session state values
 st.session_state.observatory_data = {
     "name": st.session_state.observatory_name,
@@ -1477,21 +1459,6 @@ if science_file is not None:
                 st.session_state.log_buffer,
                 f"Observatory data updated from FITS header: {st.session_state.observatory_data}",
             )
-
-    # Apply cosmic ray removal if enabled
-    if st.session_state.get("calibrate_cosmic_rays", False):
-        st.info("Applying cosmic ray removal...")
-        try:
-            mask = mask_and_remove_cosmic_rays(
-                science_data,
-                science_header
-            )
-            if mask is not None:
-                st.success("Mask for cosmic ray removal applied.")
-            else:
-                st.warning("Mask for cosmic ray removal did not return valid data.")
-        except Exception as e:
-            st.error(f"Error during cosmic ray removal: {e}")
 
     # Test WCS creation with better error handling
     wcs_obj, wcs_error = safe_wcs_create(science_header)
