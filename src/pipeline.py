@@ -822,6 +822,9 @@ def detection_and_photometry(
 
                 # If background-corrected flux is available, calculate its magnitude
                 if bkg_corr_col in phot_table.colnames:
+                    # Initialize column with NaN
+                    phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"] = np.nan
+                    
                     # Handle negative or zero background-corrected fluxes
                     valid_flux = phot_table[bkg_corr_col] > 0
 
@@ -854,8 +857,13 @@ def detection_and_photometry(
             st.error(f"Error performing EPSF photometry: {e}")
             epsf_table = None
 
-        valid_sources = (phot_table["aperture_sum"] > 0) & np.isfinite(
-            phot_table["instrumental_mag"]
+        # Use the first aperture's columns (since "aperture_sum" was renamed)
+        first_aperture_suffix = f"_{aperture_radii[0]:.1f}"
+        first_aperture_col = f"aperture_sum{first_aperture_suffix}"
+        first_mag_col = f"instrumental_mag{first_aperture_suffix}"
+
+        valid_sources = (phot_table[first_aperture_col] > 0) & np.isfinite(
+            phot_table[first_mag_col]
         )
         phot_table = phot_table[valid_sources]
 
@@ -972,13 +980,26 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         return None, None, None
 
     try:
-        valid = np.isfinite(_matched_table["instrumental_mag"]) & np.isfinite(
+        # Define aperture radii (should match the ones used in detection_and_photometry)
+        aperture_radii = [1.5, 2.0]
+        
+        # Use the first aperture radius as the default for zero point calculation
+        default_radius = aperture_radii[0]
+        radius_suffix = f"_{default_radius:.1f}"
+        instrumental_mag_col = f"instrumental_mag{radius_suffix}"
+        
+        # Check if the column exists in matched table
+        if instrumental_mag_col not in _matched_table.columns:
+            st.error(f"Column '{instrumental_mag_col}' not found in matched table. Available columns: {list(_matched_table.columns)}")
+            return None, None, None
+        
+        valid = np.isfinite(_matched_table[instrumental_mag_col]) & np.isfinite(
             _matched_table[filter_band]
         )
 
         zero_points = (
             _matched_table[filter_band][valid]
-            - _matched_table["instrumental_mag"][valid]
+            - _matched_table[instrumental_mag_col][valid]
         )
         _matched_table["zero_point"] = zero_points
         _matched_table["zero_point_error"] = np.std(zero_points)
@@ -995,15 +1016,13 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
             zero_point_std = float("nan")
 
+        # Create calibrated magnitude for the default aperture
         _matched_table["calib_mag"] = (
-            _matched_table["instrumental_mag"] + zero_point_value + 0.09 * air
+            _matched_table[instrumental_mag_col] + zero_point_value + 0.09 * air
         )
 
         if not isinstance(_phot_table, pd.DataFrame):
             _phot_table = _phot_table.to_pandas()
-
-        # Apply calibration to all aperture radii
-        aperture_radii = [1.5, 2.0, 2.5]
 
         # Remove old single-aperture columns if they exist
         old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
@@ -1013,7 +1032,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Add calibrated magnitudes for all aperture radii
         for radius in aperture_radii:
-            radius_suffix = f"_r{radius:.1f}"
+            radius_suffix = f"_{radius:.1f}"
             instrumental_col = f"instrumental_mag{radius_suffix}"
             aperture_mag_col = f"aperture_mag{radius_suffix}"
 
@@ -1024,7 +1043,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Also apply to matched table for all aperture radii
         for radius in aperture_radii:
-            radius_suffix = f"_r{radius:.1f}"
+            radius_suffix = f"_{radius:.1f}"
             instrumental_col = f"instrumental_mag{radius_suffix}"
             aperture_mag_col = f"aperture_mag{radius_suffix}"
 
@@ -1033,15 +1052,11 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
                     _matched_table[instrumental_col] + zero_point_value + 0.09 * air
                 )
 
-        # Keep the legacy "calib_mag" column using the 1.5*FWHM aperture for backward compatibility
-        if "instrumental_mag_r1.5" in _phot_table.columns:
+        # Keep the legacy "calib_mag" column using the default aperture for backward compatibility
+        default_instrumental_col = f"instrumental_mag_{default_radius:.1f}"
+        if default_instrumental_col in _phot_table.columns:
             _phot_table["calib_mag"] = (
-                _phot_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
-            )
-
-        if "instrumental_mag_r1.5" in _matched_table.columns:
-            _matched_table["calib_mag"] = (
-                _matched_table["instrumental_mag_r1.5"] + zero_point_value + 0.09 * air
+                _phot_table[default_instrumental_col] + zero_point_value + 0.09 * air
             )
 
         st.session_state["final_phot_table"] = _phot_table
@@ -1109,7 +1124,6 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             )
 
         # Add a diagonal line for reference
-        # Create ideal y=x reference line spanning the full range of magnitudes
         mag_range = [
             min(_matched_table[filter_band].min(), _matched_table["calib_mag"].min()),
             max(_matched_table[filter_band].max(), _matched_table["calib_mag"].max()),
@@ -1125,13 +1139,19 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Right plot: Residuals
         mag_cat = _matched_table[filter_band]
-        mag_inst = _matched_table["instrumental_mag"]
+        mag_inst = _matched_table[instrumental_mag_col]
         zp_mean = zero_point_value
         residuals = mag_cat - (mag_inst + zp_mean)
-        if "aperture_mag_err" in _matched_table.columns:
+        
+        # Look for error column matching the aperture radius
+        aperture_err_col = f"aperture_mag_err_{default_radius:.1f}"
+        if aperture_err_col in _matched_table.columns:
+            aperture_mag_err = _matched_table[aperture_err_col].values
+        elif "aperture_mag_err" in _matched_table.columns:
             aperture_mag_err = _matched_table["aperture_mag_err"].values
         else:
             aperture_mag_err = np.zeros_like(residuals)
+            
         zp_err = zero_point_std if zero_point_std is not None else 0.0
         yerr = np.sqrt(aperture_mag_err**2 + zp_err**2)
 
@@ -1173,4 +1193,6 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         return round(zero_point_value, 2), round(zero_point_std, 2), fig
     except Exception as e:
         st.error(f"Error calculating zero point: {e}")
+        import traceback
+        st.error(traceback.format_exc())
         return None, None, None
