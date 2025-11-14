@@ -31,22 +31,60 @@ from stdpipe.
 
 def mask_and_remove_cosmic_rays(
     image_data,
-    header,
+    header
 ):
-    saturation = header.get('SATURATE') or 0.90*max(image_data) # Guess saturation level from FITS header
+    from astropy.stats import mad_std
+    
+    # Safe parse of header SATURATE -> float, fallback to robust max
+    sat_hdr = header.get("SATURATE", None)
+    try:
+        saturation = float(sat_hdr) if sat_hdr is not None else None
+    except (ValueError, TypeError):
+        saturation = None
+
+    if saturation is None:
+        saturation = 0.90 * np.nanmax(image_data)
 
     mask = np.isnan(image_data) # mask NaNs in the input image
     mask |= image_data > saturation # mask saturated pixels
 
-    from astropy.stats import mad_std
-    mask |= image_data > np.median(image_data) + 10.0*mad_std(image_data) # mask hotter pixels
-    gain = header.get('GAIN') or 1.0 # Guess gain from FITS header
+    # Robust statistics ignoring NaNs
+    median = np.nanmedian(image_data)
+    mad = mad_std(image_data, ignore_nan=True)
 
-    # mask cosmic rays using LACosmic algorithm
-    cmask, cimage = astroscrappy.detect_cosmics(image_data, mask, gain=gain, verbose=True)
+    # Mask hotter pixels (robust outlier threshold)
+    if mad == 0 or np.isnan(mad):
+        # fallback to simple sigma if MAD is zero/NaN
+        mad = np.nanstd(image_data)
+    mask |= (image_data > (median + 10.0 * mad))
     
-    mask |= cmask
-    
+    # Safe parse of gain
+    gain_hdr = header.get("GAIN", None)
+    try:
+        gain = float(gain_hdr) if gain_hdr is not None else 1.0
+    except (ValueError, TypeError):
+        gain = 1.0
+
+    # Run L.A.Cosmic (pass inmask explicitly). Be robust to different return shapes.
+    try:
+        res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain, verbose=False)
+        # detect_cosmics often returns a tuple; find the boolean CR mask
+        if isinstance(res, tuple):
+            crmask = None
+            for el in res:
+                if isinstance(el, np.ndarray) and el.shape == image_data.shape and el.dtype == bool:
+                    crmask = el
+                    break
+            if crmask is None:
+                crmask = res[0].astype(bool)
+        else:
+            crmask = res.astype(bool)
+    except Exception:
+        # If astroscrappy not available or fails, don't raise — return current mask
+        crmask = np.zeros_like(mask, dtype=bool)
+
+    mask |= crmask
+
     return mask
 
 
@@ -101,42 +139,51 @@ def make_border_mask(
     >>> # Create a mask with custom borders for each side
     >>> mask = make_border_mask(img, (10, 20, 30, 40), invert=False)
     """
+    import numbers
+
     if image is None:
         raise ValueError("Image cannot be None")
     if not isinstance(image, np.ndarray):
         raise TypeError("Image must be a numpy.ndarray")
-
     if image.size == 0:
         raise ValueError("Image cannot be empty")
+    if image.ndim < 2:
+        raise ValueError("Image must have at least 2 dimensions (height, width)")
 
     height, width = image.shape[:2]
 
-    if isinstance(border, (int, float)):
-        border = int(border)
-        top = bottom = left = right = border
-    elif isinstance(border, tuple):
+    # Normalize border into four integer values: top, bottom, left, right
+    if isinstance(border, numbers.Real):
+        b = int(border)
+        top = bottom = left = right = b
+    elif isinstance(border, (tuple, list, np.ndarray)):
         if len(border) == 2:
             vert, horiz = border
-            top = bottom = vert
-            left = right = horiz
+            top = bottom = int(vert)
+            left = right = int(horiz)
         elif len(border) == 4:
-            top = bottom = border[0]
-            left = right = border[2]
+            top, bottom, left, right = (int(x) for x in border)
         else:
-            raise ValueError("border must be an int")
+            raise ValueError("If 'border' is a sequence it must have length 2 or 4")
     else:
-        raise TypeError("border must be an int")
+        raise TypeError("border must be an int/float or a tuple/list/ndarray of length 2 or 4")
 
     if any(b < 0 for b in (top, bottom, left, right)):
         raise ValueError("Borders cannot be negative")
 
+    # require the inner region to have positive size
     if top + bottom >= height or left + right >= width:
-        raise ValueError("Borders are larger than the image")
+        raise ValueError(
+            "Sum of top+bottom must be < image height and left+right must be < image width"
+        )
 
-    mask = np.zeros(image.shape[:2], dtype=dtype)
-    mask[top : height - bottom, left : width - right] = True
+    # build bool mask first, then cast to requested dtype
+    inner = np.zeros((height, width), dtype=bool)
+    inner[top: height - bottom,
+          left: width - right] = True
 
-    return ~mask if invert else mask
+    mask = ~inner if invert else inner
+    return mask.astype(dtype)
 
 
 def airmass(
@@ -488,26 +535,41 @@ def detection_and_photometry(
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None
-
+    
+    # border mask (True = masked)
     border_mask = make_border_mask(image_data, border=detection_mask)
 
-    # if a cosmic-ray / external mask is provided, union it with the border mask
-    final_mask = border_mask
+    # cosmic-ray mask produced by LA Cosmic / custom routine (True = masked)
+    try:
+        cr_mask = mask_and_remove_cosmic_rays(image_data, science_header)
+    except Exception as e:
+        st.warning(f"Could not build cosmic-ray mask: {e}")
+        cr_mask = np.zeros_like(border_mask, dtype=bool)
+
+    # normalize to boolean and ensure compatible shape
+    def _to_bool_mask(arr, ref_shape):
+        if arr is None:
+            return np.zeros(ref_shape, dtype=bool)
+        a = np.asarray(arr)
+        if a.shape != ref_shape:
+            if a.size == np.prod(ref_shape):
+                try:
+                    a = a.reshape(ref_shape)
+                except Exception:
+                    return np.zeros(ref_shape, dtype=bool)
+            else:
+                return np.zeros(ref_shape, dtype=bool)
+        return a.astype(bool)
+
+    final_mask = np.logical_or(_to_bool_mask(border_mask, image_data.shape[:2]), _to_bool_mask(cr_mask, image_data.shape[:2]))
+
+    # If user passed an external mask_cr (0/1 or bool), union that too
     if mask_cr is not None:
         try:
-            # accept 0/1 integer masks or boolean masks; convert to bool
-            mask_cr_bool = mask_cr.astype(bool)
-            if mask_cr_bool.shape != final_mask.shape:
-                st.warning("mask_cr shape does not match image shape; attempting to reshape")
-                if mask_cr_bool.size == final_mask.size:
-                    mask_cr_bool = mask_cr_bool.reshape(final_mask.shape)
-                else:
-                    st.warning("mask_cr ignored due to incompatible shape")
-                    mask_cr_bool = None
-            if mask_cr_bool is not None:
-                final_mask = np.logical_or(final_mask, mask_cr_bool)
+            user_mask = _to_bool_mask(mask_cr, image_data.shape[:2])
+            final_mask = np.logical_or(final_mask, user_mask)
         except Exception as e:
-            st.warning(f"Could not combine mask_cr with border mask: {e}")
+            st.warning(f"Could not combine user mask_cr: {e}")
 
     mask = final_mask
 
