@@ -213,11 +213,12 @@ def cross_match_with_gaia(
 
     try:
         gaia_skycoords = SkyCoord(
-            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"], unit="deg"
+            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"],
+            unit="deg"
         )
         idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
-        max_sep_constraint = 2 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
+        max_sep_constraint = 2.5 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
         gaia_matches = d2d < max_sep_constraint
 
         matched_indices_gaia = idx[gaia_matches]
@@ -233,6 +234,9 @@ def cross_match_with_gaia(
         matched_table["gaia_index"] = matched_indices_gaia
         matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
 
+        # Add Gaia source_id so it's available later (prefixed with "gaia_" to match enhance_catalog logic)
+        matched_table["gaia_source_id"] = gaia_table_filtered["source_id"][matched_indices_gaia]
+
         # Add the filter_band column from the filtered Gaia table
         matched_table[filter_band] = gaia_table_filtered[filter_band][
             matched_indices_gaia
@@ -243,7 +247,7 @@ def cross_match_with_gaia(
 
         # Remove sources with SNR < 1
         if "snr" in matched_table.columns:
-            matched_table = matched_table[matched_table["snr"] >= 1]
+            matched_table = matched_table[matched_table["snr"] > 1]
 
         st.success(f"Found {len(matched_table)} Gaia matches after filtering.")
         return matched_table
@@ -300,7 +304,7 @@ def enhance_catalog(
 
     Notes
     -----
-       The function shows progress updates in the Streamlit interface and creates
+    The function shows progress updates in the Streamlit interface and creates
     a summary display of matched objects. Queries are made with appropriate
     error handling to prevent failures if any catalog service is unavailable.
     API requests are processed in batches to avoid overwhelming servers.
@@ -1018,7 +1022,7 @@ def enhance_catalog(
             f"Error in Milliquas catalog processing: {str(e)}",
             "ERROR",
         )
-        
+
     st.info("Querying 10 Parsec Catalog...")
     try:
         if field_center_ra is not None and field_center_dec is not None:
@@ -1029,7 +1033,8 @@ def enhance_catalog(
 
             # Query the VII/294 catalog around the field center
             result = v.query_region(
-                SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg, u.deg)),
+                SkyCoord(ra=field_center_ra, dec=field_center_dec,
+                         unit=(u.deg, u.deg)), 
                 width=field_width_arcmin * u.arcmin,
                 catalog="J/A+A/650/A201/tablea1",
             )
@@ -1114,5 +1119,15 @@ def enhance_catalog(
             f"Error in 10 Parsec catalog processing: {str(e)}",
             "ERROR",
         )
+
+    # Remove rows with snr_2.0 equal to 0
+    if "snr_2.0" in enhanced_table.columns:
+        # coerce to numeric so None/invalid values become NaN
+        snr_vals = pd.to_numeric(enhanced_table["snr_2.0"], errors="coerce")
+        zero_mask = snr_vals == 0
+        if zero_mask.any():
+            removed = int(zero_mask.sum())
+            enhanced_table = enhanced_table.loc[~zero_mask].copy()
+            st.info(f"Removed {removed} rows with snr == 0")
 
     return enhanced_table

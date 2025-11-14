@@ -1408,9 +1408,6 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     final_table = final_table.drop(columns=[col for col in cols_to_remove if
                                             col in final_table.columns])
 
-    # drop row with snr_2.0 == 0
-    final_table = final_table[final_table.get('snr_2.0', 1) != 0]
-
     final_table["id"] = final_table["id"].astype("Int64")
 
     return final_table
