@@ -1849,362 +1849,367 @@ if science_file is not None:
 
         zero_point_button_disabled = science_file is None
 
-        image_to_process = science_data
-        header_to_process = science_header.copy()
+        if st.button(
+                "Photometric Calibration",
+                disabled=zero_point_button_disabled,
+                key="run_zp"):
 
-        # Validate that we have a header
-        if header_to_process is None:
-            st.error(
-                "No header available for processing. Cannot proceed with photometry."
-            )
-            st.stop()
+            image_to_process = science_data
+            header_to_process = science_header.copy()
 
-        # Get the correct pixel scale and FWHM values
-        if (
-            "pixel_size_arcsec" in st.session_state
-            and "mean_fwhm_pixel" in st.session_state
-        ):
-            pixel_size_arcsec = st.session_state["pixel_size_arcsec"]
-            mean_fwhm_pixel = st.session_state["mean_fwhm_pixel"]
-        else:
-            pixel_size_arcsec, _ = extract_pixel_scale(header_to_process)
-            seeing = st.session_state.analysis_parameters["seeing"]
-            mean_fwhm_pixel = seeing / pixel_size_arcsec
+            # Validate that we have a header
+            if header_to_process is None:
+                st.error(
+                    "No header available for processing. Cannot proceed with photometry."
+                )
+                st.stop()
 
-        if image_to_process is not None:
-            try:
-                with st.spinner(
-                    "Background Extraction, FWHM Computation, Sources Detection and Photometry..."
-                ):
-                    # Extract parameters from session state
-                    threshold_sigma = st.session_state.analysis_parameters[
-                        "threshold_sigma"
-                    ]
-                    detection_mask = st.session_state.analysis_parameters[
-                        "detection_mask"
-                    ]
-                    filter_band = st.session_state.analysis_parameters[
-                        "filter_band"
-                    ]
-                    filter_max_mag = st.session_state.analysis_parameters[
-                        "filter_max_mag"
-                    ]
+            # Get the correct pixel scale and FWHM values
+            if (
+                "pixel_size_arcsec" in st.session_state
+                and "mean_fwhm_pixel" in st.session_state
+            ):
+                pixel_size_arcsec = st.session_state["pixel_size_arcsec"]
+                mean_fwhm_pixel = st.session_state["mean_fwhm_pixel"]
+            else:
+                pixel_size_arcsec, _ = extract_pixel_scale(header_to_process)
+                seeing = st.session_state.analysis_parameters["seeing"]
+                mean_fwhm_pixel = seeing / pixel_size_arcsec
 
-                    result = detection_and_photometry(
-                        image_to_process,
-                        header_to_process,
-                        mean_fwhm_pixel,
-                        threshold_sigma,
-                        detection_mask
-                    )
+            if image_to_process is not None:
+                try:
+                    with st.spinner(
+                        "Background Extraction, FWHM Computation, Sources Detection and Photometry..."
+                    ):
+                        # Extract parameters from session state
+                        threshold_sigma = st.session_state.analysis_parameters[
+                            "threshold_sigma"
+                        ]
+                        detection_mask = st.session_state.analysis_parameters[
+                            "detection_mask"
+                        ]
+                        filter_band = st.session_state.analysis_parameters[
+                            "filter_band"
+                        ]
+                        filter_max_mag = st.session_state.analysis_parameters[
+                            "filter_max_mag"
+                        ]
 
-                    if isinstance(result, tuple) and len(result) == 5:
-                        phot_table_qtable, epsf_table, daofind, bkg, w = result
-                    else:
-                        st.error(
-                            f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}"
-                        )
-                        phot_table_qtable = epsf_table = daofind = bkg = w = None
-
-                    if phot_table_qtable is not None:
-                        phot_table_df = phot_table_qtable.to_pandas().copy(
-                            deep=True
-                        )
-                    else:
-                        st.error("No sources detected in the image.")
-                        phot_table_df = None
-
-                if phot_table_df is not None:
-                    with st.spinner("Cross-matching with Gaia..."):
-                        matched_table = cross_match_with_gaia(
-                            phot_table_qtable,
+                        result = detection_and_photometry(
+                            image_to_process,
                             header_to_process,
-                            pixel_size_arcsec,
                             mean_fwhm_pixel,
-                            filter_band,
-                            filter_max_mag,
-                            refined_wcs=w,
+                            threshold_sigma,
+                            detection_mask
                         )
 
-                    if matched_table is not None:
-                        st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
-                        st.dataframe(matched_table.head(10))
+                        if isinstance(result, tuple) and len(result) == 5:
+                            phot_table_qtable, epsf_table, daofind, bkg, w = result
+                        else:
+                            st.error(
+                                f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}"
+                            )
+                            phot_table_qtable = epsf_table = daofind = bkg = w = None
 
-                        with st.spinner("Calculating zero point..."):
-                            zero_point_value, zero_point_std, zp_plot = (
-                                calculate_zero_point(
-                                    phot_table_qtable,
-                                    matched_table,
-                                    filter_band,
-                                    air,
-                                )
+                        if phot_table_qtable is not None:
+                            phot_table_df = phot_table_qtable.to_pandas().copy(
+                                deep=True
+                            )
+                        else:
+                            st.error("No sources detected in the image.")
+                            phot_table_df = None
+
+                    if phot_table_df is not None:
+                        with st.spinner("Cross-matching with Gaia..."):
+                            matched_table = cross_match_with_gaia(
+                                phot_table_qtable,
+                                header_to_process,
+                                pixel_size_arcsec,
+                                mean_fwhm_pixel,
+                                filter_band,
+                                filter_max_mag,
+                                refined_wcs=w,
                             )
 
-                            if zero_point_value is not None:
-                                write_to_log(
-                                    log_buffer,
-                                    f"Zero point: {zero_point_value:.2f} ± {zero_point_std:.2f}",
-                                )
-                                write_to_log(log_buffer, f"Airmass: {air:.2f}")
+                        if matched_table is not None:
+                            st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
+                            st.dataframe(matched_table.head(10))
 
-                                try:
-                                    if "epsf_photometry_result" in st.session_state and epsf_table is not None:
-
-                                        # Convert tables to pandas DataFrames
-                                        epsf_df = epsf_table.to_pandas() if not isinstance(epsf_table, pd.DataFrame) else epsf_table
-                                        final_table = st.session_state["final_phot_table"]
-
-                                        # Merge keeping all sources
-                                        final_table = merge_photometry_catalogs(
-                                            aperture_table=final_table,
-                                            psf_table=epsf_df,
-                                            tolerance_pixels=2.
-                                        )
-
-                                        # Add calibrated magnitudes
-                                        final_table = add_calibrated_magnitudes(
-                                            final_table,
-                                            zero_point=zero_point_value,
-                                            airmass=air
-                                        )
-
-                                        # Add metadata
-                                        final_table['zero_point'] = zero_point_value
-                                        final_table['zero_point_std'] = zero_point_std
-                                        final_table['airmass'] = air
-
-                                        # Clean the table
-                                        final_table = clean_photometry_table(final_table, require_magnitude=True)
-
-                                        # Save to session state
-                                        st.session_state["final_phot_table"] = final_table
-
-                                        # Display results
-                                        st.subheader("Final Photometry Catalog")
-                                        st.dataframe(final_table.head(20))
-
-                                        # Show breakdown by method
-                                        if 'phot_method' in final_table.columns:
-                                            method_counts = final_table['phot_method'].value_counts()
-                                            st.write("Sources by photometry method:")
-                                            st.write(method_counts)
-
-                                        st.success(f"Catalog includes {len(final_table)} sources.")
-
-                                except Exception as e:
-                                    st.error(f"Error merging photometry: {e}")
-                                    import traceback
-                                    st.code(traceback.format_exc())
-
-
-                                st.subheader("Final Photometry Catalog")
-                                st.dataframe(final_table.head(10))
-
-                                st.success(
-                                    f"Catalog includes {len(final_table)} sources."
+                            with st.spinner("Calculating zero point..."):
+                                zero_point_value, zero_point_std, zp_plot = (
+                                    calculate_zero_point(
+                                        phot_table_qtable,
+                                        matched_table,
+                                        filter_band,
+                                        air,
+                                    )
                                 )
 
-                                st.subheader(
-                                    "Magnitude Distribution (Aperture & PSF)"
-                                )
-
-                                fig_mag = plot_magnitude_distribution(
-                                    final_table, log_buffer
-                                )
-                                st.pyplot(fig_mag)
-
-                                try:
-                                    base_filename = st.session_state.get(
-                                        "base_filename", "photometry"
-                                    )
-                                    username = st.session_state.get(
-                                        "username", "anonymous"
-                                    )
-                                    output_dir = ensure_output_directory(
-                                        directory=f"{username}_results"
-                                    )
-                                    hist_filename = (
-                                        f"{base_filename}_histogram_mag.png"
-                                    )
-                                    hist_filepath = os.path.join(
-                                        output_dir, hist_filename
-                                    )
-                                    fig_mag.savefig(
-                                        hist_filepath,
-                                        dpi=120,
-                                        bbox_inches="tight",
-                                    )
+                                if zero_point_value is not None:
                                     write_to_log(
                                         log_buffer,
-                                        f"Saved magnitude histogram plot: {hist_filename}",
+                                        f"Zero point: {zero_point_value:.2f} ± {zero_point_std:.2f}",
                                     )
-                                except Exception as e:
-                                    st.warning(
-                                        f"Could not save magnitude histogram plot: {e}"
+                                    write_to_log(log_buffer, f"Airmass: {air:.2f}")
+
+                                    try:
+                                        if "epsf_photometry_result" in st.session_state and epsf_table is not None:
+
+                                            # Convert tables to pandas DataFrames
+                                            epsf_df = epsf_table.to_pandas() if not isinstance(epsf_table, pd.DataFrame) else epsf_table
+                                            final_table = st.session_state["final_phot_table"]
+
+                                            # Merge keeping all sources
+                                            final_table = merge_photometry_catalogs(
+                                                aperture_table=final_table,
+                                                psf_table=epsf_df,
+                                                tolerance_pixels=2.
+                                            )
+
+                                            # Add calibrated magnitudes
+                                            final_table = add_calibrated_magnitudes(
+                                                final_table,
+                                                zero_point=zero_point_value,
+                                                airmass=air
+                                            )
+
+                                            # Add metadata
+                                            final_table['zero_point'] = zero_point_value
+                                            final_table['zero_point_std'] = zero_point_std
+                                            final_table['airmass'] = air
+
+                                            # Clean the table
+                                            final_table = clean_photometry_table(final_table, require_magnitude=True)
+
+                                            # Save to session state
+                                            st.session_state["final_phot_table"] = final_table
+
+                                            # Display results
+                                            st.subheader("Final Photometry Catalog")
+                                            st.dataframe(final_table.head(20))
+
+                                            # Show breakdown by method
+                                            if 'phot_method' in final_table.columns:
+                                                method_counts = final_table['phot_method'].value_counts()
+                                                st.write("Sources by photometry method:")
+                                                st.write(method_counts)
+
+                                            st.success(f"Catalog includes {len(final_table)} sources.")
+
+                                    except Exception as e:
+                                        st.error(f"Error merging photometry: {e}")
+                                        import traceback
+                                        st.code(traceback.format_exc())
+
+
+                                    st.subheader("Final Photometry Catalog")
+                                    st.dataframe(final_table.head(10))
+
+                                    st.success(
+                                        f"Catalog includes {len(final_table)} sources."
                                     )
 
-                                # Clean up the figure
-                                plt.close(fig_mag)
-
-                                if (
-                                    final_table is not None
-                                    and "ra" in final_table.columns
-                                    and "dec" in final_table.columns
-                                ):
                                     st.subheader(
-                                        "Cross-matching with Astronomical Catalogs"
+                                        "Magnitude Distribution (Aperture & PSF)"
                                     )
-                                    search_radius = (
-                                        max(
-                                            header_to_process["NAXIS1"],
-                                            header_to_process["NAXIS2"],
-                                        )
-                                        * pixel_size_arcsec
-                                        / 2.0
+
+                                    fig_mag = plot_magnitude_distribution(
+                                        final_table, log_buffer
                                     )
-                                    # Get colibri API key from session state
-                                    colibri_api_key = st.session_state.get(
-                                        "colibri_api_key", ""
-                                    )
-                                    # Ensure final_table exists before enhancement
-                                    if final_table is None:
-                                        st.error(
-                                            "Final photometry table is None - cannot perform catalog enhancement"
+                                    st.pyplot(fig_mag)
+
+                                    try:
+                                        base_filename = st.session_state.get(
+                                            "base_filename", "photometry"
                                         )
-                                        final_table = st.session_state.get(
-                                            "final_phot_table"
+                                        username = st.session_state.get(
+                                            "username", "anonymous"
                                         )
+                                        output_dir = ensure_output_directory(
+                                            directory=f"{username}_results"
+                                        )
+                                        hist_filename = (
+                                            f"{base_filename}_histogram_mag.png"
+                                        )
+                                        hist_filepath = os.path.join(
+                                            output_dir, hist_filename
+                                        )
+                                        fig_mag.savefig(
+                                            hist_filepath,
+                                            dpi=120,
+                                            bbox_inches="tight",
+                                        )
+                                        write_to_log(
+                                            log_buffer,
+                                            f"Saved magnitude histogram plot: {hist_filename}",
+                                        )
+                                    except Exception as e:
+                                        st.warning(
+                                            f"Could not save magnitude histogram plot: {e}"
+                                        )
+
+                                    # Clean up the figure
+                                    plt.close(fig_mag)
 
                                     if (
                                         final_table is not None
-                                        and len(final_table) > 0
+                                        and "ra" in final_table.columns
+                                        and "dec" in final_table.columns
                                     ):
-                                        final_table = enhance_catalog(
-                                            colibri_api_key,
-                                            final_table,
-                                            matched_table,
-                                            header_to_process,
-                                            pixel_size_arcsec,
-                                            search_radius_arcsec=search_radius,
+                                        st.subheader(
+                                            "Cross-matching with Astronomical Catalogs"
                                         )
-                                elif final_table is not None:
-                                    st.warning(
-                                        "RA/DEC coordinates not available for catalog cross-matching"
+                                        search_radius = (
+                                            max(
+                                                header_to_process["NAXIS1"],
+                                                header_to_process["NAXIS2"],
+                                            )
+                                            * pixel_size_arcsec
+                                            / 2.0
+                                        )
+                                        # Get colibri API key from session state
+                                        colibri_api_key = st.session_state.get(
+                                            "colibri_api_key", ""
+                                        )
+                                        # Ensure final_table exists before enhancement
+                                        if final_table is None:
+                                            st.error(
+                                                "Final photometry table is None - cannot perform catalog enhancement"
+                                            )
+                                            final_table = st.session_state.get(
+                                                "final_phot_table"
+                                            )
+
+                                        if (
+                                            final_table is not None
+                                            and len(final_table) > 0
+                                        ):
+                                            final_table = enhance_catalog(
+                                                colibri_api_key,
+                                                final_table,
+                                                matched_table,
+                                                header_to_process,
+                                                pixel_size_arcsec,
+                                                search_radius_arcsec=search_radius,
+                                            )
+                                    elif final_table is not None:
+                                        st.warning(
+                                            "RA/DEC coordinates not available for catalog cross-matching"
+                                        )
+                                    else:
+                                        st.error(
+                                            "Final photometry table is None - cannot perform cross-matching"
+                                        )
+
+                                    # Call the new function here
+                                    save_catalog_files(
+                                        final_table, catalog_name, output_dir
                                     )
-                                else:
-                                    st.error(
-                                        "Final photometry table is None - cannot perform cross-matching"
-                                    )
 
-                                # Call the new function here
-                                save_catalog_files(
-                                    final_table, catalog_name, output_dir
-                                )
+                except Exception as e:
+                    st.error(f"Error during zero point calibration: {str(e)}")
+                    st.exception(e)
 
-            except Exception as e:
-                st.error(f"Error during zero point calibration: {str(e)}")
-                st.exception(e)
+                ra_center = None
+                dec_center = None
 
-            ra_center = None
-            dec_center = None
-
-            # Use the correct header - prioritize calibrated header if available
-            header_for_coords = st.session_state.get(
-                "calibrated_header", science_header
-            )
-            if header_for_coords is None:
-                header_for_coords = science_header
-
-            coord_keys = [("CRVAL1", "CRVAL2"), ("RA", "DEC"), ("OBJRA", "OBJDEC")]
-
-            for ra_key, dec_key in coord_keys:
-                if (
-                    header_for_coords is not None
-                    and ra_key in header_for_coords
-                    and dec_key in header_for_coords
-                ):
-                    try:
-                        ra_center = float(header_for_coords[ra_key])
-                        dec_center = float(header_for_coords[dec_key])
-                        if ra_center is not None and dec_center is not None:
-                            break
-                    except (ValueError, TypeError):
-                        continue
-
-            # Fallback to session state coordinates if header failed
-            if ra_center is None or dec_center is None:
-                ra_center = st.session_state.get("valid_ra")
-                dec_center = st.session_state.get("valid_dec")
-
-            if ra_center is not None and dec_center is not None:
-                # Check if we have a valid final photometry table
-                final_phot_table = st.session_state.get("final_phot_table")
-
-                if (
-                    final_phot_table is not None
-                    and not final_phot_table.empty
-                    and len(final_phot_table) > 0
-                ):
-                    st.subheader("Aladin Catalog Viewer")
-
-                    try:
-                        display_catalog_in_aladin(
-                            final_table=final_phot_table,
-                            ra_center=ra_center,
-                            dec_center=dec_center,
-                            id_cols=[
-                                "id",
-                                "simbad_main_id",
-                                "skybot_NAME",
-                                "aavso_Name",
-                                "gaia_source_id",
-                                "astrocolibri_name",
-                                "qso_name",
-                            ],
-                        )
-                    except Exception as e:
-                        st.error(f"Error displaying Aladin viewer: {str(e)}")
-                        st.info(
-                            "Catalog data is available but cannot be displayed in interactive viewer."
-                        )
-
-                st.link_button(
-                    "ESA Sky Viewer",
-                    f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=DSS2+color&fov=1.0&projection=SIN&cooframe=J2000&sci=true&lang=en",
-                    help="Open ESA Sky with the same target coordinates",
+                # Use the correct header - prioritize calibrated header if available
+                header_for_coords = st.session_state.get(
+                    "calibrated_header", science_header
                 )
+                if header_for_coords is None:
+                    header_for_coords = science_header
 
-                st.link_button(
-                    "SIMBAD",
-                    f"https://simbad.u-strasbg.fr/simbad/sim-coo?Coord={ra_center}+{dec_center}&Radius=5&Radius.unit=arcmin",
-                    help="Open SIMBAD at CDS Strasbourg for these coordinates",
-                )
+                coord_keys = [("CRVAL1", "CRVAL2"), ("RA", "DEC"), ("OBJRA", "OBJDEC")]
 
-                st.link_button(
-                    "XMatch",
-                    f"https://cdsxmatch.u-strasbg.fr/xmatch?request=doQuery&RA={ra_center}&DEC={dec_center}&radius=5",
-                    help="Open CDS XMatch service for these coordinates",
-                )
+                for ra_key, dec_key in coord_keys:
+                    if (
+                        header_for_coords is not None
+                        and ra_key in header_for_coords
+                        and dec_key in header_for_coords
+                    ):
+                        try:
+                            ra_center = float(header_for_coords[ra_key])
+                            dec_center = float(header_for_coords[dec_key])
+                            if ra_center is not None and dec_center is not None:
+                                break
+                        except (ValueError, TypeError):
+                            continue
 
-                # # Run Transient Finder if enabled
-                # if st.session_state.analysis_parameters.get("run_transient_finder"):
-                #     if (
-                #         "science_file_path" in st.session_state
-                #         and st.session_state["science_file_path"]
-                #     ):
-                #         with st.spinner(
-                #             "Running Image Subtraction... This may take a moment."
-                #         ):
+                # Fallback to session state coordinates if header failed
+                if ra_center is None or dec_center is None:
+                    ra_center = st.session_state.get("valid_ra")
+                    dec_center = st.session_state.get("valid_dec")
 
-                # Only provide download buttons if processing was completed
-                if final_phot_table is not None:
-                    provide_download_buttons(output_dir)
-                    cleanup_temp_files()
-                    zip_results_on_exit(science_file, output_dir)
-            else:
-                st.warning(
-                    "Could not determine coordinates from image header. Cannot display ESASky or Aladin Viewer."
-                )
+                if ra_center is not None and dec_center is not None:
+                    # Check if we have a valid final photometry table
+                    final_phot_table = st.session_state.get("final_phot_table")
+
+                    if (
+                        final_phot_table is not None
+                        and not final_phot_table.empty
+                        and len(final_phot_table) > 0
+                    ):
+                        st.subheader("Aladin Catalog Viewer")
+
+                        try:
+                            display_catalog_in_aladin(
+                                final_table=final_phot_table,
+                                ra_center=ra_center,
+                                dec_center=dec_center,
+                                id_cols=[
+                                    "id",
+                                    "simbad_main_id",
+                                    "skybot_NAME",
+                                    "aavso_Name",
+                                    "gaia_source_id",
+                                    "astrocolibri_name",
+                                    "qso_name",
+                                ],
+                            )
+                        except Exception as e:
+                            st.error(f"Error displaying Aladin viewer: {str(e)}")
+                            st.info(
+                                "Catalog data is available but cannot be displayed in interactive viewer."
+                            )
+
+                    st.link_button(
+                        "ESA Sky Viewer",
+                        f"https://sky.esa.int/esasky/?target={ra_center}%20{dec_center}&hips=DSS2+color&fov=1.0&projection=SIN&cooframe=J2000&sci=true&lang=en",
+                        help="Open ESA Sky with the same target coordinates",
+                    )
+
+                    st.link_button(
+                        "SIMBAD",
+                        f"https://simbad.u-strasbg.fr/simbad/sim-coo?Coord={ra_center}+{dec_center}&Radius=5&Radius.unit=arcmin",
+                        help="Open SIMBAD at CDS Strasbourg for these coordinates",
+                    )
+
+                    st.link_button(
+                        "XMatch",
+                        f"https://cdsxmatch.u-strasbg.fr/xmatch?request=doQuery&RA={ra_center}&DEC={dec_center}&radius=5",
+                        help="Open CDS XMatch service for these coordinates",
+                    )
+
+                    # # Run Transient Finder if enabled
+                    # if st.session_state.analysis_parameters.get("run_transient_finder"):
+                    #     if (
+                    #         "science_file_path" in st.session_state
+                    #         and st.session_state["science_file_path"]
+                    #     ):
+                    #         with st.spinner(
+                    #             "Running Image Subtraction... This may take a moment."
+                    #         ):
+
+                    # Only provide download buttons if processing was completed
+                    if final_phot_table is not None:
+                        provide_download_buttons(output_dir)
+                        cleanup_temp_files()
+                        zip_results_on_exit(science_file, output_dir)
+                else:
+                    st.warning(
+                        "Could not determine coordinates from image header. Cannot display ESASky or Aladin Viewer."
+                    )
 else:
     st.text(
         "👆 Upload an Image FITS file to Start",
