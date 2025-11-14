@@ -26,7 +26,6 @@ from typing import Union, Optional, Dict, Tuple
 
 from src.psf import perform_psf_photometry
 from src.utils_common import estimate_background
-from stdpipe.
 
 
 def mask_and_remove_cosmic_rays(
