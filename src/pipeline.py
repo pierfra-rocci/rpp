@@ -64,7 +64,7 @@ def mask_and_remove_cosmic_rays(
         gain = 1.0
 
     st.info("Detecting cosmic rays using L.A.Cosmic ...")
-    # Run L.A.Cosmic (pass inmask explicitly). Be robust to different return shapes.
+    # Run L.A.Cosmic (pass inmask explicitly)
     try:
         res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain, verbose=False)
         # detect_cosmics often returns a tuple; find the boolean CR mask

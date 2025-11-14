@@ -57,6 +57,6 @@ You can download the ZIP archive to your computer to inspect the results in deta
 Support
 -------
 
-If you encounter any issues or have questions, please check the `*.log` file first for detailed error messages or warnings. If the problem persists, contact pierfrancesco.rocci@yahoo.fr or open an issue on the project's repository, providing the log file and a description of the problem.
+If you encounter any issues or have questions, please check the `*.log` file first for detailed error messages or warnings. If the problem persists, contact rpp_support@saf-astronomie.fr or open an issue on the project's repository, providing the log file and a description of the problem.
 
 
