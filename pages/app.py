@@ -828,7 +828,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     """
     fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
 
-    has_aperture = "aperture_mag_r1.5" in final_table.columns
+    has_aperture = "aperture_mag_1.5" in final_table.columns
     has_psf = "psf_mag" in final_table.columns
 
     if not has_aperture and not has_psf:
@@ -854,7 +854,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Calculate bins for magnitude distribution
     mag_values = []
     if has_aperture:
-        mag_values.extend(final_table["aperture_mag_r1.5"].dropna().tolist())
+        mag_values.extend(final_table["aperture_mag_1.5"].dropna().tolist())
     if has_psf:
         mag_values.extend(final_table["psf_mag"].dropna().tolist())
 
@@ -866,7 +866,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Magnitude distribution histogram (left panel)
     if has_aperture:
         ax_mag.hist(
-            final_table["aperture_mag_r1.5"].dropna(),
+            final_table["aperture_mag_1.5"].dropna(),
             bins=bins,
             alpha=0.6,
             label="Aperture Calib Mag (1.5×FWHM)",
@@ -888,10 +888,10 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     ax_mag.grid(True, alpha=0.3)
 
     # Scatter plot of magnitude vs error (right panel)
-    if has_aperture and "aperture_mag_err_r1.5" in final_table.columns:
+    if has_aperture and "aperture_mag_err_1.5" in final_table.columns:
         ax_err.scatter(
-            final_table["aperture_mag_r1.5"],
-            final_table["aperture_mag_err_r1.5"],
+            final_table["aperture_mag_1.5"],
+            final_table["aperture_mag_err_1.5"],
             alpha=0.7,
             label="Aperture (1.5×FWHM)",
             color="tab:blue",
@@ -2214,88 +2214,6 @@ if science_file is not None:
                     #         with st.spinner(
                     #             "Running Image Subtraction... This may take a moment."
                     #         ):
-                    #             try:
-                    #                 # Initialize the TransientFinder
-                    #                 finder = TransientFinder(
-                    #                     science_fits_path=st.session_state[
-                    #                         "science_file_path"
-                    #                     ],
-                    #                     output_dir=st.session_state["output_dir"],
-                    #                 )
-
-                    #                 # 1. Get reference image
-                    #                 st.write(
-                    #                     f"Retrieving reference image from {st.session_state.transient_survey} ({st.session_state.transient_filter} band)..."
-                    #                 )
-                    #                 if not finder.get_reference_image(
-                    #                     survey=st.session_state.transient_survey,
-                    #                     filter_band=st.session_state.transient_filter,
-                    #                 ):
-                    #                     st.error(
-                    #                         "Failed to retrieve the reference image. Please try another survey or filter."
-                    #                     )
-                    #                     st.stop()
-                    #                 st.write("Reference image retrieved.")
-
-                    #                 # 2. Perform subtraction
-                    #                 st.write("Performing image subtraction...")
-                    #                 if not finder.perform_subtraction(method="proper"):
-                    #                     st.error("Image subtraction failed.")
-                    #                     st.stop()
-                    #                 st.write("Image subtraction complete.")
-
-                    #                 # 3. Detect transients
-                    #                 st.write("Detecting transient sources...")
-                    #                 transients = finder.detect_transients(threshold=5.0)
-
-                    #                 if transients is not None and len(transients) > 0:
-                    #                     st.success(
-                    #                         f"Found {len(transients)} transient candidate(s)!"
-                    #                     )
-                    #                     st.dataframe(transients.to_pandas())
-
-                    #                     # 4. Plot results
-                    #                     st.write("Generating result plots...")
-                    #                     plot_path = finder.plot_results(show=False)
-                    #                     if plot_path and os.path.exists(plot_path):
-                    #                         st.image(
-                    #                             plot_path,
-                    #                             caption="Transient Detection: Science, Reference, and Difference Images",
-                    #                         )
-
-                    #                     # 5. Plot cutouts
-                    #                     cutout_paths = finder.plot_transient_cutouts(
-                    #                         show=False
-                    #                     )
-                    #                     if cutout_paths:
-                    #                         st.write("Cutouts for each transient:")
-                    #                         for path in cutout_paths:
-                    #                             if os.path.exists(path):
-                    #                                 st.image(
-                    #                                     path,
-                    #                                     caption=os.path.basename(path),
-                    #                                 )
-                    #                 else:
-                    #                     st.info(
-                    #                         "No significant transient sources were detected."
-                    #                     )
-
-                    #                 # 6. Cleanup temporary files
-                    #                 if not st.session_state.get(
-                    #                     "keep_temp_files", False
-                    #                 ):
-                    #                     finder.cleanup_temp_files()
-                    #                     st.write("Temporary files cleaned up.")
-
-                    #             except Exception as e:
-                    #                 st.error(
-                    #                     f"An error occurred during the transient finding process: {e}"
-                    #                 )
-                    #                 st.exception(e)
-                    #     else:
-                    #         st.warning(
-                    #             "Please upload a science FITS file first before running the transient finder."
-                    #         )
 
                     # Only provide download buttons if processing was completed
                     if final_phot_table is not None:
