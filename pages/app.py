@@ -1685,11 +1685,19 @@ if science_file is not None:
 
     st.subheader("Statistics")
     if science_data is not None:
-        st.write("Mean", f"{np.mean(science_data):.3f}", )
-        st.write("Median", f"{np.median(science_data):.3f}")
-        st.write("Rms", f"{np.std(science_data):.3f}")
-        st.write("Min", f"{np.min(science_data):.3f}")
-        st.write("Max", f"{np.max(science_data):.3f}")
+        st.write("Mean: ", f"{np.mean(science_data):.2f}", )
+        st.write("Median: ", f"{np.median(science_data):.2f}")
+        st.write("Rms: ", f"{np.std(science_data):.3f}")
+        st.write("Min: ", f"{np.min(science_data):.2f}")
+        st.write("Max: ", f"{np.max(science_data):.2f}")
+        
+        # Write statistics to log
+        write_to_log(log_buffer, "Image Statistics", level="INFO")
+        write_to_log(log_buffer, f"Mean: {np.mean(science_data):.2f}")
+        write_to_log(log_buffer, f"Median: {np.median(science_data):.2f}")
+        write_to_log(log_buffer, f"RMS: {np.std(science_data):.3f}")
+        write_to_log(log_buffer, f"Min: {np.min(science_data):.2f}")
+        write_to_log(log_buffer, f"Max: {np.max(science_data):.2f}")
 
         # Use updated header if available, otherwise use original
         header_for_stats = st.session_state.get("calibrated_header", science_header)
@@ -1712,7 +1720,7 @@ if science_file is not None:
             st.session_state["mean_fwhm_pixel"] = mean_fwhm_pixel
 
         st.write(
-            "Mean Pixel Scale (arcsec)",
+            "Mean Pixel Scale (arcsec): ",
             f"{pixel_size_arcsec:.2f}",
         )
         write_to_log(
@@ -1720,7 +1728,7 @@ if science_file is not None:
             f"Final pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
         )
         seeing = st.session_state.analysis_parameters["seeing"]
-        st.write("Mean FWHM (pixels)", f"{mean_fwhm_pixel:.2f}")
+        st.write("Mean FWHM (pixels): ", f"{mean_fwhm_pixel:.2f}")
         write_to_log(
             log_buffer,
             f"Final seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
