@@ -78,10 +78,10 @@ def cross_match_with_gaia(
     try:
         if refined_wcs is not None:
             w = refined_wcs
-            st.info("Using refined WCS for Gaia cross-matching, if possible.")
+            st.info("Using refined WCS for Gaia cross-matching.")
         else:
             w = WCS(science_header)
-            st.info("Using header WCS for Gaia cross-matching")
+            st.info("Using header WCS for Gaia cross-matching.")
     except Exception as e:
         st.error(f"Error creating WCS: {e}")
         return None
