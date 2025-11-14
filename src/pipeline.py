@@ -446,7 +446,8 @@ def fwhm_fit(
         if box_size % 2 == 0:
             box_size += 1
 
-        xypos = list(zip(filtered_sources["xcentroid"], filtered_sources["ycentroid"]))
+        xypos = list(zip(filtered_sources["xcentroid"],
+                         filtered_sources["ycentroid"]))
         fwhms = fit_fwhm(_img, xypos=xypos, fit_shape=box_size)
 
         mean_fwhm = np.median(fwhms)
