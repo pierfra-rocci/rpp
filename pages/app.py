@@ -448,12 +448,6 @@ def display_catalog_in_aladin(
             if "id" in final_table.columns and pd.notna(row.get("id")):
                 source["catalog_id"] = str(row["id"])
 
-            # Add additional useful information
-            try:
-                source["snr_1.5"] = float(row["snr_1.5"])
-            except (ValueError, TypeError):
-                source["snr_1.5"] = str(row["snr_1.5"])
-
             catalog_sources.append(source)
 
     if not catalog_sources:
