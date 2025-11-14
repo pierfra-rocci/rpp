@@ -241,7 +241,7 @@ def cross_match_with_gaia(
         valid_gaia_mags = np.isfinite(matched_table[filter_band])
         matched_table = matched_table[valid_gaia_mags]
 
-        # Remove sources with SNR < 1 before zero point calculation
+        # Remove sources with SNR < 1
         if "snr" in matched_table.columns:
             matched_table = matched_table[matched_table["snr"] >= 1]
 
