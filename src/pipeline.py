@@ -78,9 +78,9 @@ def mask_and_remove_cosmic_rays(
                 crmask = res[0].astype(bool)
         else:
             crmask = res.astype(bool)
-        st.success("Cosmic ray detection complete.")
+        st.success("Saturated pixels and Cosmic ray detection complete.")
     except Exception:
-        st.warning("Cosmic ray detection failed, proceeding without cosmic ray masking.")
+        st.warning("Cosmic ray detection failed, proceeding with saturation only mask.")
         crmask = np.zeros_like(mask, dtype=bool)
 
     mask |= crmask
