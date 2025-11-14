@@ -285,9 +285,9 @@ def display_catalog_in_aladin(
     ra_col: str = "ra",
     dec_col: str = "dec",
     mag_col: str = "psf_mag",
-    alt_mag_col: str = "aperture_mag",
+    alt_mag_col: str = "aperture_mag_1.5",
     catalog_col: str = "catalog_matches",
-    id_cols: list[str] = ["simbad_main_id", "skybot_NAME", "aavso_Name"],
+    id_cols: list[str] = ["simbad_main_id", "aavso_Name"],
     fallback_id_prefix: str = "Source",
     survey: str = "CDS/P/DSS2/color",
 ) -> None:
@@ -377,7 +377,7 @@ def display_catalog_in_aladin(
                     pass
 
             # Get aperture magnitude (try multiple aperture columns)
-            aperture_mag_cols = ["aperture_mag_r1.5", "aperture_mag", "calib_mag"]
+            aperture_mag_cols = ["aperture_mag_1.5", "calib_mag"]
             for ap_col in aperture_mag_cols:
                 if ap_col in present_optional_cols and pd.notna(row[ap_col]):
                     try:
@@ -397,12 +397,6 @@ def display_catalog_in_aladin(
                 simbad_id = str(row["simbad_main_id"]).strip()
                 if simbad_id and simbad_id not in ["", "nan", "None"]:
                     catalog_matches["SIMBAD"] = simbad_id
-
-            # SkyBoT matches (solar system objects)
-            if "skybot_NAME" in present_optional_cols and pd.notna(row["skybot_NAME"]):
-                skybot_name = str(row["skybot_NAME"]).strip()
-                if skybot_name and skybot_name not in ["", "nan", "None"]:
-                    catalog_matches["SkyBoT"] = skybot_name
 
             # AAVSO VSX matches (variable stars)
             if "aavso_Name" in present_optional_cols and pd.notna(row["aavso_Name"]):
@@ -433,7 +427,7 @@ def display_catalog_in_aladin(
             source["catalog_matches"] = catalog_matches
             source_id = f"{fallback_id_prefix} {idx + 1}"
 
-            # First, check if there's an "id" column in the table (the real catalog ID)
+            # First, check if there's an "id" column in the table
             if "id" in final_table.columns and pd.notna(row.get("id")):
                 id_value = str(row["id"]).strip()
                 if id_value and id_value not in ["nan", "None", ""]:
