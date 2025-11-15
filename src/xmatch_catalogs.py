@@ -371,46 +371,58 @@ def enhance_catalog(
     if matched_table is not None and len(matched_table) > 0:
         status_text.write("Adding Gaia calibration matches...")
 
-        if "xcenter" in enhanced_table.columns and "ycenter" in enhanced_table.columns:
-            enhanced_table["match_id"] = (
-                enhanced_table["xcenter"].round(2).astype(str)
-                + "_"
-                + enhanced_table["ycenter"].round(2).astype(str)
-            )
-
-        if "xcenter" in matched_table.columns and "ycenter" in matched_table.columns:
-            matched_table["match_id"] = (
-                matched_table["xcenter"].round(2).astype(str)
-                + "_"
-                + matched_table["ycenter"].round(2).astype(str)
-            )
-
-            gaia_cols = [
-                col
-                for col in matched_table.columns
-                if any(x in col for x in ["gaia", "phot_"])
-            ]
-            gaia_cols.append("match_id")
-
-            gaia_subset = matched_table[gaia_cols].copy()
-
-            rename_dict = {}
-            for col in gaia_subset.columns:
-                if col != "match_id" and not col.startswith("gaia_"):
-                    rename_dict[col] = f"gaia_{col}"
-
-            if rename_dict:
-                gaia_subset = gaia_subset.rename(columns=rename_dict)
-
-            enhanced_table = pd.merge(
-                enhanced_table, gaia_subset, on="match_id", how="left"
-            )
-
-            enhanced_table["gaia_calib_star"] = enhanced_table["match_id"].isin(
-                matched_table["match_id"]
-            )
-
-            st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
+        # Use iloc-based matching on valid coordinates only
+        valid_indices_list = np.where(valid_coords_mask)[0]
+        
+        if len(valid_indices_list) > 0 and len(matched_table) > 0:
+            # Filter enhanced_table to only valid coordinates
+            valid_enhanced = enhanced_table.iloc[valid_indices_list].copy()
+            
+            # Create match_id on valid subset
+            if "xcenter" in valid_enhanced.columns and "ycenter" in valid_enhanced.columns:
+                valid_enhanced["match_id"] = (
+                    valid_enhanced["xcenter"].round(2).astype(str)
+                    + "_"
+                    + valid_enhanced["ycenter"].round(2).astype(str)
+                )
+            
+            # Create match_id on matched_table
+            if "xcenter" in matched_table.columns and "ycenter" in matched_table.columns:
+                matched_table["match_id"] = (
+                    matched_table["xcenter"].round(2).astype(str)
+                    + "_"
+                    + matched_table["ycenter"].round(2).astype(str)
+                )
+                
+                gaia_cols = [
+                    col for col in matched_table.columns
+                    if any(x in col for x in ["gaia", "phot_"])
+                ]
+                gaia_cols.append("match_id")
+                gaia_subset = matched_table[gaia_cols].copy()
+                
+                rename_dict = {
+                    col: f"gaia_{col}" for col in gaia_subset.columns
+                    if col != "match_id" and not col.startswith("gaia_")
+                }
+                if rename_dict:
+                    gaia_subset = gaia_subset.rename(columns=rename_dict)
+                
+                # Merge on valid subset
+                valid_enhanced = pd.merge(
+                    valid_enhanced, gaia_subset, on="match_id", how="left"
+                )
+                
+                # Map back to full table using iloc
+                enhanced_table.iloc[valid_indices_list] = valid_enhanced
+                
+                # Add gaia_calib_star column
+                enhanced_table["gaia_calib_star"] = False
+                enhanced_table.iloc[valid_indices_list, enhanced_table.columns.get_loc("gaia_calib_star")] = (
+                    valid_enhanced["match_id"].isin(matched_table["match_id"]).values
+                )
+                
+                st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
 
     if field_center_ra is not None and field_center_dec is not None:
         if not (-360 <= field_center_ra <= 360) or not (-90 <= field_center_dec <= 90):
