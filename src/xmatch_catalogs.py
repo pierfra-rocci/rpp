@@ -754,7 +754,10 @@ def enhance_catalog(
                     st.success(f"Found {len(skybot_result)} solar system objects.")
 
                     # Convert astropy table to list of dicts for easier access
-                    data = [dict(zip(skybot_result.colnames, row)) for row in skybot_result]
+                    data = [dict(zip(skybot_result.colnames, row)) 
+                            for row in skybot_result]
+                    
+                    st.info(data)
                     
                     # Build SkyCoord from returned objects
                     ra_list = []
@@ -774,6 +777,8 @@ def enhance_catalog(
                             good_indices.append(i_obj)
                         except Exception:
                             continue
+                    
+                    st.info(ra_list, dec_list, good_indices)
 
                     if len(ra_list) == 0:
                         st.info("SkyBoT returned entries but no usable coordinates.")
