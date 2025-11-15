@@ -757,28 +757,32 @@ def enhance_catalog(
                     data = [dict(zip(skybot_result.colnames, row)) 
                             for row in skybot_result]
                     
-                    st.info(data)
+                    st.write("SkyBoT query results:", data)
                     
                     # Build SkyCoord from returned objects
                     ra_list = []
                     dec_list = []
                     good_indices = []
-                    
+
                     for i_obj, obj in enumerate(data):
                         try:
                             ra_val = obj.get("RA")
                             dec_val = obj.get("DEC")
+                            
                             if ra_val is None or dec_val is None:
                                 continue
-                            ra_f = float(ra_val)
-                            dec_f = float(dec_val)
+                            
+                            # Extract numeric values from Quantity objects
+                            ra_f = float(ra_val.value if hasattr(ra_val, 'value') else ra_val)
+                            dec_f = float(dec_val.value if hasattr(dec_val, 'value') else dec_val)
+                            
                             ra_list.append(ra_f)
                             dec_list.append(dec_f)
                             good_indices.append(i_obj)
                         except Exception:
                             continue
-                    
-                    st.info(ra_list, dec_list, good_indices)
+
+                    st.info(f"Extracted {len(ra_list)} valid coordinates from SkyBoT results")
 
                     if len(ra_list) == 0:
                         st.info("SkyBoT returned entries but no usable coordinates.")
@@ -789,7 +793,7 @@ def enhance_catalog(
 
                         # Filter valid coordinates for SkyBoT matching
                         valid_final_coords = enhanced_table[valid_coords_mask]
-                        
+
                         if len(valid_final_coords) == 0:
                             st.info("No valid coordinates available for SkyBoT matching")
                         else:
@@ -801,7 +805,7 @@ def enhance_catalog(
 
                             # Use 2D sky matching
                             idx, d2d, _ = source_coords.match_to_catalog_sky(skybot_coords)
-                            max_sep = 10.0 * u.arcsec
+                            max_sep = 10. * u.arcsec
                             matches = d2d <= max_sep
 
                             # Map matches back to the original table indices
@@ -820,10 +824,18 @@ def enhance_catalog(
                                 name = rec.get("Name")
                                 objtype = rec.get("Type")
                                 magv = rec.get("V")
+                                epoch = rec.get("epoch")
+                                
+                                # Extract values from Quantity objects
+                                if magv is not None and hasattr(magv, 'value'):
+                                    magv = float(magv.value)
+                                if epoch is not None and hasattr(epoch, 'value'):
+                                    epoch = float(epoch.value)
                                 
                                 enhanced_table.loc[original_idx, "skybot_NAME"] = name
                                 enhanced_table.loc[original_idx, "skybot_OBJECT_TYPE"] = objtype
                                 enhanced_table.loc[original_idx, "skybot_MAGV"] = magv
+                                enhanced_table.loc[original_idx, "skybot_epoch"] = epoch
 
                             has_skybot = enhanced_table["skybot_NAME"].notna()
                             enhanced_table.loc[has_skybot, "catalog_matches"] += "SkyBoT; "
