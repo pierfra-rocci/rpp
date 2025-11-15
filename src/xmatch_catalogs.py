@@ -946,7 +946,7 @@ def enhance_catalog(
 
                     # Perform cross-matching
                     idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
-                    matches = d2d.arcsec < 10. * u.arcsec
+                    matches = d2d.arcsec < 10.
 
                     # Add matched quasar information to the final table
                     enhanced_table["qso_name"] = None
@@ -1048,7 +1048,7 @@ def enhance_catalog(
 
                     # Cross-match (sky distance)
                     idx, d2d, _ = source_coords.match_to_catalog_sky(pc10_coords)
-                    matches = d2d.arcsec < 10. * u.arcsec
+                    matches = d2d.arcsec < 10.
 
                     # Ensure destination columns exist
                     for col in [
