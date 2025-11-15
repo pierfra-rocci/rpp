@@ -1986,13 +1986,7 @@ if science_file is not None:
 
                                             # Display results
                                             st.subheader("Final Photometry Catalog")
-                                            st.dataframe(final_table.head(20))
-
-                                            # Show breakdown by method
-                                            if 'phot_method' in final_table.columns:
-                                                method_counts = final_table['phot_method'].value_counts()
-                                                st.write("Sources by photometry method:")
-                                                st.write(method_counts)
+                                            st.dataframe(final_table.head(10))
 
                                             st.success(f"Catalog includes {len(final_table)} sources.")
 

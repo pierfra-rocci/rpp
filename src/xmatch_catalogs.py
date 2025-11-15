@@ -1118,9 +1118,9 @@ def enhance_catalog(
             enhanced_table = enhanced_table.loc[~invalid_mask].copy()
             write_to_log(
                 st.session_state.get("log_buffer"),
-                f"Removed {removed} rows with snr_2.0 in [0, -1, -2]",
+                f"Removed {removed} sources with snr_2.0 in [0, -1, -2]",
                 "INFO",
             )
-            st.info(f"Removed {removed} rows with snr_2.0 in [0, -1, -2]")
+            st.info(f"Removed {removed} sources with snr_2.0 in [0, -1, -2]")
 
     return enhanced_table
