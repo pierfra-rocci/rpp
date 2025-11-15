@@ -470,7 +470,7 @@ def display_catalog_in_aladin(
 <head>
     <meta charset="utf-8">
     <title>Aladin Lite v3</title>
-    <link rel="stylesheet" href="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.min.css" />
+    <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/3.7.3-beta/aladin.min.css" />
 </head>
 <body>
     <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
