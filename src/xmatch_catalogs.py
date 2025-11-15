@@ -757,8 +757,6 @@ def enhance_catalog(
                     data = [dict(zip(skybot_result.colnames, row)) 
                             for row in skybot_result]
                     
-                    st.write("SkyBoT query results:", data)
-                    
                     # Build SkyCoord from returned objects
                     ra_list = []
                     dec_list = []
