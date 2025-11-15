@@ -743,9 +743,9 @@ def enhance_catalog(
                                        unit=u.deg)
 
                 skybot_result = Skybot.cone_search(
-                    pos=field_coord,
-                    rad=sr_value * u.deg,
-                    epoch=obs_time
+                    field_coord,
+                    sr_value * u.deg,
+                    obs_time
                 )
 
                 if skybot_result is None or len(skybot_result) == 0:
