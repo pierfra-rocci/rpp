@@ -469,18 +469,19 @@ def display_catalog_in_aladin(
 <html>
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
     <title>Aladin Lite v3</title>
-    <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.css" />
 </head>
 <body>
     <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
     <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js" charset="utf-8"></script>
     <script type="text/javascript" src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
     <script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", function(event) {{
+        let aladin;
+        A.init.then(() => {{
             try {{
                 // Initialize Aladin v3
-                let aladin = A.aladin('#aladin-lite-div', {{
+                aladin = A.aladin('#aladin-lite-div', {{
                     target: '{ra_center} {dec_center}',
                     fov: {fov},
                     survey: '{survey}',
@@ -577,6 +578,8 @@ def display_catalog_in_aladin(
                         popupContent += '</div>';
                     }}
 
+                    popupContent += '</div>';
+
                     // Create source with v3 properties
                     let aladinSource = A.source(
                         source.ra,
@@ -597,6 +600,9 @@ def display_catalog_in_aladin(
                 console.error("Error initializing Aladin Lite v3 or adding sources:", error);
                 document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error loading Aladin v3 viewer. Try refreshing the page or use a modern browser.</p>';
             }}
+        }}).catch((error) => {{
+            console.error("A.init promise rejected:", error);
+            document.getElementById('aladin-lite-div').innerHTML = '<p style="color:red;">Error initializing Aladin v3. Please check your browser console for details.</p>';
         }});
     </script>
 </body>
