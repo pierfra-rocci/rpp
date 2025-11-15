@@ -1108,7 +1108,6 @@ def enhance_catalog(
             "ERROR",
         )
 
-
     # Remove rows with snr_2.0 equal to 0, -1, or -2
     if "snr_2.0" in enhanced_table.columns:
         # coerce to numeric so None/invalid values become NaN
