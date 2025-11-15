@@ -1093,10 +1093,10 @@ def enhance_catalog(
                     st.info("No valid coordinates available for 10 Parsec matching")
 
             else:
-                st.warning("No sources found in field from 10 Parsec catalog.")
+                st.warning("No sources found from 10 Parsec catalog.")
                 write_to_log(
                     st.session_state.get("log_buffer"),
-                    "No sources found in field from 10 Parsec catalog",
+                    "No sources found from 10 Parsec catalog",
                     "INFO",
                 )
 
