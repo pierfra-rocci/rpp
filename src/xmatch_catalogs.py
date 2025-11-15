@@ -363,7 +363,7 @@ def enhance_catalog(
             field_width_arcmin = (
                 max(header.get("NAXIS1", 1000), header.get("NAXIS2", 1000))
                 * pixel_scale_arcsec
-                / 60.0
+                / 60.
             )
 
     status_text = st.empty()
@@ -374,11 +374,11 @@ def enhance_catalog(
 
         # Use iloc-based matching on valid coordinates only
         valid_indices_list = np.where(valid_coords_mask)[0]
-        
+
         if len(valid_indices_list) > 0 and len(matched_table) > 0:
             # Filter enhanced_table to only valid coordinates
             valid_enhanced = enhanced_table.iloc[valid_indices_list].copy()
-            
+
             # Create match_id on valid subset
             if "xcenter" in valid_enhanced.columns and "ycenter" in valid_enhanced.columns:
                 valid_enhanced["match_id"] = (
@@ -386,7 +386,7 @@ def enhance_catalog(
                     + "_"
                     + valid_enhanced["ycenter"].round(2).astype(str)
                 )
-            
+
             # Create match_id on matched_table
             if "xcenter" in matched_table.columns and "ycenter" in matched_table.columns:
                 matched_table["match_id"] = (
@@ -394,35 +394,35 @@ def enhance_catalog(
                     + "_"
                     + matched_table["ycenter"].round(2).astype(str)
                 )
-                
+
                 gaia_cols = [
                     col for col in matched_table.columns
                     if any(x in col for x in ["gaia", "phot_"])
                 ]
                 gaia_cols.append("match_id")
                 gaia_subset = matched_table[gaia_cols].copy()
-                
+
                 rename_dict = {
                     col: f"gaia_{col}" for col in gaia_subset.columns
                     if col != "match_id" and not col.startswith("gaia_")
                 }
                 if rename_dict:
                     gaia_subset = gaia_subset.rename(columns=rename_dict)
-                
+
                 # Merge on valid subset
                 valid_enhanced = pd.merge(
                     valid_enhanced, gaia_subset, on="match_id", how="left"
                 )
-                
+
                 # Map back to full table using iloc
                 enhanced_table.iloc[valid_indices_list] = valid_enhanced
-                
+
                 # Add gaia_calib_star column
                 enhanced_table["gaia_calib_star"] = False
                 enhanced_table.iloc[valid_indices_list, enhanced_table.columns.get_loc("gaia_calib_star")] = (
                     valid_enhanced["match_id"].isin(matched_table["match_id"]).values
                 )
-                
+
                 st.success(f"Added {len(matched_table)} Gaia calibration stars to catalog")
 
     if field_center_ra is not None and field_center_dec is not None:
@@ -483,7 +483,7 @@ def enhance_catalog(
                 "properties": {
                     "type": "cone",
                     "position": {"ra": field_center_ra, "dec": field_center_dec},
-                    "radius": field_width_arcmin / 2.0,
+                    "radius": field_width_arcmin / 2.,
                 },
             }
 
@@ -614,7 +614,8 @@ def enhance_catalog(
     st.info("Querying SIMBAD")
 
     try:
-        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit="deg")
+        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec,
+                                unit="deg")
         simbad_result, error = safe_catalog_query(
             custom_simbad.query_region,
             "SIMBAD query failed",
@@ -667,7 +668,7 @@ def enhance_catalog(
                                 idx, d2d, _ = source_coords.match_to_catalog_sky(
                                     simbad_coords
                                 )
-                                matches = d2d <= (10 * u.arcsec)
+                                matches = d2d <= (10. * u.arcsec)
 
                                 # Map matches back to the original table indices
                                 valid_indices = valid_final_coords.index
@@ -727,7 +728,7 @@ def enhance_catalog(
 
             obs_time = Time(obs_date)
 
-            sr_value = min(field_width_arcmin / 60.0, 10.0)  # degrees (cap at 10°)
+            sr_value = min(field_width_arcmin / 60., 1.)  # degrees, limit to 1 deg max
 
             st.info("Querying SkyBoT for solar system objects...")
 
@@ -754,7 +755,7 @@ def enhance_catalog(
                     st.success(f"Found {len(skybot_result)} solar system objects.")
 
                     # Convert astropy table to list of dicts for easier access
-                    data = [dict(zip(skybot_result.colnames, row)) 
+                    data = [dict(zip(skybot_result.colnames, row))
                             for row in skybot_result]
 
                     # Build SkyCoord from returned objects
@@ -945,7 +946,7 @@ def enhance_catalog(
 
                     # Perform cross-matching
                     idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
-                    matches = d2d.arcsec < 10
+                    matches = d2d.arcsec < 10. * u.arcsec
 
                     # Add matched quasar information to the final table
                     enhanced_table["qso_name"] = None
@@ -1014,7 +1015,8 @@ def enhance_catalog(
 
             # Query the 10 Parsec catalog (J/A+A/650/A201/tablea1)
             result = v.query_region(
-                SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg, u.deg)),
+                SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg,
+                                                                         u.deg)),
                 width=field_width_arcmin * u.arcmin,
                 catalog="J/A+A/650/A201/tablea1",
             )
@@ -1046,7 +1048,7 @@ def enhance_catalog(
 
                     # Cross-match (sky distance)
                     idx, d2d, _ = source_coords.match_to_catalog_sky(pc10_coords)
-                    matches = d2d.arcsec < 10
+                    matches = d2d.arcsec < 10. * u.arcsec
 
                     # Ensure destination columns exist
                     for col in [
