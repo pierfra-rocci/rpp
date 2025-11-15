@@ -470,12 +470,12 @@ def display_catalog_in_aladin(
 <head>
     <meta charset="utf-8">
     <title>Aladin Lite v3</title>
-    <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/3.7.3-beta/aladin.min.css" />
+    <link rel="stylesheet" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.css" />
 </head>
 <body>
     <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
     <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js" charset="utf-8"></script>
-    <script type="text/javascript" src="https://aladin.cds.unistra.fr/AladinLite/api/v3/3.7.3-beta/aladin.js" charset="utf-8"></script>
+    <script type="text/javascript" src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
     <script type="text/javascript">
         document.addEventListener("DOMContentLoaded", function(event) {{
             try {{
