@@ -474,8 +474,8 @@ def display_catalog_in_aladin(
 </head>
 <body>
     <div id="aladin-lite-div" style="width:100%;height:550px;"></div>
-    <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js" charset="utf-8"></script>
-    <script type="text/javascript" src="https://aladin.u-strasbg.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.1.min.js" charset="utf-8"></script>
+    <script type="text/javascript" src="https://aladin.cds.unistra.fr/AladinLite/api/v3/3.7.3-beta/aladin.js" charset="utf-8"></script>
     <script type="text/javascript">
         document.addEventListener("DOMContentLoaded", function(event) {{
             try {{
