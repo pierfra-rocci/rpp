@@ -738,11 +738,13 @@ def enhance_catalog(
                 enhanced_table["skybot_MAGV"] = None
 
                 # Use Skybot cone search from astroquery
-                field_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=u.deg)
-                
+                field_coord = SkyCoord(ra=field_center_ra,
+                                       dec=field_center_dec,
+                                       unit=u.deg)
+
                 skybot_result = Skybot.cone_search(
-                    field_coord,
-                    radius=sr_value * u.deg,
+                    pos=field_coord,
+                    rad=sr_value * u.deg,
                     epoch=obs_time
                 )
 
@@ -750,7 +752,7 @@ def enhance_catalog(
                     st.info("No solar system objects found in the field.")
                 else:
                     st.success(f"Found {len(skybot_result)} solar system objects.")
-                    
+
                     # Convert astropy table to list of dicts for easier access
                     data = [dict(zip(skybot_result.colnames, row)) for row in skybot_result]
                     
