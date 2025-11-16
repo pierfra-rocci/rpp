@@ -10,10 +10,10 @@ from photutils.background import LocalBackground, MMMBackground
 from astropy.nddata import NDData
 from astropy.io import fits
 from astropy.visualization import simple_norm
+from astropy.modeling.models import Gaussian2D
 
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from photutils.psf import SourceGrouper, EPSFStars
-from astropy.modeling.models import Gaussian2D
 
 from src.tools import FIGURE_SIZES, ensure_output_directory
 
@@ -23,14 +23,14 @@ from typing import Any, Optional, Tuple
 def create_gaussian_psf_from_stars(stars, fwhm):
     """
     Create a simple Gaussian PSF model from median-combined star cutouts.
-
+    
     Parameters
     ----------
     stars : EPSFStars
         Extracted star cutouts
     fwhm : float
         Full Width at Half Maximum in pixels
-
+        
     Returns
     -------
     numpy.ndarray
@@ -44,31 +44,31 @@ def create_gaussian_psf_from_stars(stars, fwhm):
                 arr = np.asarray(star.data)
                 if arr.size > 0 and not np.isnan(arr).any() and not np.all(arr == 0):
                     star_arrays.append(arr)
-
+        
         if len(star_arrays) == 0:
             raise ValueError("No valid star arrays for Gaussian PSF creation")
-
+        
         # Get the shape from the first star (they should all be the same size)
         shape = star_arrays[0].shape
-
+        
         # Median combine the stars (normalizing each first)
         normalized_stars = []
         for arr in star_arrays:
             peak = np.max(arr)
             if peak > 0:
                 normalized_stars.append(arr / peak)
-
+        
         median_psf = np.median(normalized_stars, axis=0)
-
+        
         # Fit a 2D Gaussian to the median combined PSF
         y, x = np.mgrid[:shape[0], :shape[1]]
-
+        
         # Initial guess for Gaussian parameters
         amplitude = np.max(median_psf)
-        x_mean = shape[1] / 2.
-        y_mean = shape[0] / 2.
+        x_mean = shape[1] / 2.0
+        y_mean = shape[0] / 2.0
         sigma = fwhm / 2.355  # Convert FWHM to sigma
-
+        
         # Create the Gaussian model
         gaussian = Gaussian2D(
             amplitude=amplitude,
@@ -77,17 +77,17 @@ def create_gaussian_psf_from_stars(stars, fwhm):
             x_stddev=sigma,
             y_stddev=sigma
         )
-
+        
         # Evaluate the Gaussian on the grid
         gaussian_psf = gaussian(x, y)
-
+        
         # Normalize to have same peak as median PSF
         gaussian_psf = gaussian_psf / np.max(gaussian_psf) * np.max(median_psf)
-
+        
         st.write(f"Created Gaussian PSF fallback with FWHM={fwhm:.2f} pixels (sigma={sigma:.2f})")
-
+        
         return gaussian_psf
-
+        
     except Exception as e:
         st.error(f"Error creating Gaussian PSF fallback: {e}")
         raise
@@ -100,6 +100,8 @@ def perform_psf_photometry(
     daostarfind: Any,
     mask: Optional[np.ndarray] = None,
     error=None,
+    max_sources_for_psf: int = 500,
+    max_stars_for_epsf: int = 200,
 ) -> Tuple[Table, Any]:
     """
     Perform PSF (Point Spread Function) photometry using an empirically-constructed PSF model.
@@ -122,6 +124,12 @@ def perform_psf_photometry(
         Mask to exclude certain image areas from analysis
     error : numpy.ndarray, optional
         Error array for the image
+    max_sources_for_psf : int, optional
+        Maximum number of sources to extract for PSF model construction (default: 500)
+        This limits the initial extraction before quality filtering
+    max_stars_for_epsf : int, optional
+        Maximum number of stars to use for final EPSF building (default: 200)
+        Only the brightest stars are selected if more are available
 
     Returns
     -------
@@ -157,8 +165,7 @@ def perform_psf_photometry(
             nd_unc = None
 
         nddata = NDData(
-            data=img, mask=mask if mask is not None else None,
-            uncertainty=nd_unc
+            data=img, mask=mask if mask is not None else None, uncertainty=nd_unc
         )
     except Exception as e:
         st.error(f"Error in initial validation: {e}")
@@ -167,6 +174,7 @@ def perform_psf_photometry(
     # Filter photo_table to select only the best stars for PSF model
     try:
         st.write("Filtering stars for PSF model construction...")
+        st.write(f"Starting with {len(photo_table)} sources")
 
         # Ensure table-like behavior for astropy Table / QTable (no .get)
         n_sources = len(photo_table)
@@ -203,7 +211,48 @@ def perform_psf_photometry(
         xcentroid = _col_arr(photo_table, "xcentroid")
         ycentroid = _col_arr(photo_table, "ycentroid")
 
-        # Get flux statistics with NaN handling
+        # ========== EARLY FILTERING STEP ==========
+        # Pre-select top brightest sources to avoid extracting thousands of stars
+        flux_finite = flux[np.isfinite(flux)]
+        if len(flux_finite) == 0:
+            raise ValueError("No sources with finite flux values found")
+
+        # If we have too many sources, keep only the brightest ones before detailed filtering
+        if len(photo_table) > max_sources_for_psf:
+            st.write(f"⚡ Too many sources ({len(photo_table)}). Pre-selecting top {max_sources_for_psf} brightest stars...")
+            
+            # Create a simple score based on flux (higher is better)
+            # Only consider sources with finite flux and valid positions
+            valid_for_preselect = (
+                np.isfinite(flux) & 
+                np.isfinite(xcentroid) & 
+                np.isfinite(ycentroid)
+            )
+            
+            if np.sum(valid_for_preselect) == 0:
+                raise ValueError("No sources with valid flux and positions found")
+            
+            # Rank by flux (brightest first)
+            flux_ranks = np.argsort(flux[valid_for_preselect])[::-1]
+            
+            # Create index mapping back to original table
+            valid_indices = np.where(valid_for_preselect)[0]
+            top_indices = valid_indices[flux_ranks[:max_sources_for_psf]]
+            
+            # Pre-filter the photo_table
+            photo_table = photo_table[top_indices]
+            
+            # Update arrays
+            n_sources = len(photo_table)
+            flux = _col_arr(photo_table, "flux")
+            roundness1 = _col_arr(photo_table, "roundness1", np.nan)
+            sharpness = _col_arr(photo_table, "sharpness", np.nan)
+            xcentroid = _col_arr(photo_table, "xcentroid")
+            ycentroid = _col_arr(photo_table, "ycentroid")
+            
+            st.write(f"✓ Pre-selected {len(photo_table)} brightest sources for PSF construction")
+
+        # Get flux statistics with NaN handling (on potentially pre-filtered data)
         flux_finite = flux[np.isfinite(flux)]
         if len(flux_finite) == 0:
             raise ValueError("No sources with finite flux values found")
@@ -433,12 +482,12 @@ def perform_psf_photometry(
             raise ValueError("Too few valid Star objects for EPSF building")
 
         # If there are a lot of stars, pick the brightest (by peak)
-        max_use = 200
-        if n_valid > max_use:
+        if n_valid > max_stars_for_epsf:
+            st.write(f"⚡ Selecting top {max_stars_for_epsf} brightest stars from {n_valid} valid stars...")
             peaks = np.array([s.data.max() for s in valid_stars])
-            top_idx = np.argsort(peaks)[-max_use:][::-1]
+            top_idx = np.argsort(peaks)[-max_stars_for_epsf:][::-1]
             stars_for_builder = EPSFStars([valid_stars[i] for i in top_idx])
-            st.write(f"Selected {len(stars_for_builder)} brightest stars for EPSF construction.")
+            st.write(f"✓ Selected {len(stars_for_builder)} brightest stars for EPSF construction.")
         else:
             stars_for_builder = EPSFStars(valid_stars)
 
@@ -470,22 +519,22 @@ def perform_psf_photometry(
 
         # If EPSFBuilder failed completely, use Gaussian fallback
         if epsf is None or (hasattr(epsf, "data") and (epsf.data is None or np.asarray(epsf.data).size == 0)):
-            st.warning("EPSFBuilder failed. Creating Gaussian PSF fallback from median-combined stars...")
+            st.warning("⚠️ EPSFBuilder failed. Creating Gaussian PSF fallback from median-combined stars...")
             use_gaussian_fallback = True
-
+            
             try:
                 epsf_data = create_gaussian_psf_from_stars(stars_for_builder, fwhm)
-
+                
                 # Create a simple object to hold the Gaussian PSF data
                 class GaussianPSF:
                     def __init__(self, data, fwhm):
                         self.data = data
                         self.fwhm = fwhm
                         self.oversampling = 1
-
+                
                 epsf = GaussianPSF(epsf_data, fwhm)
                 st.success("✓ Gaussian PSF fallback created successfully")
-
+                
             except Exception as fallback_error:
                 st.error(f"Gaussian PSF fallback also failed: {fallback_error}")
                 raise ValueError("Both EPSF building and Gaussian fallback failed")
@@ -504,7 +553,7 @@ def perform_psf_photometry(
         st.write(f"Shape of PSF data: {epsf_data.shape}")
         st.session_state["epsf_model"] = epsf
         st.session_state["used_gaussian_fallback"] = use_gaussian_fallback
-
+        
     except Exception as e:
         st.error(f"Error fitting PSF model: {e}")
         raise
@@ -528,7 +577,7 @@ def perform_psf_photometry(
                 "GAUSSIAN" if use_gaussian_fallback else "EPSF",
                 "Type of PSF model used"
             )
-
+            
             # Ensure FWHM written as a scalar
             try:
                 if np is not None and (
@@ -608,17 +657,17 @@ def perform_psf_photometry(
             error = None
 
         # Create a SourceGrouper
-        min_separation = 2. * fwhm
+        min_separation = 2.0 * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
-        sigma_clip = SigmaClip(sigma=3.)
+        sigma_clip = SigmaClip(sigma=3.0)
         bkgstat = MMMBackground(sigma_clip=sigma_clip)
-        localbkg_estimator = LocalBackground(2. * fwhm, 2.5 * fwhm, bkgstat)
+        localbkg_estimator = LocalBackground(2.0 * fwhm, 2.5 * fwhm, bkgstat)
 
         psfphot = PSFPhotometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,
             finder=daostarfind,
-            aperture_radius=float(fit_shape) / 2.,
+            aperture_radius=float(fit_shape) / 2.0,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
         )
