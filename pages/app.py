@@ -657,7 +657,7 @@ def provide_download_buttons(folder_path):
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for file in files:
-                file_path = os.path.join(folder_path, file)
+                file_path = os.path.join(folder_path+"\\rpp_results", file)
                 zip_file.write(file_path, arcname=file)
 
         # Reset buffer position to the beginning
@@ -2071,7 +2071,7 @@ if science_file is not None:
                                         colibri_api_key = st.session_state.get(
                                             "colibri_api_key", ""
                                         )
-                                        # Ensure final_table exists before enhancement
+                                        # Ensure final_table exists
                                         if final_table is None:
                                             st.error(
                                                 "Final photometry table is None - cannot perform catalog enhancement"
@@ -2191,15 +2191,16 @@ if science_file is not None:
                         help="Open CDS XMatch service for these coordinates",
                     )
 
-                    # # Run Transient Finder if enabled
-                    # if st.session_state.analysis_parameters.get("run_transient_finder"):
-                    #     if (
-                    #         "science_file_path" in st.session_state
-                    #         and st.session_state["science_file_path"]
-                    #     ):
-                    #         with st.spinner(
-                    #             "Running Image Subtraction... This may take a moment."
-                    #         ):
+                    # Run Transient Finder if enabled
+                    if st.session_state.analysis_parameters.get("run_transient_finder"): 
+                        if (
+                            "science_file_path" in st.session_state
+                            and st.session_state["science_file_path"]
+                        ):
+                            with st.spinner(
+                                "Running Image Subtraction... This may take a moment."
+                            ):
+                                pass  # TODO: Add transient finder function here
 
                     # Only provide download buttons if processing was completed
                     if final_phot_table is not None:

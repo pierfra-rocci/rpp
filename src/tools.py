@@ -96,7 +96,6 @@ def ensure_output_directory(directory=""):
     parent_dir = os.path.dirname(project_root)
     # c:\Users\pierf\rpp_results
     results_root = os.path.join(parent_dir, "rpp_results")
-    
     final_path = os.path.join(results_root, directory)
 
     if not os.path.exists(final_path):
