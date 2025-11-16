@@ -657,7 +657,7 @@ def provide_download_buttons(folder_path):
         zip_buffer = BytesIO()
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
             for file in files:
-                file_path = os.path.join(folder_path+"\\rpp_results", file)
+                file_path = os.path.join(folder_path, file)
                 zip_file.write(file_path, arcname=file)
 
         # Reset buffer position to the beginning
