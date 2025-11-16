@@ -1196,7 +1196,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     st.session_state.analysis_parameters["threshold_sigma"] = st.slider(
         "Detection Threshold (sigma)",
         min_value=1.0,
-        max_value=5.0,
+        max_value=6.0,
         value=st.session_state.analysis_parameters["threshold_sigma"],
         step=0.5,
         help=("Source detection threshold in units of background standard deviation."),

@@ -403,6 +403,9 @@ def fwhm_fit(
     profiles to estimate FWHM. For each source, a box of size ~6×FWHM is extracted,
     and profiles are fit independently in both dimensions, with the results averaged.
 
+    If more than 1000 sources are detected after filtering, a random sample of 1000
+    sources is selected for FWHM calculation to improve performance.
+
     Progress updates and error messages are displayed using Streamlit.
     """
     try:
@@ -425,13 +428,19 @@ def fwhm_fit(
         filtered_sources = sources[mask_flux]
 
         filtered_sources = filtered_sources[~np.isnan(filtered_sources["flux"])]
-
+        
         st.write(f"Sources after filtering : {len(filtered_sources)}")
 
         if len(filtered_sources) == 0:
             msg = "No valid sources for fitting found after filtering."
             st.error(msg)
             raise ValueError(msg)
+
+        # Randomly sample 1000 sources if more than 1000 are available
+        if len(filtered_sources) > 1000:
+            indices = np.random.choice(len(filtered_sources), size=1000, replace=False)
+            filtered_sources = filtered_sources[indices]
+            st.info(f"Randomly sampled 1000 sources out of {len(filtered_sources)} for FWHM calculation")
 
         box_size = int(6 * round(fwhm))
         if box_size % 2 == 0:
@@ -522,7 +531,8 @@ def detection_and_photometry(
         science_header.get("PIXSIZE", science_header.get("PIXELSCAL", 1.0)),
     )
 
-    bkg, bkg_error = estimate_background(image_data, box_size=64, filter_size=9)
+    bkg, bkg_error = estimate_background(image_data, box_size=64,
+                                         filter_size=9)
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None
@@ -551,7 +561,8 @@ def detection_and_photometry(
                 return np.zeros(ref_shape, dtype=bool)
         return a.astype(bool)
 
-    final_mask = np.logical_or(_to_bool_mask(border_mask, image_data.shape[:2]), _to_bool_mask(cr_mask, image_data.shape[:2]))
+    final_mask = np.logical_or(_to_bool_mask(border_mask, image_data.shape[:2]),
+                               _to_bool_mask(cr_mask, image_data.shape[:2]))
     mask = final_mask
 
     fig, ax = plt.subplots(figsize=(8, 6))
