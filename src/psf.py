@@ -211,31 +211,45 @@ def perform_psf_photometry(
                 np.isfinite(xcentroid_initial) & 
                 np.isfinite(ycentroid_initial)
             )
-            
+
             if np.sum(valid_for_preselect) == 0:
                 raise ValueError("No sources with valid flux and positions found")
-            
+
             # Rank by flux (brightest first)
             flux_ranks = np.argsort(flux_initial[valid_for_preselect])[::-1]
-            
+
             # Create index mapping back to original table
             valid_indices = np.where(valid_for_preselect)[0]
             top_indices = valid_indices[flux_ranks[:max_sources_for_psf]]
-            
+
             # Pre-filter ONLY for PSF construction (not for final photometry)
             photo_table_for_psf = photo_table[top_indices]
-            
+
             st.write(f"✓ Pre-selected {len(photo_table_for_psf)} brightest sources for PSF model construction")
             st.write(f"   (Final photometry will be performed on all {len(photo_table_all_sources)} original sources)")
 
+        # ---------- START REPLACEMENT BLOCK ----------
         # NOW work with photo_table_for_psf for all subsequent operations
-        n_sources = len(photo_table_for_psf)
+        # Ensure we always have an 'orig_index' mapping so we can map back to the original full table.
         
+        if len(photo_table) > max_sources_for_psf:
+            # top_indices was computed above during pre-selection
+            # make a copy so adding columns does not mutate the original user's table
+            photo_table_for_psf = photo_table_for_psf.copy()
+            if "orig_index" not in photo_table_for_psf.colnames:
+                photo_table_for_psf["orig_index"] = top_indices
+        else:
+            # no preselection: create an explicit mapping 0..N-1
+            photo_table_for_psf = photo_table_for_psf.copy()
+            if "orig_index" not in photo_table_for_psf.colnames:
+                photo_table_for_psf["orig_index"] = np.arange(len(photo_table_for_psf))
+
+        n_sources = len(photo_table_for_psf)
+
         def _col_arr(tbl, name, default=None):
             if name in tbl.colnames:
                 return np.asarray(tbl[name])
             if default is not None:
-                # return default repeated to match table length
                 return (
                     np.asarray(default)
                     if np.shape(default) == (len(tbl),)
@@ -263,7 +277,6 @@ def perform_psf_photometry(
         flux_max = flux_median + 3 * flux_std
 
         # Create individual boolean masks with explicit NaN handling
-        # IMPORTANT: All masks must have length = n_sources = len(photo_table_for_psf)
         valid_flux = np.isfinite(flux)
         valid_roundness = np.isfinite(roundness1)
         valid_sharpness = np.isfinite(sharpness)
@@ -315,17 +328,24 @@ def perform_psf_photometry(
             & edge_criteria
         )
 
-        # Apply filters
-        filtered_photo_table = photo_table[good_stars_mask]
+        # ===== APPLY THE MASK TO photo_table_for_psf (same length as mask) =====
+        filtered_photo_table = photo_table_for_psf[good_stars_mask]
         st.write(f"Flux range for PSF stars : {flux_min:.1f} -> {flux_max:.1f}")
+        st.write(f"Stars after first filtering: {len(filtered_photo_table)}")
 
-        # Check if we have enough stars for PSF construction
+        # Save indices mapping to original full table
+        orig_indices_preselection = np.asarray(photo_table_for_psf["orig_index"])
+        orig_indices_filtered = orig_indices_preselection[good_stars_mask]
+
+        st.session_state["psf_preselected_indices"] = orig_indices_preselection
+        st.session_state["psf_filtered_indices"] = orig_indices_filtered
+
+        # If too few, relax criteria (apply relaxed_mask to same preselected table)
         if len(filtered_photo_table) < 10:
             st.warning(
                 f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria..."
             )
 
-            # Relax criteria - rebuild masks with correct length (n_sources)
             roundness_criteria_relaxed = np.zeros(n_sources, dtype=bool)
             roundness_criteria_relaxed[valid_roundness] = (
                 np.abs(roundness1[valid_roundness]) < 0.5
@@ -349,11 +369,11 @@ def perform_psf_photometry(
                 & edge_criteria
             )
 
-            # Apply relaxed mask to photo_table_for_psf (correct table!)
+            # Apply relaxed mask to the same table (photo_table_for_psf)
             filtered_photo_table = photo_table_for_psf[relaxed_mask]
 
-            # Update filtered original indices
-            orig_indices_filtered = np.asarray(photo_table_for_psf["orig_index"])[relaxed_mask]
+            # Update original indices for filtered stars
+            orig_indices_filtered = orig_indices_preselection[relaxed_mask]
             st.session_state["psf_filtered_indices"] = orig_indices_filtered
 
             st.write(f"After relaxing criteria: {len(filtered_photo_table)} stars")
@@ -362,6 +382,7 @@ def perform_psf_photometry(
             raise ValueError(
                 "Too few good stars for PSF model construction. Need at least 5 stars."
             )
+        # ---------- END REPLACEMENT BLOCK ----------
 
     except Exception as e:
         st.error(f"Error filtering stars for PSF model: {e}")
