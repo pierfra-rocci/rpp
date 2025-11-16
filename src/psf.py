@@ -224,7 +224,7 @@ def perform_psf_photometry(
         # If we have too many sources, keep only the brightest ones before detailed filtering
         photo_table_for_psf = photo_table  # Start with full table
         if len(photo_table) > max_sources_for_psf:
-            st.write(f"⚡Too many sources ({len(photo_table)}). Pre-selecting top {max_sources_for_psf} brightest stars for PSF model construction...")
+            st.write(f"⚡ Too many sources ({len(photo_table)}). Pre-selecting top {max_sources_for_psf} brightest stars for PSF model construction...")
             
             # Create a simple score based on flux (higher is better)
             # Only consider sources with finite flux and valid positions
@@ -255,7 +255,7 @@ def perform_psf_photometry(
             xcentroid = _col_arr(photo_table_for_psf, "xcentroid")
             ycentroid = _col_arr(photo_table_for_psf, "ycentroid")
             
-            st.write(f"Pre-selected {len(photo_table_for_psf)} brightest sources for PSF model construction")
+            st.write(f"✓ Pre-selected {len(photo_table_for_psf)} brightest sources for PSF model construction")
             st.write(f"   (Final photometry will be performed on all {len(photo_table_all_sources)} original sources)")
 
         # Get flux statistics with NaN handling (on potentially pre-filtered data)
@@ -271,6 +271,7 @@ def perform_psf_photometry(
         flux_max = flux_median + 3 * flux_std
 
         # Create individual boolean masks with explicit NaN handling
+        # IMPORTANT: These masks are for photo_table_for_psf, not the original table
         valid_flux = np.isfinite(flux)
         valid_roundness = np.isfinite(roundness1)
         valid_sharpness = np.isfinite(sharpness)
@@ -332,21 +333,24 @@ def perform_psf_photometry(
                 f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria..."
             )
 
-            # Relax criteria
-            roundness_criteria_relaxed = np.zeros_like(valid_roundness, dtype=bool)
-            roundness_criteria_relaxed[valid_roundness] = (
-                np.abs(roundness1[valid_roundness]) < 0.5
+            # Relax criteria - rebuild masks with correct length
+            roundness_criteria_relaxed = np.zeros(len(photo_table_for_psf), dtype=bool)
+            valid_roundness_mask = valid_roundness
+            roundness_criteria_relaxed[valid_roundness_mask] = (
+                np.abs(roundness1[valid_roundness_mask]) < 0.5
             )
 
-            sharpness_criteria_relaxed = np.zeros_like(valid_sharpness, dtype=bool)
-            sharpness_criteria_relaxed[valid_sharpness] = (
-                np.abs(sharpness[valid_sharpness]) < 1.0
+            sharpness_criteria_relaxed = np.zeros(len(photo_table_for_psf), dtype=bool)
+            valid_sharpness_mask = valid_sharpness
+            sharpness_criteria_relaxed[valid_sharpness_mask] = (
+                np.abs(sharpness[valid_sharpness_mask]) < 1.0
             )
 
-            flux_criteria_relaxed = np.zeros_like(valid_flux, dtype=bool)
-            flux_criteria_relaxed[valid_flux] = (
-                flux[valid_flux] >= flux_median - 2 * flux_std
-            ) & (flux[valid_flux] <= flux_median + 2 * flux_std)
+            flux_criteria_relaxed = np.zeros(len(photo_table_for_psf), dtype=bool)
+            valid_flux_mask = valid_flux
+            flux_criteria_relaxed[valid_flux_mask] = (
+                flux[valid_flux_mask] >= flux_median - 2 * flux_std
+            ) & (flux[valid_flux_mask] <= flux_median + 2 * flux_std)
 
             good_stars_mask = (
                 (valid_flux & valid_xcentroid & valid_ycentroid)
@@ -489,7 +493,7 @@ def perform_psf_photometry(
 
         # If there are a lot of stars, pick the brightest (by peak)
         if n_valid > max_stars_for_epsf:
-            st.write(f"⚡Selecting top {max_stars_for_epsf} brightest stars from {n_valid} valid stars...")
+            st.write(f"⚡ Selecting top {max_stars_for_epsf} brightest stars from {n_valid} valid stars...")
             peaks = np.array([s.data.max() for s in valid_stars])
             top_idx = np.argsort(peaks)[-max_stars_for_epsf:][::-1]
             stars_for_builder = EPSFStars([valid_stars[i] for i in top_idx])
@@ -525,7 +529,7 @@ def perform_psf_photometry(
 
         # If EPSFBuilder failed completely, use Gaussian fallback
         if epsf is None or (hasattr(epsf, "data") and (epsf.data is None or np.asarray(epsf.data).size == 0)):
-            st.warning("EPSFBuilder failed. Creating Gaussian PSF fallback from median-combined stars...")
+            st.warning("⚠️ EPSFBuilder failed. Creating Gaussian PSF fallback from median-combined stars...")
             use_gaussian_fallback = True
             
             try:
@@ -539,7 +543,7 @@ def perform_psf_photometry(
                         self.oversampling = 1
                 
                 epsf = GaussianPSF(epsf_data, fwhm)
-                st.success("Gaussian PSF fallback created successfully")
+                st.success("✓ Gaussian PSF fallback created successfully")
                 
             except Exception as fallback_error:
                 st.error(f"Gaussian PSF fallback also failed: {fallback_error}")
