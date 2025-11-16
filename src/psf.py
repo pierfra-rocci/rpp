@@ -23,14 +23,14 @@ from typing import Any, Optional, Tuple
 def create_gaussian_psf_from_stars(stars, fwhm):
     """
     Create a simple Gaussian PSF model from median-combined star cutouts.
-    
+
     Parameters
     ----------
     stars : EPSFStars
         Extracted star cutouts
     fwhm : float
         Full Width at Half Maximum in pixels
-        
+
     Returns
     -------
     numpy.ndarray
@@ -44,31 +44,31 @@ def create_gaussian_psf_from_stars(stars, fwhm):
                 arr = np.asarray(star.data)
                 if arr.size > 0 and not np.isnan(arr).any() and not np.all(arr == 0):
                     star_arrays.append(arr)
-        
+
         if len(star_arrays) == 0:
             raise ValueError("No valid star arrays for Gaussian PSF creation")
-        
+
         # Get the shape from the first star (they should all be the same size)
         shape = star_arrays[0].shape
-        
+
         # Median combine the stars (normalizing each first)
         normalized_stars = []
         for arr in star_arrays:
             peak = np.max(arr)
             if peak > 0:
                 normalized_stars.append(arr / peak)
-        
+
         median_psf = np.median(normalized_stars, axis=0)
-        
+
         # Fit a 2D Gaussian to the median combined PSF
         y, x = np.mgrid[:shape[0], :shape[1]]
-        
+
         # Initial guess for Gaussian parameters
         amplitude = np.max(median_psf)
         x_mean = shape[1] / 2.
         y_mean = shape[0] / 2.
         sigma = fwhm / 2.355  # Convert FWHM to sigma
-        
+
         # Create the Gaussian model
         gaussian = Gaussian2D(
             amplitude=amplitude,
@@ -77,17 +77,17 @@ def create_gaussian_psf_from_stars(stars, fwhm):
             x_stddev=sigma,
             y_stddev=sigma
         )
-        
+
         # Evaluate the Gaussian on the grid
         gaussian_psf = gaussian(x, y)
-        
+
         # Normalize to have same peak as median PSF
         gaussian_psf = gaussian_psf / np.max(gaussian_psf) * np.max(median_psf)
-        
+
         st.write(f"Created Gaussian PSF fallback with FWHM={fwhm:.2f} pixels (sigma={sigma:.2f})")
-        
+
         return gaussian_psf
-        
+
     except Exception as e:
         st.error(f"Error creating Gaussian PSF fallback: {e}")
         raise
@@ -472,20 +472,20 @@ def perform_psf_photometry(
         if epsf is None or (hasattr(epsf, "data") and (epsf.data is None or np.asarray(epsf.data).size == 0)):
             st.warning("EPSFBuilder failed. Creating Gaussian PSF fallback from median-combined stars...")
             use_gaussian_fallback = True
-            
+
             try:
                 epsf_data = create_gaussian_psf_from_stars(stars_for_builder, fwhm)
-                
+
                 # Create a simple object to hold the Gaussian PSF data
                 class GaussianPSF:
                     def __init__(self, data, fwhm):
                         self.data = data
                         self.fwhm = fwhm
                         self.oversampling = 1
-                
+
                 epsf = GaussianPSF(epsf_data, fwhm)
                 st.success("✓ Gaussian PSF fallback created successfully")
-                
+
             except Exception as fallback_error:
                 st.error(f"Gaussian PSF fallback also failed: {fallback_error}")
                 raise ValueError("Both EPSF building and Gaussian fallback failed")
@@ -504,7 +504,7 @@ def perform_psf_photometry(
         st.write(f"Shape of PSF data: {epsf_data.shape}")
         st.session_state["epsf_model"] = epsf
         st.session_state["used_gaussian_fallback"] = use_gaussian_fallback
-        
+
     except Exception as e:
         st.error(f"Error fitting PSF model: {e}")
         raise
@@ -528,7 +528,7 @@ def perform_psf_photometry(
                 "GAUSSIAN" if use_gaussian_fallback else "EPSF",
                 "Type of PSF model used"
             )
-            
+
             # Ensure FWHM written as a scalar
             try:
                 if np is not None and (
