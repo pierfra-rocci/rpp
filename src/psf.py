@@ -336,21 +336,24 @@ def perform_psf_photometry(
                 f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing criteria..."
             )
 
-            # Relax criteria - rebuild masks with correct length (n_psf_sources)
-            roundness_criteria_relaxed = np.zeros(n_psf_sources, dtype=bool)
-            roundness_criteria_relaxed[valid_roundness] = (
-                np.abs(roundness1[valid_roundness]) < 0.5
+            # Relax criteria - rebuild masks with correct length
+            roundness_criteria_relaxed = np.zeros(len(photo_table_for_psf), dtype=bool)
+            valid_roundness_mask = valid_roundness
+            roundness_criteria_relaxed[valid_roundness_mask] = (
+                np.abs(roundness1[valid_roundness_mask]) < 0.5
             )
 
-            sharpness_criteria_relaxed = np.zeros(n_psf_sources, dtype=bool)
-            sharpness_criteria_relaxed[valid_sharpness] = (
-                np.abs(sharpness[valid_sharpness]) < 1.0
+            sharpness_criteria_relaxed = np.zeros(len(photo_table_for_psf), dtype=bool)
+            valid_sharpness_mask = valid_sharpness
+            sharpness_criteria_relaxed[valid_sharpness_mask] = (
+                np.abs(sharpness[valid_sharpness_mask]) < 1.0
             )
 
-            flux_criteria_relaxed = np.zeros(n_psf_sources, dtype=bool)
-            flux_criteria_relaxed[valid_flux] = (
-                flux[valid_flux] >= flux_median - 2 * flux_std
-            ) & (flux[valid_flux] <= flux_median + 2 * flux_std)
+            flux_criteria_relaxed = np.zeros(len(photo_table_for_psf), dtype=bool)
+            valid_flux_mask = valid_flux
+            flux_criteria_relaxed[valid_flux_mask] = (
+                flux[valid_flux_mask] >= flux_median - 2 * flux_std
+            ) & (flux[valid_flux_mask] <= flux_median + 2 * flux_std)
 
             good_stars_mask = (
                 (valid_flux & valid_xcentroid & valid_ycentroid)
