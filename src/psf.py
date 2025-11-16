@@ -65,8 +65,8 @@ def create_gaussian_psf_from_stars(stars, fwhm):
         
         # Initial guess for Gaussian parameters
         amplitude = np.max(median_psf)
-        x_mean = shape[1] / 2.0
-        y_mean = shape[0] / 2.0
+        x_mean = shape[1] / 2.
+        y_mean = shape[0] / 2.
         sigma = fwhm / 2.355  # Convert FWHM to sigma
         
         # Create the Gaussian model
@@ -157,7 +157,8 @@ def perform_psf_photometry(
             nd_unc = None
 
         nddata = NDData(
-            data=img, mask=mask if mask is not None else None, uncertainty=nd_unc
+            data=img, mask=mask if mask is not None else None,
+            uncertainty=nd_unc
         )
     except Exception as e:
         st.error(f"Error in initial validation: {e}")
@@ -607,17 +608,17 @@ def perform_psf_photometry(
             error = None
 
         # Create a SourceGrouper
-        min_separation = 2.0 * fwhm
+        min_separation = 2. * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
-        sigma_clip = SigmaClip(sigma=3.0)
+        sigma_clip = SigmaClip(sigma=3.)
         bkgstat = MMMBackground(sigma_clip=sigma_clip)
-        localbkg_estimator = LocalBackground(2.0 * fwhm, 2.5 * fwhm, bkgstat)
+        localbkg_estimator = LocalBackground(2. * fwhm, 2.5 * fwhm, bkgstat)
 
         psfphot = PSFPhotometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,
             finder=daostarfind,
-            aperture_radius=float(fit_shape) / 2.0,
+            aperture_radius=float(fit_shape) / 2.,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
         )

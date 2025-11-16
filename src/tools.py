@@ -1247,7 +1247,7 @@ def clean_final_table(df):
     return df_clean
 
 
-def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.0):
+def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.):
     """
     Merge aperture and PSF photometry, keeping ALL sources from both.
 
@@ -1374,7 +1374,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         flux_err_col = f"aperture_sum_err_{radius_label}"
 
         if inst_col:
-            tbl[mag_col] = tbl[inst_col] + zero_point - 0.1 * airmass
+            tbl[mag_col] = tbl[inst_col] + zero_point - 0.09 * airmass
 
         # try to compute mag error if not present but flux & flux_err exist
         if mag_err_col not in tbl.columns and flux_col in tbl.columns and flux_err_col in tbl.columns:
