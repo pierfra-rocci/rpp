@@ -341,7 +341,7 @@ def perform_psf_photometry(
                 flux[valid_flux] >= flux_median - 2 * flux_std
             ) & (flux[valid_flux] <= flux_median + 2 * flux_std)
 
-            good_stars_mask = (
+            relaxed_mask = (
                 (valid_flux & valid_xcentroid & valid_ycentroid)
                 & flux_criteria_relaxed
                 & roundness_criteria_relaxed
@@ -349,7 +349,12 @@ def perform_psf_photometry(
                 & edge_criteria
             )
 
-            filtered_photo_table = photo_table_for_psf[good_stars_mask]
+            # Apply relaxed mask to photo_table_for_psf (correct table!)
+            filtered_photo_table = photo_table_for_psf[relaxed_mask]
+
+            # Update filtered original indices
+            orig_indices_filtered = np.asarray(photo_table_for_psf["orig_index"])[relaxed_mask]
+            st.session_state["psf_filtered_indices"] = orig_indices_filtered
 
             st.write(f"After relaxing criteria: {len(filtered_photo_table)} stars")
 
