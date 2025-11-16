@@ -442,7 +442,7 @@ def fwhm_fit(
                                        size=1000,
                                        replace=False)
             filtered_sources = filtered_sources[indices]
-            st.info("Too much sources, sampled 1000 sources for FWHM calculation")
+            st.info("Too many sources, sampled 1000 sources for FWHM calculation")
 
         box_size = int(6 * round(fwhm))
         if box_size % 2 == 0:
