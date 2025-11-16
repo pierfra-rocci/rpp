@@ -438,9 +438,11 @@ def fwhm_fit(
 
         # Randomly sample 1000 sources if more than 1000 are available
         if len(filtered_sources) > 1000:
-            indices = np.random.choice(len(filtered_sources), size=1000, replace=False)
+            indices = np.random.choice(len(filtered_sources),
+                                       size=1000,
+                                       replace=False)
             filtered_sources = filtered_sources[indices]
-            st.info(f"Randomly sampled 1000 sources out of {len(filtered_sources)} for FWHM calculation")
+            st.info("Too much sources, sampled 1000 sources for FWHM calculation")
 
         box_size = int(6 * round(fwhm))
         if box_size % 2 == 0:
