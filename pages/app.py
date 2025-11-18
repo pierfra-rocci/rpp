@@ -299,16 +299,7 @@ if st.sidebar.button("💾 Save Configuration"):
         "colibri_api_key": colibri_api_key,
     }
     name = st.session_state.get("username", "user")
-    config_filename = f"{name}_config.json"
-    config_path = os.path.join(
-        st.session_state.get("output_dir", f"../rpp_results/{name}_results"), config_filename
-    )
-    try:
-        with open(config_path, "w", encoding="utf-8") as f:
-            json.dump(params, f, indent=2)
-        st.sidebar.success("Parameters Saved")
-    except Exception as e:
-        st.sidebar.error(f"Failed to save config: {e}")
+
 
     try:
         backend_url = "http://localhost:5000/save_config"
