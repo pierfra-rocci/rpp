@@ -11,7 +11,7 @@ from astropy.io import fits
 from photutils.detection import DAOStarFinder
 from stdpipe import astrometry
 
-from src.utils_common import estimate_background
+from src.pipeline import estimate_background
 
 
 def _try_source_detection(

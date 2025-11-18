@@ -15,7 +15,7 @@ from astropy.modeling.models import Gaussian2D
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from photutils.psf import SourceGrouper, EPSFStars
 
-from src.tools import FIGURE_SIZES, ensure_output_directory
+from src.tools_pipeline import FIGURE_SIZES, ensure_output_directory
 
 from typing import Any, Optional, Tuple
 
