@@ -260,7 +260,7 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
     st.markdown("[Get your key](https://www.astro-colibri.science)")
 
 # Add expander for the Transient Finder
-with st.sidebar.expander("Transient Finder (_not working_)", expanded=False):
+with st.sidebar.expander("Transient Candidates (_coming soon_)", expanded=False):
 
     # Add a checkbox to enable/disable the transient finder
     st.session_state.analysis_parameters['run_transient_finder'] = st.checkbox(
