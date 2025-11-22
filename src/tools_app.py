@@ -170,45 +170,20 @@ def load_fits_data(_file):
 
             # Apply header fixes before returning
             try:
-                original_header = header.copy()
-                fixed_header = fix_header(header)
-
-                # Check if any fixes were applied
-                fixes_applied = []
-
-                # Check for specific fixes
-                if "CTYPE1" in fixed_header and "CTYPE1" in original_header:
-                    if str(fixed_header["CTYPE1"]) != str(original_header["CTYPE1"]):
-                        fixes_applied.append(
-                            f"CTYPE1: {original_header['CTYPE1']} → {fixed_header['CTYPE1']}"
-                        )
-
-                if "CTYPE2" in fixed_header and "CTYPE2" in original_header:
-                    if str(fixed_header["CTYPE2"]) != str(original_header["CTYPE2"]):
-                        fixes_applied.append(
-                            f"CTYPE2: {original_header['CTYPE2']} → {fixed_header['CTYPE2']}"
-                        )
-
-                # Check for added keywords
-                for key in ["CRPIX1", "CRPIX2", "EQUINOX", "RADESYS"]:
-                    if key in fixed_header and key not in original_header:
-                        fixes_applied.append(f"Added {key}: {fixed_header[key]}")
-
-                # Check for CD matrix fixes
-                for key in ["CD1_1", "CD1_2", "CD2_1", "CD2_2"]:
-                    if key in fixed_header and key in original_header:
-                        if abs(fixed_header[key] - original_header.get(key, 0)) > 1e-10:
-                            fixes_applied.append(f"Fixed {key}")
-
-                if fixes_applied:
-                    st.info("Applied header fixes")
-                    if st.session_state.get("log_buffer"):
+                fixed_header, log_messages = fix_header(header)
+                header = fixed_header
+                if st.session_state.get("log_buffer"):
+                    for msg in log_messages:
+                        level, message = msg.split(":", 1)
                         write_to_log(
                             st.session_state["log_buffer"],
-                            f"Header fixes applied: {'; '.join(fixes_applied)}",
+                            message.strip(),
+                            level=level.strip(),
                         )
-
-                header = fixed_header
+                        if level.strip() == "INFO":
+                            st.info(message.strip())
+                        elif level.strip() == "WARNING":
+                            st.warning(message.strip())
 
             except Exception as fix_error:
                 st.warning(f"Header fixing encountered an issue: {str(fix_error)}")
@@ -869,6 +844,30 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     return fig_mag
 
 
+def handle_log_messages(log_messages):
+    """
+    Process and display log messages in the Streamlit interface.
+
+    Parameters
+    ----------
+    log_messages : list[str]
+        A list of log messages, each formatted as "LEVEL: message"
+    """
+    for msg in log_messages:
+        level, message = msg.split(":", 1)
+        write_to_log(
+            st.session_state.log_buffer,
+            message.strip(),
+            level=level.strip(),
+        )
+        if level.strip() == "INFO":
+            st.info(message.strip())
+        elif level.strip() == "WARNING":
+            st.warning(message.strip())
+        elif level.strip() == "ERROR":
+            st.error(message.strip())
+
+
 def initialize_session_state():
     """
     Initialize all session state variables for the application.
@@ -1031,3 +1030,49 @@ def update_observatory_from_fits_header(header):
             pass
 
     return updated
+
+def cleanup_temp_files():
+    """
+    Remove temporary FITS files potentially created during processing.
+
+    Specifically targets files stored in the directory indicated by
+    `st.session_state['science_file_path']`. It attempts to remove all files
+    ending with '.fits', '.fit', or '.fts' (case-insensitive) within that
+    directory.
+
+    Notes
+    -----
+    - Relies on `st.session_state['science_file_path']` being set and pointing
+      to a valid temporary file path whose directory contains the files to be
+      cleaned.
+    - Uses `st.warning` to report errors if removal fails for individual files
+      or if the base directory cannot be accessed.
+    - This function has side effects (deleting files) and depends on
+      Streamlit's session state. It does not return any value.
+    """
+    if (
+        "science_file_path" in st.session_state
+        and st.session_state["science_file_path"]
+    ):
+        try:
+            temp_file = st.session_state["science_file_path"]
+            if os.path.exists(temp_file):
+                base_dir = os.path.dirname(temp_file)
+                if os.path.isdir(base_dir):
+                    temp_dir_files = [
+                        f
+                        for f in os.listdir(base_dir)
+                        if os.path.isfile(os.path.join(base_dir, f))
+                        and f.lower().endswith(
+                            (".fits", ".fit", ".fts", ".log", ".png")
+                        )
+                    ]
+                    for file in temp_dir_files:
+                        try:
+                            os.remove(os.path.join(base_dir, file))
+                        except Exception as e:
+                            st.warning(f"Could not remove {file}: {str(e)}")
+                else:
+                    st.warning(f"Temporary path {base_dir} is not a directory.")
+        except Exception as e:
+            st.warning(f"Could not remove temporary files: {str(e)}")

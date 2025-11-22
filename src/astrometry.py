@@ -60,9 +60,11 @@ def solve_with_astrometrynet(file_path):
     Returns
     -------
     tuple
-        (wcs_object, updated_header) where:
+        (wcs_object, updated_header, log_messages, error) where:
         - wcs_object: astropy.wcs.WCS object containing the WCS solution
         - updated_header: Original header updated with WCS keywords
+        - log_messages: List of log messages
+        - error: Error message if solving fails
 
     Notes
     -----
@@ -73,20 +75,19 @@ def solve_with_astrometrynet(file_path):
 
     Uses stdpipe.astrometry.blind_match_objects for cleaner interface.
     """
+    log_messages = []
     try:
         if not os.path.exists(file_path):
-            st.error(f"File {file_path} does not exist.")
-            return None, None
+            return None, None, log_messages, f"File {file_path} does not exist."
 
         # Load the FITS file
-        st.write("Loading FITS file for local plate solving...")
+        log_messages.append("INFO: Loading FITS file for local plate solving...")
         with fits.open(file_path) as hdul:
             image_data = hdul[0].data
             header = hdul[0].header.copy()
 
         if image_data is None:
-            st.error("No image data found in FITS file")
-            return None, None
+            return None, None, log_messages, "No image data found in FITS file"
 
         # Ensure data is float32 for better compatibility
         if image_data.dtype != np.float32:
@@ -96,18 +97,17 @@ def solve_with_astrometrynet(file_path):
         try:
             existing_wcs = WCS(header)
             if existing_wcs.is_celestial:
-                st.info(
-                    "Valid WCS already exists in header. Proceeding with blind solve anyway..."
+                log_messages.append(
+                    "INFO: Valid WCS already exists in header. Proceeding with blind solve anyway..."
                 )
         except Exception:
-            st.info("No valid WCS found in header. Proceeding with blind solve...")
+            log_messages.append("INFO: No valid WCS found in header. Proceeding with blind solve...")
 
         # Estimate background
-        st.write("Detecting objects for plate solving using photutils...")
-        bkg, bkg_error = estimate_background(image_data, figure=False)
+        log_messages.append("INFO: Detecting objects for plate solving using photutils...")
+        bkg, _, bkg_error = estimate_background(image_data, figure=False)
         if bkg is None:
-            st.error(f"Failed to estimate background: {bkg_error}")
-            return None, None
+            return None, None, log_messages, f"Failed to estimate background: {bkg_error}"
 
         image_sub = image_data - bkg.background
 
@@ -121,8 +121,8 @@ def solve_with_astrometrynet(file_path):
 
         # If that fails, try more aggressive parameters
         if sources is None:
-            st.warning(
-                "Standard detection failed. Trying more aggressive parameters..."
+            log_messages.append(
+                "WARNING: Standard detection failed. Trying more aggressive parameters..."
             )
             sources = _try_source_detection(
                 image_sub,
@@ -132,45 +132,21 @@ def solve_with_astrometrynet(file_path):
             )
 
         if sources is None or len(sources) < 5:
-            st.error("Failed to detect sufficient sources for plate solving.")
-            st.error("Possible solutions:")
-            st.error("1. Check if the image contains stars (not empty field)")
-            st.error("2. Verify image is not severely over/under-exposed")
-            st.error("3. Try adjusting the detection threshold manually")
-            st.error("4. Consider pre-processing the image (cosmic ray removal, etc.)")
-
-            # Show a small region of the image for inspection
-            try:
-                center_y, center_x = image_data.shape[0] // 2,
-                image_data.shape[1] // 2
-                sample_region = image_data[
-                    center_y - 50: center_y + 50,
-                    center_x - 50: center_x + 50
-                ]
-
-                fig_sample, ax_sample = plt.subplots(figsize=(6, 6))
-                im = ax_sample.imshow(sample_region, origin="lower",
-                                      cmap="gray")
-                ax_sample.set_title("Central 100x100 pixel region")
-                plt.colorbar(im, ax=ax_sample)
-                st.pyplot(fig_sample)
-
-            except Exception as plot_error:
-                st.warning(f"Could not display sample region: {plot_error}")
-
-            return None, None
+            error_message = "Failed to detect sufficient sources for plate solving."
+            log_messages.append(f"ERROR: {error_message}")
+            return None, None, log_messages, error_message
 
         # Prepare sources for astrometric solving
-        st.write(f"Successfully detected {len(sources)} sources")
+        log_messages.append(f"INFO: Successfully detected {len(sources)} sources")
 
         # Filter for best sources if too many
         if len(sources) > 500:
             sources.sort("flux")
             sources.reverse()
             sources = sources[:500]
-            st.write(f"Using brightest {len(sources)} sources for plate solving")
+            log_messages.append(f"INFO: Using brightest {len(sources)} sources for plate solving")
 
-        st.success(f"Ready for plate solving with {len(sources)} sources")
+        log_messages.append(f"SUCCESS: Ready for plate solving with {len(sources)} sources")
 
         # Convert sources to the format expected by stdpipe
         obj_table = Table()
@@ -202,7 +178,7 @@ def solve_with_astrometrynet(file_path):
             # Try to get pixel scale from various header keywords
             for key in ["PIXSCALE", "PIXSIZE", "SECPIX"]:
                 if key in header:
-                    st.write(f"Found pixel scale in header: {key}")
+                    log_messages.append(f"INFO: Found pixel scale in header: {key}")
                     pixel_scale_estimate = float(header[key])
                     break
 
@@ -216,8 +192,8 @@ def solve_with_astrometrynet(file_path):
                     for focal_key in ["FOCALLEN", "FOCAL", "FOCLEN", "FL"]:
                         if focal_key in header:
                             focal_length = float(header[focal_key])
-                            st.write(
-                                f"Found focal length: {focal_length} mm from {focal_key}"
+                            log_messages.append(
+                                f"INFO: Found focal length: {focal_length} mm from {focal_key}"
                             )
                             break
 
@@ -231,8 +207,8 @@ def solve_with_astrometrynet(file_path):
                     ]:
                         if pixel_key in header:
                             pixel_size = float(header[pixel_key])
-                            st.write(
-                                f"Found pixel size: {pixel_size} microns from {pixel_key}"
+                            log_messages.append(
+                                f"INFO: Found pixel size: {pixel_size} microns from {pixel_key}"
                             )
                             break
 
@@ -242,28 +218,25 @@ def solve_with_astrometrynet(file_path):
 
                         # Sanity check - typical astronomical pixel scales
                         if not (0.1 <= pixel_scale_estimate <= 30.0):
-                            st.warning(
-                                f"Unusual pixel scale calculated: {pixel_scale_estimate:.2f} arcsec/pixel"
-                            )
-                            st.warning(
-                                "Please verify focal length and pixel size values in header"
+                            log_messages.append(
+                                f"WARNING: Unusual pixel scale calculated: {pixel_scale_estimate:.2f} arcsec/pixel"
                             )
                         else:
-                            st.success(
-                                f"Pixel scale calculated from focal length and pixel size: {pixel_scale_estimate:.2f} arcsec/pixel"
+                            log_messages.append(
+                                f"SUCCESS: Pixel scale calculated from focal length and pixel size: {pixel_scale_estimate:.2f} arcsec/pixel"
                             )
                     elif focal_length is not None:
-                        st.warning(
-                            f"Found focal length ({focal_length} mm) but no pixel size in header"
+                        log_messages.append(
+                            f"WARNING: Found focal length ({focal_length} mm) but no pixel size in header"
                         )
                     elif pixel_size is not None:
-                        st.warning(
-                            f"Found pixel size ({pixel_size} µm) but no focal length in header"
+                        log_messages.append(
+                            f"WARNING: Found pixel size ({pixel_size} µm) but no focal length in header"
                         )
 
                 except Exception as e:
-                    st.warning(
-                        f"Error calculating pixel scale from focal length/pixel size: {e}"
+                    log_messages.append(
+                        f"WARNING: Error calculating pixel scale from focal length/pixel size: {e}"
                     )
                     pass
 
@@ -277,7 +250,7 @@ def solve_with_astrometrynet(file_path):
                         cd11, cd12, cd21, cd22 = cd_values
                         det = abs(cd11 * cd22 - cd12 * cd21)
                         pixel_scale_estimate = 3600 * np.sqrt(det)
-                        st.write("Calculated pixel scale from CD matrix")
+                        log_messages.append("INFO: Calculated pixel scale from CD matrix")
                 except Exception:
                     pass
 
@@ -303,15 +276,15 @@ def solve_with_astrometrynet(file_path):
                     "scale_units": "arcsecperpix",
                 }
             )
-            st.write(
-                f"Using pixel scale estimate: {pixel_scale_estimate:.2f} arcsec/pixel"
+            log_messages.append(
+                f"INFO: Using pixel scale estimate: {pixel_scale_estimate:.2f} arcsec/pixel"
             )
         else:
             # Use broad scale range if no estimate available
             kwargs.update(
                 {"scale_lower": 0.1, "scale_upper": 10.0, "scale_units": "arcsecperpix"}
             )
-            st.write("No pixel scale estimate available, using broad range")
+            log_messages.append("INFO: No pixel scale estimate available, using broad range")
 
         # Add RA/DEC hint if available
         if header and "RA" in header and "DEC" in header:
@@ -326,19 +299,19 @@ def solve_with_astrometrynet(file_path):
                             "radius": 0.95,  # 5 degree search radius
                         }
                     )
-                    st.write(f"Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}")
+                    log_messages.append(f"INFO: Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}")
             except Exception:
-                st.write("Could not parse RA/DEC from header")
+                log_messages.append("WARNING: Could not parse RA/DEC from header")
 
-        st.write("Running blind_match_objects...")
-        st.write(f"Using {len(obj_table)} sources for plate solving")
+        log_messages.append("INFO: Running blind_match_objects...")
+        log_messages.append(f"INFO: Using {len(obj_table)} sources for plate solving")
 
         try:
             # Call stdpipe's blind_match_objects function
             solved_wcs = astrometry.blind_match_objects(obj_table, **kwargs)
 
             if solved_wcs is not None:
-                st.success("Plate solving successful!")
+                log_messages.append("SUCCESS: Plate solving successful!")
 
                 # Update original header with WCS solution
                 updated_header = header.copy()
@@ -369,41 +342,33 @@ def solve_with_astrometrynet(file_path):
                     )
                     pixel_scale = astrometry.get_pixscale(wcs=solved_wcs) * 3600
 
-                    st.write(
-                        f"Solution center: RA={center_ra:.6f}°, DEC={center_dec:.6f}°"
+                    log_messages.append(
+                        f"INFO: Solution center: RA={center_ra:.6f}°, DEC={center_dec:.6f}°"
                     )
-                    st.write(f"Pixel scale: {pixel_scale:.3f} arcsec/pixel")
+                    log_messages.append(f"INFO: Pixel scale: {pixel_scale:.3f} arcsec/pixel")
 
                     # Validate solution makes sense
                     if 0 <= center_ra <= 360 and -90 <= center_dec <= 90:
-                        st.success("Solution coordinates are valid")
+                        log_messages.append("SUCCESS: Solution coordinates are valid")
                     else:
-                        st.warning("Solution coordinates seem invalid!")
+                        log_messages.append("WARNING: Solution coordinates seem invalid!")
 
                 except Exception as coord_error:
-                    st.warning(f"Could not extract solution coordinates: {coord_error}")
+                    log_messages.append(f"WARNING: Could not extract solution coordinates: {coord_error}")
 
-                return solved_wcs, updated_header
+                return solved_wcs, updated_header, log_messages, None
 
             else:
-                st.error("Plate solving failed!")
-                st.error("Possible issues:")
-                st.error("- Not enough stars detected")
-                st.error("- Incorrect pixel scale estimate")
-                st.error("- Field not in astrometry.net index files")
-                st.error("- solve-field not found in PATH")
-
-                return None, None
+                error_message = "Plate solving failed!"
+                log_messages.append(f"ERROR: {error_message}")
+                return None, None, log_messages, error_message
 
         except Exception as solve_error:
-            st.error(f"Error during stdpipe plate solving: {solve_error}")
-            st.error("Requirements:")
-            st.error("- solve-field binary must be in PATH")
-            st.error("- Appropriate astrometry.net index files must be installed")
-            st.error("- Sufficient sources with good S/N ratio")
-
-            return None, None
+            error_message = f"Error during stdpipe plate solving: {solve_error}"
+            log_messages.append(f"ERROR: {error_message}")
+            return None, None, log_messages, error_message
 
     except Exception as e:
-        st.error(f"Error in plate solving setup: {str(e)}")
-        return None, None
+        error_message = f"Error in plate solving setup: {str(e)}"
+        log_messages.append(f"ERROR: {error_message}")
+        return None, None, log_messages, error_message
