@@ -17,7 +17,8 @@ from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 from astroquery.imcce import Skybot
 
-from src.tools_pipeline import URL, safe_catalog_query, write_to_log
+from src.tools_pipeline import URL
+from src.utils import safe_catalog_query
 
 
 def cross_match_with_gaia(
