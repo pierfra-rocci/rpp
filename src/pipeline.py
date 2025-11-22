@@ -21,7 +21,8 @@ from photutils.aperture import (CircularAperture, CircularAnnulus,
                                 aperture_photometry)
 
 from src.tools_pipeline import (safe_wcs_create,
-                                ensure_output_directory, estimate_background)
+                                estimate_background)
+from src.utils import ensure_output_directory
 
 from typing import Union, Optional, Dict, Tuple
 from src.psf import perform_psf_photometry
@@ -56,7 +57,8 @@ def mask_and_remove_cosmic_rays(
     st.info("Detecting cosmic rays using L.A.Cosmic ...")
     # Run L.A.Cosmic (pass inmask explicitly)
     try:
-        res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain, verbose=False)
+        res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain,
+                                          verbose=False)
         # detect_cosmics often returns a tuple; find the boolean CR mask
         if isinstance(res, tuple):
             crmask = None
