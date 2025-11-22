@@ -18,10 +18,12 @@ from astropy.visualization import ZScaleInterval, ImageNormalize
 from src.tools_app import (
     initialize_session_state,
     load_fits_data,
+    plot_magnitude_distribution,
     update_observatory_from_fits_header,
     display_archived_files_browser,
     provide_download_buttons,
     clear_all_caches,
+    handle_log_messages,
     cleanup_temp_files)
 
 # Local Application Imports

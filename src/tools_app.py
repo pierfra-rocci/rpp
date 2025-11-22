@@ -15,11 +15,8 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 
 # Local Application Imports
-from src.tools_pipeline import (
-    ensure_output_directory,
-    write_to_log,
-    fix_header,
-)
+from src.tools_pipeline import fix_header
+from src.utils import write_to_log, ensure_output_directory
 
 warnings.filterwarnings("ignore")
 
