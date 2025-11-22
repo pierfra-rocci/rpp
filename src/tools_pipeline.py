@@ -10,6 +10,7 @@ import streamlit as st
 
 from astropy.stats import SigmaClip
 from astropy.visualization import ZScaleInterval
+from src.utils import get_header_value
 
 from photutils.background import Background2D, SExtractorBackground
 
@@ -39,8 +40,6 @@ GAIA_BANDS = [
     ("i", "i_sdss_mag"),
     ("z", "z_sdss_mag"),
 ]
-
-
 
 
 def safe_wcs_create(header):
@@ -133,8 +132,6 @@ def safe_wcs_create(header):
         return wcs_obj, None, log_messages
     except Exception as e:
         return None, f"WCS creation error: {str(e)}", log_messages
-
-
 
 
 def fix_header(header):
@@ -385,8 +382,6 @@ def fix_header(header):
         return header, log_messages
 
 
-
-
 def extract_coordinates(header):
     """
     Extract celestial coordinates (RA, Dec) from a FITS header.
@@ -550,8 +545,6 @@ def extract_pixel_scale(header):
 
     # Method 4: Default fallback
     return 0.0, "default fallback value"
-
-
 
 
 def validate_cross_match_results(phot_table, matched_table, header):
