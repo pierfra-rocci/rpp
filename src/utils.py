@@ -7,7 +7,6 @@ from datetime import datetime
 
 # Third-Party Imports
 import requests
-import pandas as pd
 import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.table import Table
@@ -21,6 +20,7 @@ FIGURE_SIZES = {
     "wide": (12, 6),  # For wide plots
     "stars_grid": (10, 8),  # For grid of stars
 }
+
 
 def get_json(url: str):
     """
@@ -60,6 +60,7 @@ def get_json(url: str):
         return json.dumps({"error": "request exception", "message": str(e)})
     except json.decoder.JSONDecodeError as e:
         return json.dumps({"error": "invalid json", "message": str(e)})
+
 
 def get_header_value(header, keys, default=None):
     """
@@ -105,6 +106,7 @@ def get_header_value(header, keys, default=None):
             return header[key]
     return default
 
+
 def get_base_filename(file_obj):
     """
     Extract the base filename (without extension) from a file object.
@@ -145,6 +147,7 @@ def get_base_filename(file_obj):
 
     return base_name
 
+
 def create_figure(size="medium", dpi=120):
     """
     Create a matplotlib Figure object with a predefined or default size and DPI.
@@ -178,6 +181,7 @@ def create_figure(size="medium", dpi=120):
     else:
         figsize = FIGURE_SIZES["medium"]
     return plt.figure(figsize=figsize, dpi=dpi)
+
 
 def initialize_log(base_filename):
     """
@@ -213,6 +217,7 @@ def initialize_log(base_filename):
 
     return log_buffer
 
+
 def write_to_log(log_buffer, message, level="INFO"):
     """
     Write a formatted message to the provided log buffer.
@@ -246,6 +251,7 @@ def write_to_log(log_buffer, message, level="INFO"):
     timestamp = datetime.now().strftime("%H:%M:%S")
     log_buffer.write(f"[{timestamp}] {level.upper()}: {message}\n")
 
+
 def ensure_output_directory(directory=""):
     # c:\Users\pierf\rpp\src
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -263,6 +269,7 @@ def ensure_output_directory(directory=""):
         except Exception:
             return "."
     return final_path
+
 
 def safe_catalog_query(query_func, error_msg, *args, **kwargs):
     """
@@ -315,11 +322,12 @@ def safe_catalog_query(query_func, error_msg, *args, **kwargs):
     except requests.exceptions.RequestException as e:
         return None, f"{error_msg}: Network error - {str(e)}"
     except requests.exceptions.Timeout:
-        return None, f"{error_msg}: Query timed out
+        return None, f"{error_msg}: Query timed out"
     except ValueError as e:
         return None, f"{error_msg}: Value error - {str(e)}"
     except Exception as e:
         return None, f"{error_msg}: {str(e)}"
+
 
 def zip_results_on_exit(science_file_obj, outputdir):
     """Compresses analysis result files into a timestamped ZIP archive."""
@@ -384,6 +392,7 @@ def save_header_to_txt(header, filename, output_dir):
 
     return output_filename
 
+
 def save_header_to_fits(header, filename, output_dir):
     """
     Save a FITS header to a FITS file with an empty primary HDU.
@@ -423,6 +432,7 @@ def save_header_to_fits(header, filename, output_dir):
 
     except Exception as e:
         return None, f"Failed to save header as FITS file: {str(e)}"
+
 
 def save_catalog_files(final_table, catalog_name, output_dir):
     """
