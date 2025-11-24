@@ -20,6 +20,7 @@ from src.tools_app import (
     load_fits_data,
     plot_magnitude_distribution,
     update_observatory_from_fits_header,
+    display_catalog_in_aladin,
     display_archived_files_browser,
     provide_download_buttons,
     clear_all_caches,
