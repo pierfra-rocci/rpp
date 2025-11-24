@@ -3,6 +3,7 @@ REM Activate virtual environment
 call .venv\Scripts\activate
 
 REM Setup database
+set APP_ENV=development
 
 REM Start backend.py in a new terminal, redirecting output to backend.log
 start "Python Backend" cmd /k "python backend.py > backend.log 2>&1"

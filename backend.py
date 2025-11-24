@@ -19,7 +19,10 @@ app.config["PREFERRED_URL_SCHEME"] = "https"
 CORS(app)
 
 # Use absolute path for database file
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.db")
+if os.getenv("APP_ENV") == "development":
+    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users_dev.db")
+else:
+    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "users.db")
 
 
 @contextmanager
