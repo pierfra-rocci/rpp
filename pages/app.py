@@ -18,29 +18,34 @@ from astropy.visualization import ZScaleInterval, ImageNormalize
 from src.tools_app import (
     initialize_session_state,
     load_fits_data,
+    plot_magnitude_distribution,
     update_observatory_from_fits_header,
+    display_catalog_in_aladin,
     display_archived_files_browser,
     provide_download_buttons,
-    clear_all_caches)
+    clear_all_caches,
+    handle_log_messages,
+    cleanup_temp_files)
 
 # Local Application Imports
 from src.tools_pipeline import (
-    FIGURE_SIZES,
     GAIA_BANDS,
     extract_coordinates,
     extract_pixel_scale,
-    get_base_filename,
     safe_wcs_create,
+    add_calibrated_magnitudes,
+    merge_photometry_catalogs,
+    clean_photometry_table,
+)
+from src.utils import (
+    FIGURE_SIZES,
+    get_base_filename,
     ensure_output_directory,
-    cleanup_temp_files,
     initialize_log,
     write_to_log,
     zip_results_on_exit,
     save_header_to_txt,
     save_catalog_files,
-    add_calibrated_magnitudes,
-    merge_photometry_catalogs,
-    clean_photometry_table
 )
 
 from src.pipeline import (
@@ -436,7 +441,8 @@ if science_file is not None:
             )
 
     # Test WCS creation with better error handling
-    wcs_obj, wcs_error = safe_wcs_create(science_header)
+    wcs_obj, wcs_error, log_messages = safe_wcs_create(science_header)
+    handle_log_messages(log_messages)
 
     # Initialize force_plate_solve as False by default
     force_plate_solve = st.session_state.get("astrometry_check", False)
@@ -476,15 +482,19 @@ if science_file is not None:
             with st.spinner(
                 "Running astrometry check and plate solving - this may take a while..."
             ):
-                result = solve_with_astrometrynet(science_file_path)
-                if result is None:
+                wcs_obj, science_header, log_messages, error = solve_with_astrometrynet(science_file_path)
+                handle_log_messages(log_messages)
+                if error:
+                    st.error(error)
+
+                if wcs_obj is None:
                     if force_plate_solve:
                         st.error(
                             "Plate solving failed. Will use original WCS if available."
                         )
                         # Try to restore original WCS by reloading header
                         _, original_header = load_fits_data(science_file)
-                        wcs_obj, wcs_error = safe_wcs_create(original_header)
+                        wcs_obj, wcs_error, _ = safe_wcs_create(original_header)
                         if wcs_obj is not None:
                             science_header = original_header
                             st.info("Restored original WCS solution")
@@ -494,7 +504,6 @@ if science_file is not None:
                         st.error("Plate solving failed. No WCS solution was returned.")
                         proceed_without_wcs = True
                 else:
-                    wcs_obj, science_header = result
                     st.session_state["calibrated_header"] = science_header
                     st.session_state["wcs_obj"] = wcs_obj
 
@@ -513,7 +522,7 @@ if science_file is not None:
                         f"{st.session_state['base_filename']}_wcs_header"
                     )
                     wcs_header_file_path = save_header_to_txt(
-                        science_header, wcs_header_filename
+                        science_header, wcs_header_filename, output_dir
                     )
                     if wcs_header_file_path:
                         st.info("Updated WCS header saved")
@@ -571,7 +580,7 @@ if science_file is not None:
         header_filename = f"{st.session_state['base_filename']}_header"
         header_file_path = os.path.join(output_dir, f"{header_filename}.txt")
 
-        header_file = save_header_to_txt(science_header, header_filename)
+        header_file = save_header_to_txt(science_header, header_filename, output_dir)
         if header_file:
             write_to_log(log_buffer, f"Saved header to {header_file}")
 
@@ -892,13 +901,15 @@ if science_file is not None:
                             detection_mask
                         )
 
-                        if isinstance(result, tuple) and len(result) == 5:
-                            phot_table_qtable, epsf_table, daofind, bkg, w = result
+                        if isinstance(result, tuple) and len(result) == 6:
+                            phot_table_qtable, epsf_table, daofind, bkg, w, bkg_fig = result
+                            if bkg_fig:
+                                st.pyplot(bkg_fig)
                         else:
                             st.error(
                                 f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}"
                             )
-                            phot_table_qtable = epsf_table = daofind = bkg = w = None
+                            phot_table_qtable = epsf_table = daofind = bkg = w = bkg_fig = None
 
                         if phot_table_qtable is not None:
                             phot_table_df = phot_table_qtable.to_pandas().copy(
@@ -910,7 +921,7 @@ if science_file is not None:
 
                     if phot_table_df is not None:
                         with st.spinner("Cross-matching with Gaia..."):
-                            matched_table = cross_match_with_gaia(
+                            matched_table, log_messages = cross_match_with_gaia(
                                 phot_table_qtable,
                                 header_to_process,
                                 pixel_size_arcsec,
@@ -919,6 +930,8 @@ if science_file is not None:
                                 filter_max_mag,
                                 refined_wcs=w,
                             )
+                            handle_log_messages(log_messages)
+
 
                         if matched_table is not None:
                             st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
@@ -949,11 +962,12 @@ if science_file is not None:
                                             final_table = st.session_state["final_phot_table"]
 
                                             # Merge keeping all sources
-                                            final_table = merge_photometry_catalogs(
+                                            final_table, log_messages = merge_photometry_catalogs(
                                                 aperture_table=final_table,
                                                 psf_table=epsf_df,
                                                 tolerance_pixels=2.
                                             )
+                                            handle_log_messages(log_messages)
 
                                             # Add calibrated magnitudes
                                             final_table = add_calibrated_magnitudes(
@@ -968,7 +982,8 @@ if science_file is not None:
                                             final_table['airmass'] = air
 
                                             # Clean the table
-                                            final_table = clean_photometry_table(final_table, require_magnitude=True)
+                                            final_table, log_messages = clean_photometry_table(final_table, require_magnitude=True)
+                                            handle_log_messages(log_messages)
 
                                             # Save to session state
                                             st.session_state["final_phot_table"] = final_table
@@ -1067,7 +1082,7 @@ if science_file is not None:
                                             final_table is not None
                                             and len(final_table) > 0
                                         ):
-                                            final_table = enhance_catalog(
+                                            final_table, log_messages = enhance_catalog(
                                                 colibri_api_key,
                                                 final_table,
                                                 matched_table,
@@ -1075,6 +1090,7 @@ if science_file is not None:
                                                 pixel_size_arcsec,
                                                 search_radius_arcsec=search_radius,
                                             )
+                                            handle_log_messages(log_messages)
                                     elif final_table is not None:
                                         st.warning(
                                             "RA/DEC coordinates not available for catalog cross-matching"
@@ -1085,9 +1101,13 @@ if science_file is not None:
                                         )
 
                                     # Call the new function here
-                                    save_catalog_files(
+                                    success_messages, error_messages = save_catalog_files(
                                         final_table, catalog_name, output_dir
                                     )
+                                    for msg in success_messages:
+                                        st.success(msg)
+                                    for msg in error_messages:
+                                        st.error(msg)
 
                 except Exception as e:
                     st.error(f"Error during zero point calibration: {str(e)}")

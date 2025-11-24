@@ -21,7 +21,8 @@ from photutils.aperture import (CircularAperture, CircularAnnulus,
                                 aperture_photometry)
 
 from src.tools_pipeline import (safe_wcs_create,
-                                ensure_output_directory, estimate_background)
+                                estimate_background)
+from src.utils import ensure_output_directory
 
 from typing import Union, Optional, Dict, Tuple
 from src.psf import perform_psf_photometry
@@ -56,7 +57,8 @@ def mask_and_remove_cosmic_rays(
     st.info("Detecting cosmic rays using L.A.Cosmic ...")
     # Run L.A.Cosmic (pass inmask explicitly)
     try:
-        res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain, verbose=False)
+        res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain,
+                                          verbose=False)
         # detect_cosmics often returns a tuple; find the boolean CR mask
         if isinstance(res, tuple):
             crmask = None
@@ -519,24 +521,24 @@ def detection_and_photometry(
     daofind = None
 
     try:
-        w, wcs_error = safe_wcs_create(science_header)
+        w, wcs_error, _ = safe_wcs_create(science_header)
         if w is None:
             st.error(f"Error creating WCS: {wcs_error}")
-            return None, None, daofind, None, None
+            return None, None, daofind, None, None, None
     except Exception as e:
         st.error(f"Error creating WCS: {e}")
-        return None, None, daofind, None, None
+        return None, None, daofind, None, None, None
 
     pixel_scale = science_header.get(
         "PIXSCALE",
         science_header.get("PIXSIZE", science_header.get("PIXELSCAL", 1.0)),
     )
 
-    bkg, bkg_error = estimate_background(image_data, box_size=64,
-                                         filter_size=9)
+    bkg, bkg_fig, bkg_error = estimate_background(image_data, box_size=64,
+                                                  filter_size=9)
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
-        return None, None, daofind, None, None
+        return None, None, daofind, None, None, None
 
     # border mask (True = masked)
     border_mask = make_border_mask(image_data, border=detection_mask)
@@ -611,7 +613,7 @@ def detection_and_photometry(
 
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
-        return None, None, daofind, bkg, None
+        return None, None, daofind, bkg, None, None
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
 
@@ -930,10 +932,10 @@ def detection_and_photometry(
             )
 
         st.write(f"Found {len(phot_table)} sources and performed photometry.")
-        return phot_table, epsf_table, daofind, bkg, wcs_obj
+        return phot_table, epsf_table, daofind, bkg, wcs_obj, bkg_fig
     except Exception as e:
         st.error(f"Error performing aperture photometry: {e}")
-        return None, None, daofind, bkg, wcs_obj
+        return None, None, daofind, bkg, wcs_obj, None
 
 
 def show_subtracted_image(image_sub):
