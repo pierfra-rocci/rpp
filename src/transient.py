@@ -20,18 +20,18 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
     mask : 2D array
         The mask data corresponding to the image."""
     
-    st.warning("⚠️ Transient detection is currently in Beta phase. Please review results carefully.")
+    st.warning("⚠️ Transient detection is currently in Beta phase.")
     
-    gain = header.get('GAIN', 1.0)
+    # gain = header.get('GAIN', 1.0)
     
     st.info("Extracting source objects from image using SExtractor...")
     obj = photometry.get_objects_sextractor(
                         image,
                         mask=mask,
                         aper=1.5*fwhm,
-                        gain=gain,
                         edge=15,
-                        verbose=True,
+                        bg_size=64,
+                        mask_to_nans=True,
                         wcs=WCS(header)
                         )
 
