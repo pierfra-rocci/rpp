@@ -1173,6 +1173,8 @@ if science_file is not None:
                                     for idx, cand in enumerate(candidates,
                                                                start=1):
                                         st.markdown(f"**Candidate {idx}:** RA={cand['ra']:.6f}°, DEC={cand['dec']:.6f}°, Mag={cand.get('mag', 'N/A')}, ")
+                                else:
+                                    st.warning("No transient candidates found.")
 
                     if (
                         final_phot_table is not None

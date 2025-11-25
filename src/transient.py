@@ -26,6 +26,9 @@ def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
                         edge=15,
                         )
 
+    if obj is None:
+        return []
+
     # Let's get PanSTARRS objects brighter than r=18 mag
     if catalog == 'PanSTARRS':
         catalog = 'ps1'
