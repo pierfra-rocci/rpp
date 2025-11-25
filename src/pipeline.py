@@ -521,13 +521,13 @@ def detection_and_photometry(
     daofind = None
 
     try:
-        w, wcs_error = safe_wcs_create(science_header)
+        w, wcs_error, _ = safe_wcs_create(science_header)
         if w is None:
             st.error(f"Error creating WCS: {wcs_error}")
-            return None, None, daofind, None, None
+            return None, None, daofind, None, None, None
     except Exception as e:
         st.error(f"Error creating WCS: {e}")
-        return None, None, daofind, None, None
+        return None, None, daofind, None, None, None
 
     pixel_scale = science_header.get(
         "PIXSCALE",
@@ -535,7 +535,7 @@ def detection_and_photometry(
     )
 
     bkg, bkg_fig, bkg_error = estimate_background(image_data, box_size=64,
-                                         filter_size=9)
+                                                  filter_size=9)
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None, None
@@ -571,6 +571,7 @@ def detection_and_photometry(
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.imshow(mask, cmap="viridis", origin="lower")
     st.pyplot(fig)
+    st.pyplot(bkg_fig)
 
     # Ensure image_sub is float64 to avoid casting errors
     image_sub = image_data.astype(np.float64) - bkg.background.astype(np.float64)
@@ -613,7 +614,7 @@ def detection_and_photometry(
 
     if sources is None or len(sources) == 0:
         st.warning("No sources found!")
-        return None, None, daofind, bkg, None
+        return None, None, daofind, bkg, None, None
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
 
