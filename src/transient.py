@@ -28,6 +28,7 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
     header, _ = fix_header(header)
 
     st.info("Extracting source objects from image using SExtractor...")
+    image = image.astype(image.dtype.newbyteorder('='))
     obj = photometry.get_objects_sep(
                         image,
                         mask=mask,
