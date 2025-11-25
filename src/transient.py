@@ -48,35 +48,35 @@ def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
         verbose=False
     )
 
-    for _, cand in enumerate(candidates):
-        # Create the cutout from image based on the candidate
-        cutout = cutouts.get_cutout(
-            image,
-            # Candidate
-            cand,
-            # Cutout half-size in pixels
-            25,
-            header=header
-        )
+    # for _, cand in enumerate(candidates):
+    #     # Create the cutout from image based on the candidate
+    #     cutout = cutouts.get_cutout(
+    #         image,
+    #         # Candidate
+    #         cand,
+    #         # Cutout half-size in pixels
+    #         25,
+    #         header=header
+    #     )
 
-        # We did not do image subtraction yet, but we may already
-        # directly download the "template" image for this cutout
-        # from HiPS server
-        cutout['template'] = templates.get_hips_image(
-            'PanSTARRS/DR2/'+filter_name,
-            header=cutout['header'],
-            get_header=False
-        )
+    #     # We did not do image subtraction yet, but we may already
+    #     # directly download the "template" image for this cutout
+    #     # from HiPS server
+    #     cutout['template'] = templates.get_hips_image(
+    #         'PanSTARRS/DR2/'+filter_name,
+    #         header=cutout['header'],
+    #         get_header=False
+    #     )
 
-        # Now we have three image planes in the cutout - let's display them
-        plots.plot_cutout(
-            cutout,
-            # Image planes to display
-            planes=['image', 'template'],
-            # Percentile-based scaling and linear stretching
-            qq=[0.5, 99.5],
-            stretch='linear')
-        plt.show()
+    #     # Now we have three image planes in the cutout - let's display them
+    #     plots.plot_cutout(
+    #         cutout,
+    #         # Image planes to display
+    #         planes=['image', 'template'],
+    #         # Percentile-based scaling and linear stretching
+    #         qq=[0.5, 99.5],
+    #         stretch='linear')
+    #     plt.show()
 
     return candidates
 
