@@ -272,7 +272,10 @@ with st.sidebar.expander("Transient Candidates (_coming soon_)", expanded=False)
 
     # Add survey and filter selection
     survey_options = ["PanSTARRS"]
-    survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'PanSTARRS'))
+    if "DSS2" in st.session_state.analysis_parameters.get('transient_survey', 'PanSTARRS'):
+        filter_index = 0
+    else:
+        survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'PanSTARRS'))
     st.session_state.analysis_parameters['transient_survey'] = st.selectbox(
         "Reference Survey",
         options=survey_options,
@@ -281,7 +284,10 @@ with st.sidebar.expander("Transient Candidates (_coming soon_)", expanded=False)
     )
 
     filter_options = ["g", "r", "i"]
-    filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'g'))
+    if "Red" or "Blue" in st.session_state.analysis_parameters.get('transient_filter', 'g'):
+        filter_index = 0
+    else:
+        filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'g'))
     st.session_state.analysis_parameters['transient_filter'] = st.selectbox(
         "Reference Filter",
         options=filter_options,
