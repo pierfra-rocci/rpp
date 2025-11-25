@@ -1149,26 +1149,29 @@ if science_file is not None:
                             with st.spinner(
                                 "Running Image Subtraction... This may take a moment."
                             ):
-                                candidates = find_candidates(
-                                            science_data,
-                                            header_for_coords,
-                                            mean_fwhm_pixel,
-                                            pixel_size_arcsec,
-                                            ra_center,
-                                            dec_center,
-                                            search_radius/3600,
-                                            mask=None,
-                                            catalog=st.session_state.analysis_parameters.get("transient_survey", "PanSTARRS"),
-                                            filter_name=st.session_state.analysis_parameters.get("transient_filter", "r"),
-                                            mag_limit='<20',
-                                        )
-                                if candidates:
-                                    st.subheader("Transient Candidates Found")
-                                    for idx, cand in enumerate(candidates,
-                                                               start=1):
-                                        st.markdown(f"**Candidate {idx}:** RA={cand['ra']:.6f}°, DEC={cand['dec']:.6f}°, Mag={cand.get('mag', 'N/A')}, ")
-                                else:
-                                    st.warning("No transient candidates found.")
+                                try:
+                                    candidates = find_candidates(
+                                                science_data,
+                                                header_for_coords,
+                                                mean_fwhm_pixel,
+                                                pixel_size_arcsec,
+                                                ra_center,
+                                                dec_center,
+                                                search_radius/3600,
+                                                mask=None,
+                                                catalog=st.session_state.analysis_parameters.get("transient_survey", "PanSTARRS"),
+                                                filter_name=st.session_state.analysis_parameters.get("transient_filter", "r"),
+                                                mag_limit='<20',
+                                            )
+                                    if candidates:
+                                        st.subheader("Transient Candidates Found")
+                                        for idx, cand in enumerate(candidates,
+                                                                start=1):
+                                            st.markdown(f"**Candidate {idx}:** RA={cand['ra']:.6f}°, DEC={cand['dec']:.6f}°, Mag={cand.get('mag', 'N/A')}, ")
+                                    else:
+                                        st.warning("No transient candidates found.")
+                                except Exception as e:
+                                    st.error(f"Error during transient finding: {str(e)}")
 
                     if (
                         final_phot_table is not None
