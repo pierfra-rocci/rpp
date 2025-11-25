@@ -1,11 +1,12 @@
 from stdpipe import (pipeline, cutouts, photometry,
                      templates, plots, catalogs)
 
+from astropy.wcs import WCS
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
+def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
                     mask=None, catalog=None,
                     filter_name=None, mag_limit='<19'):
     """Find transient candidates in the given image around the specified object.
@@ -24,7 +25,8 @@ def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
                         aper=1.5*fwhm,
                         gain=gain,
                         edge=15,
-                        verbose=True
+                        verbose=True,
+                        wcs=WCS(header)
                         )
 
     if obj is None:
@@ -45,7 +47,7 @@ def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
-        sr=2/3600,
+        sr=2*fwhm*pixel_scale,
         vizier=['vsx', 'apass', 'atlas'],
         skybot=True,
         ned=True,

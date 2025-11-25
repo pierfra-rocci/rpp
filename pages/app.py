@@ -1153,6 +1153,7 @@ if science_file is not None:
                                             science_data,
                                             header_for_coords,
                                             mean_fwhm_pixel,
+                                            pixel_size_arcsec,
                                             ra_center,
                                             dec_center,
                                             search_radius/3600,
