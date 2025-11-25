@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
+from src.tools_pipeline import fix_header
+
 
 def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
                     mask=None, catalog=None,
@@ -22,6 +24,8 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
 
     st.warning("⚠️ Transient detection is currently in Beta phase.")
     gain = header.get('GAIN', 1.0)
+
+    header, _ = fix_header(header)
 
     st.info("Extracting source objects from image using SExtractor...")
     obj = photometry.get_objects_sextractor(
