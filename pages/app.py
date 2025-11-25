@@ -904,8 +904,6 @@ if science_file is not None:
 
                         if isinstance(result, tuple) and len(result) == 6:
                             phot_table_qtable, epsf_table, daofind, bkg, w, bkg_fig = result
-                            if bkg_fig:
-                                st.pyplot(bkg_fig)
                         else:
                             st.error(
                                 f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}"
@@ -987,11 +985,6 @@ if science_file is not None:
 
                                             # Save to session state
                                             st.session_state["final_phot_table"] = final_table
-
-                                            # Display results
-                                            st.subheader("Final Photometry Catalog")
-                                            st.dataframe(final_table.head(10))
-
                                             st.success(f"Catalog includes {len(final_table)} sources.")
 
                                     except Exception as e:
