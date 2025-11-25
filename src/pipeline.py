@@ -571,6 +571,7 @@ def detection_and_photometry(
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.imshow(mask, cmap="viridis", origin="lower")
     st.pyplot(fig)
+    st.pyplot(bkg_fig)
 
     # Ensure image_sub is float64 to avoid casting errors
     image_sub = image_data.astype(np.float64) - bkg.background.astype(np.float64)
