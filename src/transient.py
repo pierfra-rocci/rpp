@@ -28,14 +28,16 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
     header, _ = fix_header(header)
 
     st.info("Extracting source objects from image using SExtractor...")
-    obj = photometry.get_objects_sextractor(
+    obj = photometry.get_objects_sep(
                         image,
                         mask=mask,
                         aper=1.5*fwhm,
-                        thresh=0.05,
-                        sn=2.5,
+                        thresh=2.0,
+                        sn=5,
                         gain=gain,
                         edge=10,
+                        bg_size=64,
+                        use_fwhm=True,
                         mask_to_nans=True,
                         wcs=WCS(header)
                         )
