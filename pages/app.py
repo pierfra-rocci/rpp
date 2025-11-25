@@ -1166,7 +1166,7 @@ if science_file is not None:
                                     if candidates:
                                         st.subheader("Transient Candidates Found")
                                         for idx, cand in enumerate(candidates,
-                                                                start=1):
+                                                                   start=1):
                                             st.markdown(f"**Candidate {idx}:** RA={cand['ra']:.6f}°, DEC={cand['dec']:.6f}°, Mag={cand.get('mag', 'N/A')}, ")
                                     else:
                                         st.warning("No transient candidates found.")

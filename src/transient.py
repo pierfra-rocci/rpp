@@ -31,12 +31,11 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
     image = image.astype(image.dtype.newbyteorder('='))
     obj = photometry.get_objects_sep(
                         image,
-                        mask=mask,
                         aper=1.5*fwhm,
-                        thresh=0.5,
-                        sn=5,
+                        thresh=0.1,
+                        sn=2,
                         gain=gain,
-                        edge=10,
+                        edge=15,
                         bg_size=64,
                         use_fwhm=True,
                         wcs=WCS(header)
