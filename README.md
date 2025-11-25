@@ -46,7 +46,7 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 ## Installation
 
 ### Prerequisites
-- Python 3.11+
+- Python 3.12
 - Astrometry.net installation with solve-field binary
 - SCAMP installation (for astrometric refinement)
 
