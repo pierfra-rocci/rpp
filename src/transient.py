@@ -4,6 +4,7 @@ from stdpipe import (pipeline, cutouts, photometry,
 from astropy.wcs import WCS
 import matplotlib.pyplot as plt
 import numpy as np
+import streamlit as st
 
 
 def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
@@ -18,7 +19,12 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
         The image data where to search for transients.
     mask : 2D array
         The mask data corresponding to the image."""
+    
+    st.warning("⚠️ Transient detection is currently in Beta phase. Please review results carefully.")
+    
     gain = header.get('GAIN', 1.0)
+    
+    st.info("Extracting source objects from image using SExtractor...")
     obj = photometry.get_objects_sextractor(
                         image,
                         mask=mask,
@@ -30,12 +36,16 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
                         )
 
     if obj is None:
+        st.warning("No objects found in the image.")
         return []
+    
+    st.info(f"✅ Found {len(obj)} objects in the image.")
 
     # Let's get PanSTARRS objects brighter than r=18 mag
     if catalog == 'PanSTARRS':
         catalog = 'ps1'
 
+    st.info(f"Querying {catalog} catalog for reference stars (Filter: {filter_name}, Limit: {mag_limit})...")
     cat = catalogs.get_cat_vizier(
         ra_center,
         dec_center,
@@ -44,6 +54,7 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
         filters={filter_name+'mag': mag_limit}
         )
 
+    st.info("Filtering candidates against catalog and known databases (VSX, APASS, TNS)...")
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
@@ -53,6 +64,8 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
         ned=True,
         verbose=False
     )
+
+    st.success(f"✅ Candidate filtering complete. Found {len(candidates)} potential transients.")
 
     # for _, cand in enumerate(candidates):
     #     # Create the cutout from image based on the candidate
@@ -101,7 +114,10 @@ def create_template_mask(image, wcs):
     tmask : 2D array
         The mask for the template image, where True indicates masked pixels.
     """
+    st.warning("⚠️ Template mask creation is in Beta phase.")
+    
     # Get r band image from Pan-STARRS with the same resolution and orientation
+    st.info("Retrieving survey template image (Band: r)...")
     tmpl = templates.get_survey_image(
         band='r',
         # One of 'image' or 'mask'
@@ -116,6 +132,7 @@ def create_template_mask(image, wcs):
     )
 
     # Also get proper mask
+    st.info("Retrieving survey mask (Band: r)...")
     tmask = templates.get_survey_image(
         band='r',
         # One of 'image' or 'mask'
@@ -129,6 +146,7 @@ def create_template_mask(image, wcs):
         verbose=True
     )
 
+    st.info("Processing mask logic...")
     # We will exclude pixels with any non-zero mask value
     tmask = tmask > 0
     # We will also mask the regions of the template filled with NaNs
@@ -137,6 +155,7 @@ def create_template_mask(image, wcs):
     plt.subplot(122)
     plots.imshow(tmask, show_colorbar=False)
     plt.title('Template mask')
+    
+    st.success("✅ Template mask created successfully.")
 
     return tmask
-
