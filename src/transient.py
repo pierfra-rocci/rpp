@@ -43,8 +43,8 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
     if obj is None:
         st.warning("No objects found in the image.")
         return []
-    
-    st.info(f"✅ Found {len(obj)} objects in the image.")
+
+    st.info(f"Found {len(obj)} objects in the image.")
 
     # Let's get PanSTARRS objects brighter than r=18 mag
     if catalog == 'PanSTARRS':
@@ -59,7 +59,7 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
         filters={filter_name+'mag': mag_limit}
         )
 
-    st.info("Filtering candidates against catalog and known databases (VSX, APASS, TNS)...")
+    st.info("Filtering candidates against catalog and known databases (VSX, APASS, ATLAS)...")
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
