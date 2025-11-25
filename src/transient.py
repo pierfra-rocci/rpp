@@ -32,7 +32,7 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
     obj = photometry.get_objects_sep(
                         image,
                         aper=1.5*fwhm,
-                        thresh=0.1,
+                        thresh=0.5,
                         sn=2,
                         gain=gain,
                         edge=15,
