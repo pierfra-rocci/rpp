@@ -273,7 +273,7 @@ with st.sidebar.expander("Transient Candidates (_coming soon_)", expanded=False)
     # Add survey and filter selection
     survey_options = ["PanSTARRS"]
     if "DSS2" in st.session_state.analysis_parameters.get('transient_survey', 'PanSTARRS'):
-        filter_index = 0
+        survey_index = 0
     else:
         survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'PanSTARRS'))
     st.session_state.analysis_parameters['transient_survey'] = st.selectbox(
