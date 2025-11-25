@@ -29,8 +29,9 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
                         image,
                         mask=mask,
                         aper=1.5*fwhm,
-                        edge=15,
-                        bg_size=64,
+                        thresh=1.5,
+                        sn=2.5,
+                        edge=10,
                         mask_to_nans=True,
                         wcs=WCS(header)
                         )
