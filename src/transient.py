@@ -1,11 +1,13 @@
-from stdpipe import (pipeline, cutouts,
-                     templates, plots)
+from stdpipe import (pipeline, cutouts, photometry,
+                     templates, plots, catalogs)
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 
-def find_candidates(obj, image, mask, header, cat):
+def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
+                    mask=None, catalog=None,
+                    filter_name=None, mag_limit='<19'):
     """Find transient candidates in the given image around the specified object.
     Parameters
     ----------
@@ -15,13 +17,36 @@ def find_candidates(obj, image, mask, header, cat):
         The image data where to search for transients.
     mask : 2D array
         The mask data corresponding to the image."""
+    gain = header.get('GAIN', 1.0)
+    
+    obj = photometry.get_objects_sextractor(
+                        image,
+                        mask=mask,
+                        aper=1.5*fwhm,
+                        gain=gain,
+                        edge=15,
+                        )
+
+    # Let's get PanSTARRS objects brighter than r=18 mag
+    if catalog == 'PanSTARRS':
+        catalog = 'ps1'
+
+    cat = catalogs.get_cat_vizier(
+        ra_center,
+        dec_center,
+        sr,
+        catalog,
+        filters={filter_name+'mag': mag_limit}
+        )
+
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
         sr=2/3600,
-        # We will check against AAVSO VSX
-        vizier=['vsx'],
-        verbose=True
+        vizier=['vsx', 'apass', 'atlas'],
+        skybot=True,
+        ned=True,
+        verbose=False
     )
 
     for _, cand in enumerate(candidates):
@@ -51,7 +76,7 @@ def find_candidates(obj, image, mask, header, cat):
         # Now we have three image planes in the cutout - let's display them
         plots.plot_cutout(
             cutout,
-            # Image planes to display - optional
+            # Image planes to display
             planes=['image', 'template', 'mask'],
             # Percentile-based scaling and linear stretching
             qq=[0.5, 99.5],

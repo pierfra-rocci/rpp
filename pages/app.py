@@ -56,6 +56,7 @@ from src.pipeline import (
 
 from src.astrometry import solve_with_astrometrynet
 from src.xmatch_catalogs import cross_match_with_gaia, enhance_catalog
+from src.transient import find_candidates
 
 from src.__version__ import version
 
@@ -73,10 +74,6 @@ if getattr(sys, "frozen", False):
 
 warnings.filterwarnings("ignore")
 
-
-######################
-# Main Streamlit App #
-######################
 
 st.set_page_config(
     page_title="RAPAS Photometry Pipeline", page_icon=":star:", layout="centered"
@@ -274,8 +271,8 @@ with st.sidebar.expander("Transient Candidates (_coming soon_)", expanded=False)
     )
 
     # Add survey and filter selection
-    survey_options = ["PanSTARRS", "DSS2"]
-    survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'DSS2'))
+    survey_options = ["PanSTARRS"]
+    survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'PanSTARRS'))
     st.session_state.analysis_parameters['transient_survey'] = st.selectbox(
         "Reference Survey",
         options=survey_options,
@@ -283,8 +280,8 @@ with st.sidebar.expander("Transient Candidates (_coming soon_)", expanded=False)
         help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
     )
 
-    filter_options = ["g", "r", "i", "blue", "red"]
-    filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'red'))
+    filter_options = ["g", "r", "i"]
+    filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'g'))
     st.session_state.analysis_parameters['transient_filter'] = st.selectbox(
         "Reference Filter",
         options=filter_options,
@@ -304,7 +301,6 @@ if st.sidebar.button("💾 Save Configuration"):
         "colibri_api_key": colibri_api_key,
     }
     name = st.session_state.get("username", "user")
-
 
     try:
         backend_url = "http://localhost:5000/save_config"
@@ -443,7 +439,6 @@ if science_file is not None:
     # Test WCS creation with better error handling
     wcs_obj, wcs_error, log_messages = safe_wcs_create(science_header)
     handle_log_messages(log_messages)
-
     # Initialize force_plate_solve as False by default
     force_plate_solve = st.session_state.get("astrometry_check", False)
 
@@ -674,7 +669,7 @@ if science_file is not None:
         st.write("Rms: ", f"{np.std(science_data):.3f}")
         st.write("Min: ", f"{np.min(science_data):.2f}")
         st.write("Max: ", f"{np.max(science_data):.2f}")
-        
+
         # Write statistics to log
         write_to_log(log_buffer, "Image Statistics", level="INFO")
         write_to_log(log_buffer, f"Mean: {np.mean(science_data):.2f}")
@@ -932,7 +927,6 @@ if science_file is not None:
                             )
                             handle_log_messages(log_messages)
 
-
                         if matched_table is not None:
                             st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
                             st.dataframe(matched_table.head(10))
@@ -998,7 +992,6 @@ if science_file is not None:
                                         st.error(f"Error merging photometry: {e}")
                                         import traceback
                                         st.code(traceback.format_exc())
-
 
                                     st.subheader("Final Photometry Catalog")
                                     st.dataframe(final_table.head(10))
@@ -1148,6 +1141,28 @@ if science_file is not None:
                     # Check if we have a valid final photometry table
                     final_phot_table = st.session_state.get("final_phot_table")
 
+                    # Run Transient Finder if enabled
+                    if st.session_state.analysis_parameters.get("run_transient_finder"):
+                        if (
+                            "science_file_path" in st.session_state
+                            and st.session_state["science_file_path"]
+                        ):
+                            with st.spinner(
+                                "Running Image Subtraction... This may take a moment."
+                            ):
+                                find_candidates(
+                                    science_data,
+                                    header_for_coords,
+                                    mean_fwhm_pixel,
+                                    ra_center,
+                                    dec_center,
+                                    search_radius/3600,
+                                    mask=None,
+                                    catalog=st.session_state.analysis_parameters.get("transient_survey", "PanSTARRS"),
+                                    filter_name=st.session_state.analysis_parameters.get("transient_filter", "r"),
+                                    mag_limit='<19',
+                                )
+
                     if (
                         final_phot_table is not None
                         and not final_phot_table.empty
@@ -1193,17 +1208,6 @@ if science_file is not None:
                         f"https://cdsxmatch.u-strasbg.fr/xmatch?request=doQuery&RA={ra_center}&DEC={dec_center}&radius=5",
                         help="Open CDS XMatch service for these coordinates",
                     )
-
-                    # Run Transient Finder if enabled
-                    if st.session_state.analysis_parameters.get("run_transient_finder"): 
-                        if (
-                            "science_file_path" in st.session_state
-                            and st.session_state["science_file_path"]
-                        ):
-                            with st.spinner(
-                                "Running Image Subtraction... This may take a moment."
-                            ):
-                                pass  # TODO: Add transient finder function here
 
                     # Only provide download buttons if processing was completed
                     if final_phot_table is not None:
