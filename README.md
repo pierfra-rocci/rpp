@@ -89,8 +89,6 @@ This will install the project in editable mode and all the dependencies.
 
 4. **Upload FITS file**: Upload your astronomical image
 
-5. **Run photometry**: Click "Photometric Calibration" to start the pipeline
-
 ## Configuration
 
 ### Observatory Parameters
