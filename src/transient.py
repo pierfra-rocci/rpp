@@ -24,6 +24,7 @@ def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
                         aper=1.5*fwhm,
                         gain=gain,
                         edge=15,
+                        verbose=True
                         )
 
     if obj is None:
