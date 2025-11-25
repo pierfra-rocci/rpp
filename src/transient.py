@@ -18,7 +18,6 @@ def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
     mask : 2D array
         The mask data corresponding to the image."""
     gain = header.get('GAIN', 1.0)
-    
     obj = photometry.get_objects_sextractor(
                         image,
                         mask=mask,
@@ -56,9 +55,7 @@ def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
             # Candidate
             cand,
             # Cutout half-size in pixels
-            20,
-            # Additional planes for the cutout
-            mask=mask,
+            25,
             header=header
         )
 
@@ -66,10 +63,8 @@ def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
         # directly download the "template" image for this cutout
         # from HiPS server
         cutout['template'] = templates.get_hips_image(
-            'PanSTARRS/DR2/r',
-            # FITS header with proper WCS and size
+            'PanSTARRS/DR2/'+filter_name,
             header=cutout['header'],
-            # Return only image
             get_header=False
         )
 
@@ -77,7 +72,7 @@ def find_candidates(image, header, fwhm, ra_center, dec_center, sr,
         plots.plot_cutout(
             cutout,
             # Image planes to display
-            planes=['image', 'template', 'mask'],
+            planes=['image', 'template'],
             # Percentile-based scaling and linear stretching
             qq=[0.5, 99.5],
             stretch='linear')
