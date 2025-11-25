@@ -39,7 +39,6 @@ def find_candidates(image, header, fwhm, pixel_scale, ra_center, dec_center, sr,
                         edge=10,
                         bg_size=64,
                         use_fwhm=True,
-                        mask_to_nans=True,
                         wcs=WCS(header)
                         )
 
