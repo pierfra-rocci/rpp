@@ -1147,7 +1147,7 @@ if science_file is not None:
                             and st.session_state["science_file_path"]
                         ):
                             with st.spinner(
-                                "Running Image Subtraction... This may take a moment."
+                                "Running Transient Finder ... This may take a moment."
                             ):
                                 try:
                                     candidates = find_candidates(
@@ -1155,7 +1155,7 @@ if science_file is not None:
                                                 header_for_coords,
                                                 mean_fwhm_pixel,
                                                 pixel_size_arcsec,
-                                                ra_center,
+                   ok                             ra_center,
                                                 dec_center,
                                                 search_radius/3600,
                                                 mask=None,
