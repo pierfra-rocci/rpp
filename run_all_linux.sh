@@ -13,7 +13,7 @@ frontend_log="frontend.log"
 export APP_ENV=production
 
 echo "Starting backend with gunicorn in background..."
-gunicorn --workers 4 --bind 0.0.0.0:5000 --log-level=debug --error-logfile - backend:app 2>&1 | tee $backend_log &
+gunicorn --workers 2 --threads 4 --worker-class gthread --bind 0.0.0.0:5000 --log-level=info --timeout 60 --keep-alive 5 --error-logfile - backend:app 2>&1 | tee $backend_log &
 
 echo "Waiting for backend to start..."
 sleep 5
