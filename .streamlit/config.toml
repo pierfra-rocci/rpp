@@ -36,14 +36,14 @@ enableXsrfProtection = true
 
 # Max size, in megabytes, for files uploaded with the file_uploader.
 # Default: 200
-maxUploadSize = 300
+maxUploadSize = 200
 
 fileWatcherType = "none"
 
 # Max size, in megabytes, of messages that can be sent via the WebSocket
 # connection.
 # Default: 200
-maxMessageSize = 150
+maxMessageSize = 100
 
 # Automatically rerun script when the file is modified on disk.
 # Default: false
