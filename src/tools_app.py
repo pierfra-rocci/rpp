@@ -71,6 +71,7 @@ def clear_all_caches():
         st.error(f"Error clearing caches: {e}")
 
 
+@st.cache_data(show_spinner=False)
 def load_fits_data(_file):
     """
     Load image data and header from a FITS file with robust error handling.

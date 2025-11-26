@@ -182,6 +182,7 @@ def make_border_mask(
     return mask.astype(dtype)
 
 
+@st.cache_data(show_spinner=False)
 def airmass(
     _header: Dict, observatory: Optional[Dict] = None, return_details: bool = False
 ) -> Union[float, Tuple[float, Dict]]:
@@ -462,6 +463,7 @@ def fwhm_fit(
         raise ValueError(f"Unexpected error in fwhm_fit: {e}")
 
 
+@st.cache_data(show_spinner=False, experimental_allow_widgets=True)
 def detection_and_photometry(
     image_data, science_header, mean_fwhm_pixel, threshold_sigma, detection_mask
 ):
@@ -943,6 +945,7 @@ def show_subtracted_image(image_sub):
     plt.close(fig)
 
 
+@st.cache_data(show_spinner=False, experimental_allow_widgets=True)
 def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
     """
     Calculate photometric zero point from matched sources with GAIA.
