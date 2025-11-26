@@ -21,7 +21,6 @@ from src.tools_pipeline import URL
 from src.utils import safe_catalog_query
 
 
-@st.cache_data(show_spinner=False)
 def cross_match_with_gaia(
     _phot_table,
     science_header,
@@ -245,7 +244,6 @@ def cross_match_with_gaia(
         return None, [f"ERROR: Error during cross-matching: {e}"]
 
 
-@st.cache_data(show_spinner=False)
 def enhance_catalog(
     api_key,
     final_table,
