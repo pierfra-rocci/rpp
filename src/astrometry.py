@@ -101,13 +101,22 @@ def solve_with_astrometrynet(file_path):
                     "INFO: Valid WCS already exists in header. Proceeding with blind solve anyway..."
                 )
         except Exception:
-            log_messages.append("INFO: No valid WCS found in header. Proceeding with blind solve...")
+            log_messages.append(
+                "INFO: No valid WCS found in header. Proceeding with blind solve..."
+            )
 
         # Estimate background
-        log_messages.append("INFO: Detecting objects for plate solving using photutils...")
+        log_messages.append(
+            "INFO: Detecting objects for plate solving using photutils..."
+        )
         bkg, _, bkg_error = estimate_background(image_data, figure=False)
         if bkg is None:
-            return None, None, log_messages, f"Failed to estimate background: {bkg_error}"
+            return (
+                None,
+                None,
+                log_messages,
+                f"Failed to estimate background: {bkg_error}",
+            )
 
         image_sub = image_data - bkg.background
 
@@ -144,9 +153,13 @@ def solve_with_astrometrynet(file_path):
             sources.sort("flux")
             sources.reverse()
             sources = sources[:500]
-            log_messages.append(f"INFO: Using brightest {len(sources)} sources for plate solving")
+            log_messages.append(
+                f"INFO: Using brightest {len(sources)} sources for plate solving"
+            )
 
-        log_messages.append(f"SUCCESS: Ready for plate solving with {len(sources)} sources")
+        log_messages.append(
+            f"SUCCESS: Ready for plate solving with {len(sources)} sources"
+        )
 
         # Convert sources to the format expected by stdpipe
         obj_table = Table()
@@ -250,7 +263,9 @@ def solve_with_astrometrynet(file_path):
                         cd11, cd12, cd21, cd22 = cd_values
                         det = abs(cd11 * cd22 - cd12 * cd21)
                         pixel_scale_estimate = 3600 * np.sqrt(det)
-                        log_messages.append("INFO: Calculated pixel scale from CD matrix")
+                        log_messages.append(
+                            "INFO: Calculated pixel scale from CD matrix"
+                        )
                 except Exception:
                     pass
 
@@ -284,7 +299,9 @@ def solve_with_astrometrynet(file_path):
             kwargs.update(
                 {"scale_lower": 0.1, "scale_upper": 10.0, "scale_units": "arcsecperpix"}
             )
-            log_messages.append("INFO: No pixel scale estimate available, using broad range")
+            log_messages.append(
+                "INFO: No pixel scale estimate available, using broad range"
+            )
 
         # Add RA/DEC hint if available
         if header and "RA" in header and "DEC" in header:
@@ -299,7 +316,9 @@ def solve_with_astrometrynet(file_path):
                             "radius": 0.95,  # 5 degree search radius
                         }
                     )
-                    log_messages.append(f"INFO: Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}")
+                    log_messages.append(
+                        f"INFO: Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}"
+                    )
             except Exception:
                 log_messages.append("WARNING: Could not parse RA/DEC from header")
 
@@ -345,16 +364,22 @@ def solve_with_astrometrynet(file_path):
                     log_messages.append(
                         f"INFO: Solution center: RA={center_ra:.6f}°, DEC={center_dec:.6f}°"
                     )
-                    log_messages.append(f"INFO: Pixel scale: {pixel_scale:.3f} arcsec/pixel")
+                    log_messages.append(
+                        f"INFO: Pixel scale: {pixel_scale:.3f} arcsec/pixel"
+                    )
 
                     # Validate solution makes sense
                     if 0 <= center_ra <= 360 and -90 <= center_dec <= 90:
                         log_messages.append("SUCCESS: Solution coordinates are valid")
                     else:
-                        log_messages.append("WARNING: Solution coordinates seem invalid!")
+                        log_messages.append(
+                            "WARNING: Solution coordinates seem invalid!"
+                        )
 
                 except Exception as coord_error:
-                    log_messages.append(f"WARNING: Could not extract solution coordinates: {coord_error}")
+                    log_messages.append(
+                        f"WARNING: Could not extract solution coordinates: {coord_error}"
+                    )
 
                 return solved_wcs, updated_header, log_messages, None
 

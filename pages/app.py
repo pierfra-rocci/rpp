@@ -25,7 +25,8 @@ from src.tools_app import (
     provide_download_buttons,
     clear_all_caches,
     handle_log_messages,
-    cleanup_temp_files)
+    cleanup_temp_files,
+)
 
 # Local Application Imports
 from src.tools_pipeline import (
@@ -111,8 +112,10 @@ if not st.session_state.logged_in:
 
 # Add application version to the sidebar
 st.title("**RAPAS Photometry Pipeline**")
-st.markdown("[**RAPAS Project**](https://rapas.imcce.fr/) / [**Github**](https://github.com/pierfra-rocci/rpp)",
-            unsafe_allow_html=True)
+st.markdown(
+    "[**RAPAS Project**](https://rapas.imcce.fr/) / [**Github**](https://github.com/pierfra-rocci/rpp)",
+    unsafe_allow_html=True,
+)
 # Added: Quick Start Tutorial link (now displayed in an expander)
 with st.expander("📘 Quick Start Tutorial"):
     try:
@@ -247,9 +250,7 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     st.session_state.analysis_parameters["astrometry_check"] = st.toggle(
         "Astrometry check",
         value=st.session_state.analysis_parameters["astrometry_check"],
-        help=(
-            "Attempt to plate solve and refine WCS before photometry. "
-        ),
+        help=("Attempt to plate solve and refine WCS before photometry. "),
     )
 
 with st.sidebar.expander("🔑 API Keys", expanded=False):
@@ -263,20 +264,23 @@ with st.sidebar.expander("🔑 API Keys", expanded=False):
 
 # Add expander for the Transient Finder
 with st.sidebar.expander("Transient Candidates (_beta phase_)", expanded=False):
-
     # Add a checkbox to enable/disable the transient finder
-    st.session_state.analysis_parameters['run_transient_finder'] = st.checkbox(
+    st.session_state.analysis_parameters["run_transient_finder"] = st.checkbox(
         "Enable Transient Finder",
-        value=st.session_state.analysis_parameters.get('run_transient_finder', False)
+        value=st.session_state.analysis_parameters.get("run_transient_finder", False),
     )
 
     # Add survey and filter selection
     survey_options = ["PanSTARRS"]
-    if "DSS2" in st.session_state.analysis_parameters.get('transient_survey', 'PanSTARRS'):
+    if "DSS2" in st.session_state.analysis_parameters.get(
+        "transient_survey", "PanSTARRS"
+    ):
         survey_index = 0
     else:
-        survey_index = survey_options.index(st.session_state.analysis_parameters.get('transient_survey', 'PanSTARRS'))
-    st.session_state.analysis_parameters['transient_survey'] = st.selectbox(
+        survey_index = survey_options.index(
+            st.session_state.analysis_parameters.get("transient_survey", "PanSTARRS")
+        )
+    st.session_state.analysis_parameters["transient_survey"] = st.selectbox(
         "Reference Survey",
         options=survey_options,
         index=survey_index,
@@ -284,11 +288,15 @@ with st.sidebar.expander("Transient Candidates (_beta phase_)", expanded=False):
     )
 
     filter_options = ["g", "r", "i"]
-    if "Red" or "Blue" in st.session_state.analysis_parameters.get('transient_filter', 'g'):
+    if "Red" or "Blue" in st.session_state.analysis_parameters.get(
+        "transient_filter", "g"
+    ):
         filter_index = 0
     else:
-        filter_index = filter_options.index(st.session_state.analysis_parameters.get('transient_filter', 'g'))
-    st.session_state.analysis_parameters['transient_filter'] = st.selectbox(
+        filter_index = filter_options.index(
+            st.session_state.analysis_parameters.get("transient_filter", "g")
+        )
+    st.session_state.analysis_parameters["transient_filter"] = st.selectbox(
         "Reference Filter",
         options=filter_options,
         index=filter_index,
@@ -340,7 +348,9 @@ if st.session_state.logged_in:
         st.success("Logged out successfully.")
         st.switch_page("pages/login.py")
     st.sidebar.markdown("---")
-    st.sidebar.markdown("_Report feedback and bugs to_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)")
+    st.sidebar.markdown(
+        "_Report feedback and bugs to_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)"
+    )
 
 ###########################################################################
 
@@ -483,7 +493,9 @@ if science_file is not None:
             with st.spinner(
                 "Running astrometry check and plate solving - this may take a while..."
             ):
-                wcs_obj, science_header, log_messages, error = solve_with_astrometrynet(science_file_path)
+                wcs_obj, science_header, log_messages, error = solve_with_astrometrynet(
+                    science_file_path
+                )
                 handle_log_messages(log_messages)
                 if error:
                     st.error(error)
@@ -670,7 +682,10 @@ if science_file is not None:
 
     st.subheader("Statistics")
     if science_data is not None:
-        st.write("Mean: ", f"{np.mean(science_data):.2f}", )
+        st.write(
+            "Mean: ",
+            f"{np.mean(science_data):.2f}",
+        )
         st.write("Median: ", f"{np.median(science_data):.2f}")
         st.write("Rms: ", f"{np.std(science_data):.3f}")
         st.write("Min: ", f"{np.min(science_data):.2f}")
@@ -721,8 +736,7 @@ if science_file is not None:
 
         ra_val, dec_val, coord_source = extract_coordinates(science_header)
         if ra_val is not None and dec_val is not None:
-            st.write(f"RA={round(ra_val, 4)}°\n"
-                     f"DEC={round(dec_val, 4)}°")
+            st.write(f"RA={round(ra_val, 4)}°\nDEC={round(dec_val, 4)}°")
             write_to_log(
                 log_buffer,
                 f"Target coordinates: RA={ra_val}°, DEC={dec_val}° ({coord_source})",
@@ -887,9 +901,7 @@ if science_file is not None:
                     detection_mask = st.session_state.analysis_parameters[
                         "detection_mask"
                     ]
-                    filter_band = st.session_state.analysis_parameters[
-                        "filter_band"
-                    ]
+                    filter_band = st.session_state.analysis_parameters["filter_band"]
                     filter_max_mag = st.session_state.analysis_parameters[
                         "filter_max_mag"
                     ]
@@ -899,7 +911,7 @@ if science_file is not None:
                         header_to_process,
                         mean_fwhm_pixel,
                         threshold_sigma,
-                        detection_mask
+                        detection_mask,
                     )
 
                     if isinstance(result, tuple) and len(result) == 6:
@@ -908,12 +920,12 @@ if science_file is not None:
                         st.error(
                             f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}"
                         )
-                        phot_table_qtable = epsf_table = daofind = bkg = w = bkg_fig = None
+                        phot_table_qtable = epsf_table = daofind = bkg = w = bkg_fig = (
+                            None
+                        )
 
                     if phot_table_qtable is not None:
-                        phot_table_df = phot_table_qtable.to_pandas().copy(
-                            deep=True
-                        )
+                        phot_table_df = phot_table_qtable.to_pandas().copy(deep=True)
                     else:
                         st.error("No sources detected in the image.")
                         phot_table_df = None
@@ -953,17 +965,27 @@ if science_file is not None:
                                 write_to_log(log_buffer, f"Airmass: {air:.2f}")
 
                                 try:
-                                    if "epsf_photometry_result" in st.session_state and epsf_table is not None:
-
+                                    if (
+                                        "epsf_photometry_result" in st.session_state
+                                        and epsf_table is not None
+                                    ):
                                         # Convert tables to pandas DataFrames
-                                        epsf_df = epsf_table.to_pandas() if not isinstance(epsf_table, pd.DataFrame) else epsf_table
-                                        final_table = st.session_state["final_phot_table"]
+                                        epsf_df = (
+                                            epsf_table.to_pandas()
+                                            if not isinstance(epsf_table, pd.DataFrame)
+                                            else epsf_table
+                                        )
+                                        final_table = st.session_state[
+                                            "final_phot_table"
+                                        ]
 
                                         # Merge keeping all sources
-                                        final_table, log_messages = merge_photometry_catalogs(
-                                            aperture_table=final_table,
-                                            psf_table=epsf_df,
-                                            tolerance_pixels=2.
+                                        final_table, log_messages = (
+                                            merge_photometry_catalogs(
+                                                aperture_table=final_table,
+                                                psf_table=epsf_df,
+                                                tolerance_pixels=2.0,
+                                            )
                                         )
                                         handle_log_messages(log_messages)
 
@@ -971,25 +993,34 @@ if science_file is not None:
                                         final_table = add_calibrated_magnitudes(
                                             final_table,
                                             zero_point=zero_point_value,
-                                            airmass=air
+                                            airmass=air,
                                         )
 
                                         # Add metadata
-                                        final_table['zero_point'] = zero_point_value
-                                        final_table['zero_point_std'] = zero_point_std
-                                        final_table['airmass'] = air
+                                        final_table["zero_point"] = zero_point_value
+                                        final_table["zero_point_std"] = zero_point_std
+                                        final_table["airmass"] = air
 
                                         # Clean the table
-                                        final_table, log_messages = clean_photometry_table(final_table, require_magnitude=True)
+                                        final_table, log_messages = (
+                                            clean_photometry_table(
+                                                final_table, require_magnitude=True
+                                            )
+                                        )
                                         handle_log_messages(log_messages)
 
                                         # Save to session state
-                                        st.session_state["final_phot_table"] = final_table
-                                        st.success(f"Catalog includes {len(final_table)} sources.")
+                                        st.session_state["final_phot_table"] = (
+                                            final_table
+                                        )
+                                        st.success(
+                                            f"Catalog includes {len(final_table)} sources."
+                                        )
 
                                 except Exception as e:
                                     st.error(f"Error merging photometry: {e}")
                                     import traceback
+
                                     st.code(traceback.format_exc())
 
                                 st.subheader("Final Photometry Catalog")
@@ -999,9 +1030,7 @@ if science_file is not None:
                                     f"Catalog includes {len(final_table)} sources."
                                 )
 
-                                st.subheader(
-                                    "Magnitude Distribution (Aperture & PSF)"
-                                )
+                                st.subheader("Magnitude Distribution (Aperture & PSF)")
 
                                 fig_mag = plot_magnitude_distribution(
                                     final_table, log_buffer
@@ -1018,9 +1047,7 @@ if science_file is not None:
                                     output_dir = ensure_output_directory(
                                         directory=f"{username}_results"
                                     )
-                                    hist_filename = (
-                                        f"{base_filename}_histogram_mag.png"
-                                    )
+                                    hist_filename = f"{base_filename}_histogram_mag.png"
                                     hist_filepath = os.path.join(
                                         output_dir, hist_filename
                                     )
@@ -1070,10 +1097,7 @@ if science_file is not None:
                                             "final_phot_table"
                                         )
 
-                                    if (
-                                        final_table is not None
-                                        and len(final_table) > 0
-                                    ):
+                                    if final_table is not None and len(final_table) > 0:
                                         final_table, log_messages = enhance_catalog(
                                             colibri_api_key,
                                             final_table,
@@ -1151,23 +1175,28 @@ if science_file is not None:
                         ):
                             try:
                                 candidates = find_candidates(
-                                            science_data,
-                                            header_for_coords,
-                                            mean_fwhm_pixel,
-                                            pixel_size_arcsec,
-                                            ra_center,
-                                            dec_center,
-                                            search_radius/3600,
-                                            mask=None,
-                                            catalog=st.session_state.analysis_parameters.get("transient_survey", "PanSTARRS"),
-                                            filter_name=st.session_state.analysis_parameters.get("transient_filter", "r"),
-                                            mag_limit='<20',
-                                        )
+                                    science_data,
+                                    header_for_coords,
+                                    mean_fwhm_pixel,
+                                    pixel_size_arcsec,
+                                    ra_center,
+                                    dec_center,
+                                    search_radius / 3600,
+                                    mask=None,
+                                    catalog=st.session_state.analysis_parameters.get(
+                                        "transient_survey", "PanSTARRS"
+                                    ),
+                                    filter_name=st.session_state.analysis_parameters.get(
+                                        "transient_filter", "r"
+                                    ),
+                                    mag_limit="<20",
+                                )
                                 if candidates:
                                     st.subheader("Transient Candidates Found")
-                                    for idx, cand in enumerate(candidates,
-                                                                start=1):
-                                        st.markdown(f"**Candidate {idx}:** RA={cand['ra']:.6f}°, DEC={cand['dec']:.6f}°, Mag={cand.get('mag', 'N/A')}, ")
+                                    for idx, cand in enumerate(candidates, start=1):
+                                        st.markdown(
+                                            f"**Candidate {idx}:** RA={cand['ra']:.6f}°, DEC={cand['dec']:.6f}°, Mag={cand.get('mag', 'N/A')}, "
+                                        )
                                 else:
                                     st.warning("No transient candidates found.")
                             except Exception as e:
@@ -1260,4 +1289,3 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     with open(log_filepath, "w", encoding="utf-8") as f:
         f.write(log_buffer.getvalue())
     write_to_log(log_buffer, f"Log saved to {log_filepath}")
-

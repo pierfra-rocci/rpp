@@ -346,8 +346,7 @@ def zip_results_on_exit(science_file_obj, outputdir):
         return
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_filename = f"{base_name}_{timestamp}.zip"
-    zip_path = os.path.join(os.path.dirname(output_dir+"/rpp_results"),
-                            zip_filename)
+    zip_path = os.path.join(os.path.dirname(output_dir + "/rpp_results"), zip_filename)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for file in files:
             file_path = os.path.join(output_dir, file)
@@ -357,6 +356,7 @@ def zip_results_on_exit(science_file_obj, outputdir):
             os.remove(os.path.join(output_dir, file))
         except Exception as e:
             print(f"Warning: Could not remove file {file} after zipping: {e}")
+
 
 def save_header_to_txt(header, filename, output_dir):
     """
@@ -475,7 +475,9 @@ def save_catalog_files(final_table, catalog_name, output_dir):
         # Remove columns that still cause issues
         if problematic_columns:
             df_for_votable = df_for_votable.drop(columns=problematic_columns)
-            error_messages.append(f"Removed problematic columns from VOTable: {problematic_columns}")
+            error_messages.append(
+                f"Removed problematic columns from VOTable: {problematic_columns}"
+            )
 
         # Convert pandas DataFrame to astropy Table
         astropy_table = Table.from_pandas(df_for_votable)

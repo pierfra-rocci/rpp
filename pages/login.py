@@ -38,8 +38,10 @@ def validate_password(password):
 if not st.session_state.logged_in:
     st.title("**RAPAS Photometry Pipeline**")
     st.markdown("")
-    st.markdown("_Report feedback and bugs to_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)")
-    
+    st.markdown(
+        "_Report feedback and bugs to_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)"
+    )
+
     st.sidebar.markdown("## User Credentials")
 
     username = st.sidebar.text_input(
@@ -95,14 +97,20 @@ if not st.session_state.logged_in:
                 try:
                     response = requests.post(
                         f"{backend_url}/register",
-                        data={"username": username, "password": password, "email": email},
+                        data={
+                            "username": username,
+                            "password": password,
+                            "email": email,
+                        },
                     )
                     if response.status_code == 201:
                         st.success(response.text)
                     else:
                         st.error(response.text)
                 except requests.exceptions.RequestException as e:
-                    st.error(f"Connection error: Could not reach the backend server. {e}")
+                    st.error(
+                        f"Connection error: Could not reach the backend server. {e}"
+                    )
         else:
             st.warning("Please enter username, password, and email.")
 
@@ -123,7 +131,9 @@ if not st.session_state.logged_in:
                     else:
                         st.error(resp.text)
                 except requests.exceptions.RequestException as e:
-                    st.error(f"Connection error: Could not reach the backend server. {e}")
+                    st.error(
+                        f"Connection error: Could not reach the backend server. {e}"
+                    )
             else:
                 st.warning("Please enter your email.")
 
@@ -149,12 +159,16 @@ if not st.session_state.logged_in:
                             },
                         )
                         if resp.status_code == 200:
-                            st.success("Password updated successfully. You can now log in.")
+                            st.success(
+                                "Password updated successfully. You can now log in."
+                            )
                             st.session_state.recovery_step = 0
                         else:
                             st.error(resp.text)
                     except requests.exceptions.RequestException as e:
-                        st.error(f"Connection error: Could not reach the backend server. {e}")
+                        st.error(
+                            f"Connection error: Could not reach the backend server. {e}"
+                        )
             else:
                 st.warning("Please enter all fields.")
 

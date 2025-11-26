@@ -87,7 +87,7 @@ init_db()
 
 def is_valid_email(email):
     """Validate email format"""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return re.match(pattern, email) is not None
 
 
@@ -96,9 +96,7 @@ def cleanup_expired_codes():
     try:
         with get_db_connection() as conn:
             cur = conn.cursor()
-            cur.execute(
-                "DELETE FROM recovery_codes WHERE expires_at < datetime('now')"
-            )
+            cur.execute("DELETE FROM recovery_codes WHERE expires_at < datetime('now')")
     except Exception as e:
         print(f"Error cleaning up expired codes: {e}")
 
@@ -118,10 +116,10 @@ def send_email(to_email, subject, body):
 
     try:
         msg = MIMEMultipart()
-        msg['From'] = smtp_user
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        msg.attach(MIMEText(body, 'plain'))
+        msg["From"] = smtp_user
+        msg["To"] = to_email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, "plain"))
 
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
@@ -152,8 +150,16 @@ def register():
     if not is_valid_email(email):
         return "Invalid email format.", 400
 
-    if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not any(c.isdigit() for c in password):
-        return "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one digit.", 400
+    if (
+        len(password) < 8
+        or not any(c.isupper() for c in password)
+        or not any(c.islower() for c in password)
+        or not any(c.isdigit() for c in password)
+    ):
+        return (
+            "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one digit.",
+            400,
+        )
 
     try:
         with get_db_connection() as conn:
@@ -243,7 +249,9 @@ def recover_request():
         print(f"Recovery request error: {e}")
         return "An error occurred during recovery request.", 500
 
-    success, message = send_email(email, "Password Recovery Code", f"Your recovery code is: {code}")
+    success, message = send_email(
+        email, "Password Recovery Code", f"Your recovery code is: {code}"
+    )
     if not success:
         return message, 500
 
@@ -289,7 +297,9 @@ def recover_confirm():
                 return "Invalid or expired recovery code.", 400
 
             hashed_pw = generate_password_hash(new_password)
-            cur.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, email))
+            cur.execute(
+                "UPDATE users SET password = ? WHERE email = ?", (hashed_pw, email)
+            )
             cur.execute("DELETE FROM recovery_codes WHERE id = ?", (recovery_code_id,))
     except Exception as e:
         print(f"Recovery confirm error: {e}")
@@ -311,7 +321,8 @@ def save_config():
         with get_db_connection() as conn:
             cur = conn.cursor()
             cur.execute(
-                "UPDATE users SET config_json = ? WHERE username = ?", (config_json, username)
+                "UPDATE users SET config_json = ? WHERE username = ?",
+                (config_json, username),
             )
     except Exception as e:
         print(f"Save config error: {e}")

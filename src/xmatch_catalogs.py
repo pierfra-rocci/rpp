@@ -66,7 +66,9 @@ def cross_match_with_gaia(
     """
     log_messages = []
     if science_header is None:
-        return None, ["WARNING: No header information available. Cannot cross-match with Gaia."]
+        return None, [
+            "WARNING: No header information available. Cannot cross-match with Gaia."
+        ]
 
     try:
         if refined_wcs is not None:
@@ -86,7 +88,9 @@ def cross_match_with_gaia(
             source_positions_pixel[:, 0], source_positions_pixel[:, 1]
         )
     except Exception as e:
-        return None, [f"ERROR: Error converting pixel positions to sky coordinates: {e}"]
+        return None, [
+            f"ERROR: Error converting pixel positions to sky coordinates: {e}"
+        ]
 
     try:
         # Validate RA/DEC coordinates before using them
@@ -99,7 +103,9 @@ def cross_match_with_gaia(
         if not (0 <= image_center_ra_dec[0] <= 360) or not (
             -90 <= image_center_ra_dec[1] <= 90
         ):
-            return None, [f"ERROR: Invalid coordinates: RA={image_center_ra_dec[0]}, DEC={image_center_ra_dec[1]}"]
+            return None, [
+                f"ERROR: Invalid coordinates: RA={image_center_ra_dec[0]}, DEC={image_center_ra_dec[1]}"
+            ]
 
         # Calculate search radius (divided by 1.5 to avoid field edge effects)
         gaia_search_radius_arcsec = (
@@ -183,15 +189,16 @@ def cross_match_with_gaia(
         gaia_table_filtered = gaia_table[combined_filter]
 
         if len(gaia_table_filtered) == 0:
-            return None, [f"WARNING: No Gaia sources found within magnitude range {filter_band} < {filter_max_mag}."]
+            return None, [
+                f"WARNING: No Gaia sources found within magnitude range {filter_band} < {filter_max_mag}."
+            ]
 
     except Exception as e:
         return None, [f"ERROR: Error filtering Gaia catalog: {e}"]
 
     try:
         gaia_skycoords = SkyCoord(
-            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"],
-            unit="deg"
+            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"], unit="deg"
         )
         idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
 
@@ -202,7 +209,9 @@ def cross_match_with_gaia(
         matched_indices_phot = np.where(gaia_matches)[0]
 
         if len(matched_indices_gaia) == 0:
-            return None, ["WARNING: No Gaia matches found within the separation constraint."]
+            return None, [
+                "WARNING: No Gaia matches found within the separation constraint."
+            ]
 
         matched_table_qtable = _phot_table[matched_indices_phot]
 
@@ -210,7 +219,9 @@ def cross_match_with_gaia(
         matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
 
         # Add Gaia source_id so it's available later
-        matched_table["gaia_source_id"] = gaia_table_filtered["designation"][matched_indices_gaia]
+        matched_table["gaia_source_id"] = gaia_table_filtered["designation"][
+            matched_indices_gaia
+        ]
 
         # Add the filter_band column from the filtered Gaia table
         matched_table[filter_band] = gaia_table_filtered[filter_band][
@@ -224,7 +235,9 @@ def cross_match_with_gaia(
         if "snr" in matched_table.columns:
             matched_table = matched_table[matched_table["snr"] > 1]
 
-        log_messages.append(f"SUCCESS: Found {len(matched_table)} Gaia matches after filtering.")
+        log_messages.append(
+            f"SUCCESS: Found {len(matched_table)} Gaia matches after filtering."
+        )
         return matched_table, log_messages
 
     except Exception as e:
@@ -283,7 +296,9 @@ def enhance_catalog(
 
     # Ensure we have valid RA/Dec coordinates in final_table
     if "ra" not in final_table.columns or "dec" not in final_table.columns:
-        return final_table, ["ERROR: final_table must contain 'ra' and 'dec' columns for cross-matching"]
+        return final_table, [
+            "ERROR: final_table must contain 'ra' and 'dec' columns for cross-matching"
+        ]
 
     # Make a copy to avoid modifying the original table
     enhanced_table = final_table.copy()
@@ -297,7 +312,9 @@ def enhance_catalog(
     )
 
     if not valid_coords_mask.any():
-        return enhanced_table, ["ERROR: No sources with valid RA/Dec coordinates found for cross-matching"]
+        return enhanced_table, [
+            "ERROR: No sources with valid RA/Dec coordinates found for cross-matching"
+        ]
 
     num_invalid = len(enhanced_table) - valid_coords_mask.sum()
     if num_invalid > 0:
@@ -324,7 +341,7 @@ def enhance_catalog(
             field_width_arcmin = (
                 max(header.get("NAXIS1", 1000), header.get("NAXIS2", 1000))
                 * pixel_scale_arcsec
-                / 60.
+                / 60.0
             )
 
     log_messages.append("INFO: Starting cross-match process...")
@@ -340,7 +357,10 @@ def enhance_catalog(
             valid_enhanced = enhanced_table.iloc[valid_indices_list].copy()
 
             # Create match_id on valid subset
-            if "xcenter" in valid_enhanced.columns and "ycenter" in valid_enhanced.columns:
+            if (
+                "xcenter" in valid_enhanced.columns
+                and "ycenter" in valid_enhanced.columns
+            ):
                 valid_enhanced["match_id"] = (
                     valid_enhanced["xcenter"].round(2).astype(str)
                     + "_"
@@ -348,7 +368,10 @@ def enhance_catalog(
                 )
 
             # Create match_id on matched_table
-            if "xcenter" in matched_table.columns and "ycenter" in matched_table.columns:
+            if (
+                "xcenter" in matched_table.columns
+                and "ycenter" in matched_table.columns
+            ):
                 matched_table["match_id"] = (
                     matched_table["xcenter"].round(2).astype(str)
                     + "_"
@@ -356,14 +379,16 @@ def enhance_catalog(
                 )
 
                 gaia_cols = [
-                    col for col in matched_table.columns
+                    col
+                    for col in matched_table.columns
                     if any(x in col for x in ["gaia", "phot_"])
                 ]
                 gaia_cols.append("match_id")
                 gaia_subset = matched_table[gaia_cols].copy()
 
                 rename_dict = {
-                    col: f"gaia_{col}" for col in gaia_subset.columns
+                    col: f"gaia_{col}"
+                    for col in gaia_subset.columns
                     if col != "match_id" and not col.startswith("gaia_")
                 }
                 if rename_dict:
@@ -379,11 +404,14 @@ def enhance_catalog(
 
                 # Add gaia_calib_star column
                 enhanced_table["gaia_calib_star"] = False
-                enhanced_table.iloc[valid_indices_list, enhanced_table.columns.get_loc("gaia_calib_star")] = (
-                    valid_enhanced["match_id"].isin(matched_table["match_id"]).values
-                )
+                enhanced_table.iloc[
+                    valid_indices_list,
+                    enhanced_table.columns.get_loc("gaia_calib_star"),
+                ] = valid_enhanced["match_id"].isin(matched_table["match_id"]).values
 
-                log_messages.append(f"SUCCESS: Added {len(matched_table)} Gaia calibration stars to catalog")
+                log_messages.append(
+                    f"SUCCESS: Added {len(matched_table)} Gaia calibration stars to catalog"
+                )
 
     if field_center_ra is not None and field_center_dec is not None:
         if not (-360 <= field_center_ra <= 360) or not (-90 <= field_center_dec <= 90):
@@ -393,14 +421,18 @@ def enhance_catalog(
         else:
             pass
     else:
-        log_messages.append("WARNING: Could not extract field center coordinates from header")
+        log_messages.append(
+            "WARNING: Could not extract field center coordinates from header"
+        )
 
     log_messages.append("INFO: Querying Astro-Colibri API...")
 
     if api_key is None:
         api_key = os.environ.get("ASTROCOLIBRI_API")
         if api_key is None:
-            log_messages.append("WARNING: No API key for ASTRO-COLIBRI provided or found")
+            log_messages.append(
+                "WARNING: No API key for ASTRO-COLIBRI provided or found"
+            )
             pass
 
     try:
@@ -443,7 +475,7 @@ def enhance_catalog(
                 "properties": {
                     "type": "cone",
                     "position": {"ra": field_center_ra, "dec": field_center_dec},
-                    "radius": field_width_arcmin / 2.,
+                    "radius": field_width_arcmin / 2.0,
                 },
             }
 
@@ -460,8 +492,12 @@ def enhance_catalog(
                         f"WARNING: Request failed with status code: {response.status_code}"
                     )
             except json.JSONDecodeError:
-                log_messages.append(f"ERROR: Request did NOT succeed : {response.status_code}")
-                log_messages.append(f"ERROR: Error message : {response.content.decode('UTF-8')}")
+                log_messages.append(
+                    f"ERROR: Request did NOT succeed : {response.status_code}"
+                )
+                log_messages.append(
+                    f"ERROR: Error message : {response.content.decode('UTF-8')}"
+                )
 
         except Exception as e:
             log_messages.append(f"ERROR: Error querying Astro-Colibri API: {str(e)}")
@@ -490,7 +526,9 @@ def enhance_catalog(
                     sources["type"].append(event["type"])
                     sources["classification"].append(event["classification"])
             astrostars = pd.DataFrame(sources)
-            log_messages.append(f"INFO: Found {len(astrostars)} Astro-Colibri sources in field.")
+            log_messages.append(
+                f"INFO: Found {len(astrostars)} Astro-Colibri sources in field."
+            )
 
             # Filter valid coordinates for astro-colibri matching
             valid_final_coords = enhanced_table[valid_coords_mask]
@@ -558,7 +596,9 @@ def enhance_catalog(
 
                 log_messages.append("INFO: Astro-Colibri matched objects in field.")
             else:
-                log_messages.append("INFO: No valid coordinates available for Astro-Colibri matching")
+                log_messages.append(
+                    "INFO: No valid coordinates available for Astro-Colibri matching"
+                )
         else:
             log_messages.append("INFO: No Astro-Colibri sources found in the field.")
     except Exception as e:
@@ -573,8 +613,7 @@ def enhance_catalog(
     log_messages.append("INFO: Querying SIMBAD")
 
     try:
-        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec,
-                                unit="deg")
+        center_coord = SkyCoord(ra=field_center_ra, dec=field_center_dec, unit="deg")
         simbad_result, error = safe_catalog_query(
             custom_simbad.query_region,
             "SIMBAD query failed",
@@ -627,7 +666,7 @@ def enhance_catalog(
                                 idx, d2d, _ = source_coords.match_to_catalog_sky(
                                     simbad_coords
                                 )
-                                matches = d2d <= (10. * u.arcsec)
+                                matches = d2d <= (10.0 * u.arcsec)
 
                                 # Map matches back to the original table indices
                                 valid_indices = valid_final_coords.index
@@ -670,7 +709,9 @@ def enhance_catalog(
                             f"ERROR: SIMBAD result missing required columns. Available columns: {available_cols}"
                         )
                 else:
-                    log_messages.append("INFO: No valid coordinates available for SIMBAD matching")
+                    log_messages.append(
+                        "INFO: No valid coordinates available for SIMBAD matching"
+                    )
             else:
                 log_messages.append("INFO: No SIMBAD objects found in the field.")
     except Exception as e:
@@ -687,7 +728,9 @@ def enhance_catalog(
 
             obs_time = Time(obs_date)
 
-            sr_value = min(field_width_arcmin / 60., 1.)  # degrees, limit to 1 deg max
+            sr_value = min(
+                field_width_arcmin / 60.0, 1.0
+            )  # degrees, limit to 1 deg max
 
             log_messages.append("INFO: Querying SkyBoT for solar system objects...")
 
@@ -698,24 +741,27 @@ def enhance_catalog(
                 enhanced_table["skybot_MAGV"] = None
 
                 # Use Skybot cone search from astroquery
-                field_coord = SkyCoord(ra=field_center_ra,
-                                       dec=field_center_dec,
-                                       unit=u.deg)
+                field_coord = SkyCoord(
+                    ra=field_center_ra, dec=field_center_dec, unit=u.deg
+                )
 
                 skybot_result = Skybot.cone_search(
-                    field_coord,
-                    sr_value * u.deg,
-                    obs_time
+                    field_coord, sr_value * u.deg, obs_time
                 )
 
                 if skybot_result is None or len(skybot_result) == 0:
-                    log_messages.append("INFO: No solar system objects found in the field.")
+                    log_messages.append(
+                        "INFO: No solar system objects found in the field."
+                    )
                 else:
-                    log_messages.append(f"INFO: Found {len(skybot_result)} solar system objects.")
+                    log_messages.append(
+                        f"INFO: Found {len(skybot_result)} solar system objects."
+                    )
 
                     # Convert astropy table to list of dicts for easier access
-                    data = [dict(zip(skybot_result.colnames, row))
-                            for row in skybot_result]
+                    data = [
+                        dict(zip(skybot_result.colnames, row)) for row in skybot_result
+                    ]
 
                     # Build SkyCoord from returned objects
                     ra_list = []
@@ -731,8 +777,12 @@ def enhance_catalog(
                                 continue
 
                             # Extract numeric values from Quantity objects
-                            ra_f = float(ra_val.value if hasattr(ra_val, 'value') else ra_val)
-                            dec_f = float(dec_val.value if hasattr(dec_val, 'value') else dec_val)
+                            ra_f = float(
+                                ra_val.value if hasattr(ra_val, "value") else ra_val
+                            )
+                            dec_f = float(
+                                dec_val.value if hasattr(dec_val, "value") else dec_val
+                            )
 
                             ra_list.append(ra_f)
                             dec_list.append(dec_f)
@@ -740,20 +790,24 @@ def enhance_catalog(
                         except Exception:
                             continue
 
-                    log_messages.append(f"INFO: Extracted {len(ra_list)} valid coordinates from SkyBoT results")
+                    log_messages.append(
+                        f"INFO: Extracted {len(ra_list)} valid coordinates from SkyBoT results"
+                    )
 
                     if len(ra_list) == 0:
-                        log_messages.append("INFO: SkyBoT returned entries but no usable coordinates.")
-                    else:
-                        skybot_coords = SkyCoord(
-                            ra=ra_list, dec=dec_list, unit=u.deg
+                        log_messages.append(
+                            "INFO: SkyBoT returned entries but no usable coordinates."
                         )
+                    else:
+                        skybot_coords = SkyCoord(ra=ra_list, dec=dec_list, unit=u.deg)
 
                         # Filter valid coordinates for SkyBoT matching
                         valid_final_coords = enhanced_table[valid_coords_mask]
 
                         if len(valid_final_coords) == 0:
-                            log_messages.append("INFO: No valid coordinates available for SkyBoT matching")
+                            log_messages.append(
+                                "INFO: No valid coordinates available for SkyBoT matching"
+                            )
                         else:
                             source_coords = SkyCoord(
                                 ra=valid_final_coords["ra"].values,
@@ -762,8 +816,10 @@ def enhance_catalog(
                             )
 
                             # Use 2D sky matching
-                            idx, d2d, _ = source_coords.match_to_catalog_sky(skybot_coords)
-                            max_sep = 10. * u.arcsec
+                            idx, d2d, _ = source_coords.match_to_catalog_sky(
+                                skybot_coords
+                            )
+                            max_sep = 10.0 * u.arcsec
                             matches = d2d <= max_sep
 
                             # Map matches back to the original table indices
@@ -785,25 +841,33 @@ def enhance_catalog(
                                 epoch = rec.get("epoch")
 
                                 # Extract values from Quantity objects
-                                if magv is not None and hasattr(magv, 'value'):
+                                if magv is not None and hasattr(magv, "value"):
                                     magv = float(magv.value)
-                                if epoch is not None and hasattr(epoch, 'value'):
+                                if epoch is not None and hasattr(epoch, "value"):
                                     epoch = float(epoch.value)
 
                                 enhanced_table.loc[original_idx, "skybot_NAME"] = name
-                                enhanced_table.loc[original_idx, "skybot_OBJECT_TYPE"] = objtype
+                                enhanced_table.loc[
+                                    original_idx, "skybot_OBJECT_TYPE"
+                                ] = objtype
                                 enhanced_table.loc[original_idx, "skybot_MAGV"] = magv
                                 enhanced_table.loc[original_idx, "skybot_epoch"] = epoch
 
                             has_skybot = enhanced_table["skybot_NAME"].notna()
-                            enhanced_table.loc[has_skybot, "catalog_matches"] += "SkyBoT; "
+                            enhanced_table.loc[has_skybot, "catalog_matches"] += (
+                                "SkyBoT; "
+                            )
                             log_messages.append(
                                 f"INFO: Found {int(has_skybot.sum())} solar system objects matched in field."
                             )
             except Exception as e:
-                log_messages.append(f"ERROR: Unexpected error during SkyBoT processing: {e}")
+                log_messages.append(
+                    f"ERROR: Unexpected error during SkyBoT processing: {e}"
+                )
         else:
-            log_messages.append("WARNING: Could not determine field center for SkyBoT query")
+            log_messages.append(
+                "WARNING: Could not determine field center for SkyBoT query"
+            )
     except Exception as e:
         log_messages.append(f"ERROR: Error in SkyBoT processing: {str(e)}")
 
@@ -861,9 +925,13 @@ def enhance_catalog(
                                 vsx_table["Period"][match_idx]
                             )
 
-                    log_messages.append(f"INFO: Found {sum(matches)} variable stars in field.")
+                    log_messages.append(
+                        f"INFO: Found {sum(matches)} variable stars in field."
+                    )
                 else:
-                    log_messages.append("INFO: No valid coordinates available for AAVSO matching")
+                    log_messages.append(
+                        "INFO: No valid coordinates available for AAVSO matching"
+                    )
             else:
                 log_messages.append("INFO: No variable stars found in the field.")
     except Exception as e:
@@ -905,7 +973,7 @@ def enhance_catalog(
 
                     # Perform cross-matching
                     idx, d2d, _ = source_coords.match_to_catalog_3d(qso_coords)
-                    matches = d2d.arcsec < 10.
+                    matches = d2d.arcsec < 10.0
 
                     # Add matched quasar information to the final table
                     enhanced_table["qso_name"] = None
@@ -941,9 +1009,13 @@ def enhance_catalog(
                         f"INFO: Found {sum(has_qso)} quasars in field from Milliquas catalog."
                     )
                 else:
-                    log_messages.append("INFO: No valid coordinates available for QSO matching")
+                    log_messages.append(
+                        "INFO: No valid coordinates available for QSO matching"
+                    )
             else:
-                log_messages.append("WARNING: No quasars found in field from Milliquas catalog.")
+                log_messages.append(
+                    "WARNING: No quasars found in field from Milliquas catalog."
+                )
     except Exception as e:
         log_messages.append(f"ERROR: Error querying VizieR Milliquas: {str(e)}")
 
@@ -951,16 +1023,23 @@ def enhance_catalog(
 
     try:
         if field_center_ra is not None and field_center_dec is not None:
-
             # Prepare VizieR query
-            v = Vizier(columns=["RAICRS", "DEICRS", "Name", "ObjType",
-                                "Gmag", "GBPmag", "GRPmag"])
+            v = Vizier(
+                columns=[
+                    "RAICRS",
+                    "DEICRS",
+                    "Name",
+                    "ObjType",
+                    "Gmag",
+                    "GBPmag",
+                    "GRPmag",
+                ]
+            )
             v.ROW_LIMIT = -1
 
             # Query the 10 Parsec catalog (J/A+A/650/A201/tablea1)
             result = v.query_region(
-                SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg,
-                                                                         u.deg)),
+                SkyCoord(ra=field_center_ra, dec=field_center_dec, unit=(u.deg, u.deg)),
                 width=field_width_arcmin * u.arcmin,
                 catalog="J/A+A/650/A201/tablea1",
             )
@@ -982,7 +1061,6 @@ def enhance_catalog(
                 valid_final_coords = enhanced_table[valid_coords_mask]
 
                 if len(valid_final_coords) > 0:
-
                     # Field source coordinates
                     source_coords = SkyCoord(
                         ra=valid_final_coords["ra"].astype(float),
@@ -992,12 +1070,15 @@ def enhance_catalog(
 
                     # Cross-match (sky distance)
                     idx, d2d, _ = source_coords.match_to_catalog_sky(pc10_coords)
-                    matches = d2d.arcsec < 10.
+                    matches = d2d.arcsec < 10.0
 
                     # Ensure destination columns exist
                     for col in [
-                        "pc10_name", "pc10_type", "pc10_Gmag",
-                        "pc10_GBPmag", "pc10_GRPmag"
+                        "pc10_name",
+                        "pc10_type",
+                        "pc10_Gmag",
+                        "pc10_GBPmag",
+                        "pc10_GRPmag",
                     ]:
                         if col not in enhanced_table.columns:
                             enhanced_table[col] = None
@@ -1014,22 +1095,37 @@ def enhance_catalog(
                     for i, cat_idx in zip(matched_sources, matched_objects):
                         original_idx = valid_indices[i]
 
-                        enhanced_table.loc[original_idx, "pc10_name"] = pc10_df.iloc[cat_idx]["Name"]
-                        enhanced_table.loc[original_idx, "pc10_type"] = pc10_df.iloc[cat_idx]["ObjType"]
-                        enhanced_table.loc[original_idx, "pc10_Gmag"] = pc10_df.iloc[cat_idx]["Gmag"]
-                        enhanced_table.loc[original_idx, "pc10_GBPmag"] = pc10_df.iloc[cat_idx]["GBPmag"]
-                        enhanced_table.loc[original_idx, "pc10_GRPmag"] = pc10_df.iloc[cat_idx]["GRPmag"]
+                        enhanced_table.loc[original_idx, "pc10_name"] = pc10_df.iloc[
+                            cat_idx
+                        ]["Name"]
+                        enhanced_table.loc[original_idx, "pc10_type"] = pc10_df.iloc[
+                            cat_idx
+                        ]["ObjType"]
+                        enhanced_table.loc[original_idx, "pc10_Gmag"] = pc10_df.iloc[
+                            cat_idx
+                        ]["Gmag"]
+                        enhanced_table.loc[original_idx, "pc10_GBPmag"] = pc10_df.iloc[
+                            cat_idx
+                        ]["GBPmag"]
+                        enhanced_table.loc[original_idx, "pc10_GRPmag"] = pc10_df.iloc[
+                            cat_idx
+                        ]["GRPmag"]
 
                     # Update catalog match annotation
                     has_match = enhanced_table["pc10_name"].notna()
                     enhanced_table.loc[has_match, "catalog_matches"] = (
-                        enhanced_table.loc[has_match, "catalog_matches"].astype(str) + "pc10; "
+                        enhanced_table.loc[has_match, "catalog_matches"].astype(str)
+                        + "pc10; "
                     )
 
-                    log_messages.append(f"INFO: Found {sum(has_match)} sources in field from 10 Parsec catalog.")
+                    log_messages.append(
+                        f"INFO: Found {sum(has_match)} sources in field from 10 Parsec catalog."
+                    )
 
                 else:
-                    log_messages.append("INFO: No valid coordinates available for 10 Parsec matching")
+                    log_messages.append(
+                        "INFO: No valid coordinates available for 10 Parsec matching"
+                    )
 
             else:
                 log_messages.append("WARNING: No sources found from 10 Parsec catalog.")

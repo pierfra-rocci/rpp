@@ -115,7 +115,11 @@ def safe_wcs_create(header):
     missing_keys = [key for key in required_keys if key not in working_header]
 
     if missing_keys:
-        return None, f"Missing required WCS keywords: {', '.join(missing_keys)}", log_messages
+        return (
+            None,
+            f"Missing required WCS keywords: {', '.join(missing_keys)}",
+            log_messages,
+        )
 
     try:
         wcs_obj = WCS(working_header)
@@ -127,7 +131,11 @@ def safe_wcs_create(header):
             wcs_obj = wcs_obj.celestial
 
         if not hasattr(wcs_obj, "wcs"):
-            return None, "Created WCS object has no transformation attributes", log_messages
+            return (
+                None,
+                "Created WCS object has no transformation attributes",
+                log_messages,
+            )
 
         return wcs_obj, None, log_messages
     except Exception as e:
@@ -176,7 +184,9 @@ def fix_header(header):
                     pass
 
         if removed_keywords:
-            log_messages.append(f"INFO: Removed problematic keywords: {', '.join(removed_keywords)}")
+            log_messages.append(
+                f"INFO: Removed problematic keywords: {', '.join(removed_keywords)}"
+            )
 
         # Define WCS keywords to check for problems
         wcs_keywords = {
@@ -209,11 +219,15 @@ def fix_header(header):
                     or any(not np.isfinite(val) for val in [cd11, cd12, cd21, cd22])
                     or any(val == 0 for val in [cd11, cd22])
                 ):
-                    log_messages.append("WARNING: Detected problematic CD matrix - removing all WCS keywords")
+                    log_messages.append(
+                        "WARNING: Detected problematic CD matrix - removing all WCS keywords"
+                    )
                     remove_all_wcs = True
 
             except (ValueError, TypeError):
-                log_messages.append("WARNING: Invalid CD matrix values - removing all WCS keywords")
+                log_messages.append(
+                    "WARNING: Invalid CD matrix values - removing all WCS keywords"
+                )
                 remove_all_wcs = True
 
         # Check for obviously fake coordinate values
@@ -236,7 +250,9 @@ def fix_header(header):
                     remove_all_wcs = True
 
             except (ValueError, TypeError):
-                log_messages.append("WARNING: Invalid coordinate values - removing all WCS keywords")
+                log_messages.append(
+                    "WARNING: Invalid coordinate values - removing all WCS keywords"
+                )
                 remove_all_wcs = True
 
         # Check for invalid pixel reference points
@@ -277,7 +293,9 @@ def fix_header(header):
 
         # Remove all WCS keywords if problems detected
         if remove_all_wcs:
-            log_messages.append("INFO: Removing all WCS keywords due to detected problems")
+            log_messages.append(
+                "INFO: Removing all WCS keywords due to detected problems"
+            )
 
             # Remove all WCS-related keywords
             keys_to_remove = []
@@ -326,7 +344,9 @@ def fix_header(header):
                     )
 
                 except (ValueError, TypeError):
-                    log_messages.append("WARNING: Could not add default WCS due to invalid NAXIS values")
+                    log_messages.append(
+                        "WARNING: Could not add default WCS due to invalid NAXIS values"
+                    )
 
         else:
             # If WCS seems valid, apply minor fixes
@@ -633,8 +653,8 @@ def validate_wcs_orientation(original_header, solved_header, test_pixel_coords):
 # For matching based on RA/Dec
 def match_catalogs_by_position(table1, table2, tolerance_arcsec=1.0):
     """Match two catalogs using sky coordinates"""
-    coords1 = SkyCoord(ra=table1['ra']*u.deg, dec=table1['dec']*u.deg)
-    coords2 = SkyCoord(ra=table2['ra']*u.deg, dec=table2['dec']*u.deg)
+    coords1 = SkyCoord(ra=table1["ra"] * u.deg, dec=table1["dec"] * u.deg)
+    coords2 = SkyCoord(ra=table2["ra"] * u.deg, dec=table2["dec"] * u.deg)
 
     idx, sep, _ = coords1.match_to_catalog_sky(coords2)
     # Only keep matches within tolerance
@@ -644,8 +664,15 @@ def match_catalogs_by_position(table1, table2, tolerance_arcsec=1.0):
 
 
 # Or for pixel coordinates (simpler, what you're currently trying to do)
-def match_by_pixels(table1, table2, x_col1='xcenter', y_col1='ycenter',
-                    x_col2='x_init', y_col2='y_init', tolerance_pixels=0.5):
+def match_by_pixels(
+    table1,
+    table2,
+    x_col1="xcenter",
+    y_col1="ycenter",
+    x_col2="x_init",
+    y_col2="y_init",
+    tolerance_pixels=0.5,
+):
     """Match catalogs by pixel distance"""
     from scipy.spatial import cKDTree
 
@@ -666,10 +693,10 @@ def clean_final_table(df):
     df = df.replace([np.inf, -np.inf], np.nan)
 
     # Define critical columns that must not have NaN
-    critical_cols = ['ra', 'dec', 'xcenter', 'ycenter']
+    critical_cols = ["ra", "dec", "xcenter", "ycenter"]
 
     # Optional: Also check magnitude columns
-    mag_cols = [col for col in df.columns if 'mag' in col.lower()]
+    mag_cols = [col for col in df.columns if "mag" in col.lower()]
     critical_cols.extend(mag_cols)
 
     # Keep only columns that exist
@@ -687,7 +714,7 @@ def clean_final_table(df):
     return df_clean
 
 
-def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.):
+def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.0):
     """
     Merge aperture and PSF photometry, keeping ALL sources from both.
 
@@ -697,13 +724,14 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.):
     - Aperture-only sources: have aperture_mag but psf_mag is NaN
     """
     from scipy.spatial import cKDTree
+
     log_messages = []
 
     # Determine coordinate columns
-    aper_x = 'xcenter' if 'xcenter' in aperture_table.columns else 'x_0'
-    aper_y = 'ycenter' if 'ycenter' in aperture_table.columns else 'y_0'
-    psf_x = 'x_init' if 'x_init' in psf_table.columns else 'xcenter'
-    psf_y = 'y_init' if 'y_init' in psf_table.columns else 'ycenter'
+    aper_x = "xcenter" if "xcenter" in aperture_table.columns else "x_0"
+    aper_y = "ycenter" if "ycenter" in aperture_table.columns else "y_0"
+    psf_x = "x_init" if "x_init" in psf_table.columns else "xcenter"
+    psf_y = "y_init" if "y_init" in psf_table.columns else "ycenter"
 
     # Convert to DataFrames if needed
     if not isinstance(aperture_table, pd.DataFrame):
@@ -712,8 +740,7 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.):
         psf_table = psf_table.to_pandas()
 
     # Build coordinate arrays
-    aper_coords = np.column_stack([aperture_table[aper_x],
-                                   aperture_table[aper_y]])
+    aper_coords = np.column_stack([aperture_table[aper_x], aperture_table[aper_y]])
     psf_coords = np.column_stack([psf_table[psf_x], psf_table[psf_y]])
 
     # Match PSF sources to aperture sources
@@ -742,17 +769,17 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.):
         row = aperture_table.iloc[aper_idx].to_dict()
         # Add PSF measurements with clear prefixes
         psf_row = psf_table.iloc[psf_idx]
-        if 'flux_fit' in psf_row:
-            row['psf_flux'] = psf_row['flux_fit']
-        if 'flux_err' in psf_row:
-            row['psf_flux_err'] = psf_row['flux_err']
-        if 'instrumental_mag' in psf_row:
-            row['psf_instrumental_mag'] = psf_row['instrumental_mag']
-        if 'psf_mag_err' in psf_row:
-            row['psf_mag_err'] = psf_row['psf_mag_err']
+        if "flux_fit" in psf_row:
+            row["psf_flux"] = psf_row["flux_fit"]
+        if "flux_err" in psf_row:
+            row["psf_flux_err"] = psf_row["flux_err"]
+        if "instrumental_mag" in psf_row:
+            row["psf_instrumental_mag"] = psf_row["instrumental_mag"]
+        if "psf_mag_err" in psf_row:
+            row["psf_mag_err"] = psf_row["psf_mag_err"]
 
         # Mark as having both
-        row['phot_method'] = 'both'
+        row["phot_method"] = "both"
 
         final_rows.append(row)
 
@@ -761,15 +788,15 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.):
         psf_row = psf_table.iloc[psf_idx].to_dict()
 
         row = {
-            'xcenter': psf_row.get(psf_x),
-            'ycenter': psf_row.get(psf_y),
-            'ra': psf_row.get('ra'),
-            'dec': psf_row.get('dec'),
-            'psf_flux': psf_row.get('flux_fit'),
-            'psf_flux_err': psf_row.get('flux_err'),
-            'psf_mag_err': psf_row.get('psf_mag_err'),
-            'psf_instrumental_mag': psf_row.get('instrumental_mag'),
-            'phot_method': 'psf_only'
+            "xcenter": psf_row.get(psf_x),
+            "ycenter": psf_row.get(psf_y),
+            "ra": psf_row.get("ra"),
+            "dec": psf_row.get("dec"),
+            "psf_flux": psf_row.get("flux_fit"),
+            "psf_flux_err": psf_row.get("flux_err"),
+            "psf_mag_err": psf_row.get("psf_mag_err"),
+            "psf_instrumental_mag": psf_row.get("instrumental_mag"),
+            "phot_method": "psf_only",
         }
 
         final_rows.append(row)
@@ -777,7 +804,7 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.):
     # Add aperture-only sources
     for aper_idx in aper_unmatched_idx:
         row = aperture_table.iloc[aper_idx].to_dict()
-        row['phot_method'] = 'aperture_only'
+        row["phot_method"] = "aperture_only"
         final_rows.append(row)
 
     final_table = pd.DataFrame(final_rows)
@@ -804,9 +831,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     # Helper to compute aperture magnitude for a given radius label
     def _compute_aperture_mag_for_radius(tbl, radius_label):
         # candidate instrumental mag column names in preference order
-        candidates = [
-            f"instrumental_mag_bkg_corr_{radius_label}"
-        ]
+        candidates = [f"instrumental_mag_bkg_corr_{radius_label}"]
         inst_col = next((c for c in candidates if c in tbl.columns), None)
         mag_col = f"aperture_mag_{radius_label}"
         mag_err_col = f"aperture_mag_err_{radius_label}"
@@ -817,7 +842,11 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
             tbl[mag_col] = tbl[inst_col] + zero_point - 0.09 * airmass
 
         # try to compute mag error if not present but flux & flux_err exist
-        if mag_err_col not in tbl.columns and flux_col in tbl.columns and flux_err_col in tbl.columns:
+        if (
+            mag_err_col not in tbl.columns
+            and flux_col in tbl.columns
+            and flux_err_col in tbl.columns
+        ):
             with np.errstate(divide="ignore", invalid="ignore"):
                 err = 1.0857 * tbl[flux_err_col] / tbl[flux_col]
                 err = err.replace([np.inf, -np.inf], np.nan)
@@ -835,17 +864,28 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         )
 
     # remove columns from a list
-    cols_to_remove = ["aperture_sum_1.5", "aperture_sum_err_1.5",
-                      "aperture_sum_2", "aperture_sum_err_2",
-                      "sky_center.ra", "sky_center.dec",
-                      "background_per_pixel_1.5",
-                      "background_per_pixel_2.0", "aperture_sum_err_2.0",
-                      "aperture_sum_2.0", "instrumental_mag_1.5",
-                      "instrumental_mag_2.0",
-                      "match_id", "simbad_ids", "catalog_matches", "calib_mag"]
+    cols_to_remove = [
+        "aperture_sum_1.5",
+        "aperture_sum_err_1.5",
+        "aperture_sum_2",
+        "aperture_sum_err_2",
+        "sky_center.ra",
+        "sky_center.dec",
+        "background_per_pixel_1.5",
+        "background_per_pixel_2.0",
+        "aperture_sum_err_2.0",
+        "aperture_sum_2.0",
+        "instrumental_mag_1.5",
+        "instrumental_mag_2.0",
+        "match_id",
+        "simbad_ids",
+        "catalog_matches",
+        "calib_mag",
+    ]
 
-    final_table = final_table.drop(columns=[col for col in cols_to_remove if
-                                            col in final_table.columns])
+    final_table = final_table.drop(
+        columns=[col for col in cols_to_remove if col in final_table.columns]
+    )
 
     final_table["id"] = final_table["id"].astype("Int64")
 
@@ -864,7 +904,7 @@ def clean_photometry_table(df, require_magnitude=True):
     df = df.replace([np.inf, -np.inf], np.nan)
 
     # Always require valid coordinates
-    coord_cols = ['xcenter', 'ycenter']
+    coord_cols = ["xcenter", "ycenter"]
     coord_cols = [col for col in coord_cols if col in df.columns]
 
     initial_count = len(df)
@@ -875,8 +915,9 @@ def clean_photometry_table(df, require_magnitude=True):
 
     if require_magnitude:
         # Remove sources that don't have ANY valid magnitude measurement
-        mag_cols = [col for col in df.columns if 'mag' in col.lower() 
-                    and col != 'mag_method']
+        mag_cols = [
+            col for col in df.columns if "mag" in col.lower() and col != "mag_method"
+        ]
 
         if mag_cols:
             # Keep row if it has at least ONE valid magnitude
@@ -891,7 +932,7 @@ def clean_photometry_table(df, require_magnitude=True):
     # Remove rows where ALL numeric columns are NaN (completely empty rows)
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     if len(numeric_cols) > 0:
-        df = df.dropna(subset=numeric_cols, how='all')
+        df = df.dropna(subset=numeric_cols, how="all")
 
     total_removed = initial_count - len(df)
 
@@ -952,7 +993,11 @@ def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
     adjusted_filter_size = min(filter_size, adjusted_box_size // 2)
 
     if adjusted_box_size < 10:
-        return None, None, f"Image too small ({height}x{width}) for background estimation"
+        return (
+            None,
+            None,
+            f"Image too small ({height}x{width}) for background estimation",
+        )
 
     try:
         sigma_clip = SigmaClip(sigma=3)

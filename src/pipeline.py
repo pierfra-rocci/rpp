@@ -17,21 +17,16 @@ import astropy.units as u
 
 from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
-from photutils.aperture import (CircularAperture, CircularAnnulus,
-                                aperture_photometry)
+from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photometry
 
-from src.tools_pipeline import (safe_wcs_create,
-                                estimate_background)
+from src.tools_pipeline import safe_wcs_create, estimate_background
 from src.utils import ensure_output_directory
 
 from typing import Union, Optional, Dict, Tuple
 from src.psf import perform_psf_photometry
 
 
-def mask_and_remove_cosmic_rays(
-    image_data,
-    header
-):
+def mask_and_remove_cosmic_rays(image_data, header):
     """
     Create a mask for saturated pixels and cosmic rays using L.A.Cosmic.
     """
@@ -57,13 +52,18 @@ def mask_and_remove_cosmic_rays(
     st.info("Detecting cosmic rays using L.A.Cosmic ...")
     # Run L.A.Cosmic (pass inmask explicitly)
     try:
-        res = astroscrappy.detect_cosmics(image_data, inmask=mask, gain=gain,
-                                          verbose=False)
+        res = astroscrappy.detect_cosmics(
+            image_data, inmask=mask, gain=gain, verbose=False
+        )
         # detect_cosmics often returns a tuple; find the boolean CR mask
         if isinstance(res, tuple):
             crmask = None
             for el in res:
-                if isinstance(el, np.ndarray) and el.shape == image_data.shape and el.dtype == bool:
+                if (
+                    isinstance(el, np.ndarray)
+                    and el.shape == image_data.shape
+                    and el.dtype == bool
+                ):
                     crmask = el
                     break
             if crmask is None:
@@ -157,7 +157,9 @@ def make_border_mask(
         else:
             raise ValueError("If 'border' is a sequence it must have length 2 or 4")
     else:
-        raise TypeError("border must be an int/float or a tuple/list/ndarray of length 2 or 4")
+        raise TypeError(
+            "border must be an int/float or a tuple/list/ndarray of length 2 or 4"
+        )
 
     if any(b < 0 for b in (top, bottom, left, right)):
         raise ValueError("Borders cannot be negative")
@@ -170,12 +172,13 @@ def make_border_mask(
 
     # build bool mask first, then cast to requested dtype
     inner = np.zeros((height, width), dtype=bool)
-    inner[top: height - bottom,
-          left: width - right] = True
+    inner[top : height - bottom, left : width - right] = True
 
     mask = ~inner if invert else inner
-    st.info(f"Border mask created with borders (top={top}, bottom={bottom}, left={left}, right={right})")
-    
+    st.info(
+        f"Border mask created with borders (top={top}, bottom={bottom}, left={left}, right={right})"
+    )
+
     return mask.astype(dtype)
 
 
@@ -412,9 +415,7 @@ def fwhm_fit(
     try:
         _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
-        daofind = DAOStarFinder(
-            fwhm=1.5 * fwhm, threshold=7 * clipped_std
-        )
+        daofind = DAOStarFinder(fwhm=1.5 * fwhm, threshold=7 * clipped_std)
         sources = daofind(_img, mask=mask)
         if sources is None:
             st.warning("No sources found !")
@@ -439,9 +440,7 @@ def fwhm_fit(
 
         # Randomly sample 1000 sources if more than 1000 are available
         if len(filtered_sources) > 1000:
-            indices = np.random.choice(len(filtered_sources),
-                                       size=1000,
-                                       replace=False)
+            indices = np.random.choice(len(filtered_sources), size=1000, replace=False)
             filtered_sources = filtered_sources[indices]
             st.info("Too many sources, sampled 1000 sources for FWHM calculation")
 
@@ -449,8 +448,7 @@ def fwhm_fit(
         if box_size % 2 == 0:
             box_size += 1
 
-        xypos = list(zip(filtered_sources["xcentroid"],
-                         filtered_sources["ycentroid"]))
+        xypos = list(zip(filtered_sources["xcentroid"], filtered_sources["ycentroid"]))
         fwhms = fit_fwhm(_img, xypos=xypos, fit_shape=box_size)
 
         mean_fwhm = np.median(fwhms)
@@ -465,11 +463,7 @@ def fwhm_fit(
 
 
 def detection_and_photometry(
-    image_data,
-    science_header,
-    mean_fwhm_pixel,
-    threshold_sigma,
-    detection_mask
+    image_data, science_header, mean_fwhm_pixel, threshold_sigma, detection_mask
 ):
     """
     Perform a complete photometry workflow on an astronomical image.
@@ -534,8 +528,9 @@ def detection_and_photometry(
         science_header.get("PIXSIZE", science_header.get("PIXELSCAL", 1.0)),
     )
 
-    bkg, bkg_fig, bkg_error = estimate_background(image_data, box_size=64,
-                                                  filter_size=9)
+    bkg, bkg_fig, bkg_error = estimate_background(
+        image_data, box_size=64, filter_size=9
+    )
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None, None
@@ -564,8 +559,10 @@ def detection_and_photometry(
                 return np.zeros(ref_shape, dtype=bool)
         return a.astype(bool)
 
-    final_mask = np.logical_or(_to_bool_mask(border_mask, image_data.shape[:2]),
-                               _to_bool_mask(cr_mask, image_data.shape[:2]))
+    final_mask = np.logical_or(
+        _to_bool_mask(border_mask, image_data.shape[:2]),
+        _to_bool_mask(cr_mask, image_data.shape[:2]),
+    )
     mask = final_mask
 
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -585,8 +582,7 @@ def detection_and_photometry(
 
     exposure_time = science_header.get(
         "EXPTIME",
-        science_header.get("EXPOSURE", science_header.get("EXP_TIME",
-                                                          1.0)),
+        science_header.get("EXPOSURE", science_header.get("EXP_TIME", 1.0)),
     )
 
     # Ensure effective_gain is float64
@@ -594,8 +590,7 @@ def detection_and_photometry(
 
     # Convert to float64 to ensure compatibility with calc_total_error
     total_error = calc_total_error(
-        image_sub.astype(np.float64), bkg_error.astype(np.float64),
-        effective_gain
+        image_sub.astype(np.float64), bkg_error.astype(np.float64), effective_gain
     )
 
     st.write("Estimating FWHM ...")
@@ -606,8 +601,7 @@ def detection_and_photometry(
         fwhm_estimate = mean_fwhm_pixel
 
     daofind = DAOStarFinder(
-        fwhm=1.5 * fwhm_estimate,
-        threshold=(threshold_sigma + 0.5) * clipped_std
+        fwhm=1.5 * fwhm_estimate, threshold=(threshold_sigma + 0.5) * clipped_std
     )
 
     sources = daofind(image_sub, mask=mask)
@@ -630,8 +624,7 @@ def detection_and_photometry(
     for radius in aperture_radii:
         r_in = 1.5 * radius * fwhm_estimate
         r_out = 2.0 * radius * fwhm_estimate
-        annulus_apertures.append(CircularAnnulus(positions, r_in=r_in,
-                                                 r_out=r_out))
+        annulus_apertures.append(CircularAnnulus(positions, r_in=r_in, r_out=r_out))
 
     try:
         wcs_obj = None
@@ -659,8 +652,7 @@ def detection_and_photometry(
         # Perform photometry for all apertures
         phot_tables = []
 
-        for i, (aperture, annulus) in enumerate(zip(apertures,
-                                                    annulus_apertures)):
+        for i, (aperture, annulus) in enumerate(zip(apertures, annulus_apertures)):
             # Aperture photometry
             phot_result = aperture_photometry(
                 image_sub, aperture, error=total_error, wcs=wcs_obj
@@ -830,24 +822,20 @@ def detection_and_photometry(
                 phot_table[f"aperture_mag_err{radius_suffix}"] = m_err
 
                 # Instrumental magnitude for raw aperture sum
-                instrumental_mags = -2.5 * np.log10(
-                    phot_table[aperture_sum_col]
-                )
+                instrumental_mags = -2.5 * np.log10(phot_table[aperture_sum_col])
                 phot_table[f"instrumental_mag{radius_suffix}"] = instrumental_mags
 
                 # If background-corrected flux is available, calculate its magnitude
                 if bkg_corr_col in phot_table.colnames:
                     # Initialize column with NaN
                     phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"] = np.nan
-                    
+
                     # Handle negative or zero background-corrected fluxes
                     valid_flux = phot_table[bkg_corr_col] > 0
 
                     phot_table[f"instrumental_mag_bkg_corr{radius_suffix}"][
                         valid_flux
-                    ] = -2.5 * np.log10(
-                        phot_table[bkg_corr_col][valid_flux]
-                    )
+                    ] = -2.5 * np.log10(phot_table[bkg_corr_col][valid_flux])
             else:
                 phot_table[f"snr{radius_suffix}"] = np.nan
                 phot_table[f"aperture_mag_err{radius_suffix}"] = np.nan
@@ -864,9 +852,7 @@ def detection_and_photometry(
             m_err = 1.0857 / epsf_table["snr"]
             epsf_table["psf_mag_err"] = m_err
 
-            epsf_instrumental_mags = -2.5 * np.log10(
-                epsf_table["flux_fit"]
-            )
+            epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"])
             epsf_table["instrumental_mag"] = epsf_instrumental_mags
         except Exception as e:
             st.error(f"Error performing EPSF photometry: {e}")
@@ -997,17 +983,19 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
     try:
         # Define aperture radii (should match the ones used in detection_and_photometry)
         aperture_radii = [1.5, 2.0]
-        
+
         # Use the first aperture radius as the default for zero point calculation
         default_radius = aperture_radii[0]
         radius_suffix = f"_{default_radius:.1f}"
         instrumental_mag_col = f"instrumental_mag{radius_suffix}"
-        
+
         # Check if the column exists in matched table
         if instrumental_mag_col not in _matched_table.columns:
-            st.error(f"Column '{instrumental_mag_col}' not found in matched table. Available columns: {list(_matched_table.columns)}")
+            st.error(
+                f"Column '{instrumental_mag_col}' not found in matched table. Available columns: {list(_matched_table.columns)}"
+            )
             return None, None, None
-        
+
         valid = np.isfinite(_matched_table[instrumental_mag_col]) & np.isfinite(
             _matched_table[filter_band]
         )
@@ -1035,8 +1023,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             _phot_table = _phot_table.to_pandas()
 
         # Remove old single-aperture columns if they exist
-        old_columns = ["aperture_mag", "aperture_instrumental_mag",
-                       "aperture_mag_err"]
+        old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
 
         for col in old_columns:
             if col in _phot_table.columns:
@@ -1063,7 +1050,6 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
                 _matched_table[aperture_mag_col] = (
                     _matched_table[instrumental_col] + zero_point_value - 0.09 * air
                 )
-
 
         st.session_state["final_phot_table"] = _phot_table
 
@@ -1131,10 +1117,14 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Add a diagonal line for reference
         mag_range = [
-            min(_matched_table[filter_band].min(),
-                _matched_table["aperture_mag_1.5"].min()),
-            max(_matched_table[filter_band].max(), 
-                _matched_table["aperture_mag_1.5"].max()),
+            min(
+                _matched_table[filter_band].min(),
+                _matched_table["aperture_mag_1.5"].min(),
+            ),
+            max(
+                _matched_table[filter_band].max(),
+                _matched_table["aperture_mag_1.5"].max(),
+            ),
         ]
         ideal_mag = np.linspace(mag_range[0], mag_range[1], 100)
         ax.plot(ideal_mag, ideal_mag, "k--", alpha=0.7, label="y=x")
@@ -1150,7 +1140,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         mag_inst = _matched_table[instrumental_mag_col]
         zp_mean = zero_point_value
         residuals = mag_cat - (mag_inst + zp_mean)
-        
+
         # Look for error column matching the aperture radius
         aperture_err_col = f"aperture_mag_err_{default_radius:.1f}"
         if aperture_err_col in _matched_table.columns:
@@ -1159,7 +1149,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             aperture_mag_err = _matched_table["aperture_mag_err"].values
         else:
             aperture_mag_err = np.zeros_like(residuals)
-            
+
         zp_err = zero_point_std if zero_point_std is not None else 0.0
         yerr = np.sqrt(aperture_mag_err**2 + zp_err**2)
 
@@ -1202,5 +1192,6 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
     except Exception as e:
         st.error(f"Error calculating zero point: {e}")
         import traceback
+
         st.error(traceback.format_exc())
         return None, None, None

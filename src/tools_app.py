@@ -893,7 +893,9 @@ def initialize_session_state():
     # Output directory
     if "output_dir" not in st.session_state:
         username = st.session_state.get("username", "anonymous")
-        st.session_state.output_dir = ensure_output_directory(directory=f"{username}_results")
+        st.session_state.output_dir = ensure_output_directory(
+            directory=f"{username}_results"
+        )
 
     # Analysis Parameters
     default_analysis_params = {
@@ -1027,6 +1029,7 @@ def update_observatory_from_fits_header(header):
             pass
 
     return updated
+
 
 def cleanup_temp_files():
     """
