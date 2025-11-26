@@ -270,23 +270,6 @@ with st.sidebar.expander("Transient Candidates (_beta phase_)", expanded=False):
         value=st.session_state.analysis_parameters.get("run_transient_finder", False),
     )
 
-    # Add survey and filter selection
-    survey_options = ["PanSTARRS"]
-    if "DSS2" in st.session_state.analysis_parameters.get(
-        "transient_survey", "PanSTARRS"
-    ):
-        survey_index = 0
-    else:
-        survey_index = survey_options.index(
-            st.session_state.analysis_parameters.get("transient_survey", "PanSTARRS")
-        )
-    st.session_state.analysis_parameters["transient_survey"] = st.selectbox(
-        "Reference Survey",
-        options=survey_options,
-        index=survey_index,
-        help="Survey to use for the reference image (PanSTARRS has a smaller field of view limit).",
-    )
-
     filter_options = ["g", "r", "i"]
     if "Red" or "Blue" in st.session_state.analysis_parameters.get(
         "transient_filter", "g"
@@ -860,13 +843,6 @@ if science_file is not None:
             air = 0.0
             st.write(f"Using default airmass: {air:.2f}")
 
-        # zero_point_button_disabled = science_file is None
-
-        # if st.button(
-        #         "Photometric Calibration",
-        #         disabled=zero_point_button_disabled,
-        #         key="run_zp"):
-
         image_to_process = science_data
         header_to_process = science_header.copy()
 
@@ -1183,13 +1159,10 @@ if science_file is not None:
                                     dec_center,
                                     search_radius / 3600,
                                     mask=None,
-                                    catalog=st.session_state.analysis_parameters.get(
-                                        "transient_survey", "PanSTARRS"
-                                    ),
                                     filter_name=st.session_state.analysis_parameters.get(
                                         "transient_filter", "r"
                                     ),
-                                    mag_limit="<20",
+                                    mag_limit="<21",
                                 )
                                 if candidates:
                                     st.subheader("Transient Candidates Found")

@@ -1,6 +1,8 @@
 from stdpipe import pipeline, cutouts, photometry, templates, plots, catalogs
 
 from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
@@ -17,7 +19,6 @@ def find_candidates(
     dec_center,
     sr,
     mask=None,
-    catalog=None,
     filter_name=None,
     mag_limit="<19",
 ):
@@ -30,11 +31,22 @@ def find_candidates(
         The image data where to search for transients.
     mask : 2D array
         The mask data corresponding to the image."""
-
     st.warning("⚠️ Transient detection is currently in Beta phase.")
     gain = header.get("GAIN", 1.0)
 
     header, _ = fix_header(header)
+
+    # Check hemisphere using astropy
+    _ = SkyCoord(ra=ra_center*u.degree, dec=dec_center*u.degree, frame='icrs')
+    is_southern = dec_center < 0
+
+    # Auto-select catalog based on hemisphere if not specified or if PanSTARRS
+    if is_southern:
+        catalog = "skymapper"
+        st.info(f"🌏 Southern hemisphere detected (Dec={dec_center:.2f}°). Using SkyMapper catalog.")
+    else:
+        catalog = "ps1"
+        st.info(f"🌍 Northern hemisphere detected (Dec={dec_center:.2f}°). Using PanSTARRS catalog.")
 
     st.info("Extracting source objects from image using SExtractor...")
     image = image.astype(image.dtype.newbyteorder("="))
@@ -56,10 +68,7 @@ def find_candidates(
 
     st.info(f"Found {len(obj)} objects in the image.")
 
-    # Let's get PanSTARRS objects brighter than r=18 mag
-    if catalog == "PanSTARRS":
-        catalog = "ps1"
-
+    # Query the appropriate catalog
     st.info(
         f"Querying {catalog} catalog for reference stars (Filter: {filter_name}, Limit: {mag_limit})..."
     )
@@ -74,7 +83,7 @@ def find_candidates(
         obj,
         cat=cat,
         sr=2 * fwhm * pixel_scale,
-        vizier=["vsx", "apass", "atlas"],
+        vizier=["vsx", "apass", "sdss", "atlas"],
         skybot=True,
         ned=True,
         verbose=False,
