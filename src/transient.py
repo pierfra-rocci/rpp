@@ -20,7 +20,7 @@ def find_candidates(
     mask=None,
     filter_name=None,
     mag_limit="<20",
-    detect_thresh=1.5,
+    detect_thresh=0.1,
     detect_sn=5.0,
 ):
     """Find transient candidates in the given image around the specified object.
