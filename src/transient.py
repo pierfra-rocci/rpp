@@ -19,10 +19,9 @@ def find_candidates(
     sr,
     mask=None,
     filter_name=None,
-    mag_limit="<19",
+    mag_limit="<20",
     detect_thresh=1.5,
-    detect_sn=2.5,
-    detect_aper_scale=1.5,
+    detect_sn=5.0,
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters
@@ -54,7 +53,7 @@ def find_candidates(
     image = image.astype(image.dtype.newbyteorder("="))
     obj = photometry.get_objects_sep(
                         image,
-                        aper=detect_aper_scale * fwhm,
+                        aper=1.5 * fwhm,
                         thresh=detect_thresh,
                         sn=detect_sn,
                         gain=gain,
