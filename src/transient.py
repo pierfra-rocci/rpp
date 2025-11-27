@@ -3,7 +3,6 @@ from stdpipe import (pipeline, cutouts, photometry,
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
 
@@ -21,6 +20,9 @@ def find_candidates(
     mask=None,
     filter_name=None,
     mag_limit="<19",
+    detect_thresh=1.5,
+    detect_sn=2.5,
+    detect_aper_scale=1.5,
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters
@@ -51,16 +53,16 @@ def find_candidates(
     st.info("Extracting source objects from image using SExtractor...")
     image = image.astype(image.dtype.newbyteorder("="))
     obj = photometry.get_objects_sep(
-        image,
-        aper=1.5 * fwhm,
-        thresh=1.5,
-        sn=2.5,
-        gain=gain,
-        edge=15,
-        bg_size=64,
-        use_fwhm=True,
-        wcs=WCS(header),
-    )
+                        image,
+                        aper=detect_aper_scale * fwhm,
+                        thresh=detect_thresh,
+                        sn=detect_sn,
+                        gain=gain,
+                        edge=15,
+                        bg_size=64,
+                        use_fwhm=True,
+                        wcs=WCS(header),
+                    )
 
     if obj is None:
         st.warning("No objects found in the image.")
@@ -72,9 +74,13 @@ def find_candidates(
     st.info(
         f"Querying {catalog} catalog for reference stars (Filter: {filter_name}, Limit: {mag_limit})..."
     )
-    cat = catalogs.get_cat_vizier(
-        ra_center, dec_center, sr, catalog, filters={filter_name + "mag": mag_limit}
-    )
+    try:
+        cat = catalogs.get_cat_vizier(
+            ra_center, dec_center, sr, catalog, filters={filter_name + "mag": mag_limit}
+        )
+    except Exception as e:
+        st.error(f"Failed to query {catalog} catalog: {e}")
+        return []
 
     st.info(
         "Filtering candidates against catalog and known databases (VSX, APASS, ATLAS)..."
@@ -97,21 +103,20 @@ def find_candidates(
         # Create the cutout from image based on the candidate
         cutout = cutouts.get_cutout(
             image,
-            # Candidate
             cand,
-            # Cutout half-size in pixels
             25,
             header=header
         )
-
-        # We did not do image subtraction yet, but we may already
-        # directly download the "template" image for this cutout
-        # from HiPS server
-        cutout['template'] = templates.get_hips_image(
-            'PanSTARRS/DR2/'+filter_name,
-            header=cutout['header'],
-            get_header=False
-        )
+        # Add WCS to cutout
+        try:
+            cutout['template'] = templates.get_hips_image(
+                'PanSTARRS/DR2/'+filter_name,
+                header=cutout['header'],
+                get_header=False
+            )
+        except Exception as e:
+            st.warning(f"Failed to retrieve HiPS template image for candidate: {e}")
+            cutout['template'] = None
 
         # Now we have three image planes in the cutout - let's display them
         plots.plot_cutout(
@@ -121,20 +126,23 @@ def find_candidates(
             # Percentile-based scaling and linear stretching
             qq=[0.5, 99.5],
             stretch='linear')
-        plt.show()
 
     return candidates
 
 
-def create_template_mask(image, wcs):
+def create_template_mask(image, wcs, band="r", survey="ps1"):
     """
-    Create a mask for the template image based on Pan-STARRS data.
+    Create a mask for the template image based on survey data.
     Parameters
     ----------
     image : 2D array
         The image data for which the template mask is to be created.
     wcs : WCS object
         The WCS information corresponding to the image.
+    band : str, optional
+        Filter band (default: 'r').
+    survey : str, optional
+        Survey name, 'ps1' or 'ls' (default: 'ps1').
     Returns
     -------
     tmask : 2D array
@@ -143,44 +151,49 @@ def create_template_mask(image, wcs):
     st.warning("⚠️ Template mask creation is in Beta phase.")
 
     # Get r band image from Pan-STARRS with the same resolution and orientation
-    st.info("Retrieving survey template image (Band: r)...")
-    tmpl = templates.get_survey_image(
-        band="r",
-        # One of 'image' or 'mask'
-        ext="image",
-        # Either 'ps1' for Pan-STARRS or 'ls' for Legacy Survey
-        survey="ps1",
-        # pixel grid defined by WCS and image size
-        wcs=wcs,
-        width=image.shape[1],
-        height=image.shape[0],
-        verbose=True,
-    )
+    st.info(f"Retrieving survey template image (Band: {band}, Survey: {survey})...")
+    try:
+        tmpl = templates.get_survey_image(
+            band=band,
+            # One of 'image' or 'mask'
+            ext="image",
+            # Either 'ps1' for Pan-STARRS or 'ls' for Legacy Survey
+            survey=survey,
+            # pixel grid defined by WCS and image size
+            wcs=wcs,
+            width=image.shape[1],
+            height=image.shape[0],
+            verbose=True,
+        )
+    except Exception as e:
+        st.error(f"Failed to retrieve survey template image for band '{band}', survey '{survey}': {e}")
+        return np.zeros(image.shape, dtype=bool)  # Return an empty mask on failure
 
     # Also get proper mask
-    st.info("Retrieving survey mask (Band: r)...")
-    tmask = templates.get_survey_image(
-        band="r",
-        # One of 'image' or 'mask'
-        ext="mask",
-        # Either 'ps1' for Pan-STARRS or 'ls' for Legacy Survey
-        survey="ps1",
-        # pixel grid defined by WCS and image size
-        wcs=wcs,
-        width=image.shape[1],
-        height=image.shape[0],
-        verbose=True,
-    )
-
+    st.info(f"Retrieving survey mask (Band: {band})...")
+    try:
+        tmask = templates.get_survey_image(
+                            band=band,
+                            # One of 'image' or 'mask'
+                            ext="mask",
+                            # Either 'ps1' for Pan-STARRS or 'ls' for Legacy Survey
+                            survey=survey,
+                            # pixel grid defined by WCS and image size
+                            wcs=wcs,
+                            width=image.shape[1],
+                            height=image.shape[0],
+                            verbose=True,
+                        )
+    except Exception as e:
+        st.error(f"Failed to retrieve survey mask for band '{band}', survey '{survey}': {e}")
+        return np.zeros(image.shape, dtype=bool)  # Return an empty mask on failure
+    
     st.info("Processing mask logic...")
     # We will exclude pixels with any non-zero mask value
     tmask = tmask > 0
-    # We will also mask the regions of the template filled with NaNs
     tmask |= np.isnan(tmpl)
 
-    plt.subplot(122)
-    plots.imshow(tmask, show_colorbar=False)
-    plt.title("Template mask")
+    # plots.imshow(tmask, show_colorbar=False)
 
     st.success("✅ Template mask created successfully.")
 
