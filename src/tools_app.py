@@ -21,6 +21,26 @@ from src.utils import write_to_log, ensure_output_directory
 warnings.filterwarnings("ignore")
 
 
+def try_gaia_server():
+    """Check if Gaia server is reachable."""
+    import requests
+    import streamlit as st
+
+    gaia_url = "https://gea.esac.esa.int/tap-server/tap/async"
+    try:
+        response = requests.get(gaia_url, timeout=5)
+        if response.status_code == 200:
+            return True
+        else:
+            st.warning(f"⚠️ Gaia server returned status code {response.status_code}. "
+                       "The server may be down or under maintenance. Please try again later.")
+            return False
+    except requests.RequestException:
+        st.warning("⚠️ Unable to reach Gaia server. "
+                   "The server may be down or under maintenance. Please try again later.")
+        return False
+
+
 def clear_all_caches():
     """Clear all Streamlit caches and reset file upload state"""
     try:

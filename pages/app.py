@@ -26,6 +26,7 @@ from src.tools_app import (
     clear_all_caches,
     handle_log_messages,
     cleanup_temp_files,
+    try_gaia_server
 )
 
 # Local Application Imports
@@ -116,6 +117,10 @@ st.markdown(
     "[**RAPAS Project**](https://rapas.imcce.fr/) / [**Github**](https://github.com/pierfra-rocci/rpp)",
     unsafe_allow_html=True,
 )
+
+# Try connecting to GAIA server at startup
+try_gaia_server()
+
 # Added: Quick Start Tutorial link (now displayed in an expander)
 with st.expander("📘 Quick Start Tutorial"):
     try:
