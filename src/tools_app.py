@@ -30,9 +30,9 @@ def try_gaia_server():
         # Try a simple query to check if the server is responding
         Gaia.load_tables(only_names=True)
         return True
-    except Exception as e:
-        st.warning("⚠️ Unable to reach Gaia server through Astroquery. "
-                   f"The server may be down or under maintenance. Please try again later: {e}")
+    except Exception:
+        st.warning("⚠️ Unable to reach Gaia server through Astroquery. \n"
+                   f"The server may be down or under maintenance. Please try again later !!!")
         return False
 
 
