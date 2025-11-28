@@ -118,9 +118,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Try connecting to GAIA server at startup
-try_gaia_server()
-
 # Added: Quick Start Tutorial link (now displayed in an expander)
 with st.expander("📘 Quick Start Tutorial"):
     try:
@@ -1239,6 +1236,9 @@ else:
     st.text(
         "👆 Upload an Image FITS file to Start",
     )
+
+    # Try connecting to GAIA server at startup
+    try_gaia_server()
 
 if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not None:
     log_buffer = st.session_state["log_buffer"]
