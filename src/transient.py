@@ -118,13 +118,13 @@ def find_candidates(
             cutout['template'] = None
 
         # Now we have three image planes in the cutout - let's display them
-        plots.plot_cutout(
+        st.pyplot(plots.plot_cutout(
             cutout,
             # Image planes to display
             planes=['image', 'template'],
             # Percentile-based scaling and linear stretching
             qq=[0.5, 99.5],
-            stretch='linear')
+            stretch='linear'))
 
     return candidates
 
