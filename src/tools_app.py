@@ -23,21 +23,16 @@ warnings.filterwarnings("ignore")
 
 def try_gaia_server():
     """Check if Gaia server is reachable."""
-    import requests
     import streamlit as st
+    from astroquery.gaia import Gaia
 
-    gaia_url = "https://gea.esac.esa.int/tap-server/tap/async"
     try:
-        response = requests.get(gaia_url, timeout=5)
-        if response.status_code == 200:
-            return True
-        else:
-            st.warning(f"⚠️ Gaia server returned status code {response.status_code}. "
-                       "The server may be down or under maintenance. Please try again later.")
-            return False
-    except requests.RequestException:
-        st.warning("⚠️ Unable to reach Gaia server. "
-                   "The server may be down or under maintenance. Please try again later.")
+        # Try a simple query to check if the server is responding
+        Gaia.load_tables(only_names=True)
+        return True
+    except Exception as e:
+        st.warning("⚠️ Unable to reach Gaia server through Astroquery. "
+                   f"The server may be down or under maintenance. Please try again later: {e}")
         return False
 
 
