@@ -3,6 +3,7 @@ from stdpipe import (pipeline, cutouts,
 import sep
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from astropy.wcs import WCS
 import numpy as np
 import streamlit as st
 
@@ -20,8 +21,7 @@ def find_candidates(
     mask=None,
     filter_name=None,
     mag_limit="<20",
-    detect_thresh=2.0,
-    detect_sn=5.0,
+    detect_thresh=2.0
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters
@@ -36,6 +36,7 @@ def find_candidates(
     gain = header.get("GAIN", 1.0)
 
     header, _ = fix_header(header)
+    wcs = WCS(header)
 
     # Check hemisphere using astropy
     _ = SkyCoord(ra=ra_center*u.degree, dec=dec_center*u.degree, frame='icrs')
@@ -44,9 +45,11 @@ def find_candidates(
     # Auto-select catalog based on hemisphere if not specified or if PanSTARRS
     if is_southern:
         catalog = "skymapper"
+        cat_cutout = "SkyMapper/"
         st.info(f"🌏 Southern hemisphere detected (Dec={dec_center:.2f}°). Using SkyMapper catalog.")
     else:
         catalog = "ps1"
+        cat_cutout = "PanSTARRS/DR2/"
         st.info(f"🌍 Northern hemisphere detected (Dec={dec_center:.2f}°). Using PanSTARRS catalog.")
 
     st.info("Extracting source objects from image using SEP...")
@@ -60,6 +63,12 @@ def find_candidates(
         return []
 
     st.info(f"Found {len(obj)} objects in the image.")
+
+    # Add RA, Dec coordinates to the obj table using WCS
+    ra_obj, dec_obj = wcs.all_pix2world(obj['x'], obj['y'], 0)
+    obj = np.lib.recfunctions.append_fields(
+        obj, ['ra', 'dec'], [ra_obj, dec_obj], usemask=False
+    )
 
     # Query the appropriate catalog
     st.info(
@@ -98,10 +107,9 @@ def find_candidates(
             25,
             header=header
         )
-        # Add WCS to cutout
         try:
             cutout['template'] = templates.get_hips_image(
-                'PanSTARRS/DR2/'+filter_name,
+                cat_cutout + filter_name,
                 header=cutout['header'],
                 get_header=False
             )
