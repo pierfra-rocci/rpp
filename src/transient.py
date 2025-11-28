@@ -1,6 +1,6 @@
-from stdpipe import (pipeline, cutouts, photometry,
+from stdpipe import (pipeline, cutouts,
                      templates, plots, catalogs)
-from astropy.wcs import WCS
+import sep
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 import numpy as np
@@ -49,18 +49,11 @@ def find_candidates(
         catalog = "ps1"
         st.info(f"🌍 Northern hemisphere detected (Dec={dec_center:.2f}°). Using PanSTARRS catalog.")
 
-    st.info("Extracting source objects from image using SExtractor...")
+    st.info("Extracting source objects from image using SEP...")
     image = image.astype(image.dtype.newbyteorder("="))
-    obj = photometry.get_objects_sep(
-                        image,
-                        aper=1.5 * fwhm,
-                        thresh=detect_thresh,
-                        sn=detect_sn,
-                        gain=gain,
-                        edge=15,
-                        subtract_bg=True,
-                        wcs=WCS(header),
-                    )
+    bkg = sep.Background(image, mask=mask)
+    obj = sep.extract(image-bkg.back(), detect_thresh,
+                      gain=gain, mask=mask, err=bkg.globalrms)
 
     if obj is None:
         st.warning("No objects found in the image.")
