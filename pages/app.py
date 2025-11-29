@@ -255,9 +255,9 @@ with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
         help=("Attempt to plate solve and refine WCS before photometry. "),
     )
 
-with st.sidebar.expander("🔑 API Keys", expanded=False):
+with st.sidebar.expander("🔑 Astro-Colibri Key", expanded=False):
     st.session_state.colibri_api_key = st.text_input(
-        "Astro-Colibri UID Key (Optional)",
+        "UID Key (Optional)",
         value=st.session_state.get("colibri_api_key", ""),
         type="password",
         help="key for Astro-Colibri query",
