@@ -179,6 +179,22 @@ Multi-Catalog Cross-Matching
    - Large-scale structure studies support
    - Cross-matching with point sources
 
+**Nearby Stars (10 Parsec Catalog)**:
+   - Identification of stars within 10 parsecs
+   - G, BP, RP magnitude data
+   - Object type classification
+   - Cross-matching with field sources
+
+Transient Detection (Beta)
+-------------------------
+
+**Transient Finder**:
+   - Automated search for transient candidates
+   - Image subtraction and catalog filtering
+   - Integration with PanSTARRS (Northern) and SkyMapper (Southern) surveys
+   - Template image retrieval and masking
+   - Candidate visualization with cutouts (Science, Template, Difference)
+
 Data Visualization & Analysis
 -----------------------------
 

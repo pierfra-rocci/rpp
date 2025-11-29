@@ -9,7 +9,7 @@ advanced features.
 Minimum requirements
 --------------------
 
-- Python 3.8+
+- Python 3.12+
 - pip
 - 2 GB free disk (more recommended for large image sets)
 
@@ -22,7 +22,7 @@ Quick install (PowerShell)
    cd rpp
    python -m venv .venv
    .\.venv\Scripts\Activate.ps1
-   pip install -r requirements.txt
+   pip install -e .
 
 Quick install (bash)
 --------------------
@@ -33,7 +33,7 @@ Quick install (bash)
    cd rpp
    python3 -m venv .venv
    source .venv/bin/activate
-   pip install -r requirements.txt
+   pip install -e .
 
 Optional external tools
 -----------------------

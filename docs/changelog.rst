@@ -3,7 +3,41 @@ Changelog
 
 This document records all notable changes to RAPAS Photometry Pipeline.
 
-Version 0.9.8 (Current)
+Version 1.4.6 (Current)
+-----------------------
+
+**Maintenance & Stability**
+*   Minor improvements and bug fixes.
+*   Updated dependencies.
+
+Version 1.4.5
+-------------
+
+**Major Features**
+
+*   **Advanced Astrometric Pipeline**: 
+    *   Integrated `stdpipe` for robust local astrometric solving.
+    *   Added WCS refinement using SCAMP (via stdpipe) and GAIA DR3 catalog.
+    *   Automatic header validation and fixing for problematic WCS keywords.
+
+*   **Transient Detection (Beta)**:
+    *   New **Transient Finder** module utilizing image subtraction and catalog filtering.
+    *   Integration with PanSTARRS and SkyMapper surveys for template comparison.
+    *   Automatic candidate filtering against cataloged sources.
+
+*   **Enhanced Cross-Matching**:
+    *   Added **10 Parsec Catalog** for nearby star identification.
+    *   Improved filtering for existing catalogs.
+
+*   **Photometry Improvements**:
+    *   Improved PSF Photometry with Gaussian fallback if EPSF building fails.
+    *   Automatic Cosmic Ray rejection enabled by default using `astroscrappy`.
+
+*   **User Interface**:
+    *   Astrometry check toggle.
+    *   Aladin Lite v3 integration for improved visualization.
+
+Version 0.9.8
 -----------------------
 
 **Major Features & Enhancements**

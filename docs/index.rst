@@ -41,6 +41,12 @@ Key Features
    - SkyBoT for solar system object detection
    - AAVSO VSX for variable star identification
    - VizieR Milliquas for quasar and AGN identification
+   - 10 Parsec Catalog for nearby star identification
+
+**Transient Detection (Beta)**:
+   - Automated transient candidate search
+   - Image subtraction with survey templates (PanSTARRS, SkyMapper)
+   - Candidate filtering and visualization
 
 **Advanced Image Processing**:
    - Cosmic ray removal using L.A.Cosmic algorithm (astroscrappy)

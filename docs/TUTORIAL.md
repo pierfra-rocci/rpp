@@ -47,7 +47,7 @@ Once you have set the parameters, the analysis runs automatically or upon clicki
 2.  Detect sources and cosmic rays.
 3.  Perform Aperture and PSF photometry.
 4.  Cross-match with GAIA for calibration.
-5.  Cross-match with other catalogs (SIMBAD, SkyBoT, etc.).
+5.  Cross-match with other catalogs (SIMBAD, SkyBoT, AAVSO VSX, 10 Parsec, etc.).
 
 ### Understanding the Outputs
 

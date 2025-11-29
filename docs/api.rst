@@ -90,6 +90,17 @@ Catalog Cross-Matching (src/xmatch_catalogs.py)
 
    Enhance a photometric catalog with cross-matches from multiple astronomical databases.
 
+Transient Detection (src/transient.py)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autofunction:: src.transient.find_candidates
+
+   Find transient candidates in the given image around the specified object using image subtraction against survey templates.
+
+.. autofunction:: src.transient.create_template_mask
+
+   Create a mask for the template image based on survey data.
+
 Photometry Functions
 ~~~~~~~~~~~~~~~~~~
 

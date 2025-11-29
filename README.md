@@ -157,7 +157,10 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - Check internet connectivity for catalog queries (GAIA, SIMBAD, etc.).
 - Verify coordinate system and field center are correct.
 
-## Recent changes / Changelog (last update: 2025-11-25)
+## Recent changes / Changelog (last update: 2025-11-29)
+
+- **Version 1.4.6**
+- Maintenance release with minor improvements and dependency updates.
 
 - **Version 1.4.5**
 - Integrated `stdpipe` for robust local astrometric solving.
