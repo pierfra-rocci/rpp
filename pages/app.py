@@ -114,7 +114,7 @@ if not st.session_state.logged_in:
 # Add application version to the sidebar
 st.title(":sparkles: **RAPAS Photometry Pipeline**")
 st.markdown(
-    "[| **RAPAS Home**](https://rapas.imcce.fr/) | [**Source**](https://github.com/pierfra-rocci/rpp) |",
+    "| [**RAPAS Home**](https://rapas.imcce.fr/) | [**Source**](https://github.com/pierfra-rocci/rpp) |",
     unsafe_allow_html=True,
 )
 
