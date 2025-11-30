@@ -128,7 +128,7 @@ with st.expander("📘 Quick Start Tutorial"):
 
 st.sidebar.markdown(f"**Version:** _{version}_")
 
-with st.sidebar.expander("🔭 Observatory Data", expanded=False):
+with st.sidebar.expander("🔭 Observatory", expanded=False):
     st.session_state.observatory_name = st.text_input(
         "Observatory Name",
         value=st.session_state.observatory_name,
@@ -180,7 +180,7 @@ with st.sidebar.expander("🔭 Observatory Data", expanded=False):
         if elevation_input.strip():
             st.error("Please enter a valid number for elevation.")
 
-with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
+with st.sidebar.expander("⚙️ Parameters", expanded=False):
     st.session_state.analysis_parameters["seeing"] = st.slider(
         "Estimated Seeing (FWHM, arcsec)",
         min_value=1.0,
@@ -265,7 +265,7 @@ with st.sidebar.expander("🔑 Astro-Colibri API", expanded=False):
     st.markdown("[Get your key](https://www.astro-colibri.science)")
 
 # Add expander for the Transient Finder
-with st.sidebar.expander("Transient Candidates (_beta phase_)", expanded=False):
+with st.sidebar.expander("Transient Candidates (_beta_)", expanded=False):
     # Add a checkbox to enable/disable the transient finder
     st.session_state.analysis_parameters["run_transient_finder"] = st.checkbox(
         "Enable Transient Finder",
@@ -288,7 +288,7 @@ with st.sidebar.expander("Transient Candidates (_beta phase_)", expanded=False):
         help="Filter/band for the reference image. Options depend on the selected survey.",
     )
 
-if st.sidebar.button("💾 Save Configuration"):
+if st.sidebar.button("💾 Save Settings"):
     analysis_params = dict(st.session_state.get("analysis_parameters", {}))
     observatory_params = dict(st.session_state.get("observatory_data", {}))
     colibri_api_key = st.session_state.get("colibri_api_key")

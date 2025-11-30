@@ -13,7 +13,7 @@ In the main area of the page, you will find the file uploader.
 Once uploaded, the application will display a preview of your image, allowing you to visually confirm you have selected the correct file.
 Then it starts processing the image to extract initial metadata (e.g., WCS, observation time).
 
-### 1. Configure Observatory Data
+### 1. Configure Observatory
 
 After logging in, you will see the main application interface. In the sidebar on the left, you need to configure your observatory's details. This information is crucial for accurate time-dependent calculations, such as airmass.
 
@@ -22,8 +22,7 @@ After logging in, you will see the main application interface. In the sidebar on
 
 The application will attempt to automatically read these coordinates from the FITS file header if they are present (`SITELAT`, `SITELONG`, `SITEELEV`). However, it is good practice to verify and set them manually in the sidebar to ensure accuracy.
 
-
-### 2. Set Analysis Parameters
+### 2. Set Parameters
 
 Below the image preview and in the sidebar, you will find parameters to control the analysis. Fine-tuning these parameters is key to obtaining high-quality photometric results.
 
@@ -40,7 +39,7 @@ Below the image preview and in the sidebar, you will find parameters to control 
 
 If you have an Astro_Colibri API key, you can enter it in the designated field in the sidebar. This allows the application to access additional services provided by Astro-Colibri,to enhance catalog queries for transient search.
 
-### 4. Transient Candidates (Optional / Beta)
+### 4. Transient Candidates (Optional)
 
 In the sidebar, you will find an expander for "Transient Candidates".
 -   **Enable Transient Finder**: Check this to run the transient detection module.
