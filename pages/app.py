@@ -201,7 +201,7 @@ with st.sidebar.expander("⚙️ Parameters", expanded=False):
         help=("Source detection threshold in units of background standard deviation."),
     )
     st.session_state.analysis_parameters["detection_mask"] = st.number_input(
-        "Border Mask Size (pixels)",
+        "Border Mask (pixels)",
         min_value=0,
         max_value=200,
         value=st.session_state.analysis_parameters["detection_mask"],
