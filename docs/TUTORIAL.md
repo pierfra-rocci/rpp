@@ -60,10 +60,10 @@ Once you have set the parameters, the analysis runs automatically or upon clicki
 After the analysis is complete, the results will be available for download as a ZIP archive. Key files include:
 
 -   `*_catalog.csv` / `.vot`: The complete source catalog with instrumental and calibrated magnitudes.
--   `*_psf.fits`: The PSF model used (EPSF or Gaussian).
+-   `*_psf.fits`: The PSF model used (Gaussian ePSF).
 -   `*_wcs_header.txt`: The solved astrometric header.
--   `*.log`: Detailed processing log.
--   `.png`: Various diagnostic plots (e.g., source detection, photometric calibration).
+-   `*.log`: The processing log.
+-   `.png`: Diagnostic plots (e.g., source detection, photometric calibration).
 
 You can also inspect the results interactively using the embedded Aladin Lite viewer if coordinates are available, or choose directly to go to ESA SkyView.
 
