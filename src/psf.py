@@ -340,7 +340,7 @@ def perform_psf_photometry(
         # ===== APPLY THE MASK TO photo_table_for_psf (same length as mask) =====
         filtered_photo_table = photo_table_for_psf[good_stars_mask]
         st.write(f"Flux range for PSF stars : {flux_min:.1f} -> {flux_max:.1f}")
-        st.write(f"Stars after first filtering: {len(filtered_photo_table)}")
+        st.write(f"Stars after quality filtering: {len(filtered_photo_table)}")
 
         # Save indices mapping to original full table
         orig_indices_preselection = np.asarray(photo_table_for_psf["orig_index"])
