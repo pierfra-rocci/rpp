@@ -1,14 +1,37 @@
-[theme]
-base="dark"
+# [theme]
+# base="dark"
 
 # ---- Main area ----
-primaryColor="#268bd2"              # Solarized blue for highlights
-backgroundColor="#002b36"           # Base03: very dark cyan
-textColor="#93a1a1"                 # Base1: light grey-cyan
-font="monospace"
+# primaryColor="#268bd2"              # Solarized blue for highlights
+# backgroundColor="#002b36"           # Base03: very dark cyan
+# textColor="#93a1a1"                 # Base1: light grey-cyan
+# font="monospace"
 
 # ---- Sidebar variation ----
-secondaryBackgroundColor="#073642"  # Base02: slightly lighter, for sidebar contrast
+# secondaryBackgroundColor="#073642"  # Base02: slightly lighter, for sidebar contrast
+
+[theme]
+primaryColor = "#bb5a38"
+backgroundColor = "#f4f3ed"
+secondaryBackgroundColor = "#ecebe3"
+textColor = "#3d3a2a"
+linkColor = "#3d3a2a"
+borderColor = "#d3d2ca"
+showWidgetBorder = true
+baseRadius = "0.6rem"
+font = "Styrene B"
+codeFont = "Fira Code:https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap"
+codeBackgroundColor = "#ecebe4"
+showSidebarBorder = true
+headingFontSizes = ["40px", "32px", "24px"]
+headingFontWeights = 500
+
+
+[theme.sidebar]
+backgroundColor = "#e8e7dd"
+secondaryBackgroundColor = "#ecebe3"
+
+################################################
 
 [global]
 developmentMode = false
