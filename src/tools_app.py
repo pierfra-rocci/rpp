@@ -715,8 +715,8 @@ def display_archived_files_browser(output_dir):
 
             # Truncate filename if too long
             display_name = file_info["name"]
-            if len(display_name) > 30:
-                display_name = display_name[:27] + "..."
+            if len(display_name) > 25:
+                display_name = display_name[:21] + "..."
 
             # Create compact row with download button
             col1, col2 = st.columns([3, 1])
@@ -731,7 +731,7 @@ def display_archived_files_browser(output_dir):
                         file_data = f.read()
 
                     st.download_button(
-                        label="📥",
+                        label="⬇️",
                         data=file_data,
                         file_name=file_info["name"],
                         mime="application/zip",

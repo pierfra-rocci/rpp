@@ -313,13 +313,13 @@ if st.sidebar.button("💾 Save Settings"):
         st.sidebar.warning(f"Could not connect to backend: {e}")
 
 # Add archived files browser to sidebar
-with st.sidebar.expander("📁 Archived Results", expanded=False):
+with st.sidebar.expander("📁 Archive", expanded=False):
     username = st.session_state.get("username", "anonymous")
     output_dir = ensure_output_directory(directory=f"{username}_results")
     display_archived_files_browser(output_dir)
 
 with st.sidebar:
-    if st.button("🧹 Clear Cache & Reset Upload"):
+    if st.button("🧹 Clear Cache / Reset"):
         clear_all_caches()
 
 # Add logout button at the top right if user is logged in
