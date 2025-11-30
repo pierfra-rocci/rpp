@@ -137,7 +137,7 @@ with st.sidebar.expander("🔭 Observatory", expanded=False):
 
     # Latitude input with locale handling
     latitude_input = st.text_input(
-        "Latitude (degrees)",
+        "Latitude (deg)",
         value=str(st.session_state.observatory_latitude),
         help="Observatory latitude in decimal degrees (North positive). Accepts both comma and dot as decimal separator.",
     )
@@ -153,7 +153,7 @@ with st.sidebar.expander("🔭 Observatory", expanded=False):
 
     # Longitude input with locale handling
     longitude_input = st.text_input(
-        "Longitude (degrees)",
+        "Longitude (deg)",
         value=str(st.session_state.observatory_longitude),
         help="Observatory longitude in decimal degrees (East positive). Accepts both comma and dot as decimal separator.",
     )
@@ -169,7 +169,7 @@ with st.sidebar.expander("🔭 Observatory", expanded=False):
 
     # Elevation input with locale handling
     elevation_input = st.text_input(
-        "Elevation (meters)",
+        "Elevation (m)",
         value=str(st.session_state.observatory_elevation),
         help="Observatory elevation above sea level in meters. Accepts both comma and dot as decimal separator.",
     )
