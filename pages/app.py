@@ -342,7 +342,7 @@ if st.session_state.logged_in:
 # Persistent uploader: keep uploaded file bytes across reruns until cleared
 if "uploaded_bytes" not in st.session_state:
     uploaded = st.file_uploader(
-        "Choose a FITS file for analysis",
+        "Upload an Image FITS file to Start",
         type=["fits", "fit", "fts", "fits.gz"],
         key="science_uploader",
     )
@@ -1233,10 +1233,6 @@ if science_file is not None:
                     "Could not determine coordinates from image header. Cannot display ESASky or Aladin Viewer."
                 )
 else:
-    st.text(
-        "👆 Upload an Image FITS file to Start",
-    )
-
     # Try connecting to GAIA server at startup
     try_gaia_server()
 
