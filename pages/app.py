@@ -182,7 +182,7 @@ with st.sidebar.expander("🔭 Observatory", expanded=False):
 
 with st.sidebar.expander("⚙️ Parameters", expanded=False):
     st.session_state.analysis_parameters["seeing"] = st.slider(
-        "Estimated Seeing (FWHM, arcsec)",
+        "Estimated Seeing (arcsec)",
         min_value=1.0,
         max_value=6.0,
         value=st.session_state.analysis_parameters["seeing"],
@@ -228,7 +228,7 @@ with st.sidebar.expander("⚙️ Parameters", expanded=False):
         default_index = 0
 
     selected_label = st.selectbox(
-        "Calibration Filter Band",
+        "Filter Band",
         options=band_labels,
         index=default_index,
         help="Filter Magnitude band used for photometric calibration.",
