@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 
 
 st.set_page_config(
-    page_title="RAPAS Photometry Pipeline", page_icon=":star:", layout="wide"
+    page_title="RAPAS Photometry Pipeline", page_icon=":sparkles:", layout="wide"
 )
 
 # Use session state to track login status - Keep these basic initializations
