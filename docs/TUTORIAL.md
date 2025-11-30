@@ -35,7 +35,7 @@ Below the image preview and in the sidebar, you will find parameters to control 
 
 *Note: Cosmic ray removal is now performed automatically during the processing steps.*
 
-### 3. Astro_Colibri API Key (Optional)
+### 3. Astro_Colibri (Optional)
 
 If you have an Astro_Colibri API key, you can enter it in the designated field in the sidebar. This allows the application to access additional services provided by Astro-Colibri,to enhance catalog queries for transient search.
 
