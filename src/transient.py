@@ -85,6 +85,9 @@ def find_candidates(
     st.info(
         "Filtering candidates against catalog and known databases (VSX, APASS, ATLAS)..."
     )
+
+    obj = {name: obj[name] for name in obj.dtype.names}
+
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
