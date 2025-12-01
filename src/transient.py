@@ -21,8 +21,7 @@ def find_candidates(
     mask=None,
     filter_name=None,
     mag_limit="<20",
-    detect_thresh=2.0,
-    flagged=False
+    detect_thresh=1.5
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters
@@ -89,16 +88,17 @@ def find_candidates(
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
+        fwhm=fwhm,
         sr=2 * fwhm * pixel_scale,
         vizier=["vsx", "apass", "sdss", "atlas"],
         skybot=True,
         ned=True,
         verbose=False,
-        flagged=flagged
+        flagged=False
     )
 
     st.success(
-        f"✅ Candidate filtering complete. Found {len(candidates)} potential transients."
+        f"Candidate filtering complete. Found {len(candidates)} potential transients."
     )
 
     for _, cand in enumerate(candidates):
