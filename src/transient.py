@@ -21,7 +21,8 @@ def find_candidates(
     mask=None,
     filter_name=None,
     mag_limit="<20",
-    detect_thresh=2.0
+    detect_thresh=2.0,
+    flagged=False
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters
@@ -93,6 +94,7 @@ def find_candidates(
         skybot=True,
         ned=True,
         verbose=False,
+        flagged=flagged
     )
 
     st.success(
