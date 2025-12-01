@@ -6,6 +6,7 @@ import astropy.units as u
 from astropy.wcs import WCS
 import numpy as np
 import streamlit as st
+from astropy.table import Table
 
 from src.tools_pipeline import fix_header
 
@@ -86,7 +87,7 @@ def find_candidates(
         "Filtering candidates against catalog and known databases (VSX, APASS, ATLAS)..."
     )
 
-    obj = {name: obj[name] for name in obj.dtype.names}
+    obj = Table(obj)
 
     candidates = pipeline.filter_transient_candidates(
         obj,
