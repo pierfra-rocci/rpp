@@ -88,6 +88,7 @@ def find_candidates(
     )
 
     obj = Table(obj)
+    obj['flag'].name = 'flags'  # Rename to 'flags' for compatibility
 
     candidates = pipeline.filter_transient_candidates(
         obj,
@@ -97,8 +98,8 @@ def find_candidates(
         vizier=["vsx", "apass", "sdss", "atlas"],
         skybot=True,
         ned=True,
-        verbose=False,
-        flagged=False
+        verbose=True,
+        flagged=True
     )
 
     st.success(
