@@ -71,7 +71,7 @@ def find_candidates(
         obj, ['ra', 'dec'], [ra_obj, dec_obj], usemask=False
     )
 
-    print(obj['ra'], obj['dec'])
+    st.write(obj[:10])
 
     # Query the appropriate catalog
     st.info(
