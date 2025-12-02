@@ -94,7 +94,7 @@ def find_candidates(
         obj,
         cat=cat,
         fwhm=fwhm,
-        sr=1.5,
+        sr=1.,
         skybot=True,
         vizier=["vsx", "apass", "atlas", "sdss", "ps1", "skymapper"],
         ned=True,
