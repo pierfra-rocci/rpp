@@ -95,7 +95,6 @@ def find_candidates(
         cat=cat,
         fwhm=fwhm,
         sr=2 * fwhm * pixel_scale,
-        vizier=["vsx", "apass", "sdss", "atlas"],
         skybot=True,
         ned=True,
         verbose=True,
