@@ -96,7 +96,7 @@ def find_candidates(
         fwhm=fwhm,
         skybot=True,
         vizier=["vsx", "apass", "atlas", "ps1", "skymapper", "usnob1"],
-        ned=True,
+        ned=False,
         verbose=True,
         flagged=True
     )
