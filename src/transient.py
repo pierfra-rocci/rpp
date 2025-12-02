@@ -97,7 +97,7 @@ def find_candidates(
         skybot=True,
         vizier=["vsx", "apass", "atlas", "sdss", "ps1", "skymapper"],
         ned=True,
-        verbose=True,
+        verbose=False,
         flagged=True
     )
 
