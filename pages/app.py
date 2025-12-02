@@ -1164,7 +1164,7 @@ if science_file is not None:
                                     filter_name=st.session_state.analysis_parameters.get(
                                         "transient_filter", "r"
                                     ),
-                                    mag_limit="<21",
+                                    mag_limit="<20",
                                 )
                                 if candidates:
                                     st.subheader("Transient Candidates Found")
