@@ -94,7 +94,7 @@ def find_candidates(
         obj,
         cat=cat,
         fwhm=fwhm,
-        sr=2 * fwhm * pixel_scale,
+        sr=1.5 * fwhm * pixel_scale,
         skybot=True,
         ned=True,
         verbose=True,
