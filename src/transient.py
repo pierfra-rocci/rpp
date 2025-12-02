@@ -96,7 +96,7 @@ def find_candidates(
         fwhm=fwhm,
         sr=1.5,
         skybot=True,
-        vizier=["gaiaedr3", "ps1", "skymapper"],
+        vizier=["gaiaedr3", "ps1", "sdss", "skymapper"],
         ned=False,
         verbose=False,
         flagged=True
