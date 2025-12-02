@@ -485,7 +485,7 @@ def save_catalog_files(final_table, catalog_name, output_dir):
         # Create VOTable
         votable = from_table(astropy_table)
         # Define base_catalog_name here to ensure it's available for both
-        base_catalog_name = catalog_name
+        base_catalog_name = catalog_name+".csv"
         if base_catalog_name.endswith(".csv"):
             base_catalog_name = base_catalog_name[:-4]
         filename = f"{base_catalog_name}.vot"  # VOTable extension
@@ -502,10 +502,10 @@ def save_catalog_files(final_table, catalog_name, output_dir):
         csv_data = csv_buffer.getvalue()
 
         # Save CSV file using catalog_name as file name
-        csv_file_path = os.path.join(output_dir, catalog_name)
+        csv_file_path = os.path.join(output_dir, base_catalog_name)
         with open(csv_file_path, "w", encoding="utf-8") as f:
             f.write(csv_data)
-        success_messages.append(f"CSV catalog saved as {catalog_name}")
+        success_messages.append(f"CSV catalog saved as {base_catalog_name}")
 
     except Exception as e:
         error_messages.append(f"Error preparing VOTable download: {e}")

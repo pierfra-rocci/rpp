@@ -1096,7 +1096,7 @@ if science_file is not None:
 
                                 # Call the new function here
                                 success_messages, error_messages = save_catalog_files(
-                                    final_table, catalog_name, output_dir
+                                    final_table, base_filename, output_dir
                                 )
                                 for msg in success_messages:
                                     st.success(msg)
