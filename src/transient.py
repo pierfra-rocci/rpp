@@ -93,8 +93,8 @@ def find_candidates(
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
-        # fwhm=fwhm,
-        # sr=2 * fwhm * pixel_scale,
+        fwhm=fwhm,
+        sr=2 * fwhm * pixel_scale,
         vizier=["vsx", "apass", "sdss", "atlas"],
         skybot=True,
         ned=True,
