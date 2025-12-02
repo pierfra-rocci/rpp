@@ -125,7 +125,7 @@ def solve_with_astrometrynet(file_path):
             image_sub,
             fwhm_estimates=[3.0, 4.0, 5.0],
             threshold_multipliers=[1.5, 2.0, 2.5],
-            min_sources=20,
+            min_sources=30,
         )
 
         # If that fails, try more aggressive parameters
@@ -137,7 +137,7 @@ def solve_with_astrometrynet(file_path):
                 image_sub,
                 fwhm_estimates=[1.5, 2.0, 2.5],
                 threshold_multipliers=[1.0, 1.5],
-                min_sources=10,
+                min_sources=15,
             )
 
         if sources is None or len(sources) < 5:
