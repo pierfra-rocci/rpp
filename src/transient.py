@@ -97,7 +97,7 @@ def find_candidates(
         sr=1.5,
         skybot=True,
         vizier=["gaiaedr3", "ps1", "skymapper"],
-        ned=True,
+        ned=False,
         verbose=False,
         flagged=True
     )
