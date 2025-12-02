@@ -75,13 +75,13 @@ def find_candidates(
     st.info(
         f"Querying {catalog} catalog for reference stars (Filter: {filter_name}, Limit: {mag_limit})..."
     )
-    try:
-        cat = catalogs.get_cat_vizier(
-            ra_center, dec_center, sr, catalog, filters={filter_name + "mag": mag_limit}
-        )
-    except Exception as e:
-        st.error(f"Failed to query {catalog} catalog: {e}")
-        return []
+    # try:
+    #     cat = catalogs.get_cat_vizier(
+    #         ra_center, dec_center, sr, catalog, filters={filter_name + "mag": mag_limit}
+    #     )
+    # except Exception as e:
+    #     st.error(f"Failed to query {catalog} catalog: {e}")
+    #     return []
 
     st.info(
         "Filtering candidates against catalog and known databases (VSX, APASS, ATLAS)..."
@@ -92,7 +92,6 @@ def find_candidates(
 
     candidates = pipeline.filter_transient_candidates(
         obj,
-        cat=cat,
         fwhm=fwhm,
         sr=1.5,
         skybot=True,
