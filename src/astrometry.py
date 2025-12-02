@@ -78,10 +78,10 @@ def solve_with_astrometrynet(file_path):
     log_messages = []
     try:
         if not os.path.exists(file_path):
-            return None, None, log_messages, f"File {file_path} does not exist."
+            return None, None, log_messages, f"File {file_path} does not exist"
 
         # Load the FITS file
-        log_messages.append("INFO: Loading FITS file for local plate solving...")
+        log_messages.append("INFO: Loading FITS file for local plate solving")
         with fits.open(file_path) as hdul:
             image_data = hdul[0].data
             header = hdul[0].header.copy()
@@ -98,16 +98,16 @@ def solve_with_astrometrynet(file_path):
             existing_wcs = WCS(header)
             if existing_wcs.is_celestial:
                 log_messages.append(
-                    "INFO: Valid WCS already exists in header. Proceeding with blind solve anyway..."
+                    "INFO: Valid WCS already exists in header. Proceeding with blind solve anyway"
                 )
         except Exception:
             log_messages.append(
-                "INFO: No valid WCS found in header. Proceeding with blind solve..."
+                "INFO: No valid WCS found in header. Proceeding with blind solve"
             )
 
         # Estimate background
         log_messages.append(
-            "INFO: Detecting objects for plate solving using photutils..."
+            "INFO: Detecting objects for plate solving using photutils"
         )
         bkg, _, bkg_error = estimate_background(image_data, figure=False)
         if bkg is None:
@@ -131,7 +131,7 @@ def solve_with_astrometrynet(file_path):
         # If that fails, try more aggressive parameters
         if sources is None:
             log_messages.append(
-                "WARNING: Standard detection failed. Trying more aggressive parameters..."
+                "WARNING: Standard detection failed. Trying more aggressive parameters"
             )
             sources = _try_source_detection(
                 image_sub,

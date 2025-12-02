@@ -476,7 +476,7 @@ if science_file is not None:
                 "forced by user" if force_plate_solve else "no valid WCS found"
             )
             with st.spinner(
-                "Running astrometry check and plate solving - this may take a while..."
+                "Running astrometry check and plate solving..."
             ):
                 wcs_obj, science_header, log_messages, error = solve_with_astrometrynet(
                     science_file_path

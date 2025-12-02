@@ -84,7 +84,7 @@ def find_candidates(
         return []
 
     st.info(
-        "Filtering candidates against catalog and known databases (VSX, APASS, ATLAS)..."
+        "Filtering candidates against catalog and known databases"
     )
 
     obj = Table(obj)
