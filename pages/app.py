@@ -1154,7 +1154,7 @@ if science_file is not None:
                             try:
                                 candidates = find_candidates(
                                     science_data,
-                                    header_for_coords,
+                                    st.session_state["calibrated_header"],
                                     mean_fwhm_pixel,
                                     pixel_size_arcsec,
                                     ra_center,

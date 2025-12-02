@@ -71,8 +71,6 @@ def find_candidates(
         obj, ['ra', 'dec'], [ra_obj, dec_obj], usemask=False
     )
 
-    st.write(obj[:10])
-
     # Query the appropriate catalog
     st.info(
         f"Querying {catalog} catalog for reference stars (Filter: {filter_name}, Limit: {mag_limit})..."
