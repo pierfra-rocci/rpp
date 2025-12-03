@@ -947,7 +947,7 @@ def clean_photometry_table(df, require_magnitude=True):
     return df, log_messages
 
 
-def estimate_background(image_data, box_size=100, filter_size=5, figure=True):
+def estimate_background(image_data, box_size=64, filter_size=7, figure=True):
     """
     Estimate the background and background RMS of an astronomical image.
 

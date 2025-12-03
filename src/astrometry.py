@@ -8,6 +8,7 @@ from astropy.table import Table
 from astropy.wcs import WCS
 
 from astropy.io import fits
+from astropy.stats import sigma_clipped_stats
 from photutils.detection import DAOStarFinder
 from stdpipe import astrometry
 
@@ -18,13 +19,14 @@ def _try_source_detection(
     image_sub, fwhm_estimates, threshold_multipliers, min_sources=10
 ):
     """Helper function to try different detection parameters."""
+    _, _, clipped_std = sigma_clipped_stats(image_sub, sigma=3.0)
     for fwhm_est in fwhm_estimates:
         for thresh_mult in threshold_multipliers:
-            threshold = thresh_mult * np.std(image_sub)
+            threshold = (thresh_mult + 0.5) * clipped_std
 
             try:
                 st.write(f"Trying FWHM={fwhm_est}, threshold={threshold:.1f}...")
-                daofind = DAOStarFinder(fwhm=fwhm_est, threshold=threshold)
+                daofind = DAOStarFinder(fwhm=1.5*fwhm_est, threshold=threshold)
                 temp_sources = daofind(image_sub)
 
                 if temp_sources is not None and len(temp_sources) >= min_sources:

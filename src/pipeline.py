@@ -182,7 +182,6 @@ def make_border_mask(
     return mask.astype(dtype)
 
 
-@st.cache_data(show_spinner=False)
 def airmass(
     _header: Dict, observatory: Optional[Dict] = None, return_details: bool = False
 ) -> Union[float, Tuple[float, Dict]]:
@@ -441,7 +440,8 @@ def fwhm_fit(
 
         # Randomly sample 1000 sources if more than 1000 are available
         if len(filtered_sources) > 1000:
-            indices = np.random.choice(len(filtered_sources), size=1000, replace=False)
+            indices = np.random.choice(len(filtered_sources), size=1000,
+                                       replace=False)
             filtered_sources = filtered_sources[indices]
             st.info("Too many sources, sampled 1000 sources for FWHM calculation")
 
@@ -529,9 +529,8 @@ def detection_and_photometry(
         science_header.get("PIXSIZE", science_header.get("PIXELSCAL", 1.0)),
     )
 
-    bkg, bkg_fig, bkg_error = estimate_background(
-        image_data, box_size=64, filter_size=9
-    )
+    bkg, bkg_fig, bkg_error = estimate_background(image_data)
+    
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None, None
