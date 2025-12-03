@@ -25,14 +25,14 @@ def _try_source_detection(
             threshold = (thresh_mult + 0.5) * clipped_std
 
             try:
-                st.write(f"Trying FWHM={fwhm_est}, threshold={threshold:.1f}...")
+                st.info(f"Trying FWHM={fwhm_est}")
                 daofind = DAOStarFinder(fwhm=1.5*fwhm_est, threshold=threshold)
                 temp_sources = daofind(image_sub)
 
                 if temp_sources is not None and len(temp_sources) >= min_sources:
                     st.success(
                         f"Photutils found {len(temp_sources)} sources with "
-                        f"FWHM={fwhm_est}, threshold={threshold:.1f}"
+                        f"FWHM={fwhm_est}"
                     )
                     return temp_sources
                 elif temp_sources is not None:
@@ -42,7 +42,7 @@ def _try_source_detection(
 
             except Exception as e:
                 st.write(
-                    f"Detection failed with FWHM={fwhm_est}, threshold={threshold:.1f}: {e}"
+                    f"Detection failed with FWHM={fwhm_est} : {e}"
                 )
                 continue
     return None
@@ -100,17 +100,13 @@ def solve_with_astrometrynet(file_path):
             existing_wcs = WCS(header)
             if existing_wcs.is_celestial:
                 log_messages.append(
-                    "INFO: Valid WCS already exists in header. Proceeding with blind solve anyway"
+                    "INFO: Proceeding with blind plate solve"
                 )
         except Exception:
             log_messages.append(
                 "INFO: No valid WCS found in header. Proceeding with blind solve"
             )
 
-        # Estimate background
-        log_messages.append(
-            "INFO: Detecting objects for plate solving using photutils"
-        )
         bkg, _, bkg_error = estimate_background(image_data, figure=False)
         if bkg is None:
             return (
@@ -146,9 +142,6 @@ def solve_with_astrometrynet(file_path):
             error_message = "Failed to detect sufficient sources for plate solving."
             log_messages.append(f"ERROR: {error_message}")
             return None, None, log_messages, error_message
-
-        # Prepare sources for astrometric solving
-        log_messages.append(f"INFO: Successfully detected {len(sources)} sources")
 
         # Filter for best sources if too many
         if len(sources) > 500:
