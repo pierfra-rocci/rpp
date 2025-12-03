@@ -94,13 +94,13 @@ def find_candidates(
         obj,
         cat=cat,
         fwhm=fwhm,
-        sr=1.5,
+        pixel_scale=pixel_scale,
         skybot=True,
         vizier=["gaiaedr3", "ps1", "sdss", "skymapper",
                 "apass", "atlas", "vsx", "usnob1"],
         ned=False,
-        verbose=False,
-        flagged=True
+        verbose=True,
+        flagged=True,
     )
 
     st.success(
