@@ -506,14 +506,14 @@ def perform_psf_photometry(
                         continue
                     valid_stars.append(star)
         except Exception as e:
-            st.warning(f"Error during initial filtering of stars for EPSF: {e}")
+            st.warning(f"Error during initial filtering of stars for ePSF: {e}")
             valid_stars = []
 
         n_valid = len(valid_stars)
-        st.write(f"Using {n_valid} valid Star objects for EPSF construction")
+        st.write(f"Using {n_valid} valid Star objects for ePSF construction")
 
         if n_valid < 5:
-            raise ValueError("Too few valid Star objects for EPSF building")
+            raise ValueError("Too few valid Star objects for ePSF building")
 
         # If there are a lot of stars, pick the brightest (by peak)
         if n_valid > max_stars_for_epsf:
@@ -524,7 +524,7 @@ def perform_psf_photometry(
             top_idx = np.argsort(peaks)[-max_stars_for_epsf:][::-1]
             stars_for_builder = EPSFStars([valid_stars[i] for i in top_idx])
             st.write(
-                f"✓ Selected {len(stars_for_builder)} brightest stars for EPSF construction."
+                f"✓ Selected {len(stars_for_builder)} brightest stars for ePSF construction."
             )
         else:
             stars_for_builder = EPSFStars(valid_stars)
@@ -580,18 +580,18 @@ def perform_psf_photometry(
 
             except Exception as fallback_error:
                 st.error(f"Gaussian PSF fallback also failed: {fallback_error}")
-                raise ValueError("Both EPSF building and Gaussian fallback failed")
+                raise ValueError("Both ePSF building and Gaussian fallback failed")
         else:
             epsf_data = np.asarray(epsf.data)
 
         # Validate epsf_data
         if epsf_data is None or epsf_data.size == 0:
             raise ValueError(
-                "EPSF data is invalid or empty after attempts and fallback"
+                "ePSF data is invalid or empty after attempts and fallback"
             )
 
         if np.isnan(epsf_data).any():
-            st.warning("EPSF data contains NaN values")
+            st.warning("ePSF data contains NaN values")
 
         st.write(f"Shape of PSF data: {epsf_data.shape}")
         st.session_state["epsf_model"] = epsf
