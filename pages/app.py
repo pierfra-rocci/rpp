@@ -273,14 +273,15 @@ with st.sidebar.expander("Transient Candidates (_beta_)", expanded=False):
     )
 
     filter_options = ["g", "r", "i"]
-    if "Red" or "Blue" in st.session_state.analysis_parameters.get(
+    current_transient_filter = st.session_state.analysis_parameters.get(
         "transient_filter", "r"
-    ):
-        filter_index = 0
-    else:
-        filter_index = filter_options.index(
-            st.session_state.analysis_parameters.get("transient_filter", "r")
-        )
+    )
+
+    try:
+        filter_index = filter_options.index(current_transient_filter)
+    except ValueError:
+        filter_index = 1 # Default to "r" if stored value is not valid
+
     st.session_state.analysis_parameters["transient_filter"] = st.selectbox(
         "Reference Filter",
         options=filter_options,

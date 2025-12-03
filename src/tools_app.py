@@ -923,8 +923,8 @@ def initialize_session_state():
         "astrometry_check": True,
         "force_plate_solve": False,
         "run_transient_finder": False,
-        "transient_survey": "DSS2",
-        "transient_filter": "red",
+        "transient_survey": "PanSTARRS",
+        "transient_filter": "r",
     }
 
     if "analysis_parameters" not in st.session_state:
