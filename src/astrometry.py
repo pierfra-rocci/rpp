@@ -317,15 +317,12 @@ def solve_with_astrometrynet(file_path):
             except Exception:
                 log_messages.append("WARNING: Could not parse RA/DEC from header")
 
-        log_messages.append("INFO: Running blind_match_objects...")
-        log_messages.append(f"INFO: Using {len(obj_table)} sources for plate solving")
-
         try:
             # Call stdpipe's blind_match_objects function
             solved_wcs = astrometry.blind_match_objects(obj_table, **kwargs)
 
             if solved_wcs is not None:
-                log_messages.append("SUCCESS: Plate solving successful!")
+                log_messages.append("SUCCESS: Plate solving successful")
 
                 # Update original header with WCS solution
                 updated_header = header.copy()
@@ -343,7 +340,7 @@ def solve_with_astrometrynet(file_path):
                 updated_header.update(wcs_header)
 
                 # Add solution metadata
-                updated_header["COMMENT"] = "WCS solution from stdpipe/astrometry.net"
+                updated_header["COMMENT"] = "WCS solution from astrometry.net"
                 updated_header["STDPIPE"] = (
                     True,
                     "Solved with stdpipe.astrometry.blind_match_objects",
@@ -368,7 +365,7 @@ def solve_with_astrometrynet(file_path):
                         log_messages.append("SUCCESS: Solution coordinates are valid")
                     else:
                         log_messages.append(
-                            "WARNING: Solution coordinates seem invalid!"
+                            "WARNING: Solution coordinates seem invalid"
                         )
 
                 except Exception as coord_error:
@@ -379,7 +376,7 @@ def solve_with_astrometrynet(file_path):
                 return solved_wcs, updated_header, log_messages, None
 
             else:
-                error_message = "Plate solving failed!"
+                error_message = "Plate solving failed"
                 log_messages.append(f"ERROR: {error_message}")
                 return None, None, log_messages, error_message
 
