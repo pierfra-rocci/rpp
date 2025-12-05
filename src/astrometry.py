@@ -14,27 +14,28 @@ from stdpipe import pipeline as stdpipe_pipeline
 
 
 def _try_source_detection(
-    image_sub, fwhm_estimates, threshold_multipliers, min_sources=10
+    image, header, fwhm_estimates, threshold_multi, min_sources=10
 ):
     """Helper function to try different detection parameters.
     Refactored to use stdpipe (SExtractor/SEP + photutils measurement)
     """
     # We iterate through parameters to find a good set
     for fwhm_est in fwhm_estimates:
-        for thresh_mult in threshold_multipliers:
+        for thresh in threshold_multi:
             try:
-                st.info(f"Trying detection with thresh={thresh_mult}, FWHM={fwhm_est}")
+                st.info(f"Trying detection with thresh={thresh}, FWHM={fwhm_est}")
 
                 # 1. Detect objects using SExtractor/SEP via stdpipe
                 # get_objects_sextractor handles background estimation internally
                 # but we pass the background-subtracted image 'image_sub'.
                 # 'thresh' corresponds to the detection threshold (sigma).
                 sources = photometry.get_objects_sextractor(
-                    image_sub,
-                    thresh=thresh_mult,
-                    gain=1.0,
+                    image,
+                    thresh=thresh,
                     aper=1.5*fwhm_est,
+                    gain=header.get('GAIN', 1.0),
                     edge=10,
+                    bg_size=64,
                 )
 
                 if sources is not None and len(sources) >= min_sources:
@@ -42,9 +43,9 @@ def _try_source_detection(
                     # This refines the photometry and measurements
                     sources = photometry.measure_objects(
                         sources,
-                        image_sub,
+                        image,
                         fwhm=fwhm_est,
-                        aper=1.5,  # Aperture radius in FWHM units
+                        aper=1.,  # Aperture radius in FWHM units
                         bkgann=[2.0, 3.0],  # Background annulus in FWHM units
                         verbose=False,
                         sn=5.0  # Minimum S/N
@@ -53,7 +54,7 @@ def _try_source_detection(
                     if sources is not None and len(sources) >= min_sources:
                         st.success(
                             f"stdpipe found {len(sources)} sources with "
-                            f"thresh={thresh_mult}, FWHM={fwhm_est}"
+                            f"thresh={thresh}, FWHM={fwhm_est}"
                         )
                         return sources
 
@@ -134,8 +135,9 @@ def solve_with_astrometrynet(file_path):
         # Try standard detection parameters first
         sources = _try_source_detection(
             image_data,
+            header,
             fwhm_estimates=[3.0, 4.0, 5.0],
-            threshold_multipliers=[1., 0.5],
+            threshold_multipli=[1., 0.5],
             min_sources=50,
         )
 
