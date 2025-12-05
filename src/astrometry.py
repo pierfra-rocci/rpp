@@ -8,8 +8,12 @@ from astropy.wcs import WCS
 
 from astropy.io import fits
 from astropy.stats import sigma_clipped_stats
-from photutils.detection import DAOStarFinder
+
+# stdpipe imports
 from stdpipe import astrometry
+from stdpipe import photometry
+from stdpipe import catalogs
+from stdpipe import pipeline as stdpipe_pipeline
 
 from src.pipeline import estimate_background
 
@@ -17,26 +21,48 @@ from src.pipeline import estimate_background
 def _try_source_detection(
     image_sub, fwhm_estimates, threshold_multipliers, min_sources=10
 ):
-    """Helper function to try different detection parameters."""
-    _, _, clipped_std = sigma_clipped_stats(image_sub, sigma=3.0)
+    """Helper function to try different detection parameters.
+    Refactored to use stdpipe (SExtractor/SEP + photutils measurement)
+    """
+    # We iterate through parameters to find a good set
     for fwhm_est in fwhm_estimates:
         for thresh_mult in threshold_multipliers:
-            threshold = (thresh_mult + 0.5) * clipped_std
-
             try:
-                st.info(f"Trying FWHM={fwhm_est}")
-                daofind = DAOStarFinder(fwhm=1.5*fwhm_est, threshold=threshold)
-                temp_sources = daofind(image_sub)
+                st.info(f"Trying detection with thresh={thresh_mult}, FWHM={fwhm_est}")
 
-                if temp_sources is not None and len(temp_sources) >= min_sources:
-                    st.success(
-                        f"Photutils found {len(temp_sources)} sources with "
-                        f"FWHM={fwhm_est}"
+                # 1. Detect objects using SExtractor/SEP via stdpipe
+                # get_objects_sextractor handles background estimation internally if needed,
+                # but we pass the background-subtracted image 'image_sub'.
+                # 'thresh' corresponds to the detection threshold (sigma).
+                sources = photometry.get_objects_sextractor(
+                    image_sub,
+                    thresh=thresh_mult,
+                    aper=1.5*fwhm_est
+                )
+
+                if sources is not None and len(sources) >= min_sources:
+                    # 2. Measure objects using photutils via stdpipe
+                    # This refines the photometry and measurements
+                    sources = photometry.measure_objects(
+                        sources,
+                        image_sub,
+                        fwhm=fwhm_est,
+                        aper=1.5,           # Aperture radius in FWHM units
+                        bkgann=[2.0, 3.0],  # Background annulus in FWHM units
+                        verbose=False,
+                        sn=5.0              # Minimum S/N
                     )
-                    return temp_sources
-                elif temp_sources is not None:
+
+                    if sources is not None and len(sources) >= min_sources:
+                        st.success(
+                            f"stdpipe found {len(sources)} sources with "
+                            f"thresh={thresh_mult}, FWHM={fwhm_est}"
+                        )
+                        return sources
+                
+                if sources is not None:
                     st.write(
-                        f"Found {len(temp_sources)} sources (need at least {min_sources})"
+                        f"Found {len(sources)} sources (need at least {min_sources})"
                     )
 
             except Exception as e:
@@ -52,6 +78,8 @@ def solve_with_astrometrynet(file_path):
     Solve astrometric plate using local Astrometry.Net installation via stdpipe.
     This function loads a FITS image, detects objects using photutils, and uses stdpipe's
     blind_match_objects wrapper around Astrometry.Net to determine accurate WCS information.
+
+    Refactored to use stdpipe for detection, measurement, and refinement (Gaia DR2).
 
     Parameters
     ----------
@@ -155,29 +183,8 @@ def solve_with_astrometrynet(file_path):
             f"SUCCESS: Ready for plate solving with {len(sources)} sources"
         )
 
-        # Convert sources to the format expected by stdpipe
-        obj_table = Table()
-        obj_table["x"] = sources["xcentroid"]
-        obj_table["y"] = sources["ycentroid"]
-        obj_table["flux"] = sources["flux"]
-
-        # Add signal-to-noise ratio if available
-        if "peak" in sources.colnames:
-            # Estimate SNR from peak/background ratio
-            background_std = np.std(image_sub)
-            obj_table["sn"] = sources["peak"] / background_std
-            obj_table["fluxerr"] = sources["flux"] / obj_table["sn"]
-        else:
-            # Use flux as proxy for SNR
-            obj_table["sn"] = sources["flux"] / np.median(sources["flux"])
-            obj_table["fluxerr"] = np.sqrt(np.abs(sources["flux"]))
-
-        # Ensure fluxerr is positive and finite
-        obj_table["fluxerr"] = np.where(
-            (obj_table["fluxerr"] <= 0) | ~np.isfinite(obj_table["fluxerr"]),
-            sources["flux"] * 0.1,
-            obj_table["fluxerr"],
-        )
+        # Note: 'sources' is now a table from stdpipe (get_objects_sextractor)
+        # It contains 'x', 'y', 'flux', 'mag', etc. and is suitable for blind_match_objects
 
         # Get pixel scale estimate
         pixel_scale_estimate = None
@@ -318,12 +325,65 @@ def solve_with_astrometrynet(file_path):
 
         try:
             # Call stdpipe's blind_match_objects function
-            solved_wcs = astrometry.blind_match_objects(obj_table, **kwargs)
+            # We pass 'sources' directly as it is an Astropy Table compatible with stdpipe
+            solved_wcs = astrometry.blind_match_objects(sources, **kwargs)
 
             if solved_wcs is not None:
                 log_messages.append("SUCCESS: Plate solving successful")
 
-                # Update original header with WCS solution
+                # --- Refinement Step (Gaia DR2) ---
+                try:
+                    log_messages.append("INFO: Attempting WCS refinement using Gaia DR2")
+                    
+                    # 1. Get image parameters from the initial solution
+                    height, width = image_data.shape
+                    
+                    # Get frame center and radius
+                    center_ra, center_dec, center_sr = astrometry.get_frame_center(
+                        wcs=solved_wcs,
+                        width=width,
+                        height=height
+                    )
+                    
+                    # 2. Fetch Gaia DR2 catalog
+                    log_messages.append(f"INFO: Fetching Gaia DR2 catalog around RA={center_ra:.4f}, DEC={center_dec:.4f}, r={center_sr:.2f} deg")
+                    cat = catalogs.get_cat_vizier(
+                        center_ra, 
+                        center_dec, 
+                        center_sr, 
+                        'gaiadr2', 
+                        filters={'Gmag': '<19'}
+                    )
+                    
+                    if cat is not None and len(cat) > 10:
+                        log_messages.append(f"INFO: Retrieved {len(cat)} catalog stars")
+                        
+                        # 3. Refine Astrometry
+                        # Get pixel scale from solved WCS for matching radius
+                        pixscale_deg = astrometry.get_pixscale(wcs=solved_wcs)
+                        
+                        refined_wcs = stdpipe_pipeline.refine_astrometry(
+                            sources,
+                            cat,
+                            sr=5 * pixscale_deg,  # Matching radius ~ 5 pixels
+                            wcs=solved_wcs,
+                            method='scamp',  # Prefer SCAMP as per notebook, falls back if not avail?
+                            cat_col_mag='Gmag',
+                            verbose=False
+                        )
+                        
+                        if refined_wcs is not None:
+                            solved_wcs = refined_wcs
+                            log_messages.append("SUCCESS: Astrometry refined using Gaia DR2")
+                        else:
+                            log_messages.append("WARNING: Astrometric refinement failed, keeping initial solution")
+                    else:
+                         log_messages.append("WARNING: Could not retrieve sufficient catalog stars for refinement")
+
+                except Exception as refine_error:
+                    log_messages.append(f"WARNING: Refinement process failed: {refine_error}")
+
+                # Update original header with WCS solution (refined or initial)
                 updated_header = header.copy()
 
                 # Clear any existing WCS keywords to avoid conflicts
@@ -339,10 +399,10 @@ def solve_with_astrometrynet(file_path):
                 updated_header.update(wcs_header)
 
                 # Add solution metadata
-                updated_header["COMMENT"] = "WCS solution from astrometry.net"
+                updated_header["COMMENT"] = "WCS solution from astrometry.net (refined with Gaia DR2)"
                 updated_header["STDPIPE"] = (
                     True,
-                    "Solved with stdpipe.astrometry.blind_match_objects",
+                    "Solved with stdpipe.astrometry.blind_match_objects + refinement",
                 )
 
                 # Display solution information
