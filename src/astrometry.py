@@ -354,7 +354,7 @@ def solve_with_astrometrynet(file_path):
                             wcs=solved_wcs,
                             method='scamp',  # Prefer SCAMP as per notebook, falls back if not avail?
                             cat_col_mag='rmag',
-                            verbose=False
+                            verbose=True
                         )
 
                         if refined_wcs is not None:

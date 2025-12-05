@@ -510,7 +510,7 @@ if science_file is not None:
 
                 if wcs_obj is not None:
                     solve_type = (
-                        "Forced plate-solve" if force_plate_solve else "Initial solve"
+                        "Plate-solve" if force_plate_solve else "Initial solve"
                     )
                     st.success(f"{solve_type} successful!")
                     write_to_log(
