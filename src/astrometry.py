@@ -146,8 +146,8 @@ def solve_with_astrometrynet(file_path):
         sources = _try_source_detection(
             image_sub,
             fwhm_estimates=[3.0, 4.0, 5.0],
-            threshold_multipliers=[3, 3.5, 4.0],
-            min_sources=40,
+            threshold_multipliers=[1., 0.5],
+            min_sources=50,
         )
 
         # If that fails, try more aggressive parameters
@@ -158,8 +158,8 @@ def solve_with_astrometrynet(file_path):
             sources = _try_source_detection(
                 image_sub,
                 fwhm_estimates=[1.5, 2.0, 2.5],
-                threshold_multipliers=[2.5, 3.0],
-                min_sources=20,
+                threshold_multipliers=[1., 0.5],
+                min_sources=25,
             )
 
         if sources is None or len(sources) < 5:
