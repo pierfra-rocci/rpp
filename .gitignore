@@ -184,3 +184,4 @@ dev_test/**
 dev_test
 src/test_wcs.py
 encode_pass.py
+stdpipe_tutorial.ipynb
