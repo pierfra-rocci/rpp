@@ -53,7 +53,7 @@ def _try_source_detection(
 
                     if sources is not None and len(sources) >= min_sources:
                         st.success(
-                            f"stdpipe found {len(sources)} sources with "
+                            f"Found {len(sources)} sources with "
                             f"thresh={thresh}, FWHM={fwhm_est}"
                         )
                         return sources
@@ -387,7 +387,7 @@ def solve_with_astrometrynet(file_path):
                 updated_header["COMMENT"] = "WCS solution from astrometry.net (refined with Gaia DR2)"
                 updated_header["STDPIPE"] = (
                     True,
-                    "Solved with stdpipe.astrometry.blind_match_objects + refinement",
+                    "Solved with astrometry.blind_match_objects + refinement",
                 )
 
                 # Display solution information
@@ -425,7 +425,7 @@ def solve_with_astrometrynet(file_path):
                 return None, None, log_messages, error_message
 
         except Exception as solve_error:
-            error_message = f"Error during stdpipe plate solving: {solve_error}"
+            error_message = f"Error during plate solving: {solve_error}"
             log_messages.append(f"ERROR: {error_message}")
             return None, None, log_messages, error_message
 
