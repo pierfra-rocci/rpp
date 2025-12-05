@@ -3,11 +3,8 @@ import streamlit as st
 
 import numpy as np
 
-from astropy.table import Table
 from astropy.wcs import WCS
-
 from astropy.io import fits
-from astropy.stats import sigma_clipped_stats
 
 # stdpipe imports
 from stdpipe import astrometry
@@ -31,7 +28,7 @@ def _try_source_detection(
                 st.info(f"Trying detection with thresh={thresh_mult}, FWHM={fwhm_est}")
 
                 # 1. Detect objects using SExtractor/SEP via stdpipe
-                # get_objects_sextractor handles background estimation internally if needed,
+                # get_objects_sextractor handles background estimation internally
                 # but we pass the background-subtracted image 'image_sub'.
                 # 'thresh' corresponds to the detection threshold (sigma).
                 sources = photometry.get_objects_sextractor(
@@ -59,7 +56,7 @@ def _try_source_detection(
                             f"thresh={thresh_mult}, FWHM={fwhm_est}"
                         )
                         return sources
-                
+
                 if sources is not None:
                     st.write(
                         f"Found {len(sources)} sources (need at least {min_sources})"
@@ -334,17 +331,17 @@ def solve_with_astrometrynet(file_path):
                 # --- Refinement Step (Gaia DR2) ---
                 try:
                     log_messages.append("INFO: Attempting WCS refinement using Gaia DR2")
-                    
+
                     # 1. Get image parameters from the initial solution
                     height, width = image_data.shape
-                    
+
                     # Get frame center and radius
                     center_ra, center_dec, center_sr = astrometry.get_frame_center(
                         wcs=solved_wcs,
                         width=width,
                         height=height
                     )
-                    
+
                     # 2. Fetch Gaia DR2 catalog
                     log_messages.append(f"INFO: Fetching Gaia DR2 catalog around RA={center_ra:.4f}, DEC={center_dec:.4f}, r={center_sr:.2f} deg")
                     cat = catalogs.get_cat_vizier(
@@ -354,14 +351,14 @@ def solve_with_astrometrynet(file_path):
                         'gaiadr2', 
                         filters={'Gmag': '<19'}
                     )
-                    
+
                     if cat is not None and len(cat) > 10:
                         log_messages.append(f"INFO: Retrieved {len(cat)} catalog stars")
-                        
+
                         # 3. Refine Astrometry
                         # Get pixel scale from solved WCS for matching radius
                         pixscale_deg = astrometry.get_pixscale(wcs=solved_wcs)
-                        
+
                         refined_wcs = stdpipe_pipeline.refine_astrometry(
                             sources,
                             cat,
@@ -371,14 +368,14 @@ def solve_with_astrometrynet(file_path):
                             cat_col_mag='Gmag',
                             verbose=False
                         )
-                        
+
                         if refined_wcs is not None:
                             solved_wcs = refined_wcs
                             log_messages.append("SUCCESS: Astrometry refined using Gaia DR2")
                         else:
                             log_messages.append("WARNING: Astrometric refinement failed, keeping initial solution")
                     else:
-                         log_messages.append("WARNING: Could not retrieve sufficient catalog stars for refinement")
+                        log_messages.append("WARNING: Could not retrieve sufficient catalog stars for refinement")
 
                 except Exception as refine_error:
                     log_messages.append(f"WARNING: Refinement process failed: {refine_error}")
