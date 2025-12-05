@@ -2,7 +2,6 @@ import os
 import streamlit as st
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from astropy.table import Table
 from astropy.wcs import WCS
