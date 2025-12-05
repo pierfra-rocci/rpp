@@ -137,7 +137,7 @@ def solve_with_astrometrynet(file_path):
             image_data,
             header,
             fwhm_estimates=[3.0, 4.0, 5.0],
-            threshold_multi=[1., 0.5],
+            threshold_multi=[2., 1.5],
             min_sources=50,
         )
 
@@ -149,7 +149,7 @@ def solve_with_astrometrynet(file_path):
             sources = _try_source_detection(
                 image_data,
                 fwhm_estimates=[1.5, 2.0, 2.5],
-                threshold_multi=[1., 0.5],
+                threshold_multi=[2., 1.5],
                 min_sources=25,
             )
 
@@ -170,9 +170,6 @@ def solve_with_astrometrynet(file_path):
         log_messages.append(
             f"SUCCESS: Ready for plate solving with {len(sources)} sources"
         )
-
-        # Note: 'sources' is now a table from stdpipe (get_objects_sextractor)
-        # It contains 'x', 'y', 'flux', 'mag', etc. and is suitable for blind_match_objects
 
         # Get pixel scale estimate
         pixel_scale_estimate = None
@@ -336,11 +333,11 @@ def solve_with_astrometrynet(file_path):
                     # 2. Fetch Gaia DR2 catalog
                     log_messages.append(f"INFO: Fetching Gaia DR2 catalog around RA={center_ra:.4f}, DEC={center_dec:.4f}, r={center_sr:.2f} deg")
                     cat = catalogs.get_cat_vizier(
-                        center_ra, 
-                        center_dec, 
-                        center_sr, 
-                        'gaiadr2', 
-                        filters={'Gmag': '<19'}
+                        center_ra,
+                        center_dec,
+                        center_sr,
+                        'ps1',
+                        filters={'rmag': '<19'}
                     )
 
                     if cat is not None and len(cat) > 10:
@@ -353,10 +350,10 @@ def solve_with_astrometrynet(file_path):
                         refined_wcs = stdpipe_pipeline.refine_astrometry(
                             sources,
                             cat,
-                            sr=5 * pixscale_deg,  # Matching radius ~ 5 pixels
+                            sr=7 * pixscale_deg,  # Matching radius ~ 5 pixels
                             wcs=solved_wcs,
                             method='scamp',  # Prefer SCAMP as per notebook, falls back if not avail?
-                            cat_col_mag='Gmag',
+                            cat_col_mag='rmag',
                             verbose=False
                         )
 
