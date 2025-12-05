@@ -34,7 +34,9 @@ def _try_source_detection(
                 sources = photometry.get_objects_sextractor(
                     image_sub,
                     thresh=thresh_mult,
-                    aper=1.5*fwhm_est
+                    gain=1.0,
+                    aper=1.5*fwhm_est,
+                    edge=10,
                 )
 
                 if sources is not None and len(sources) >= min_sources:
@@ -131,20 +133,20 @@ def solve_with_astrometrynet(file_path):
                 "INFO: No valid WCS found in header. Proceeding with blind solve"
             )
 
-        bkg, _, bkg_error = estimate_background(image_data, figure=False)
-        if bkg is None:
-            return (
-                None,
-                None,
-                log_messages,
-                f"Failed to estimate background: {bkg_error}",
-            )
+        # bkg, _, bkg_error = estimate_background(image_data, figure=False)
+        # if bkg is None:
+        #     return (
+        #         None,
+        #         None,
+        #         log_messages,
+        #         f"Failed to estimate background: {bkg_error}",
+        #     )
 
-        image_sub = image_data - bkg.background
+        # image_sub = image_data - bkg.background
 
         # Try standard detection parameters first
         sources = _try_source_detection(
-            image_sub,
+            image_data,
             fwhm_estimates=[3.0, 4.0, 5.0],
             threshold_multipliers=[1., 0.5],
             min_sources=50,
@@ -156,7 +158,7 @@ def solve_with_astrometrynet(file_path):
                 "WARNING: Standard detection failed. Trying more aggressive parameters"
             )
             sources = _try_source_detection(
-                image_sub,
+                image_data,
                 fwhm_estimates=[1.5, 2.0, 2.5],
                 threshold_multipliers=[1., 0.5],
                 min_sources=25,
