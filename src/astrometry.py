@@ -12,8 +12,6 @@ from stdpipe import photometry
 from stdpipe import catalogs
 from stdpipe import pipeline as stdpipe_pipeline
 
-from src.pipeline import estimate_background
-
 
 def _try_source_detection(
     image_sub, fwhm_estimates, threshold_multipliers, min_sources=10
@@ -46,10 +44,10 @@ def _try_source_detection(
                         sources,
                         image_sub,
                         fwhm=fwhm_est,
-                        aper=1.5,           # Aperture radius in FWHM units
+                        aper=1.5,  # Aperture radius in FWHM units
                         bkgann=[2.0, 3.0],  # Background annulus in FWHM units
                         verbose=False,
-                        sn=5.0              # Minimum S/N
+                        sn=5.0  # Minimum S/N
                     )
 
                     if sources is not None and len(sources) >= min_sources:
@@ -118,8 +116,8 @@ def solve_with_astrometrynet(file_path):
             return None, None, log_messages, "No image data found in FITS file"
 
         # Ensure data is float32 for better compatibility
-        if image_data.dtype != np.float32:
-            image_data = image_data.astype(np.float32)
+        # if image_data.dtype != np.float32:
+        #     image_data = image_data.astype(np.float32)
 
         # Check if WCS already exists
         try:
@@ -132,17 +130,6 @@ def solve_with_astrometrynet(file_path):
             log_messages.append(
                 "INFO: No valid WCS found in header. Proceeding with blind solve"
             )
-
-        # bkg, _, bkg_error = estimate_background(image_data, figure=False)
-        # if bkg is None:
-        #     return (
-        #         None,
-        #         None,
-        #         log_messages,
-        #         f"Failed to estimate background: {bkg_error}",
-        #     )
-
-        # image_sub = image_data - bkg.background
 
         # Try standard detection parameters first
         sources = _try_source_detection(
