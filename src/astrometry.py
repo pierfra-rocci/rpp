@@ -149,8 +149,8 @@ def solve_with_astrometrynet(file_path):
             sources = _try_source_detection(
                 image_data,
                 header,
-                fwhm_estimates=[1.5, 2.0, 2.5],
-                threshold_multi=[2., 1.5],
+                fwhm_estimates=[2.0, 2.5, 3.0],
+                threshold_multi=[1., 0.5],
                 min_sources=25,
             )
 
