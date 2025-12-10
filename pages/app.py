@@ -512,7 +512,7 @@ if science_file is not None:
                     solve_type = (
                         "Plate-solve" if force_plate_solve else "Initial solve"
                     )
-                    st.success(f"{solve_type} successful!")
+                    st.success(f"{solve_type} successful")
                     write_to_log(
                         log_buffer, f"Astrometry check completed ({plate_solve_reason})"
                     )
