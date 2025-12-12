@@ -2,4 +2,3 @@
 SMTP_SERVER = "smtp.mail.ovh.net"
 SMTP_PORT = 587
 SMTP_USER = "rpp_support@saf-astronomie.fr"
-SMTP_PASS_ENCODED = "ejRVZzNtTVJ6ODM="
