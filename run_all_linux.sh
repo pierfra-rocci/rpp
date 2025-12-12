@@ -14,6 +14,7 @@ frontend_log="frontend.log"
 backend_pid_file="backend.pid"
 frontend_pid_file="frontend.pid"
 export APP_ENV=production
+export SMTP_PASS="your_smtp_password_here"
 
 # Function to cleanup on exit
 cleanup() {
