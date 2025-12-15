@@ -8,7 +8,6 @@ from email.mime.multipart import MIMEMultipart
 import random
 import string
 import os
-import base64
 import datetime
 import re
 from contextlib import contextmanager
@@ -106,10 +105,7 @@ def send_email(to_email, subject, body):
     smtp_server = config.SMTP_SERVER
     smtp_port = config.SMTP_PORT
     smtp_user = config.SMTP_USER
-    smtp_pass_encoded = config.SMTP_PASS_ENCODED
-    smtp_pass = (
-        base64.b64decode(smtp_pass_encoded).decode() if smtp_pass_encoded else None
-    )
+    smtp_pass = config.SMTP_PASS
     if not smtp_user or not smtp_pass:
         print("SMTP credentials not set.")
         return False, "Email service is not configured."
