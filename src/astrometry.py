@@ -117,8 +117,8 @@ def solve_with_astrometrynet(file_path):
             return None, None, log_messages, "No image data found in FITS file"
 
         # Ensure data is float32 for better compatibility
-        # if image_data.dtype != np.float32:
-        #     image_data = image_data.astype(np.float32)
+        if image_data.dtype != np.float32:
+            image_data = image_data.astype(np.float32)
 
         # Check if WCS already exists
         try:
