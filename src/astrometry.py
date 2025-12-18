@@ -33,9 +33,9 @@ def _try_source_detection(
                     image,
                     thresh=thresh,
                     aper=1.5*fwhm_est,
-                    gain=header.get('GAIN', 1.0),
+                    gain=header.get('GAIN', 65635/np.max(image)),
                     edge=10,
-                    bg_size=64,
+                    bg_size=256,
                 )
 
                 if sources is not None and len(sources) >= min_sources:
@@ -117,8 +117,8 @@ def solve_with_astrometrynet(file_path):
             return None, None, log_messages, "No image data found in FITS file"
 
         # Ensure data is float32 for better compatibility
-        if image_data.dtype != np.float32:
-            image_data = image_data.astype(np.float32)
+        # if image_data.dtype != np.float32:
+        #     image_data = image_data.astype(np.float32)
 
         # Check if WCS already exists
         try:
