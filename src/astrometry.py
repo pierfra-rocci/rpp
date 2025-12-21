@@ -29,11 +29,18 @@ def _try_source_detection(
                 # get_objects_sextractor handles background estimation internally
                 # but we pass the background-subtracted image 'image_sub'.
                 # 'thresh' corresponds to the detection threshold (sigma).
+                gain = header.get('GAIN', 65635/np.max(image))
+                if header.get('GAIN') is None:
+                    gain = header.get('GAIN_ELE', gain)
+
+                cvf = header.get('CVF', 1)
+                gain /= cvf
+
                 sources = photometry.get_objects_sextractor(
                     image,
                     thresh=thresh,
                     aper=1.5*fwhm_est,
-                    gain=header.get('GAIN', 65635/np.max(image)),
+                    gain=gain,
                     edge=10,
                     bg_size=256,
                 )
@@ -116,10 +123,6 @@ def solve_with_astrometrynet(file_path):
         if image_data is None:
             return None, None, log_messages, "No image data found in FITS file"
 
-        # Ensure data is float32 for better compatibility
-        # if image_data.dtype != np.float32:
-        #     image_data = image_data.astype(np.float32)
-
         # Check if WCS already exists
         try:
             existing_wcs = WCS(header)
@@ -136,7 +139,7 @@ def solve_with_astrometrynet(file_path):
         sources = _try_source_detection(
             image_data,
             header,
-            fwhm_estimates=[3.0, 4.0, 5.0],
+            fwhm_estimates=[3.5, 4.0, 5.0],
             threshold_multi=[2., 1.5],
             min_sources=50,
         )

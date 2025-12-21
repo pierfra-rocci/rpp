@@ -34,7 +34,12 @@ def find_candidates(
     mask : 2D array
         The mask data corresponding to the image."""
     st.warning("⚠️ Transient detection is currently in Beta phase.")
-    gain = header.get("GAIN", 1.0)
+    gain = header.get('GAIN', 65635/np.max(image))
+    if header.get('GAIN') is None:
+        gain = header.get('GAIN_ELE', gain)
+
+    cvf = header.get('CVF', 1)
+    gain /= cvf
 
     header, _ = fix_header(header)
     wcs = WCS(header)
