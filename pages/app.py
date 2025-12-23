@@ -893,7 +893,7 @@ if science_file is not None:
                         detection_mask,
                     )
 
-                    if isinstance(result, tuple) and len(result) == 6:
+                    if isinstance(result, tuple) and len(result) == 7:
                         phot_table_qtable, epsf_table, daofind, bkg, w, bkg_fig, fwhm_estimate = result
                     else:
                         st.error(
