@@ -894,7 +894,7 @@ if science_file is not None:
                     )
 
                     if isinstance(result, tuple) and len(result) == 6:
-                        phot_table_qtable, epsf_table, daofind, bkg, w, bkg_fig = result
+                        phot_table_qtable, epsf_table, daofind, bkg, w, bkg_fig, fwhm_estimate = result
                     else:
                         st.error(
                             f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}"
@@ -1156,7 +1156,7 @@ if science_file is not None:
                                 candidates = find_candidates(
                                     science_data,
                                     st.session_state["calibrated_header"],
-                                    mean_fwhm_pixel,
+                                    fwhm_estimate,
                                     pixel_size_arcsec,
                                     ra_center,
                                     dec_center,
