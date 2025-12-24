@@ -96,10 +96,11 @@ def find_candidates(
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
-        fwhm=0.5*fwhm*pixel_scale,
+        fwhm=fwhm*pixel_scale,
         time=header.get('DATE-OBS', None),
         skybot=True,
-        vizier=["gaiaedr3", "ps1", "skymapper", "sdss", "vsx"],
+        vizier=["gaiaedr3", "ps1", "skymapper",
+                "sdss", "vsx"],
         ned=False,
         verbose=True,
         flagged=True,

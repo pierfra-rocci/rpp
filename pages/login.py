@@ -67,7 +67,7 @@ if not st.session_state.logged_in:
     with login_col:
         login_clicked = st.button("Login")
     with register_col:
-        register_clicked = st.button("Register")
+        register_clicked = st.button("Sign Up")
 
     if login_clicked:
         if username and password:
