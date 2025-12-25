@@ -839,7 +839,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         flux_err_col = f"aperture_sum_err_{radius_label}"
 
         if inst_col:
-            tbl[mag_col] = tbl[inst_col] + zero_point - 0.09 * airmass
+            tbl[mag_col] = tbl[inst_col] + zero_point  #- 0.09 * airmass
 
         # try to compute mag error if not present but flux & flux_err exist
         if (
@@ -860,7 +860,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     # PSF magnitude (if available)
     if "psf_instrumental_mag" in final_table.columns:
         final_table["psf_mag"] = (
-            final_table["psf_instrumental_mag"] + zero_point - 0.09 * airmass
+            final_table["psf_instrumental_mag"] + zero_point  # - 0.09 * airmass
         )
 
     # remove columns from a list
