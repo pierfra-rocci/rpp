@@ -15,6 +15,17 @@ backend_pid_file="backend.pid"
 frontend_pid_file="frontend.pid"
 export APP_ENV=production
 
+# -----------------------------------------------------------------------------
+# IMPORTANT: Set the SMTP password for production before running the script.
+# This should be set as an environment variable, not hardcoded here.
+# For example, you can run: export SMTP_PASS="your_secret_password"
+# -----------------------------------------------------------------------------
+if [ -z "$SMTP_PASS" ]; then
+    echo "Warning: SMTP_PASS environment variable is not set."
+    echo "The application may not be able to send emails."
+    echo ""
+fi
+
 # Function to cleanup on exit
 cleanup() {
     echo ""
