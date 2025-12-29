@@ -96,6 +96,7 @@ def find_candidates(
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
+        fwhm=fwhm,
         pixscale=pixel_scale,
         time=header.get('DATE-OBS', None),
         skybot=True,
