@@ -113,7 +113,7 @@ def find_candidates(
         f"Candidate filtering complete. Found {len(candidates)} potential transients."
     )
 
-    for _, cand in enumerate(candidates)[:10]:
+    for _, cand in list(enumerate(candidates))[:10]:
         # Create the cutout from image based on the candidate
         cutout = cutouts.get_cutout(
             image,
