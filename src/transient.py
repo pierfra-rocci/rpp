@@ -113,7 +113,7 @@ def find_candidates(
         f"Candidate filtering complete. Found {len(candidates)} potential transients."
     )
 
-    for _, cand in enumerate(candidates):
+    for _, cand in enumerate(candidates)[:10]:
         # Create the cutout from image based on the candidate
         cutout = cutouts.get_cutout(
             image,
@@ -186,12 +186,11 @@ def plot_cutout(
     :param \**kwargs: All additional parameters will be directly passed to :func:`stdpipe.plots.imshow` calls on individual images
 
     """
-
-    curplot = 1
     nplots = len([_ for _ in planes if _ in cutout])
 
     # Always create a new figure for Streamlit
-    fig, axs = plt.subplots(1, nplots, figsize=(nplots * 4, 4 + 1.0), dpi=75, tight_layout=True)
+    fig, axs = plt.subplots(1, nplots, figsize=(nplots * 4, 4 + 1.0), dpi=75,
+                            tight_layout=True)
     if nplots == 1:
         axs = [axs]
 
@@ -263,9 +262,7 @@ def plot_cutout(
                 title += ' : ' + additional_title
         fig.suptitle(title)
 
-    # For Streamlit: return the figure so st.pyplot(fig) can be called by the caller
     return fig
-
 
 
 def create_template_mask(image, wcs, band="r", survey="ps1"):
