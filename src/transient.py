@@ -198,19 +198,12 @@ def plot_cutout(
     for ii, name in enumerate(planes):
         if name in cutout and cutout[name] is not None:
             ax = axs[ii]
-            params = {
-                'stretch': 'asinh'
-                if name in ['image', 'template', 'convolved']
-                else 'linear',
-                'r0': r0 if name in ['image', 'template', 'diff'] else None,
-                'cmap': 'Blues_r',
-                'show_colorbar': False,
-                'show_axis': False,
-            }
-            params.update(kwargs)
-            # Remove 'ax' from params for imshow, as matplotlib's imshow does not take 'ax'
-            imshow(cutout[name], **params)
-            ax.set_title(name.upper())
+            # Only pass supported arguments to matplotlib's imshow
+            imshow_kwargs = {'cmap': 'Blues_r'}
+            # Allow user to override cmap via kwargs
+            if 'cmap' in kwargs:
+                imshow_kwargs['cmap'] = kwargs['cmap']
+            imshow(cutout[name], **imshow_kwargs)
             ax.set_title(name.upper())
 
             # Mark overlays
