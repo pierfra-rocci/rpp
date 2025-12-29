@@ -36,7 +36,7 @@ def find_candidates(
         The image data where to search for transients.
     mask : 2D array
         The mask data corresponding to the image."""
-    # st.warning("⚠️ Transient detection is currently in Beta phase.")
+    st.warning("⚠️ Transient detection is currently in Beta phase.")
     if header.get('CVF'):
         gain = 1/header.get('CVF')
     else:
@@ -112,6 +112,12 @@ def find_candidates(
     st.success(
         f"Candidate filtering complete. Found {len(candidates)} potential transients."
     )
+
+    if len(candidates) > 100:
+        st.warning(
+            "⚠️ More than 100 candidates found. Displaying only the first 10 candidates."
+        )
+        candidates = candidates[:100]
 
     for _, cand in list(enumerate(candidates))[:10]:
         # Create the cutout from image based on the candidate
