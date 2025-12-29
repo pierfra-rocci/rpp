@@ -232,6 +232,14 @@ def plot_cutout(
             ax = axs[ii]
             img = cutout[name].copy()
             
+            # Replace NaN values with min value for proper display
+            if np.isnan(img).any():
+                valid_mask = ~np.isnan(img)
+                if valid_mask.any():
+                    img[~valid_mask] = np.nanmin(img)
+                else:
+                    img = np.ones_like(img) * 0.5  # Fallback for all-NaN
+            
             # Apply percentile-based scaling and stretch only to science image
             if name == 'image' and qq is not None:
                 interval = PercentileInterval(int(qq[0]), int(qq[1]))
@@ -241,8 +249,15 @@ def plot_cutout(
                     img = LinearStretch()(img)
                 elif stretch == 'asinh':
                     img = AsinhStretch()(img)
+            else:
+                # For template: apply simple min-max normalization
+                valid = img[~np.isnan(img)]
+                if len(valid) > 0:
+                    vmin, vmax = np.min(valid), np.max(valid)
+                    if vmax > vmin:
+                        img = (img - vmin) / (vmax - vmin)
             
-            imshow_kwargs = {'cmap': 'Blues_r'}
+            imshow_kwargs = {'cmap': 'Blues_r', 'vmin': 0, 'vmax': 1}
             if 'cmap' in kwargs:
                 imshow_kwargs['cmap'] = kwargs['cmap']
             ax.imshow(img, **imshow_kwargs)
