@@ -234,7 +234,7 @@ def plot_cutout(
             
             # Apply percentile-based scaling if qq is provided
             if qq is not None:
-                interval = PercentileInterval(qq[0], qq[1])
+                interval = PercentileInterval(int(qq[0]), int(qq[1]))
                 img = interval(img)
             
             # Apply stretch
