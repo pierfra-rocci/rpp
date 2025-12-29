@@ -893,8 +893,8 @@ if science_file is not None:
                         detection_mask,
                     )
 
-                    if isinstance(result, tuple) and len(result) == 7:
-                        phot_table_qtable, epsf_table, daofind, bkg, w, bkg_fig, fwhm_estimate = result
+                    if isinstance(result, tuple) and len(result) == 8:
+                        phot_table_qtable, epsf_table, daofind, bkg, w, bkg_fig, fwhm_estimate, mask = result
                     else:
                         st.error(
                             f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}"
@@ -1161,6 +1161,7 @@ if science_file is not None:
                                     ra_center,
                                     dec_center,
                                     search_radius / 3600,
+                                    mask=mask,
                                     filter_name=st.session_state.analysis_parameters.get(
                                         "transient_filter", "r"
                                     ),
