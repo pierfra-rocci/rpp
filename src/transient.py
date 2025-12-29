@@ -132,13 +132,14 @@ def find_candidates(
             cutout['template'] = None
 
         # Now we have three image planes in the cutout - let's display them
-        st.pyplot(plot_cutout(
+        fig = plot_cutout(
             cutout,
             # Image planes to display
             planes=['image', 'template'],
             # Percentile-based scaling and linear stretching
             qq=[0.5, 99.5],
-            stretch='linear'))
+            stretch='linear')
+        st.pyplot(fig)
 
     return candidates
 
@@ -207,7 +208,9 @@ def plot_cutout(
                 'show_axis': False,
             }
             params.update(kwargs)
-            imshow(cutout[name], ax=ax, **params)
+            # Remove 'ax' from params for imshow, as matplotlib's imshow does not take 'ax'
+            imshow(cutout[name], **params)
+            ax.set_title(name.upper())
             ax.set_title(name.upper())
 
             # Mark overlays
