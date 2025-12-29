@@ -1,7 +1,10 @@
 from stdpipe import (pipeline, cutouts,
-                     templates, plots, catalogs)
+                     templates, catalogs, photometry)
 import sep
 from astropy.coordinates import SkyCoord
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import imshow
+from matplotlib.patches import Circle
 import astropy.units as u
 from astropy.wcs import WCS
 import numpy as np
@@ -129,7 +132,7 @@ def find_candidates(
             cutout['template'] = None
 
         # Now we have three image planes in the cutout - let's display them
-        st.pyplot(plots.plot_cutout(
+        st.pyplot(plot_cutout(
             cutout,
             # Image planes to display
             planes=['image', 'template'],
@@ -138,6 +141,135 @@ def find_candidates(
             stretch='linear'))
 
     return candidates
+
+
+def plot_cutout(
+    cutout,
+    planes=['image', 'template', 'diff', 'mask'],
+    fig=None,
+    axs=None,
+    mark_x=None,
+    mark_y=None,
+    mark_r=5.0,
+    mark_r2=None,
+    mark_r3=None,
+    mark_color='red',
+    mark_lw=2,
+    mark_ra=None,
+    mark_dec=None,
+    r0=None,
+    show_title=True,
+    title=None,
+    additional_title=None,
+    **kwargs,
+):
+    """Routine for displaying various image planes from the cutout structure returned by :func:`stdpipe.cutouts.get_cutout`.
+
+    The cutout planes are displayed in a single row, in the order defined by `planes` paremeters. Optionally, circular mark may be overlayed over the planes at the specified pixel position inside the cutout.
+
+    :param cutout: Cutout structure as returned by :func:`stdpipe.cutouts.get_cutout`
+    :param planes: List of names of cutout planes to show
+    :param fig: Matplotlib figure where to plot, optional
+    :param axs: Matplotlib axes same length as planes, optional
+    :param mark_x: `x` coordinate of the overlay mark in cutout coordinates, optional
+    :param mark_y: `y` coordinate of the overlay mark in cutout coordinates, optional
+    :param mark_r: Radius of the overlay mark in cutout coordinates in pixels, optional
+    :param mark_color: Color of the overlay mark, optional
+    :param mark_lw: Line width of the overlay mark, optional
+    :param mark_ra: Sky coordinate of the overlay mark, overrides `mark_x` and `mark_y`, optional
+    :param mark_dec: Sky coordinate of the overlay mark, overrides `mark_x` and `mark_y`, optional
+    :param r0: Smoothing kernel size (sigma) to be applied to the image and template planes, optional
+    :param show_title: Show title over cutout. Defaults to True.
+    :param title: The title to show above the cutouts, optional. If not provided, the title will be constructed from various pieces of cutout metadata, plus the contents of `additoonal_title` field, if provided
+    :param additional_title: Additional text to append to automatically generated title of the cutout figure.
+    :param \**kwargs: All additional parameters will be directly passed to :func:`stdpipe.plots.imshow` calls on individual images
+
+    """
+
+    curplot = 1
+    nplots = len([_ for _ in planes if _ in cutout])
+
+    # Always create a new figure for Streamlit
+    fig, axs = plt.subplots(1, nplots, figsize=(nplots * 4, 4 + 1.0), dpi=75, tight_layout=True)
+    if nplots == 1:
+        axs = [axs]
+
+    for ii, name in enumerate(planes):
+        if name in cutout and cutout[name] is not None:
+            ax = axs[ii]
+            params = {
+                'stretch': 'asinh'
+                if name in ['image', 'template', 'convolved']
+                else 'linear',
+                'r0': r0 if name in ['image', 'template', 'diff'] else None,
+                'cmap': 'Blues_r',
+                'show_colorbar': False,
+                'show_axis': False,
+            }
+            params.update(kwargs)
+            imshow(cutout[name], ax=ax, **params)
+            ax.set_title(name.upper())
+
+            # Mark overlays
+            if mark_ra is not None and mark_dec is not None and cutout.get('wcs'):
+                mark_x, mark_y = cutout['wcs'].all_world2pix(mark_ra, mark_dec, 0)
+
+            if mark_x is not None and mark_y is not None:
+                ax.add_artist(
+                    Circle(
+                        (mark_x, mark_y),
+                        mark_r,
+                        edgecolor=mark_color,
+                        facecolor='none',
+                        ls='-',
+                        lw=mark_lw,
+                    )
+                )
+                for _ in [mark_r2, mark_r3]:
+                    if _ is not None:
+                        ax.add_artist(
+                            Circle(
+                                (mark_x, mark_y),
+                                _,
+                                edgecolor=mark_color,
+                                facecolor='none',
+                                ls='--',
+                                lw=mark_lw/2,
+                            )
+                        )
+
+    if show_title:
+        if title is None:
+            title = cutout['meta'].get('name', 'unnamed')
+            if 'time' in cutout['meta']:
+                title += ' at %s' % cutout['meta']['time'].to_value('iso')
+            if 'mag_filter_name' in cutout['meta']:
+                title += ' : ' + cutout['meta']['mag_filter_name']
+                if (
+                    'mag_color_name' in cutout['meta']
+                    and 'mag_color_term' in cutout['meta']
+                    and cutout['meta']['mag_color_term'] is not None
+                ):
+                    title += ' ' + photometry.format_color_term(
+                        cutout['meta']['mag_color_term'],
+                        color_name=cutout['meta']['mag_color_name'],
+                    )
+            if 'mag_limit' in cutout['meta']:
+                title += ' : limit %.2f' % cutout['meta']['mag_limit']
+            if 'mag_calib' in cutout['meta']:
+                title += ' : mag = %.2f $\pm$ %.2f' % (
+                    cutout['meta'].get('mag_calib', np.nan),
+                    cutout['meta'].get(
+                        'mag_calib_err', cutout['meta'].get('magerr', np.nan)
+                    ),
+                )
+            if additional_title:
+                title += ' : ' + additional_title
+        fig.suptitle(title)
+
+    # For Streamlit: return the figure so st.pyplot(fig) can be called by the caller
+    return fig
+
 
 
 def create_template_mask(image, wcs, band="r", survey="ps1"):
