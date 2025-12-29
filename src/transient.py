@@ -338,3 +338,34 @@ def create_template_mask(image, wcs, band="r", survey="ps1"):
     st.success("✅ Template mask created successfully.")
 
     return tmask
+
+
+# def checker_fn(xobj, xcat):
+#     """Example of custom checker function for filtering candidates.
+#     This function filters out objects that have a magnitude difference
+#     """
+#     xidx = np.ones_like(xobj, dtype=bool)
+
+#     if config.get('simple_mag_diff', 2.0):
+#         # Get filter used for photometric calibration
+#         fname = config.get('cat_col_mag')
+#         if fname.endswith('mag'):
+#             fname = fname[:-3]
+
+#         cat_col_mag, _ = guess_catalogue_mag_columns(fname, xcat)
+
+#         if cat_col_mag is not None:
+#             mag = xobj['mag_calib']
+#             if fname in ['U', 'B', 'V', 'R', 'I'] and cat_col_mag not in ['Umag', 'Bmag', 'Vmag', 'Rmag', 'Imag']:
+#                 # Convert to AB mags if using AB reference catalogue
+#                 mag += filter_ab_offset.get(fname, 0)
+
+#             diff = mag - xcat[cat_col_mag]
+
+#             if len(diff[np.isfinite(diff)]) > 10:
+#                 # Adjust zeropoint
+#                 diff -= np.nanmedian(diff)
+
+#             xidx = diff > config.get('simple_mag_diff', 2.0)
+
+#     return xidx
