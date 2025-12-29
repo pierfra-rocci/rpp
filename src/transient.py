@@ -33,7 +33,7 @@ def find_candidates(
         The image data where to search for transients.
     mask : 2D array
         The mask data corresponding to the image."""
-    st.warning("⚠️ Transient detection is currently in Beta phase.")
+    # st.warning("⚠️ Transient detection is currently in Beta phase.")
     if header.get('CVF'):
         gain = 1/header.get('CVF')
     else:
