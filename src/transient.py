@@ -101,8 +101,6 @@ def find_candidates(
         fwhm=0.5*fwhm*pixel_scale,
         time=header.get('DATE-OBS', None),
         skybot=True,
-        vizier=["gaiaedr3", "ps1", "skymapper",
-                "sdss", "vsx", "apass"],
         ned=False,
         verbose=True,
         flagged=True,
