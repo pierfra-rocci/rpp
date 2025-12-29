@@ -203,7 +203,7 @@ def plot_cutout(
             # Allow user to override cmap via kwargs
             if 'cmap' in kwargs:
                 imshow_kwargs['cmap'] = kwargs['cmap']
-            imshow(cutout[name], **imshow_kwargs)
+            ax.imshow(cutout[name], **imshow_kwargs)
             ax.set_title(name.upper())
 
             # Mark overlays
