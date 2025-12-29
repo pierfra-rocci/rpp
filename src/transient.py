@@ -230,18 +230,17 @@ def plot_cutout(
     for ii, name in enumerate(planes):
         if name in cutout and cutout[name] is not None:
             ax = axs[ii]
-            img = cutout[name]
+            img = cutout[name].copy()
             
-            # Apply percentile-based scaling if qq is provided
-            if qq is not None:
+            # Apply percentile-based scaling and stretch only to science image
+            if name == 'image' and qq is not None:
                 interval = PercentileInterval(int(qq[0]), int(qq[1]))
                 img = interval(img)
-            
-            # Apply stretch
-            if stretch == 'linear':
-                img = LinearStretch()(img)
-            elif stretch == 'asinh':
-                img = AsinhStretch()(img)
+                
+                if stretch == 'linear':
+                    img = LinearStretch()(img)
+                elif stretch == 'asinh':
+                    img = AsinhStretch()(img)
             
             imshow_kwargs = {'cmap': 'Blues_r'}
             if 'cmap' in kwargs:
