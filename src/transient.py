@@ -21,8 +21,8 @@ def find_candidates(
     sr,
     mask=None,
     filter_name=None,
-    mag_limit="<20",
-    detect_thresh=1.1
+    mag_limit="<19",
+    detect_thresh=1.5
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters
@@ -96,11 +96,11 @@ def find_candidates(
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
-        fwhm=fwhm*pixel_scale,
+        pixel_scale=pixel_scale,
         time=header.get('DATE-OBS', None),
         skybot=True,
         vizier=["gaiaedr3", "ps1", "skymapper",
-                "sdss", "vsx"],
+                "sdss", "vsx", "apass"],
         ned=False,
         verbose=True,
         flagged=True,

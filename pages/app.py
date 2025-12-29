@@ -1161,11 +1161,10 @@ if science_file is not None:
                                     ra_center,
                                     dec_center,
                                     search_radius / 3600,
-                                    mask=None,
                                     filter_name=st.session_state.analysis_parameters.get(
                                         "transient_filter", "r"
                                     ),
-                                    mag_limit="<21",
+                                    mag_limit="<20",
                                 )
                                 if candidates:
                                     st.subheader("Transient Candidates Found")
