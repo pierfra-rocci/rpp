@@ -14,6 +14,7 @@ from src.tools_pipeline import fix_header
 
 
 def find_candidates(
+    zero_point_value,
     image,
     header,
     fwhm,
@@ -67,6 +68,10 @@ def find_candidates(
     if obj is None:
         st.warning("No objects found in the image.")
         return []
+
+    mag = -2.5*np.log(obj['flux']) + zero_point_value
+    obj = np.lib.recfunctions.append_fields(
+        obj, 'mag', mag, usemask=False)
 
     st.info(f"Found {len(obj)} objects in the image.")
 

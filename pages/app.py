@@ -1154,6 +1154,7 @@ if science_file is not None:
                         ):
                             try:
                                 candidates = find_candidates(
+                                    zero_point_value,
                                     science_data,
                                     st.session_state["calibrated_header"],
                                     fwhm_estimate,
