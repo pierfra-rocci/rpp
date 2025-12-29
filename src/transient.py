@@ -45,7 +45,7 @@ def find_candidates(
     filter_cat=None,
     filter_name=None,
     mag_limit="<19",
-    detect_thresh=2.0
+    detect_thresh=1.5
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters
@@ -128,7 +128,7 @@ def find_candidates(
         skybot=True,
         vizier=['gaiaedr3', 'ps1', 'skymapper', 'sdss',
                 'vsx', 'apass', 'atlas'],
-        vizier_checker_fn=checker_fn(filter_mag=filter_cat),
+        # vizier_checker_fn=checker_fn(filter_mag=filter_cat),
         ned=False,
         verbose=True,
         flagged=True,
@@ -177,7 +177,7 @@ def find_candidates(
 
 def plot_cutout(
     cutout,
-    planes=['image', 'template', 'diff', 'mask'],
+    planes=['image', 'template'],
     fig=None,
     axs=None,
     mark_x=None,
