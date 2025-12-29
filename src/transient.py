@@ -96,7 +96,7 @@ def find_candidates(
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
-        pixel_scale=pixel_scale,
+        pixscale=pixel_scale,
         time=header.get('DATE-OBS', None),
         skybot=True,
         vizier=["gaiaedr3", "ps1", "skymapper",
