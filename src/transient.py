@@ -2,6 +2,8 @@ from stdpipe import (pipeline, cutouts,
                      templates, catalogs, photometry)
 import sep
 from astropy.coordinates import SkyCoord
+from astropy.visualization import (PercentileInterval, LinearStretch,
+                                   AsinhStretch)
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 import astropy.units as u
@@ -162,7 +164,7 @@ def find_candidates(
             st.warning(f"Failed to retrieve HiPS template image for candidate: {e}")
             cutout['template'] = None
 
-        # Now we have three image planes in the cutout - let's display them
+        # Now we have two image planes in the cutout - let's display them
         fig = plot_cutout(
             cutout,
             # Image planes to display
@@ -192,6 +194,8 @@ def plot_cutout(
     show_title=True,
     title=None,
     additional_title=None,
+    qq=None,
+    stretch='linear',
     **kwargs,
 ):
     """Routine for displaying various image planes from the cutout structure returned by :func:`stdpipe.cutouts.get_cutout`.
@@ -218,7 +222,6 @@ def plot_cutout(
     """
     nplots = len([_ for _ in planes if _ in cutout])
 
-    # Always create a new figure for Streamlit
     fig, axs = plt.subplots(1, nplots, figsize=(nplots * 4, 4 + 1.0), dpi=75,
                             tight_layout=True)
     if nplots == 1:
@@ -227,12 +230,23 @@ def plot_cutout(
     for ii, name in enumerate(planes):
         if name in cutout and cutout[name] is not None:
             ax = axs[ii]
-            # Only pass supported arguments to matplotlib's imshow
+            img = cutout[name]
+            
+            # Apply percentile-based scaling if qq is provided
+            if qq is not None:
+                interval = PercentileInterval(qq[0], qq[1])
+                img = interval(img)
+            
+            # Apply stretch
+            if stretch == 'linear':
+                img = LinearStretch()(img)
+            elif stretch == 'asinh':
+                img = AsinhStretch()(img)
+            
             imshow_kwargs = {'cmap': 'Blues_r'}
-            # Allow user to override cmap via kwargs
             if 'cmap' in kwargs:
                 imshow_kwargs['cmap'] = kwargs['cmap']
-            ax.imshow(cutout[name], **imshow_kwargs)
+            ax.imshow(img, **imshow_kwargs)
             ax.set_title(name.upper())
 
             # Mark overlays
