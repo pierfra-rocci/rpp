@@ -3,7 +3,6 @@ from stdpipe import (pipeline, cutouts,
 import sep
 from astropy.coordinates import SkyCoord
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import imshow
 from matplotlib.patches import Circle
 import astropy.units as u
 from astropy.wcs import WCS
@@ -36,7 +35,7 @@ def find_candidates(
         The image data where to search for transients.
     mask : 2D array
         The mask data corresponding to the image."""
-    st.warning("⚠️ Transient detection is currently in Beta phase.")
+    st.warning("⚠️ Transient detection is working but there is not filter on the candidates (too many). Further development is ongoing.")
     if header.get('CVF'):
         gain = 1/header.get('CVF')
     else:
