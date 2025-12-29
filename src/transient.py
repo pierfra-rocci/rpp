@@ -13,6 +13,25 @@ from astropy.table import Table
 from src.tools_pipeline import fix_header
 
 
+# Conversion to AB mags, from https://www.astronomy.ohio-state.edu/martini.10/usefuldata.html
+filter_ab_offset = {
+    'U': 0.79,
+    'B': -0.09,
+    'V': 0.02,
+    'R': 0.21,
+    'I': 0.45,
+    'u': 0,
+    'g': 0,
+    'r': 0,
+    'i': 0,
+    'z': 0,
+    'y': 0,
+    'G': 0,
+    'BP': 0,
+    'RP': 0,
+}
+
+
 def find_candidates(
     zero_point_value,
     image,
@@ -23,6 +42,7 @@ def find_candidates(
     dec_center,
     sr,
     mask=None,
+    filter_cat=None,
     filter_name=None,
     mag_limit="<19",
     detect_thresh=2.0
@@ -108,6 +128,7 @@ def find_candidates(
         skybot=True,
         vizier=['gaiaedr3', 'ps1', 'skymapper', 'sdss',
                 'vsx', 'apass', 'atlas'],
+        vizier_checker_fn=checker_fn(filter_mag=filter_cat),
         ned=False,
         verbose=True,
         flagged=True,
@@ -168,7 +189,6 @@ def plot_cutout(
     mark_lw=2,
     mark_ra=None,
     mark_dec=None,
-    r0=None,
     show_title=True,
     title=None,
     additional_title=None,
@@ -275,102 +295,93 @@ def plot_cutout(
     return fig
 
 
-def create_template_mask(image, wcs, band="r", survey="ps1"):
+def checker_fn(xobj, xcat, catname, filter_mag='r'):
+    """Example of custom checker function for filtering candidates.
+    This function filters out objects that have a magnitude difference
     """
-    Create a mask for the template image based on survey data.
-    Parameters
-    ----------
-    image : 2D array
-        The image data for which the template mask is to be created.
-    wcs : WCS object
-        The WCS information corresponding to the image.
-    band : str, optional
-        Filter band (default: 'r').
-    survey : str, optional
-        Survey name, 'ps1' or 'ls' (default: 'ps1').
-    Returns
-    -------
-    tmask : 2D array
-        The mask for the template image, where True indicates masked pixels.
-    """
-    st.warning("⚠️ Template mask creation is in Beta phase.")
+    xidx = np.ones_like(xobj, dtype=bool)
 
-    # Get r band image from Pan-STARRS with the same resolution and orientation
-    st.info(f"Retrieving survey template image (Band: {band}, Survey: {survey})...")
-    try:
-        tmpl = templates.get_survey_image(
-            band=band,
-            # One of 'image' or 'mask'
-            ext="image",
-            # Either 'ps1' for Pan-STARRS or 'ls' for Legacy Survey
-            survey=survey,
-            # pixel grid defined by WCS and image size
-            wcs=wcs,
-            width=image.shape[1],
-            height=image.shape[0],
-            verbose=True,
-        )
-    except Exception as e:
-        st.error(f"Failed to retrieve survey template image for band '{band}', survey '{survey}': {e}")
-        return np.zeros(image.shape, dtype=bool)  # Return an empty mask on failure
+    fname = filter_mag
+    if fname.endswith('mag'):
+        fname = fname[:-3]
 
-    # Also get proper mask
-    st.info(f"Retrieving survey mask (Band: {band})...")
-    try:
-        tmask = templates.get_survey_image(
-                            band=band,
-                            # One of 'image' or 'mask'
-                            ext="mask",
-                            # Either 'ps1' for Pan-STARRS or 'ls' for Legacy Survey
-                            survey=survey,
-                            # pixel grid defined by WCS and image size
-                            wcs=wcs,
-                            width=image.shape[1],
-                            height=image.shape[0],
-                            verbose=True,
-                        )
-    except Exception as e:
-        st.error(f"Failed to retrieve survey mask for band '{band}', survey '{survey}': {e}")
-        return np.zeros(image.shape, dtype=bool)  # Return an empty mask on failure
-    
-    st.info("Processing mask logic...")
-    # We will exclude pixels with any non-zero mask value
-    tmask = tmask > 0
-    tmask |= np.isnan(tmpl)
+    cat_col_mag, _ = guess_catalogue_mag_columns(fname, xcat)
 
-    # plots.imshow(tmask, show_colorbar=False)
+    if cat_col_mag is not None:
+        mag = xobj['mag_calib']
+        if fname in ['U', 'B', 'V', 'R', 'I'] and cat_col_mag not in ['Umag', 'Bmag', 'Vmag', 'Rmag', 'Imag']:
+            # Convert to AB mags if using AB reference catalogue
+            mag += filter_ab_offset.get(fname, 0)
 
-    st.success("✅ Template mask created successfully.")
+        diff = mag - xcat[cat_col_mag]
 
-    return tmask
+        if len(diff[np.isfinite(diff)]) > 10:
+            # Adjust zeropoint
+            diff -= np.nanmedian(diff)
+
+        xidx = diff > 1.0
+
+    return xidx
 
 
-# def checker_fn(xobj, xcat):
-#     """Example of custom checker function for filtering candidates.
-#     This function filters out objects that have a magnitude difference
-#     """
-#     xidx = np.ones_like(xobj, dtype=bool)
+def guess_catalogue_mag_columns(fname, cat, augmented_only=False):
+    cat_col_mag = None
+    cat_col_mag_err = None
 
-#     if config.get('simple_mag_diff', 2.0):
-#         # Get filter used for photometric calibration
-#         fname = config.get('cat_col_mag')
-#         if fname.endswith('mag'):
-#             fname = fname[:-3]
+    # Most of augmented catalogues
+    if f"{fname}mag" in cat.colnames:
+        cat_col_mag = f"{fname}mag"
 
-#         cat_col_mag, _ = guess_catalogue_mag_columns(fname, xcat)
+        if f"e_{fname}mag" in cat.colnames:
+            cat_col_mag_err = f"e_{fname}mag"
 
-#         if cat_col_mag is not None:
-#             mag = xobj['mag_calib']
-#             if fname in ['U', 'B', 'V', 'R', 'I'] and cat_col_mag not in ['Umag', 'Bmag', 'Vmag', 'Rmag', 'Imag']:
-#                 # Convert to AB mags if using AB reference catalogue
-#                 mag += filter_ab_offset.get(fname, 0)
+    elif augmented_only:
+        raise RuntimeError(f"Unsupported filter {fname} for this catalogue")
 
-#             diff = mag - xcat[cat_col_mag]
+    # Non-augmented PS1 etc
+    elif "gmag" in cat.colnames and "rmag" in cat.colnames:
+        if fname in ['U', 'B', 'V', 'BP']:
+            cat_col_mag = "gmag"
+        if fname in ['R', 'G']:
+            cat_col_mag = "rmag"
+        if fname in ['I', 'RP']:
+            cat_col_mag = "imag"
 
-#             if len(diff[np.isfinite(diff)]) > 10:
-#                 # Adjust zeropoint
-#                 diff -= np.nanmedian(diff)
+        if f"e_{cat_col_mag}" in cat.colnames:
+            cat_col_mag_err = f"e_{cat_col_mag}"
 
-#             xidx = diff > config.get('simple_mag_diff', 2.0)
+    # SkyMapper
+    elif f"{fname}PSF" in cat.colnames:
+        cat_col_mag = f"{fname}PSF"
 
-#     return xidx
+        if f"e_{fname}PSF" in cat.colnames:
+            cat_col_mag_err = f"e_{fname}PSF"
+
+    # Gaia DR2/eDR3/DR3 from Vizier
+    elif "BPmag" in cat.colnames and "RPmag" in cat.colnames and "Gmag" in cat.colnames:
+        if fname in ['U', 'B', 'V', 'R', 'u', 'g', 'r', 'BP']:
+            cat_col_mag = "BPmag"
+        elif fname in ['I', 'i', 'z', 'RP']:
+            cat_col_mag = "RPmag"
+        else:
+            cat_col_mag = "Gmag"
+
+        if f"e_{cat_col_mag}" in cat.colnames:
+            cat_col_mag_err = f"e_{cat_col_mag}"
+
+    # Gaia DR2/eDR3/DR3 from XMatch
+    elif "phot_bp_mean_mag" in cat.colnames and "phot_rp_mean_mag" in cat.colnames and "phot_g_mean_mag" in cat.colnames:
+        if fname in ['U', 'B', 'V', 'R', 'u', 'g', 'r', 'BP']:
+            cat_col_mag = "phot_bp_mean_mag"
+        elif fname in ['I', 'i', 'z', 'RP']:
+            cat_col_mag = "phot_rp_mean_mag"
+        else:
+            cat_col_mag = "phot_g_mean_mag"
+
+        if f"{cat_col_mag}_error" in cat.colnames:
+            cat_col_mag_err = f"{cat_col_mag}_error"
+
+    # else:
+    #     raise RuntimeError(f"Unsupported filter {fname} and/or catalogue")
+
+    return cat_col_mag, cat_col_mag_err

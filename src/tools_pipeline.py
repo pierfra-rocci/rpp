@@ -27,8 +27,8 @@ URL = "https://astro-colibri.science/"
 
 GAIA_BANDS = [
     ("G", "phot_g_mean_mag"),
-    ("Bp", "phot_bp_mean_mag"),
-    ("Rp", "phot_rp_mean_mag"),
+    ("BP", "phot_bp_mean_mag"),
+    ("RP", "phot_rp_mean_mag"),
     ("U", "u_jkc_mag"),
     ("V", "v_jkc_mag"),
     ("B", "b_jkc_mag"),
