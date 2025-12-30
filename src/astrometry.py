@@ -29,8 +29,8 @@ def _try_source_detection(
                 # get_objects_sextractor handles background estimation internally
                 # but we pass the background-subtracted image 'image_sub'.
                 # 'thresh' corresponds to the detection threshold (sigma).
-                if header.get('CVF'):
-                    gain = 1/header.get('CVF')
+                if header.get('GAIN'):
+                    gain = header.get('GAIN')
                 else:
                     gain = 65635/np.max(image)
 
