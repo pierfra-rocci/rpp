@@ -1007,9 +1007,15 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         _matched_table["zero_point"] = zero_points
         _matched_table["zero_point_error"] = np.std(zero_points)
 
-        clipped_zero_points = sigma_clip(
-            zero_points, sigma=3, cenfunc="mean", masked=False
-        )
+        # Use MAD (Median Absolute Deviation) for robust outlier removal
+        median_zp = np.median(zero_points)
+        mad = np.median(np.abs(zero_points - median_zp))
+
+        # Threshold: typically 3-5 * MAD for outlier removal
+        # Using 3.5 as a conservative threshold (equivalent to ~2.7σ for normal distribution)
+        mad_threshold = 3.5
+        outlier_mask = np.abs(zero_points - median_zp) <= mad_threshold * mad
+        clipped_zero_points = zero_points[outlier_mask]
 
         zero_point_value = np.median(clipped_zero_points)
         zero_point_std = np.std(clipped_zero_points)
