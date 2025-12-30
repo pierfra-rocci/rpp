@@ -153,20 +153,31 @@ def cross_match_with_gaia(
                 coord_string = f"{image_center_ra_dec[0]} {image_center_ra_dec[1]}"
                 
                 if is_southern:
-                    # Query SkyMapper
-                    catalog_table = Catalogs.query_region(
-                        coord_string,
-                        radius=radius_query_deg,
-                        catalog="Skymapper",
-                        data_release="dr2"
-                    )
+                    # Query SkyMapper (table parameter may be needed for DR2)
+                    try:
+                        catalog_table = Catalogs.query_region(
+                            coord_string,
+                            radius=radius_query_deg,
+                            catalog="Skymapper",
+                            data_release="dr2",
+                            table="mean"
+                        )
+                    except Exception:
+                        # If "mean" table fails, try without table parameter
+                        catalog_table = Catalogs.query_region(
+                            coord_string,
+                            radius=radius_query_deg,
+                            catalog="Skymapper",
+                            data_release="dr2"
+                        )
                 else:
-                    # Query PANSTARRS DR1
+                    # Query PANSTARRS DR1 (table="mean" is required)
                     catalog_table = Catalogs.query_region(
                         coord_string,
                         radius=radius_query_deg,
                         catalog="Panstarrs",
-                        data_release="dr1"
+                        data_release="dr1",
+                        table="mean"
                     )
                 
                 if catalog_table is None or len(catalog_table) == 0:
