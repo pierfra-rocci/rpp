@@ -92,8 +92,10 @@ def find_candidates(
         return []
 
     mag = -2.5*np.log(obj['flux']) + zero_point_value
+    # Compute magnitude error (rough estimate based on flux error)
+    mag_err = 2.5 / np.log(10) * obj['fluxerr'] / obj['flux']
     obj = np.lib.recfunctions.append_fields(
-        obj, 'mag', mag, usemask=False)
+        obj, ['mag_calib', 'mag_calib_err'], [mag, mag_err], usemask=False)
 
     st.info(f"Found {len(obj)} objects in the image.")
 
