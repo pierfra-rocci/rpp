@@ -1,6 +1,5 @@
 import os
 import json
-import streamlit as st
 from datetime import datetime, timedelta
 import requests
 
@@ -16,6 +15,7 @@ from astroquery.gaia import Gaia
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 from astroquery.imcce import Skybot
+from astroquery.mast import Catalogs
 
 from src.tools_pipeline import URL
 from src.utils import safe_catalog_query
@@ -31,52 +31,55 @@ def cross_match_with_gaia(
     refined_wcs=None,
 ):
     """
-    Cross-match detected sources with the GAIA DR3 star catalog.
-    This function queries the GAIA catalog for a region matching the image field of view,
-    applies filtering based on magnitude range, and matches GAIA sources to the detected sources.
+    Cross-match detected sources with the GAIA DR3 star catalog or PANSTARRS DR1/SkyMapper.
+    
+    This function queries the appropriate catalog for a region matching the image field of view:
+    - For g, r, i, z Sloan filters: queries PANSTARRS DR1 (north) or SkyMapper (south, dec < 0)
+    - For other bands: queries GAIA DR3 with synthetic photometry
+    
+    Applies filtering based on magnitude range and matches catalog sources to the detected sources.
     It also applies quality filters including variability, color index, and astrometric quality
     to ensure reliable photometric calibration stars.
 
     Parameters
     ----------
     _phot_table : astropy.table.Table
-
         Table containing detected source positions (underscore prevents caching issues)
     science_header : dict or astropy.io.fits.Header
         FITS header with WCS information (underscore prevents caching issues)
     pixel_size_arcsec : float
-
         Pixel scale in arcseconds per pixel
     mean_fwhm_pixel : float
         FWHM in pixels, used to determine matching radius
     filter_band : str
-        GAIA magnitude band to use for filtering (e.g., 'phot_g_mean_mag', 'phot_bp_mean_mag',
-        'phot_rp_mean_mag' or other synthetic photometry bands)
+        Magnitude band to use for filtering. For Sloan filters (gmag, rmag, imag, zmag),
+        uses PANSTARRS DR1 or SkyMapper. For GAIA bands (phot_g_mean_mag, phot_bp_mean_mag,
+        phot_rp_mean_mag) or synthetic photometry bands, uses GAIA DR3.
     filter_max_mag : float
-        Maximum magnitude for GAIA source filtering
+        Maximum magnitude for source filtering
     refined_wcs : astropy.wcs.WCS, optional
         A refined WCS object to use instead of the one from the header.
 
     Returns
     -------
     tuple (pandas.DataFrame | None, list[str])
-        - (matched_table, log_messages): DataFrame containing matched sources with both measured and GAIA catalog data,
-          or None if the cross-match failed or found no matches.
+        - (matched_table, log_messages): DataFrame containing matched sources with both measured and catalog data,
+        or None if the cross-match failed or found no matches.
         - log_messages: List of log messages.
     """
     log_messages = []
     if science_header is None:
         return None, [
-            "WARNING: No header information available. Cannot cross-match with Gaia."
+            "WARNING: No header information available. Cannot cross-match with catalog."
         ]
 
     try:
         if refined_wcs is not None:
             w = refined_wcs
-            log_messages.append("INFO: Using refined WCS for Gaia cross-matching.")
+            log_messages.append("INFO: Using refined WCS for cross-matching.")
         else:
             w = WCS(science_header)
-            log_messages.append("INFO: Using header WCS for Gaia cross-matching.")
+            log_messages.append("INFO: Using header WCS for cross-matching.")
     except Exception as e:
         return None, [f"ERROR: Error creating WCS: {e}"]
 
@@ -108,135 +111,272 @@ def cross_match_with_gaia(
             ]
 
         # Calculate search radius (divided by 1.5 to avoid field edge effects)
-        gaia_search_radius_arcsec = (
+        catalog_search_radius_arcsec = (
             max(science_header["NAXIS1"], science_header["NAXIS2"])
             * pixel_size_arcsec
             / 1.5
         )
-        radius_query = gaia_search_radius_arcsec * u.arcsec
+        radius_query = catalog_search_radius_arcsec * u.arcsec
+        radius_query_deg = catalog_search_radius_arcsec / 3600.0
 
         log_messages.append(
-            f"INFO: Querying Gaia in a radius of {round(radius_query.value / 60.0, 2)} arcmin."
+            f"INFO: Query radius: {round(radius_query.value / 60.0, 2)} arcmin."
         )
 
-        # Set Gaia data release
-        Gaia.MAIN_GAIA_TABLE = "gaiadr3.gaia_source"
-
-        # Create a SkyCoord object for more reliable coordinate handling
+        # Determine if we should use PANSTARRS or GAIA based on filter_band
+        sloan_bands = ["gmag", "rmag", "imag", "zmag"]
+        is_sloan_filter = filter_band in sloan_bands
+        
+        # Create a SkyCoord object for coordinate handling
         center_coord = SkyCoord(
             ra=image_center_ra_dec[0], dec=image_center_ra_dec[1], unit="deg"
         )
-
-        try:
-            job = Gaia.cone_search(center_coord, radius=radius_query)
-            gaia_table = job.get_results()
-
-            log_messages.append(
-                f"INFO: Retrieved {len(gaia_table) if gaia_table is not None else 0} sources from Gaia"
-            )
-
-            # Different query strategies based on filter band
-            if (
-                filter_band
-                not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]
-                and gaia_table is not None
-                and len(gaia_table) > 0
-            ):
-                # Create a comma-separated list of source_ids (limit to 1000)
-                max_sources = min(len(gaia_table), 1000)
-                source_ids = list(gaia_table["source_id"][:max_sources])
-                source_ids_str = ",".join(str(id) for id in source_ids)
-                # Query synthetic photometry just for these specific sources
-                synth_query = f"""
-                SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
-                r_jkc_mag, i_jkc_mag, u_sdss_mag, g_sdss_mag, r_sdss_mag,
-                i_sdss_mag, z_sdss_mag
-                FROM gaiadr3.synthetic_photometry_gspc
-                WHERE source_id IN ({source_ids_str})
-                """
-                synth_job = Gaia.launch_job(query=synth_query)
-                synth_table = synth_job.get_results()
-
-                # Join the two tables
-                if synth_table is not None and len(synth_table) > 0:
+        
+        if is_sloan_filter:
+            # For Sloan filters (g, r, i, z), use PANSTARRS DR1 or SkyMapper
+            # Check if we're in southern hemisphere
+            is_southern = image_center_ra_dec[1] < 0
+            
+            if is_southern:
+                catalog_name = "SkyMapper"
+                log_messages.append(
+                    f"INFO: Using SkyMapper catalog (southern hemisphere, dec={image_center_ra_dec[1]:.2f})."
+                )
+            else:
+                catalog_name = "Panstarrs"
+                log_messages.append(
+                    f"INFO: Using PANSTARRS DR1 catalog (northern hemisphere, dec={image_center_ra_dec[1]:.2f})."
+                )
+            
+            try:
+                # Format coordinates for Catalogs query
+                coord_string = f"{image_center_ra_dec[0]} {image_center_ra_dec[1]}"
+                
+                if is_southern:
+                    # Query SkyMapper
+                    catalog_table = Catalogs.query_region(
+                        coord_string,
+                        radius=radius_query_deg,
+                        catalog="Skymapper",
+                        data_release="dr2",
+                        table="mean"
+                    )
+                else:
+                    # Query PANSTARRS DR1
+                    catalog_table = Catalogs.query_region(
+                        coord_string,
+                        radius=radius_query_deg,
+                        catalog="Panstarrs",
+                        data_release="dr1",
+                        table="mean"
+                    )
+                
+                if catalog_table is None or len(catalog_table) == 0:
                     log_messages.append(
-                        f"INFO: Retrieved {len(synth_table)} synthetic photometry entries"
+                        f"WARNING: No {catalog_name} sources found within search radius."
                     )
-                    gaia_table = join(
-                        gaia_table, synth_table, keys="source_id", join_type="right"
-                    )
+                    return None, log_messages
+                
+                log_messages.append(
+                    f"INFO: Retrieved {len(catalog_table)} sources from {catalog_name}"
+                )
+                
+            except Exception as catalog_error:
+                log_messages.append(
+                    f"WARNING: {catalog_name} query failed: {catalog_error}"
+                )
+                return None, log_messages
+        
+        else:
+            # For GAIA bands, use GAIA DR3 with synthetic photometry
+            # Set Gaia data release
+            Gaia.MAIN_GAIA_TABLE = "gaiadr3.gaia_source"
 
-        except Exception as cone_error:
-            return None, [f"WARNING: Gaia query failed: {cone_error}"]
+            try:
+                job = Gaia.cone_search(center_coord, radius=radius_query)
+                catalog_table = job.get_results()
+
+                log_messages.append(
+                    f"INFO: Retrieved {len(catalog_table) if catalog_table is not None else 0} sources from Gaia"
+                )
+
+                # Different query strategies based on filter band
+                if (
+                    filter_band
+                    not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]
+                    and catalog_table is not None
+                    and len(catalog_table) > 0
+                ):
+                    # Create a comma-separated list of source_ids (limit to 1000)
+                    max_sources = min(len(catalog_table), 1000)
+                    source_ids = list(catalog_table["source_id"][:max_sources])
+                    source_ids_str = ",".join(str(id) for id in source_ids)
+                    # Query synthetic photometry just for these specific sources
+                    synth_query = f"""
+                    SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
+                    r_jkc_mag, i_jkc_mag, u_sdss_mag, g_sdss_mag, r_sdss_mag,
+                    i_sdss_mag, z_sdss_mag
+                    FROM gaiadr3.synthetic_photometry_gspc
+                    WHERE source_id IN ({source_ids_str})
+                    """
+                    synth_job = Gaia.launch_job(query=synth_query)
+                    synth_table = synth_job.get_results()
+
+                    # Join the two tables
+                    if synth_table is not None and len(synth_table) > 0:
+                        log_messages.append(
+                            f"INFO: Retrieved {len(synth_table)} synthetic photometry entries"
+                        )
+                        catalog_table = join(
+                            catalog_table, synth_table, keys="source_id", join_type="right"
+                        )
+
+            except Exception as cone_error:
+                log_messages.append(f"WARNING: Gaia query failed: {cone_error}")
+                return None, log_messages
     except KeyError as ke:
         return None, [f"ERROR: Missing header keyword: {ke}"]
     except Exception as e:
-        return None, [f"ERROR: Error querying Gaia: {e}"]
+        return None, [f"ERROR: Error querying catalog: {e}"]
 
-    if gaia_table is None or len(gaia_table) == 0:
-        return None, ["WARNING: No Gaia sources found within search radius."]
+    if catalog_table is None or len(catalog_table) == 0:
+        return None, ["WARNING: No catalog sources found within search radius."]
 
     try:
-        mag_filter = gaia_table[filter_band] < filter_max_mag
-        var_filter = gaia_table["phot_variable_flag"] != "VARIABLE"
-        color_index_filter = (gaia_table["bp_rp"] > -1) & (gaia_table["bp_rp"] < 2)
-        astrometric_filter = gaia_table["ruwe"] < 1.6
+        # Apply magnitude filter
+        mag_filter = catalog_table[filter_band] < filter_max_mag
+        catalog_table_filtered = catalog_table[mag_filter]
 
-        combined_filter = (
-            mag_filter & var_filter & color_index_filter & astrometric_filter
-        )
+        # Apply quality filters based on catalog type
+        if is_sloan_filter:
+            # For PANSTARRS/SkyMapper, apply basic filters
+            # Note: Column names may vary between PANSTARRS and SkyMapper
+            # These are typically 'nDetections' or similar for detection count
+            try:
+                # Basic quality filter: sources must have multiple detections
+                if "nDetections" in catalog_table_filtered.colnames:
+                    catalog_table_filtered = catalog_table_filtered[
+                        catalog_table_filtered["nDetections"] > 1
+                    ]
+                log_messages.append("INFO: Applied detection quality filter.")
+            except Exception as quality_error:
+                log_messages.append(
+                    f"WARNING: Could not apply quality filter: {quality_error}"
+                )
+        else:
+            # For GAIA, apply the original quality filters
+            try:
+                var_filter = catalog_table_filtered["phot_variable_flag"] != "VARIABLE"
+                color_index_filter = (catalog_table_filtered["bp_rp"] > -1) & (
+                    catalog_table_filtered["bp_rp"] < 2
+                )
+                astrometric_filter = catalog_table_filtered["ruwe"] < 1.6
 
-        gaia_table_filtered = gaia_table[combined_filter]
+                combined_filter = (
+                    var_filter & color_index_filter & astrometric_filter
+                )
 
-        if len(gaia_table_filtered) == 0:
+                catalog_table_filtered = catalog_table_filtered[combined_filter]
+            except Exception as e:
+                log_messages.append(f"WARNING: Could not apply GAIA quality filters: {e}")
+
+        if len(catalog_table_filtered) == 0:
             return None, [
-                f"WARNING: No Gaia sources found within magnitude range {filter_band} < {filter_max_mag}."
+                f"WARNING: No catalog sources found within magnitude range {filter_band} < {filter_max_mag}."
             ]
 
     except Exception as e:
-        return None, [f"ERROR: Error filtering Gaia catalog: {e}"]
+        return None, [f"ERROR: Error filtering catalog: {e}"]
 
     try:
-        gaia_skycoords = SkyCoord(
-            ra=gaia_table_filtered["ra"], dec=gaia_table_filtered["dec"], unit="deg"
-        )
-        idx, d2d, _ = source_positions_sky.match_to_catalog_sky(gaia_skycoords)
+        # Prepare catalog coordinates for matching
+        if is_sloan_filter:
+            # For PANSTARRS/SkyMapper, use appropriate RA/Dec column names
+            # PANSTARRS uses 'raMean', 'decMean'
+            # SkyMapper uses 'ra', 'dec' or similar
+            ra_col = None
+            dec_col = None
+            
+            if "raMean" in catalog_table_filtered.colnames and "decMean" in catalog_table_filtered.colnames:
+                ra_col, dec_col = "raMean", "decMean"
+            elif "ra" in catalog_table_filtered.colnames and "dec" in catalog_table_filtered.colnames:
+                ra_col, dec_col = "ra", "dec"
+            else:
+                # Try to find available columns
+                available_cols = catalog_table_filtered.colnames
+                ra_candidates = [c for c in available_cols if 'ra' in c.lower()]
+                dec_candidates = [c for c in available_cols if 'dec' in c.lower()]
+                if ra_candidates and dec_candidates:
+                    ra_col, dec_col = ra_candidates[0], dec_candidates[0]
+                else:
+                    return None, ["ERROR: Cannot find RA/Dec columns in catalog table"]
+            
+            catalog_skycoords = SkyCoord(
+                ra=catalog_table_filtered[ra_col],
+                dec=catalog_table_filtered[dec_col],
+                unit="deg"
+            )
+        else:
+            # For GAIA, use standard ra/dec
+            catalog_skycoords = SkyCoord(
+                ra=catalog_table_filtered["ra"],
+                dec=catalog_table_filtered["dec"],
+                unit="deg"
+            )
+        
+        idx, d2d, _ = source_positions_sky.match_to_catalog_sky(catalog_skycoords)
 
         max_sep_constraint = 2.5 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
-        gaia_matches = d2d < max_sep_constraint
+        catalog_matches = d2d < max_sep_constraint
 
-        matched_indices_gaia = idx[gaia_matches]
-        matched_indices_phot = np.where(gaia_matches)[0]
+        matched_indices_catalog = idx[catalog_matches]
+        matched_indices_phot = np.where(catalog_matches)[0]
 
-        if len(matched_indices_gaia) == 0:
+        if len(matched_indices_catalog) == 0:
             return None, [
-                "WARNING: No Gaia matches found within the separation constraint."
+                "WARNING: No catalog matches found within the separation constraint."
             ]
 
         matched_table_qtable = _phot_table[matched_indices_phot]
-
         matched_table = matched_table_qtable.to_pandas()
-        matched_table["gaia_separation_arcsec"] = d2d[gaia_matches].arcsec
+        matched_table["catalog_separation_arcsec"] = d2d[catalog_matches].arcsec
 
-        # Add Gaia source_id so it's available later
-        matched_table["gaia_source_id"] = gaia_table_filtered["designation"][
-            matched_indices_gaia
-        ]
+        # Add catalog identifiers and magnitude based on catalog type
+        if is_sloan_filter:
+            # For PANSTARRS/SkyMapper
+            if catalog_name == "SkyMapper":
+                # SkyMapper column name for source ID
+                id_col = "object_id" if "object_id" in catalog_table_filtered.colnames else catalog_table_filtered.colnames[0]
+                matched_table["catalog_source_id"] = catalog_table_filtered[id_col][
+                    matched_indices_catalog
+].values
+            else:
+                # PANSTARRS
+                id_col = "objID" if "objID" in catalog_table_filtered.colnames else catalog_table_filtered.colnames[0]
+                matched_table["catalog_source_id"] = catalog_table_filtered[id_col][
+                    matched_indices_catalog
+].values
+        else:
+            # For GAIA
+            matched_table["catalog_source_id"] = catalog_table_filtered["designation"][
+                matched_indices_catalog
+            ].values
 
-        # Add the filter_band column from the filtered Gaia table
-        matched_table[filter_band] = gaia_table_filtered[filter_band][
-            matched_indices_gaia
-        ]
+        # Add the filter_band magnitude
+        matched_table[filter_band] = catalog_table_filtered[filter_band][
+            matched_indices_catalog
+        ].values
 
-        valid_gaia_mags = np.isfinite(matched_table[filter_band])
-        matched_table = matched_table[valid_gaia_mags]
+        valid_mags = np.isfinite(matched_table[filter_band])
+        matched_table = matched_table[valid_mags]
 
         # Remove sources with SNR < 1
         if "snr" in matched_table.columns:
             matched_table = matched_table[matched_table["snr"] > 1]
 
+        catalog_type = catalog_name if is_sloan_filter else "Gaia"
         log_messages.append(
-            f"SUCCESS: Found {len(matched_table)} Gaia matches after filtering."
+            f"SUCCESS: Found {len(matched_table)} {catalog_type} matches after filtering."
         )
         return matched_table, log_messages
 

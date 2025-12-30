@@ -35,10 +35,10 @@ GAIA_BANDS = [
     ("R", "r_jkc_mag"),
     ("I", "i_jkc_mag"),
     ("u", "u_sdss_mag"),
-    ("g", "g_sdss_mag"),
-    ("r", "r_sdss_mag"),
-    ("i", "i_sdss_mag"),
-    ("z", "z_sdss_mag"),
+    ("g", "gmag"),
+    ("r", "rmag"),
+    ("i", "imag"),
+    ("z", "zmag"),
 ]
 
 
