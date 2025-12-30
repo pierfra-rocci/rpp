@@ -373,25 +373,25 @@ def cross_match_with_gaia(
                         break
                 if id_col is None:
                     id_col = catalog_table_filtered.colnames[0]
-                matched_table["catalog_source_id"] = catalog_table_filtered[id_col][
+                matched_table["catalog_source_id"] = np.asarray(catalog_table_filtered[id_col][
                     matched_indices_catalog
-                ].values
+                ])
             else:
                 # PANSTARRS - use objID from Vizier
                 id_col = "objID" if "objID" in catalog_table_filtered.colnames else catalog_table_filtered.colnames[0]
-                matched_table["catalog_source_id"] = catalog_table_filtered[id_col][
+                matched_table["catalog_source_id"] = np.asarray(catalog_table_filtered[id_col][
                     matched_indices_catalog
-                ].values
+                ])
         else:
             # For GAIA
-            matched_table["catalog_source_id"] = catalog_table_filtered["designation"][
+            matched_table["catalog_source_id"] = np.asarray(catalog_table_filtered["designation"][
                 matched_indices_catalog
-            ].values
+            ])
 
         # Add the filter_band magnitude
-        matched_table[filter_band] = catalog_table_filtered[filter_band][
+        matched_table[filter_band] = np.asarray(catalog_table_filtered[filter_band][
             matched_indices_catalog
-        ].values
+        ])
 
         valid_mags = np.isfinite(matched_table[filter_band])
         matched_table = matched_table[valid_mags]
