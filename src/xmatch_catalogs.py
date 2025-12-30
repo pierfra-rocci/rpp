@@ -149,36 +149,44 @@ def cross_match_with_gaia(
                 )
             
             try:
-                # Format coordinates for Catalogs query
-                coord_string = f"{image_center_ra_dec[0]} {image_center_ra_dec[1]}"
-                
                 if is_southern:
-                    # Query SkyMapper (table parameter may be needed for DR2)
+                    # Query SkyMapper via Vizier (V/161)
+                    # SkyMapper DR2 catalog in Vizier
                     try:
-                        catalog_table = Catalogs.query_region(
-                            coord_string,
-                            radius=radius_query_deg,
-                            catalog="Skymapper",
-                            data_release="dr2",
-                            table="mean"
+                        v = Vizier(columns=['RAJ2000', 'DEJ2000', 'e_RAJ2000', 'e_DEJ2000', 
+                                            'gmag', 'e_gmag', 'rmag', 'e_rmag', 
+                                            'imag', 'e_imag', 'zmag', 'e_zmag',
+                                            'class_star', 'nDetections'])
+                        v.ROW_LIMIT = -1  # No row limit
+                        catalog_table = v.query_region(
+                            center_coord,
+                            radius=radius_query * u.arcsec,
+                            catalog='V/161'  # SkyMapper DR2
                         )
-                    except Exception:
-                        # If "mean" table fails, try without table parameter
-                        catalog_table = Catalogs.query_region(
-                            coord_string,
-                            radius=radius_query_deg,
-                            catalog="Skymapper",
-                            data_release="dr2"
-                        )
+                        if len(catalog_table) > 0:
+                            catalog_table = catalog_table[0]
+                    except Exception as vizier_error:
+                        log_messages.append(f"INFO: Vizier SkyMapper query failed, trying alternative: {vizier_error}")
+                        catalog_table = None
                 else:
-                    # Query PANSTARRS DR1 (table="mean" is required)
-                    catalog_table = Catalogs.query_region(
-                        coord_string,
-                        radius=radius_query_deg,
-                        catalog="Panstarrs",
-                        data_release="dr1",
-                        table="mean"
-                    )
+                    # Query PANSTARRS DR1 via Vizier (II/349)
+                    # PANSTARRS DR1 catalog in Vizier is more reliable than MAST API
+                    try:
+                        v = Vizier(columns=['RAJ2000', 'DEJ2000', 'e_RAJ2000', 'e_DEJ2000',
+                                            'gmag', 'e_gmag', 'rmag', 'e_rmag',
+                                            'imag', 'e_imag', 'zmag', 'e_zmag',
+                                            'Nd', 'objID'])
+                        v.ROW_LIMIT = -1  # No row limit
+                        catalog_table = v.query_region(
+                            center_coord,
+                            radius=radius_query * u.arcsec,
+                            catalog='II/349/ps1'  # PANSTARRS DR1
+                        )
+                        if len(catalog_table) > 0:
+                            catalog_table = catalog_table[0]
+                    except Exception as vizier_error:
+                        log_messages.append(f"INFO: Vizier PANSTARRS query failed, trying alternative: {vizier_error}")
+                        catalog_table = None
                 
                 if catalog_table is None or len(catalog_table) == 0:
                     log_messages.append(
@@ -187,7 +195,7 @@ def cross_match_with_gaia(
                     return None, log_messages
                 
                 log_messages.append(
-                    f"INFO: Retrieved {len(catalog_table)} sources from {catalog_name}"
+                    f"INFO: Retrieved {len(catalog_table)} sources from {catalog_name} via Vizier"
                 )
                 
             except Exception as catalog_error:
@@ -259,13 +267,15 @@ def cross_match_with_gaia(
         # Apply quality filters based on catalog type
         if is_sloan_filter:
             # For PANSTARRS/SkyMapper, apply basic filters
-            # Note: Column names may vary between PANSTARRS and SkyMapper
-            # These are typically 'nDetections' or similar for detection count
+            # Note: Column names from Vizier:
+            # - PANSTARRS: Nd = number of detections
+            # - SkyMapper: nDetections
             try:
                 # Basic quality filter: sources must have multiple detections
-                if "nDetections" in catalog_table_filtered.colnames:
+                detection_col = "Nd" if "Nd" in catalog_table_filtered.colnames else "nDetections"
+                if detection_col in catalog_table_filtered.colnames:
                     catalog_table_filtered = catalog_table_filtered[
-                        catalog_table_filtered["nDetections"] > 1
+                        catalog_table_filtered[detection_col] > 1
                     ]
                 log_messages.append("INFO: Applied detection quality filter.")
             except Exception as quality_error:
@@ -300,13 +310,14 @@ def cross_match_with_gaia(
     try:
         # Prepare catalog coordinates for matching
         if is_sloan_filter:
-            # For PANSTARRS/SkyMapper, use appropriate RA/Dec column names
-            # PANSTARRS uses 'raMean', 'decMean'
-            # SkyMapper uses 'ra', 'dec' or similar
+            # For PANSTARRS/SkyMapper via Vizier, use Vizier standard column names
+            # Vizier uses RAJ2000/DEJ2000 for coordinates
             ra_col = None
             dec_col = None
             
-            if "raMean" in catalog_table_filtered.colnames and "decMean" in catalog_table_filtered.colnames:
+            if "RAJ2000" in catalog_table_filtered.colnames and "DEJ2000" in catalog_table_filtered.colnames:
+                ra_col, dec_col = "RAJ2000", "DEJ2000"
+            elif "raMean" in catalog_table_filtered.colnames and "decMean" in catalog_table_filtered.colnames:
                 ra_col, dec_col = "raMean", "decMean"
             elif "ra" in catalog_table_filtered.colnames and "dec" in catalog_table_filtered.colnames:
                 ra_col, dec_col = "ra", "dec"
@@ -352,19 +363,25 @@ def cross_match_with_gaia(
 
         # Add catalog identifiers and magnitude based on catalog type
         if is_sloan_filter:
-            # For PANSTARRS/SkyMapper
+            # For PANSTARRS/SkyMapper (via Vizier)
             if catalog_name == "SkyMapper":
-                # SkyMapper column name for source ID
-                id_col = "object_id" if "object_id" in catalog_table_filtered.colnames else catalog_table_filtered.colnames[0]
+                # SkyMapper - try different ID column names
+                id_col = None
+                for col in ["objID", "object_id", "ID"]:
+                    if col in catalog_table_filtered.colnames:
+                        id_col = col
+                        break
+                if id_col is None:
+                    id_col = catalog_table_filtered.colnames[0]
                 matched_table["catalog_source_id"] = catalog_table_filtered[id_col][
                     matched_indices_catalog
-].values
+                ].values
             else:
-                # PANSTARRS
+                # PANSTARRS - use objID from Vizier
                 id_col = "objID" if "objID" in catalog_table_filtered.colnames else catalog_table_filtered.colnames[0]
                 matched_table["catalog_source_id"] = catalog_table_filtered[id_col][
                     matched_indices_catalog
-].values
+                ].values
         else:
             # For GAIA
             matched_table["catalog_source_id"] = catalog_table_filtered["designation"][
