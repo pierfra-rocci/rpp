@@ -623,11 +623,18 @@ def perform_psf_photometry(
         raise
 
     try:
-        # ensure fit_shape is odd and reasonably large (small FWHM can produce too small boxes)
-        fit_shape = max(9, 2 * int(round(fwhm)) + 1)
+        # Ensure fit_shape accommodates 1.5*FWHM aperture radius
+        # aperture_radius = fit_shape / 2.0, so:
+        # fit_shape >= 2 * 1.5 * FWHM = 3 * FWHM
+        fit_shape = max(11, int(3 * fwhm + 1))
         if fit_shape % 2 == 0:
             fit_shape += 1
-        st.write(f"Fitting shape: {fit_shape} pixels.")
+        aperture_radius = fit_shape / 2.0
+        st.write(
+            f"Fitting shape: {fit_shape} pixels "
+            f"(aperture radius: {aperture_radius:.2f} px = "
+            f"{aperture_radius/fwhm:.2f} × FWHM)."
+        )
     except Exception as e:
         st.error(f"Error calculating fitting shape: {e}")
         raise
@@ -926,7 +933,7 @@ def perform_psf_photometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,
             finder=daostarfind,
-            aperture_radius=float(fit_shape) / 2.0,
+            aperture_radius=aperture_radius,
             grouper=grouper,
             localbkg_estimator=localbkg_estimator,
         )
