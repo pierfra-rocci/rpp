@@ -927,7 +927,7 @@ def perform_psf_photometry(
         grouper = SourceGrouper(min_separation=min_separation)
         sigma_clip = SigmaClip(sigma=3.0)
         bkgstat = MMMBackground(sigma_clip=sigma_clip)
-        localbkg_estimator = LocalBackground(2.0 * fwhm, 2.5 * fwhm, bkgstat)
+        localbkg_estimator = LocalBackground(3.0 * fwhm, 5.0 * fwhm, bkgstat)
 
         psfphot = PSFPhotometry(
             psf_model=psf_for_phot,
