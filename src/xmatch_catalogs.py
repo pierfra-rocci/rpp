@@ -287,12 +287,11 @@ def cross_match_with_gaia(
             try:
                 var_filter = catalog_table_filtered["phot_variable_flag"] != "VARIABLE"
                 color_index_filter = (catalog_table_filtered["bp_rp"] > -1) & (
-                    catalog_table_filtered["bp_rp"] < 2
+                    catalog_table_filtered["bp_rp"] < 3
                 )
-                astrometric_filter = catalog_table_filtered["ruwe"] < 1.6
 
                 combined_filter = (
-                    var_filter & color_index_filter & astrometric_filter
+                    var_filter & color_index_filter
                 )
 
                 catalog_table_filtered = catalog_table_filtered[combined_filter]
