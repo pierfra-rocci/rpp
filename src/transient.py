@@ -92,8 +92,12 @@ def find_candidates(
         return []
 
     mag = -2.5*np.log(obj['flux']) + zero_point_value
-    # Compute magnitude error (rough estimate based on flux error)
-    mag_err = 2.5 / np.log(10) * obj['fluxerr'] / obj['flux']
+    # Compute magnitude error - use err field if available, else use fractional error estimate
+    if 'err' in obj.dtype.names:
+        mag_err = 2.5 / np.log(10) * obj['err'] / obj['flux']
+    else:
+        # Fallback: use a default fractional error estimate (5%)
+        mag_err = 2.5 / np.log(10) * 0.05 * np.ones_like(obj['flux'])
     obj = np.lib.recfunctions.append_fields(
         obj, ['mag_calib', 'mag_calib_err'], [mag, mag_err], usemask=False)
 
