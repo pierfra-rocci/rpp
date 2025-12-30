@@ -130,7 +130,7 @@ def find_candidates(
         skybot=True,
         vizier=['gaiaedr3', 'ps1', 'skymapper', 'sdss',
                 'vsx', 'apass', 'atlas'],
-        # vizier_checker_fn=checker_fn(filter_mag=filter_cat),
+        vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
         ned=False,
         verbose=True,
         flagged=True,
@@ -142,7 +142,7 @@ def find_candidates(
 
     if len(candidates) > 100:
         st.warning(
-            "⚠️ More than 100 candidates found. Displaying only the first 10 candidates."
+            "More than 100 candidates found. Displaying only the first 10 candidates."
         )
         candidates = candidates[:100]
 
