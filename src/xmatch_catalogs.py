@@ -160,7 +160,7 @@ def cross_match_with_gaia(
                         v.ROW_LIMIT = -1  # No row limit
                         catalog_table = v.query_region(
                             center_coord,
-                            radius=radius_query * u.arcsec,
+                            radius=radius_query_deg * u.deg,
                             catalog='V/161'  # SkyMapper DR2
                         )
                         if len(catalog_table) > 0:
@@ -179,7 +179,7 @@ def cross_match_with_gaia(
                         v.ROW_LIMIT = -1  # No row limit
                         catalog_table = v.query_region(
                             center_coord,
-                            radius=radius_query * u.arcsec,
+                            radius=radius_query_deg * u.deg,
                             catalog='II/349/ps1'  # PANSTARRS DR1
                         )
                         if len(catalog_table) > 0:
