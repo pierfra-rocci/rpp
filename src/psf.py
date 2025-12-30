@@ -758,7 +758,7 @@ def perform_psf_photometry(
         use_gaussian_fallback = False
 
         builder_attempts = [
-            dict(oversampling=3, maxiters=5),
+            dict(oversampling=2, maxiters=7),
         ]
 
         for params in builder_attempts:
