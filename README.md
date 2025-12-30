@@ -157,19 +157,29 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - Check internet connectivity for catalog queries (GAIA, SIMBAD, etc.).
 - Verify coordinate system and field center are correct.
 
-## Recent changes / Changelog (last update: 2025-11-29)
+## Recent changes / Changelog (last update: 2025-12-30)
 
-- **Version 1.4.6**
-- Maintenance release with minor improvements and dependency updates.
+### Current Version (1.4.7)
+- **Python 3.12 Compatibility**: Project upgraded to require Python 3.12 with verified dependency resolution
+- **Enhanced Dependency Management**: Updated to latest stable versions:
+  - astropy 7.1.1
+  - astropy-iers-data 0.2025.11.3.0.38.37
+  - aiohttp 3.11.18
+  - certifi 2025.1.31
+- **Improved astrometry support**: Via `stdpipe` integration for robust local plate solving
+- **Transient Detection (Beta)**: Identification of transient candidates using template comparison and catalog filtering
+- **Multi-catalog cross-matching**: GAIA DR3, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, 10 Parsec Catalog, and Astro-Colibri integration
 
-- **Version 1.4.5**
-- Integrated `stdpipe` for robust local astrometric solving.
-- Added **Transient Finder** (Beta) utilizing `stdpipe` image subtraction and catalog filtering.
-- Added **10 Parsec Catalog** to cross-matching.
-- Improved PSF Photometry with Gaussian fallback if EPSF building fails.
-- Automatic Cosmic Ray rejection enabled by default using `astroscrappy`.
-- UI improvements in Streamlit app (Astrometry check toggle, Aladin Lite v3 integration).
-- Refactored header handling and WCS creation for better stability.
+### Version History
+
+#### Version 1.4.5
+- Integrated `stdpipe` for robust local astrometric solving via Astrometry.net
+- Added **Transient Finder** (Beta) utilizing `stdpipe` image subtraction and catalog filtering
+- Added **10 Parsec Catalog** to multi-catalog cross-matching pipeline
+- Improved PSF Photometry with empirical ePSF and Gaussian fallback mechanisms
+- Automatic Cosmic Ray rejection enabled by default using `astroscrappy` (L.A.Cosmic algorithm)
+- UI/UX enhancements: Astrometry check toggle, Aladin Lite v3 integration for interactive sky viewing
+- Refactored header handling and WCS creation for improved stability and accuracy
 
 ## Contributing
 - Please open issues or pull requests for bugs, feature requests or improvements.
