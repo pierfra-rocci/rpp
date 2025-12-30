@@ -1,36 +1,47 @@
 Troubleshooting
 =============
 
-This section addresses common issues and provides solutions for RAPAS Photometry Pipeline.
+This section addresses common issues and provides solutions for RAPAS Photometry Pipeline (v1.3.1).
 
 Installation & Setup Issues
 -------------------------
+
+**Error: Python version mismatch (Expected Python 3.12)**
+
+*   **Problem**: The project requires Python 3.12 exactly, but you have a different version installed.
+*   **Solution**:
+    1.  Check your Python version: `python --version`
+    2.  Install Python 3.12 from python.org or your package manager
+    3.  Create a new virtual environment with Python 3.12: `python3.12 -m venv .venv`
+    4.  Activate the environment and reinstall dependencies: `pip install -e .`
 
 **Error: ImportError: No module named '...'** (e.g., `astropy`, `photutils`, `flask`, `astroscrappy`)
 
 *   **Problem**: Required Python packages are not installed or not found in the current environment.
 *   **Solution**:
     1.  Ensure your virtual environment is activated (`source .venv/bin/activate` or `.venv\Scripts\activate`).
-    2.  Run `pip install -r requirements.txt` from the application's root directory.
+    2.  Verify you are using Python 3.12: `python --version`
+    3.  Run `pip install -e .` from the application's root directory to install all dependencies.
+    4.  If issues persist, try: `pip install --upgrade --force-reinstall -e .`
 
 **Error: Could not connect to backend at http://localhost:5000** (on Login page)
 
 *   **Problem**: The Flask backend server (`backend.py`) is not running or is inaccessible.
 *   **Solution**:
     1.  Open a separate terminal in the application's root directory.
-    2.  Activate the virtual environment.
+    2.  Activate the virtual environment with Python 3.12.
     3.  Run `python backend.py`.
     4.  Check the terminal output for errors. Ensure no other process is using port 5000.
 
 **Error: DLL load failed while importing...** (Windows)
 
 *   **Problem**: Missing C++ runtime libraries required by some Python packages (e.g., `numpy`, `scipy`).
-*   **Solution**: Install the latest Microsoft Visual C++ Redistributable packages for Visual Studio from the official Microsoft website.
+*   **Solution**: Install the latest Microsoft Visual C++ Redistributable packages for Visual Studio from the official Microsoft website. Ensure compatibility with Python 3.12 (64-bit or 32-bit as needed).
 
 **Streamlit Version Issues**
 
-*   **Problem**: Errors related to Streamlit functions or behavior might indicate an incompatible version.
-*   **Solution**: Check the `requirements.txt` file for the recommended Streamlit version and install it specifically: `pip install streamlit==<version>`.
+*   **Problem**: Errors related to Streamlit functions or behavior might indicate version incompatibility.
+*   **Solution**: Check `pyproject.toml` for the recommended Streamlit version. Reinstall: `pip install --upgrade streamlit`.
 
 Login & Registration Issues
 -------------------------

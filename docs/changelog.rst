@@ -3,12 +3,22 @@ Changelog
 
 This document records all notable changes to RAPAS Photometry Pipeline.
 
-Version 1.4.6 (Current)
+Version 1.3.1 (Current)
 -----------------------
 
+**Released: December 30, 2025**
+
+**Python 3.12 Upgrade & Dependency Management**
+*   Upgraded to Python 3.12 with verified dependency resolution
+*   Updated astropy to 7.1.1 with latest IERS data (0.2025.11.3.0.38.37)
+*   Updated aiohttp to 3.11.18 with latest security patches
+*   Updated certifi to 2025.1.31 for current CA certificate bundle
+*   All dependencies verified compatible with Python 3.12
+
 **Maintenance & Stability**
-*   Minor improvements and bug fixes.
-*   Updated dependencies.
+*   Comprehensive dependency audit and updates
+*   Improved compatibility with latest Python ecosystem
+*   Enhanced system library integration
 
 Version 1.4.5
 -------------
@@ -16,26 +26,30 @@ Version 1.4.5
 **Major Features**
 
 *   **Advanced Astrometric Pipeline**: 
-    *   Integrated `stdpipe` for robust local astrometric solving.
-    *   Added WCS refinement using SCAMP (via stdpipe) and GAIA DR3 catalog.
-    *   Automatic header validation and fixing for problematic WCS keywords.
+    *   Integrated `stdpipe` for robust local astrometric solving
+    *   Added WCS refinement using SCAMP (via stdpipe) and GAIA DR3 catalog
+    *   Automatic header validation and fixing for problematic WCS keywords
 
 *   **Transient Detection (Beta)**:
-    *   New **Transient Finder** module utilizing image subtraction and catalog filtering.
-    *   Integration with PanSTARRS and SkyMapper surveys for template comparison.
-    *   Automatic candidate filtering against cataloged sources.
+    *   New **Transient Finder** module utilizing image subtraction and catalog filtering
+    *   Integration with PanSTARRS and SkyMapper surveys for template comparison
+    *   Automatic candidate filtering against cataloged sources
+    *   Hemisphere-based automatic survey selection (PanSTARRS north, SkyMapper south)
 
 *   **Enhanced Cross-Matching**:
-    *   Added **10 Parsec Catalog** for nearby star identification.
-    *   Improved filtering for existing catalogs.
+    *   Added **10 Parsec Catalog** for nearby star identification
+    *   Improved filtering for existing catalogs
+    *   Multi-band photometric support (GAIA G, BP, RP)
 
 *   **Photometry Improvements**:
-    *   Improved PSF Photometry with Gaussian fallback if EPSF building fails.
-    *   Automatic Cosmic Ray rejection enabled by default using `astroscrappy`.
+    *   Improved PSF Photometry with Gaussian fallback if EPSF building fails
+    *   Automatic Cosmic Ray rejection enabled by default using `astroscrappy` (L.A.Cosmic algorithm)
+    *   Multi-aperture photometry with 1.5×, 2.0× FWHM radii
 
 *   **User Interface**:
-    *   Astrometry check toggle.
-    *   Aladin Lite v3 integration for improved visualization.
+    *   Astrometry check toggle for automatic/manual plate solving
+    *   Aladin Lite v3 integration for improved interactive visualization
+    *   Enhanced progress tracking and status updates
 
 Version 0.9.8
 -----------------------

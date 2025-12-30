@@ -1,10 +1,12 @@
 User Guide
 =========
 
+**Current Version: 1.3.1 (December 2025)**
+
 Getting Started
 --------------
 
-RAPAS Photometry Pipeline (RPP) provides a streamlined workflow for astronomical image analysis through a user-friendly web interface. This guide walks you through the complete process from login and image upload to final photometric catalog generation.
+RAPAS Photometry Pipeline (RPP) provides a streamlined workflow for astronomical image analysis through a user-friendly web interface. This guide walks you through the complete process from login and image upload to final photometric catalog generation with multi-catalog cross-matching.
 
 **Prerequisites:** Ensure the backend server (`backend.py`) is running before launching the frontend.
 
@@ -63,16 +65,16 @@ Step 4: Run Photometric Calibration
 ----------------------------------
 1. Click the "Photometric Calibration" button to start the pipeline.
 2. The processing includes:
-   * Optional cosmic ray removal (if enabled)
-   * Background estimation and modeling
-   * Source detection using DAOStarFinder
-   * FWHM estimation and refinement
-   * Multi-aperture photometry (1.5×, 2.0×, 2.5×, 3.0× FWHM)
-   * PSF model construction and PSF photometry
-   * Optional WCS refinement using stdpipe and Gaia DR3
-   * Cross-matching with Gaia DR3 for photometric calibration
-   * Zero-point calculation with outlier rejection
-   * Atmospheric extinction correction
+   * Optional cosmic ray removal using L.A.Cosmic algorithm (if enabled)
+   * Background estimation and 2D noise mapping with SExtractor algorithm
+   * Source detection using DAOStarFinder with configurable threshold
+   * FWHM (seeing) estimation and refinement from stellar profiles
+   * Multi-aperture photometry (1.5×, 2.0× FWHM with local background subtraction)
+   * Empirical PSF model construction and PSF photometry with Gaussian fallback
+   * Optional WCS refinement using stdpipe and Astrometry.net/GAIA DR3
+   * Cross-matching with GAIA DR3 for photometric calibration and zero-point determination
+   * Atmospheric extinction correction using calculated airmass
+   * Complete error propagation through entire photometric pipeline
 
 Step 5: Catalog Enhancement
 --------------------------

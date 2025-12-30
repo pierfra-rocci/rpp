@@ -35,11 +35,11 @@ Advanced Image Processing
    - Missing keyword interpolation and defaults
 
 **Cosmic Ray Removal**:
-   - L.A.Cosmic algorithm implementation via astroscrappy
-   - Configurable parameters (gain, read noise, sigma clipping)
-   - Before/after image comparison
-   - Integration with photometry pipeline
-   - Quality assessment and validation
+   - L.A.Cosmic algorithm implementation via `astroscrappy` package
+   - Automatic cosmic ray detection and removal enabled by default
+   - Configurable parameters (gain, read noise, sigma clipping thresholds)
+   - Before/after comparison for quality assessment
+   - Seamless integration into photometry pipeline preprocessing
 
 **Background Estimation**:
    - photutils.Background2D with SExtractor algorithm
@@ -90,11 +90,12 @@ Source Detection & Photometry
    - Seeing estimation from stellar profiles
 
 **Multi-Aperture Photometry**:
-   - Four aperture radii: 1.5×, 2.0×, 2.5×, 3.0× FWHM
-   - Circular apertures with local background estimation
-   - Annular background regions for each aperture
-   - Background-corrected and raw flux measurements
-   - Signal-to-noise ratio calculation for each aperture
+   - Two primary aperture radii: 1.5× and 2.0× FWHM (optimized for most use cases)
+   - Circular apertures with local background estimation using annular regions
+   - Per-aperture background-corrected and raw flux measurements
+   - Signal-to-noise ratio (SNR) and magnitude error calculation for each aperture
+   - Magnitude calibration against GAIA DR3 zero-point
+   - Support for aperture correction and PSF comparison
 
 **PSF Photometry**:
    - Empirical PSF model construction using EPSFBuilder

@@ -9,9 +9,9 @@ advanced features.
 Minimum requirements
 --------------------
 
-- Python 3.12+
-- pip
-- 2 GB free disk (more recommended for large image sets)
+- Python 3.12 (exactly) - required for verified dependency compatibility
+- pip (latest version recommended)
+- 2-3 GB free disk space (more recommended for large image sets and temporary processing files)
 
 Quick install (PowerShell)
 -------------------------

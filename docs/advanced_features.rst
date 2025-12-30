@@ -3,6 +3,43 @@ Advanced Features
 
 This section covers advanced features and specialized use cases for RAPAS Photometry Pipeline.
 
+Transient Detection (Beta)
+-----------------------
+
+The transient detection module enables automated search for new sources and variable objects in your astronomical images through comparison with reference survey templates.
+
+**How It Works**:
+
+1.  **Reference Survey Selection**: The pipeline automatically selects appropriate reference surveys based on your observation location:
+    *   **Northern Hemisphere** (latitude > 0°): Uses PanSTARRS1 survey with g, r, i, z, y filter bands
+    *   **Southern Hemisphere** (latitude < 0°): Uses SkyMapper survey with g, r, i filter bands
+
+2.  **Template Comparison**: Using `stdpipe` image subtraction capabilities, your observation is compared against high-quality reference templates from the selected survey.
+
+3.  **Candidate Identification**: Sources detected in the subtracted image represent potential transient candidates (new sources, variable objects, or anomalies).
+
+4.  **Candidate Filtering**: Detected candidates are automatically cross-matched against known catalog sources to remove false positives:
+    *   Filtered against GAIA DR3 for stellar objects
+    *   Filtered against SIMBAD for known objects
+    *   Filtered against SkyBoT for solar system objects
+    *   Filtered against AAVSO VSX for variable stars
+
+5.  **Classification**: Remaining candidates are flagged as potential transients with quality metrics indicating confidence level.
+
+**Using the Transient Finder**:
+
+*   Enable "Enable Transient Finder" in the sidebar under "Transient Candidates"
+*   The reference survey and filter band are automatically selected based on your image coordinates
+*   Transient candidates appear in the results catalog with a `transient_flag` column
+*   Additional details include subtraction SNR, position offset from known sources, and magnitude estimate
+
+**Interpreting Results**:
+
+*   Candidates with high subtraction SNR are more likely to be genuine transients
+*   Position matching helps identify whether a detection is truly new or a catalog miss
+*   Review magnitude estimates and color information from cross-matching
+*   Check the processing log for details on template selection and subtraction parameters
+
 PSF Photometry
 ------------
 
