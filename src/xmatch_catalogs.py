@@ -158,8 +158,7 @@ def cross_match_with_gaia(
                         coord_string,
                         radius=radius_query_deg,
                         catalog="Skymapper",
-                        data_release="dr2",
-                        table="mean"
+                        data_release="dr2"
                     )
                 else:
                     # Query PANSTARRS DR1
@@ -167,8 +166,7 @@ def cross_match_with_gaia(
                         coord_string,
                         radius=radius_query_deg,
                         catalog="Panstarrs",
-                        data_release="dr1",
-                        table="mean"
+                        data_release="dr1"
                     )
                 
                 if catalog_table is None or len(catalog_table) == 0:
