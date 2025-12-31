@@ -91,12 +91,12 @@ def find_candidates(
         st.warning("No objects found in the image.")
         return []
 
-    mag = -2.5*np.log(obj['flux']) + zero_point_value
+    mag = np.round(-2.5*np.log(obj['flux']) + zero_point_value, 2)
     if 'err' in obj.dtype.names:
-        mag_err = 2.5 / np.log(10) * obj['err'] / obj['flux']
+        mag_err = np.round(2.5 / np.log(10) * obj['err'] / obj['flux'], 3)
     else:
         # Fallback: use a default fractional error estimate (5%)
-        mag_err = 2.5 / np.log(10) * 0.05 * np.ones_like(obj['flux'])
+        mag_err = np.round(2.5 / np.log(10) * 0.05 * np.ones_like(obj['flux']), 3)
     obj = np.lib.recfunctions.append_fields(
         obj, ['mag_calib', 'mag_calib_err'], [mag, mag_err], usemask=False)
 
@@ -130,7 +130,7 @@ def find_candidates(
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
-        fwhm=0.5*fwhm*pixel_scale,
+        fwhm=1.*fwhm*pixel_scale,
         time=header.get('DATE-OBS', None),
         skybot=True,
         vizier=['gaiaedr3', 'ps1', 'skymapper', 'sdss',
