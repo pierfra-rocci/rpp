@@ -46,8 +46,8 @@ def find_candidates(
     mask=None,
     filter_cat=None,
     filter_name=None,
-    mag_limit="<20",
-    detect_thresh=1.5
+    mag_limit="<19",
+    detect_thresh=2.0
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters
