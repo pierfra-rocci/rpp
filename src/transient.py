@@ -372,6 +372,8 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
     # Find the corresponding magnitude column in the reference catalog
     cat_col_mag, _ = guess_catalogue_mag_columns(fname, xcat)
 
+    st.write(f"{cat_col_mag}, {fname}")
+
     if cat_col_mag is not None:
         mag = xobj['mag_calib'].copy()
 
