@@ -354,7 +354,7 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
     catname : str
         Name of the catalog (for informational purposes)
     filter_mag : str, default 'r'
-        Filter name (e.g., 'r', 'rmag', 'V', 'Vmag')
+        Filter name (e.g., 'r', 'rmag', 'V', 'Vmag', 'phot_g_mean_mag')
 
     Returns
     -------
@@ -364,10 +364,22 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
     # Initialize: all objects pass by default if no catalog match found
     xidx = np.ones_like(xobj, dtype=bool)
 
-    # Normalize filter name (strip 'mag' suffix if present)
+    # Normalize filter name: extract core filter from various formats
     fname = filter_mag
     if fname.endswith('mag'):
-        fname = fname[:-3]
+        fname = fname[:-3]  # Remove 'mag' suffix
+    
+    # Extract single-letter filter from composite names (e.g., 'phot_g_mean_' -> 'g')
+    # Look for single letter filters: u, g, r, i, z, U, B, V, R, I, G, BP, RP
+    single_filters = ['u', 'g', 'r', 'i', 'z', 'U', 'B', 'V', 'R', 'I', 'G', 'BP', 'RP']
+    extracted_filter = None
+    for filt in single_filters:
+        if filt in fname:
+            extracted_filter = filt
+            break
+    
+    if extracted_filter:
+        fname = extracted_filter
 
     # Find the corresponding magnitude column in the reference catalog
     cat_col_mag, _ = guess_catalogue_mag_columns(fname, xcat)
@@ -395,7 +407,7 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
             diff -= median_diff
 
         # Select objects with large magnitude deviations (genuine transient candidates)
-        # Threshold: ≥ 2.0 mag difference indicates likely new source
+        # Threshold: ≥2.0 mag difference indicates likely new source
         xidx = diff >= 2.0
 
     return xidx
