@@ -80,6 +80,21 @@ def clear_all_caches():
         if "files_loaded" in st.session_state:
             st.session_state["files_loaded"] = {"science_file": None}
 
+        # Clear analysis results to hide download buttons
+        result_keys = [
+            "calibrated_header",
+            "final_phot_table",
+            "epsf_model",
+            "epsf_photometry_result",
+            "log_buffer",
+        ]
+        for key in result_keys:
+            if key in st.session_state:
+                del st.session_state[key]
+
+        # Reset base filename to default
+        st.session_state["base_filename"] = "photometry"
+
         st.success("All caches cleared successfully!")
         st.rerun()
     except Exception as e:
