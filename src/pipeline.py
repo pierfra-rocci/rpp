@@ -653,102 +653,17 @@ def detection_and_photometry(
         phot_tables = []
 
         for i, (aperture, annulus) in enumerate(zip(apertures, annulus_apertures)):
-            # Aperture photometry
+            # Aperture photometry on source
             phot_result = aperture_photometry(
                 image_sub, aperture, error=total_error, wcs=wcs_obj
             )
 
-            # Background estimation from annulus with robust outlier rejection
+            # Background estimation from annulus
+            # According to photutils documentation, aperture_photometry returns the
+            # sum within the aperture. For the annulus, this is the total flux in the annulus.
             bkg_result = aperture_photometry(
                 image_sub, annulus, error=total_error, wcs=wcs_obj
             )
-
-            # Process each source in this aperture size
-            n_sources = len(bkg_result)
-
-            for source_idx in range(n_sources):
-                # Get individual apertures for this source
-                if hasattr(annulus, "__getitem__"):  # Multiple sources
-                    single_annulus = annulus[source_idx]
-                    single_aperture = aperture[source_idx]
-                else:  # Single source
-                    single_annulus = annulus
-                    single_aperture = aperture
-
-                # Get the annulus mask for this specific source
-                try:
-                    annulus_mask = single_annulus.to_mask(method="center")
-                    if annulus_mask is None:
-                        continue
-
-                    annulus_data = annulus_mask.multiply(image_sub)
-                    if annulus_data is None or annulus_data.size == 0:
-                        continue
-
-                    # Extract only the non-zero pixels
-                    annulus_pixels = annulus_data[annulus_data != 0]
-
-                    if (
-                        len(annulus_pixels) > 10
-                    ):  # Need sufficient pixels for statistics
-                        # Remove saturated pixels
-                        saturation_level = science_header.get(
-                            "SATURATE", np.max(image_data) * 0.95
-                        )
-                        valid_pixels = annulus_pixels[
-                            annulus_pixels < saturation_level * 0.8
-                        ]
-
-                        if len(valid_pixels) == 0:
-                            continue
-
-                        # Iterative sigma clipping
-                        clipped_pixels = sigma_clip(
-                            valid_pixels, sigma=3, maxiters=3, masked=False
-                        )
-
-                        if len(clipped_pixels) > 5:
-                            median_val = np.median(clipped_pixels)
-                            mad_val = np.median(np.abs(clipped_pixels - median_val))
-                            threshold = median_val + 3 * mad_val
-
-                            final_pixels = clipped_pixels[clipped_pixels <= threshold]
-
-                            if len(final_pixels) > 3:
-                                robust_bkg_per_pixel = np.mean(final_pixels)
-                                robust_bkg_std = np.std(final_pixels)
-
-                                # Calculate total background for this aperture
-                                aperture_area = single_aperture.area
-                                robust_total_bkg = robust_bkg_per_pixel * aperture_area
-
-                                # Update the background result for this source
-                                bkg_result["aperture_sum"][source_idx] = (
-                                    robust_total_bkg
-                                )
-
-                                if "aperture_sum_err" in bkg_result.colnames:
-                                    bkg_uncertainty = robust_bkg_std * np.sqrt(
-                                        aperture_area
-                                    )
-                                    bkg_result["aperture_sum_err"][source_idx] = (
-                                        bkg_uncertainty
-                                    )
-                            elif len(clipped_pixels) > 0:
-                                # Fallback to sigma-clipped mean
-                                robust_bkg_per_pixel = np.mean(clipped_pixels)
-                                robust_total_bkg = (
-                                    robust_bkg_per_pixel * single_aperture.area
-                                )
-                                bkg_result["aperture_sum"][source_idx] = (
-                                    robust_total_bkg
-                                )
-
-                except Exception as e:
-                    print(
-                        f"Warning: Background estimation failed for source {source_idx}: {e}"
-                    )
-                    continue
 
             # Add radius information and process results
             radius_suffix = f"_{aperture_radii[i]:.1f}"
@@ -763,13 +678,17 @@ def detection_and_photometry(
                     "aperture_sum_err", f"aperture_sum_err{radius_suffix}"
                 )
 
-            # Calculate background-corrected photometry
+            # Calculate background-corrected photometry following photutils best practices
+            # Reference: https://photutils.readthedocs.io/en/2.3.0/user_guide/aperture.html
             if "aperture_sum" in bkg_result.colnames:
-                # Ensure we handle both scalar and array cases
-                annulus_area = getattr(annulus, "area", [a.area for a in annulus])
-                aperture_area = getattr(aperture, "area", [a.area for a in aperture])
+                # Get the aperture and annulus areas
+                # Using .area property which gives exact analytical area
+                annulus_area = annulus.area
+                aperture_area = aperture.area
 
-                # Avoid division by zero
+                # Step 1: Calculate per-pixel background from annulus measurement
+                # bkg_result["aperture_sum"] is the total flux in the annulus region
+                # Divide by annulus area to get average per-pixel background
                 with np.errstate(divide="ignore", invalid="ignore"):
                     bkg_per_pixel = np.divide(
                         bkg_result["aperture_sum"],
@@ -778,15 +697,18 @@ def detection_and_photometry(
                         where=annulus_area != 0,
                     )
 
+                # Step 2: Calculate total background within source aperture
+                # Multiply per-pixel background by source aperture area
                 total_bkg = bkg_per_pixel * aperture_area
 
-                # Store background-corrected flux
-                if f"aperture_sum{radius_suffix}" in phot_result.colnames:
+                # Step 3: Compute background-corrected source flux
+                aperture_sum_col = f"aperture_sum{radius_suffix}"
+                if aperture_sum_col in phot_result.colnames:
                     phot_result[f"aperture_sum_bkg_corr{radius_suffix}"] = (
-                        phot_result[f"aperture_sum{radius_suffix}"] - total_bkg
+                        phot_result[aperture_sum_col] - total_bkg
                     )
 
-                # Store background information
+                # Step 4: Store background information for reference
                 phot_result[f"background{radius_suffix}"] = total_bkg
                 phot_result[f"background_per_pixel{radius_suffix}"] = bkg_per_pixel
 
@@ -922,7 +844,7 @@ def detection_and_photometry(
         return phot_table, epsf_table, daofind, bkg, wcs_obj, bkg_fig, fwhm_estimate, mask
     except Exception as e:
         st.error(f"Error performing aperture photometry: {e}")
-        return None, None, daofind, bkg, wcs_obj, None, fwhm_estimatee, mask
+        return None, None, daofind, bkg, wcs_obj, None, fwhm_estimate, mask
 
 
 def show_subtracted_image(image_sub):
