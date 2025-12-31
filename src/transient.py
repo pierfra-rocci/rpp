@@ -46,7 +46,7 @@ def find_candidates(
     mask=None,
     filter_cat=None,
     filter_name=None,
-    mag_limit="<19",
+    mag_limit="<20",
     detect_thresh=1.5
 ):
     """Find transient candidates in the given image around the specified object.
@@ -99,7 +99,7 @@ def find_candidates(
     # Perform classical circular aperture photometry with proper error estimation
     # Use aperture radius of ~1.5 * FWHM for optimal signal-to-noise ratio
     aperture_radius = 1.5 * fwhm
-    flux, flux_err, ap_flags = sep.sum_circle(
+    flux, flux_err, _ = sep.sum_circle(
         image_sub,         # background-subtracted image
         obj['x'], obj['y'],  # object centroids
         aperture_radius,   # aperture radius in pixels
