@@ -593,7 +593,7 @@ def detection_and_photometry(
     # Convert to float64 to ensure compatibility with calc_total_error
     total_error = calc_total_error(
         image_sub.astype(np.float64), bkg_error.astype(np.float64),
-        gain=np.float64(camera_gain)
+        effective_gain=np.float64(camera_gain)
     )
 
     st.write("Estimating FWHM ...")

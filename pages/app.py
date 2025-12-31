@@ -849,6 +849,10 @@ if science_file is not None:
         image_to_process = science_data
         header_to_process = science_header.copy()
 
+        # Initialize zero_point variables to avoid undefined variable errors later
+        zero_point_value = None
+        zero_point_std = None
+
         # Validate that we have a header
         if header_to_process is None:
             st.error(
