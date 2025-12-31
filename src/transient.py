@@ -151,7 +151,7 @@ def find_candidates(
         time=header.get('DATE-OBS', None),
         skybot=True,
         vizier=['gaiaedr3', 'ps1', 'skymapper', 'sdss',
-                'apass', 'atlas'],
+                'apass', 'atlas', 'vsx', 'gsc'],
         vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
         ned=False,
         verbose=True,
