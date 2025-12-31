@@ -84,21 +84,38 @@ def find_candidates(
     st.info("Extracting source objects from image using SEP...")
     image = image.astype(image.dtype.newbyteorder("="))
     bkg = sep.Background(image, mask=mask)
-    obj = sep.extract(image-bkg.back(), detect_thresh,
+
+    # Subtract spatially-varying background from image
+    image_sub = image - bkg.back()
+
+    # Detect objects using background-subtracted image
+    obj = sep.extract(image_sub, detect_thresh,
                       gain=gain, mask=mask, err=bkg.globalrms)
 
     if obj is None:
         st.warning("No objects found in the image.")
         return []
 
-    mag = np.round(-2.5*np.log(obj['flux']) + zero_point_value, 2)
-    if 'err' in obj.dtype.names:
-        mag_err = np.round(2.5 / np.log(10) * obj['err'] / obj['flux'], 3)
-    else:
-        # Fallback: use a default fractional error estimate (5%)
-        mag_err = np.round(2.5 / np.log(10) * 0.05 * np.ones_like(obj['flux']), 3)
+    # Perform classical circular aperture photometry with proper error estimation
+    # Use aperture radius of ~1.5 * FWHM for optimal signal-to-noise ratio
+    aperture_radius = 1.5 * fwhm
+    flux, flux_err, ap_flags = sep.sum_circle(
+        image_sub,         # background-subtracted image
+        obj['x'], obj['y'],  # object centroids
+        aperture_radius,   # aperture radius in pixels
+        err=bkg.globalrms,  # use global RMS for error estimation
+        gain=gain          # camera gain for Poisson noise
+    )
+
+    # Calculate magnitudes from aperture flux with proper error propagation
+    mag = np.round(-2.5*np.log10(np.abs(flux)) + zero_point_value, 2)
+    # Propagate flux errors to magnitude errors using standard formula
+    mag_err = np.round(2.5 / np.log(10) * flux_err / np.abs(flux), 3)
+
+    # Add photometry results to object table
     obj = np.lib.recfunctions.append_fields(
-        obj, ['mag_calib', 'mag_calib_err'], [mag, mag_err], usemask=False)
+        obj, ['flux_aper', 'flux_aper_err', 'mag_calib', 'mag_calib_err'], 
+        [flux, flux_err, mag, mag_err], usemask=False)
 
     st.info(f"Found {len(obj)} objects in the image.")
 
