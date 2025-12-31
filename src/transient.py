@@ -58,9 +58,9 @@ def find_candidates(
         The image data where to search for transients.
     mask : 2D array
         The mask data corresponding to the image."""
-    st.warning("⚠️ Transient detection is working but there is not filter on the candidates (too many). Further development is ongoing.")
-    if header.get('CVF'):
-        gain = 1/header.get('CVF')
+    st.warning("⚠️ Transient detection is working but there are too many candidates. Further development is ongoing.")
+    if header.get('GAIN'):
+        gain = header.get('GAIN')
     else:
         gain = 65635/np.max(image)
 
@@ -92,7 +92,6 @@ def find_candidates(
         return []
 
     mag = -2.5*np.log(obj['flux']) + zero_point_value
-    # Compute magnitude error - use err field if available, else use fractional error estimate
     if 'err' in obj.dtype.names:
         mag_err = 2.5 / np.log(10) * obj['err'] / obj['flux']
     else:
