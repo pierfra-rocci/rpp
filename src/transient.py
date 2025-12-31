@@ -134,7 +134,7 @@ def find_candidates(
         time=header.get('DATE-OBS', None),
         skybot=True,
         vizier=['gaiaedr3', 'ps1', 'skymapper', 'sdss',
-                'vsx', 'apass', 'atlas', 'gsc'],
+                'vsx', 'apass', 'atlas'],
         vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
         ned=False,
         verbose=True,
@@ -178,8 +178,8 @@ def find_candidates(
             # Image planes to display
             planes=['image', 'template'],
             # Percentile-based scaling and asinh stretching for better visualization
-            qq=[2, 98],
-            stretch='asinh')
+            qq=[1, 99],
+            stretch='linear')
         st.pyplot(fig)
 
     return candidates
@@ -340,7 +340,7 @@ def plot_cutout(
 
 def checker_fn(xobj, xcat, catname, filter_mag='r'):
     """Filter candidates based on magnitude consistency with reference catalog.
-    
+
     Identifies potential transients by selecting objects whose measured magnitudes
     differ significantly (≥2.0 mag) from the reference catalog values, indicating
     they may be genuine new sources rather than catalog mismatches.
@@ -368,7 +368,7 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
     fname = filter_mag
     if fname.endswith('mag'):
         fname = fname[:-3]  # Remove 'mag' suffix
-    
+
     # Extract single-letter filter from composite names (e.g., 'phot_g_mean_' -> 'g')
     # Look for single letter filters: u, g, r, i, z, U, B, V, R, I, G, BP, RP
     single_filters = ['u', 'g', 'r', 'i', 'z', 'U', 'B', 'V', 'R', 'I', 'G', 'BP', 'RP']
@@ -377,7 +377,7 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
         if filt in fname:
             extracted_filter = filt
             break
-    
+
     if extracted_filter:
         fname = extracted_filter
 
@@ -415,7 +415,7 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
 
 def guess_catalogue_mag_columns(fname, cat, augmented_only=False):
     """Find magnitude column in catalog, with fallback to closest filter alternative.
-    
+
     Parameters
     ----------
     fname : str
@@ -424,7 +424,7 @@ def guess_catalogue_mag_columns(fname, cat, augmented_only=False):
         Catalog with colnames attribute
     augmented_only : bool
         If True, raise error if exact filter not found in augmented catalogs
-    
+
     Returns
     -------
     tuple
@@ -446,7 +446,7 @@ def guess_catalogue_mag_columns(fname, cat, augmented_only=False):
         'G': ['g', 'r', 'gmag', 'rmag'],
         'RP': ['i', 'imag', 'RPmag'],
     }
-    
+
     cat_col_mag = None
     cat_col_mag_err = None
 
@@ -540,7 +540,7 @@ def guess_catalogue_mag_columns(fname, cat, augmented_only=False):
                 elif alt_filter in ['I', 'i'] and "imag" in cat.colnames:
                     cat_col_mag = "imag"
                     break
-        
+
         if cat_col_mag and f"e_{cat_col_mag}" in cat.colnames:
             cat_col_mag_err = f"e_{cat_col_mag}"
 
