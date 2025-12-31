@@ -395,13 +395,46 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
             diff -= median_diff
 
         # Select objects with large magnitude deviations (genuine transient candidates)
-        # Threshold: ≥1.5 mag difference indicates likely new source
-        xidx = diff >= 1.5
+        # Threshold: ≥ 2.0 mag difference indicates likely new source
+        xidx = diff >= 2.0
 
     return xidx
 
 
 def guess_catalogue_mag_columns(fname, cat, augmented_only=False):
+    """Find magnitude column in catalog, with fallback to closest filter alternative.
+    
+    Parameters
+    ----------
+    fname : str
+        Filter name (e.g., 'g', 'r', 'BP', 'RP')
+    cat : astropy.table.Table or similar
+        Catalog with colnames attribute
+    augmented_only : bool
+        If True, raise error if exact filter not found in augmented catalogs
+    
+    Returns
+    -------
+    tuple
+        (magnitude_column_name, magnitude_error_column_name) or (None, None)
+    """
+    # Map of filter similarities: if exact filter not found, try alternatives in order
+    filter_alternatives = {
+        'u': ['u', 'U'],
+        'g': ['g', 'G', 'gmag'],
+        'r': ['r', 'R', 'rmag'],
+        'i': ['i', 'I', 'imag'],
+        'z': ['z'],
+        'U': ['U', 'u', 'gmag'],
+        'B': ['g', 'gmag', 'BPmag'],
+        'V': ['g', 'r', 'gmag', 'rmag'],
+        'R': ['r', 'rmag', 'RPmag'],
+        'I': ['i', 'imag', 'RPmag'],
+        'BP': ['g', 'gmag', 'BPmag'],
+        'G': ['g', 'r', 'gmag', 'rmag'],
+        'RP': ['i', 'imag', 'RPmag'],
+    }
+    
     cat_col_mag = None
     cat_col_mag_err = None
 
@@ -444,35 +477,73 @@ def guess_catalogue_mag_columns(fname, cat, augmented_only=False):
             err_col = mag_map[fname].replace('psfMag', 'psfMagErr')
             if err_col in cat.colnames:
                 cat_col_mag_err = err_col
+        else:
+            # Try alternatives from filter similarity map
+            for alt_filter in filter_alternatives.get(fname, []):
+                if alt_filter in mag_map and mag_map[alt_filter] in cat.colnames:
+                    cat_col_mag = mag_map[alt_filter]
+                    err_col = mag_map[alt_filter].replace('psfMag', 'psfMagErr')
+                    if err_col in cat.colnames:
+                        cat_col_mag_err = err_col
+                    break
 
     # APASS (also has mag errors)
     elif f"mag{fname}" in cat.colnames:
         cat_col_mag = f"mag{fname}"
         if f"e_mag{fname}" in cat.colnames:
             cat_col_mag_err = f"e_mag{fname}"
+    else:
+        # APASS fallback: try alternatives
+        for alt_filter in filter_alternatives.get(fname, []):
+            if f"mag{alt_filter}" in cat.colnames:
+                cat_col_mag = f"mag{alt_filter}"
+                if f"e_mag{alt_filter}" in cat.colnames:
+                    cat_col_mag_err = f"e_mag{alt_filter}"
+                break
 
     # ATLAS
-    elif "m" in cat.colnames:  # ATLAS uses 'm' for magnitude
-        if fname in ['r', 'i']:
+    if cat_col_mag is None and "m" in cat.colnames:  # ATLAS uses 'm' for magnitude
+        if fname in ['r', 'i'] or fname in filter_alternatives.get(fname, []):
             cat_col_mag = "m"
             if "dm" in cat.colnames:
                 cat_col_mag_err = "dm"
 
     # Non-augmented PS1 etc (check last as more generic)
-    elif "gmag" in cat.colnames and "rmag" in cat.colnames:
+    if cat_col_mag is None and "gmag" in cat.colnames and "rmag" in cat.colnames:
         if fname in ['U', 'B', 'V', 'BP']:
             cat_col_mag = "gmag"
         elif fname in ['R', 'G']:
             cat_col_mag = "rmag"
         elif fname in ['I', 'RP']:
             cat_col_mag = "imag"
+        else:
+            # Try filter alternatives
+            for alt_filter in filter_alternatives.get(fname, []):
+                if alt_filter in ['U', 'B', 'V', 'BP', 'G', 'g'] and "gmag" in cat.colnames:
+                    cat_col_mag = "gmag"
+                    break
+                elif alt_filter in ['R', 'r'] and "rmag" in cat.colnames:
+                    cat_col_mag = "rmag"
+                    break
+                elif alt_filter in ['I', 'i'] and "imag" in cat.colnames:
+                    cat_col_mag = "imag"
+                    break
+        
         if cat_col_mag and f"e_{cat_col_mag}" in cat.colnames:
             cat_col_mag_err = f"e_{cat_col_mag}"
 
     # SkyMapper
-    elif f"{fname}PSF" in cat.colnames:
+    if cat_col_mag is None and f"{fname}PSF" in cat.colnames:
         cat_col_mag = f"{fname}PSF"
         if f"e_{fname}PSF" in cat.colnames:
             cat_col_mag_err = f"e_{fname}PSF"
+    elif cat_col_mag is None:
+        # SkyMapper fallback: try alternatives
+        for alt_filter in filter_alternatives.get(fname, []):
+            if f"{alt_filter}PSF" in cat.colnames:
+                cat_col_mag = f"{alt_filter}PSF"
+                if f"e_{alt_filter}PSF" in cat.colnames:
+                    cat_col_mag_err = f"e_{alt_filter}PSF"
+                break
 
     return cat_col_mag, cat_col_mag_err
