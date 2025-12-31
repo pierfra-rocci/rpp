@@ -83,7 +83,7 @@ def find_candidates(
 
     st.info("Extracting source objects from image using SEP...")
     image = image.astype(image.dtype.newbyteorder("="))
-    bkg = sep.Background(image, mask=mask)
+    bkg = sep.Background(image, mask=mask, bw=64, bh=64, fw=5, fh=5)
 
     # Subtract spatially-varying background from image
     image_sub = image - bkg.back()
@@ -114,7 +114,7 @@ def find_candidates(
 
     # Add photometry results to object table
     obj = np.lib.recfunctions.append_fields(
-        obj, ['flux_aper', 'flux_aper_err', 'mag_calib', 'mag_calib_err'], 
+        obj, ['flux_aper', 'flux_aper_err', 'mag_calib', 'mag_calib_err'],
         [flux, flux_err, mag, mag_err], usemask=False)
 
     st.info(f"Found {len(obj)} objects in the image.")

@@ -40,7 +40,7 @@ def _try_source_detection(
                     aper=1.5*fwhm_est,
                     gain=gain,
                     edge=10,
-                    bg_size=256,
+                    bg_size=64,
                 )
 
                 if sources is not None and len(sources) >= min_sources:

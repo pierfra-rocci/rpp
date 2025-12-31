@@ -530,7 +530,7 @@ def detection_and_photometry(
     )
 
     bkg, bkg_fig, bkg_error = estimate_background(image_data)
-    
+
     if bkg is None:
         st.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None, None, None, None
@@ -585,12 +585,15 @@ def detection_and_photometry(
         science_header.get("EXPOSURE", science_header.get("EXP_TIME", 1.0)),
     )
 
-    # Ensure effective_gain is float64
-    effective_gain = np.float64(2.5 / np.std(image_data) * exposure_time)
+    # Get camera gain from header, fallback to computed value
+    camera_gain = science_header.get('GAIN')
+    if camera_gain is None:
+        camera_gain = 65635 / np.nanmax(image_data)
 
     # Convert to float64 to ensure compatibility with calc_total_error
     total_error = calc_total_error(
-        image_sub.astype(np.float64), bkg_error.astype(np.float64), effective_gain
+        image_sub.astype(np.float64), bkg_error.astype(np.float64),
+        gain=np.float64(camera_gain)
     )
 
     st.write("Estimating FWHM ...")
