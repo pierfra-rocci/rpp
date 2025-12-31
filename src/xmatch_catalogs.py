@@ -126,17 +126,17 @@ def cross_match_with_gaia(
         # Determine if we should use PANSTARRS or GAIA based on filter_band
         sloan_bands = ["gmag", "rmag", "imag", "zmag"]
         is_sloan_filter = filter_band in sloan_bands
-        
+
         # Create a SkyCoord object for coordinate handling
         center_coord = SkyCoord(
             ra=image_center_ra_dec[0], dec=image_center_ra_dec[1], unit="deg"
         )
-        
+
         if is_sloan_filter:
             # For Sloan filters (g, r, i, z), use PANSTARRS DR1 or SkyMapper
             # Check if we're in southern hemisphere
             is_southern = image_center_ra_dec[1] < 0
-            
+
             if is_southern:
                 catalog_name = "SkyMapper"
                 log_messages.append(
@@ -147,21 +147,21 @@ def cross_match_with_gaia(
                 log_messages.append(
                     f"INFO: Using PANSTARRS DR1 catalog (northern hemisphere, dec={image_center_ra_dec[1]:.2f})."
                 )
-            
+
             try:
                 if is_southern:
                     # Query SkyMapper via Vizier (V/161)
-                    # SkyMapper DR2 catalog in Vizier
+                    # SkyMapper DR4 catalog in Vizier
                     try:
-                        v = Vizier(columns=['RAJ2000', 'DEJ2000', 'e_RAJ2000', 'e_DEJ2000', 
-                                            'gmag', 'e_gmag', 'rmag', 'e_rmag', 
-                                            'imag', 'e_imag', 'zmag', 'e_zmag',
-                                            'class_star', 'nDetections'])
+                        v = Vizier(columns=['RAJ2000', 'DEJ2000', 'e_RAJ2000', 'e_DEJ2000',
+                                            'gPSF', 'e_gPSF', 'rPSF', 'e_rPSF',
+                                            'iPSF', 'e_iPSF', 'zPSF', 'e_zPSF',
+                                            'ClassStar', 'Ngood'])
                         v.ROW_LIMIT = -1  # No row limit
                         catalog_table = v.query_region(
                             center_coord,
                             radius=radius_query_deg * u.deg,
-                            catalog='V/161'  # SkyMapper DR2
+                            catalog='II/379/smssdr4'  # SkyMapper DR4
                         )
                         if len(catalog_table) > 0:
                             catalog_table = catalog_table[0]
@@ -170,7 +170,7 @@ def cross_match_with_gaia(
                         catalog_table = None
                 else:
                     # Query PANSTARRS DR1 via Vizier (II/349)
-                    # PANSTARRS DR1 catalog in Vizier is more reliable than MAST API
+                    # PANSTARRS DR1 catalog in Vizier
                     try:
                         v = Vizier(columns=['RAJ2000', 'DEJ2000', 'e_RAJ2000', 'e_DEJ2000',
                                             'gmag', 'e_gmag', 'rmag', 'e_rmag',
@@ -187,23 +187,23 @@ def cross_match_with_gaia(
                     except Exception as vizier_error:
                         log_messages.append(f"INFO: Vizier PANSTARRS query failed, trying alternative: {vizier_error}")
                         catalog_table = None
-                
+
                 if catalog_table is None or len(catalog_table) == 0:
                     log_messages.append(
                         f"WARNING: No {catalog_name} sources found within search radius."
                     )
                     return None, log_messages
-                
+
                 log_messages.append(
                     f"INFO: Retrieved {len(catalog_table)} sources from {catalog_name} via Vizier"
                 )
-                
+
             except Exception as catalog_error:
                 log_messages.append(
                     f"WARNING: {catalog_name} query failed: {catalog_error}"
                 )
                 return None, log_messages
-        
+
         else:
             # For GAIA bands, use GAIA DR3 with synthetic photometry
             # Set Gaia data release
