@@ -239,7 +239,7 @@ def plot_cutout(
         if name in cutout and cutout[name] is not None:
             ax = axs[ii]
             img = cutout[name].copy()
-            
+
             # Handle NaN values: replace with median of valid pixels
             if np.isnan(img).any():
                 valid_mask = ~np.isnan(img)
@@ -248,12 +248,12 @@ def plot_cutout(
                     img[~valid_mask] = nan_replacement
                 else:
                     img = np.ones_like(img) * 0.5  # Fallback for all-NaN
-            
+
             # Apply percentile-based scaling and stretch only to science image
             if name == 'image' and qq is not None:
                 interval = PercentileInterval(int(qq[0]), int(qq[1]))
                 img = interval(img)
-                
+
                 if stretch == 'linear':
                     img = LinearStretch()(img)
                 elif stretch == 'asinh':
@@ -271,7 +271,7 @@ def plot_cutout(
                         vmin, vmax = np.min(valid), np.max(valid)
                         if vmax > vmin:
                             img = (img - vmin) / (vmax - vmin)
-            
+
             imshow_kwargs = {'cmap': 'Blues_r', 'vmin': 0, 'vmax': 1}
             if 'cmap' in kwargs:
                 imshow_kwargs['cmap'] = kwargs['cmap']
@@ -344,7 +344,7 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
     Identifies potential transients by selecting objects whose measured magnitudes
     differ significantly (≥2.0 mag) from the reference catalog values, indicating
     they may be genuine new sources rather than catalog mismatches.
-    
+
     Parameters
     ----------
     xobj : astropy.table.Table or numpy.ndarray
@@ -355,7 +355,7 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
         Name of the catalog (for informational purposes)
     filter_mag : str, default 'r'
         Filter name (e.g., 'r', 'rmag', 'V', 'Vmag')
-    
+
     Returns
     -------
     numpy.ndarray
@@ -374,7 +374,7 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
 
     if cat_col_mag is not None:
         mag = xobj['mag_calib'].copy()
-        
+
         # Apply AB magnitude corrections for Johnson-Cousins filters when using AB catalogs
         if fname in ['U', 'B', 'V', 'R', 'I'] and cat_col_mag not in ['Umag', 'Bmag', 'Vmag', 'Rmag', 'Imag']:
             mag += filter_ab_offset.get(fname, 0)
