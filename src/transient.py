@@ -339,30 +339,58 @@ def plot_cutout(
 
 
 def checker_fn(xobj, xcat, catname, filter_mag='r'):
-    """Example of custom checker function for filtering candidates.
-    This function filters out objects that have a magnitude difference
+    """Filter candidates based on magnitude consistency with reference catalog.
+    
+    Identifies potential transients by selecting objects whose measured magnitudes
+    differ significantly (≥2.0 mag) from the reference catalog values, indicating
+    they may be genuine new sources rather than catalog mismatches.
+    
+    Parameters
+    ----------
+    xobj : astropy.table.Table or numpy.ndarray
+        Detected objects with 'mag_calib' column
+    xcat : astropy.table.Table or numpy.ndarray
+        Reference catalog for comparison
+    catname : str
+        Name of the catalog (for informational purposes)
+    filter_mag : str, default 'r'
+        Filter name (e.g., 'r', 'rmag', 'V', 'Vmag')
+    
+    Returns
+    -------
+    numpy.ndarray
+        Boolean mask where True indicates objects with significant magnitude differences
     """
+    # Initialize: all objects pass by default if no catalog match found
     xidx = np.ones_like(xobj, dtype=bool)
 
+    # Normalize filter name (strip 'mag' suffix if present)
     fname = filter_mag
     if fname.endswith('mag'):
         fname = fname[:-3]
 
+    # Find the corresponding magnitude column in the reference catalog
     cat_col_mag, _ = guess_catalogue_mag_columns(fname, xcat)
 
     if cat_col_mag is not None:
-        mag = xobj['mag_calib']
+        mag = xobj['mag_calib'].copy()
+        
+        # Apply AB magnitude corrections for Johnson-Cousins filters when using AB catalogs
         if fname in ['U', 'B', 'V', 'R', 'I'] and cat_col_mag not in ['Umag', 'Bmag', 'Vmag', 'Rmag', 'Imag']:
-            # Convert to AB mags if using AB reference catalogue
             mag += filter_ab_offset.get(fname, 0)
 
+        # Compute magnitude difference: detected vs. catalog
         diff = mag - xcat[cat_col_mag]
 
+        # If sufficient valid measurements, remove systematic zeropoint offset
+        # This accounts for photometric calibration differences
         if len(diff[np.isfinite(diff)]) > 10:
-            # Adjust zeropoint
-            diff -= np.nanmedian(diff)
+            median_diff = np.nanmedian(diff)
+            diff -= median_diff
 
-        xidx = diff >= 2.0  # Remove objects with mag difference < 1.5 mag
+        # Select objects with large magnitude deviations (genuine transient candidates)
+        # Threshold: ≥2.0 mag difference indicates likely new source
+        xidx = diff >= 2.0
 
     return xidx
 
