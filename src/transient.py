@@ -151,7 +151,7 @@ def find_candidates(
         time=header.get('DATE-OBS', None),
         skybot=True,
         vizier=['gaiadr2', 'gaiaedr3', 'ps1', 'skymapper', 'sdss',
-                'vsx', 'apass', 'atlas', 'gsc', 'usnob1'],
+                'apass', 'atlas'],
         vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
         ned=False,
         verbose=True,
@@ -478,9 +478,15 @@ def guess_catalogue_mag_columns(fname, cat, augmented_only=False):
 
     # Gaia DR2/eDR3/DR3 from XMatch (check before PS1 as it's more specific)
     elif "phot_bp_mean_mag" in cat.colnames and "phot_rp_mean_mag" in cat.colnames and "phot_g_mean_mag" in cat.colnames:
-        if fname in ['U', 'B', 'V', 'R', 'u', 'g', 'r', 'BP']:
+        if fname in ['B', 'U', 'u']:
+            cat_col_mag = "phot_bp_mean_mag"  # BP is blue photometer
+        elif fname in ['I', 'i', 'z']:
+            cat_col_mag = "phot_rp_mean_mag"  # RP is red photometer
+        elif fname in ['g', 'G', 'V', 'r', 'R']:
+            cat_col_mag = "phot_g_mean_mag"  # G band (green) matches optical g,r
+        elif fname == 'BP':
             cat_col_mag = "phot_bp_mean_mag"
-        elif fname in ['I', 'i', 'z', 'RP']:
+        elif fname == 'RP':
             cat_col_mag = "phot_rp_mean_mag"
         else:
             cat_col_mag = "phot_g_mean_mag"
