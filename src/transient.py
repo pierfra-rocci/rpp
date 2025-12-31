@@ -160,13 +160,16 @@ def find_candidates(
             header=header
         )
         try:
+            # Use the original header with WCS for template retrieval
             cutout['template'] = templates.get_hips_image(
                 cat_cutout + filter_name,
-                header=cutout['header'],
+                header=header,
                 get_header=False
             )
         except Exception as e:
-            st.warning(f"Failed to retrieve HiPS template image for candidate: {e}")
+            st.error(f"Failed to retrieve HiPS template image for candidate: {e}")
+            st.error(f"  Attempted URL: {cat_cutout}{filter_name}")
+            st.error(f"  Header info: RA={header.get('CRVAL1')}, Dec={header.get('CRVAL2')}")
             cutout['template'] = None
 
         # Now we have two image planes in the cutout - let's display them
@@ -174,9 +177,9 @@ def find_candidates(
             cutout,
             # Image planes to display
             planes=['image', 'template'],
-            # Percentile-based scaling and linear stretching
-            qq=[0.5, 99.5],
-            stretch='linear')
+            # Percentile-based scaling and asinh stretching for better visualization
+            qq=[2, 98],
+            stretch='asinh')
         st.pyplot(fig)
 
     return candidates
@@ -237,11 +240,12 @@ def plot_cutout(
             ax = axs[ii]
             img = cutout[name].copy()
             
-            # Replace NaN values with min value for proper display
+            # Handle NaN values: replace with median of valid pixels
             if np.isnan(img).any():
                 valid_mask = ~np.isnan(img)
                 if valid_mask.any():
-                    img[~valid_mask] = np.nanmin(img)
+                    nan_replacement = np.nanmedian(img)
+                    img[~valid_mask] = nan_replacement
                 else:
                     img = np.ones_like(img) * 0.5  # Fallback for all-NaN
             
@@ -255,12 +259,18 @@ def plot_cutout(
                 elif stretch == 'asinh':
                     img = AsinhStretch()(img)
             else:
-                # For template: apply simple min-max normalization
-                valid = img[~np.isnan(img)]
-                if len(valid) > 0:
-                    vmin, vmax = np.min(valid), np.max(valid)
-                    if vmax > vmin:
-                        img = (img - vmin) / (vmax - vmin)
+                # For template: apply percentile-based interval and asinh stretch
+                if qq is not None:
+                    interval = PercentileInterval(int(qq[0]), int(qq[1]))
+                    img = interval(img)
+                    img = AsinhStretch()(img)
+                else:
+                    # Fallback: simple min-max normalization
+                    valid = img[~np.isnan(img)]
+                    if len(valid) > 0:
+                        vmin, vmax = np.min(valid), np.max(valid)
+                        if vmax > vmin:
+                            img = (img - vmin) / (vmax - vmin)
             
             imshow_kwargs = {'cmap': 'Blues_r', 'vmin': 0, 'vmax': 1}
             if 'cmap' in kwargs:
