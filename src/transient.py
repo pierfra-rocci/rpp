@@ -362,7 +362,7 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
             # Adjust zeropoint
             diff -= np.nanmedian(diff)
 
-        xidx = diff >= 1.5  # Remove objects with mag difference < 1.5 mag
+        xidx = diff >= 2.0  # Remove objects with mag difference < 1.5 mag
 
     return xidx
 
