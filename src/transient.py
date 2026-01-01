@@ -174,10 +174,11 @@ def find_candidates(
             header=header
         )
         try:
-            # Use the original header with WCS for template retrieval
+            # Use the cutout's header with WCS for template retrieval
+            # This ensures the HiPS image matches the cutout's field of view
             cutout['template'] = templates.get_hips_image(
                 cat_cutout + filter_name,
-                header=header,
+                header=cutout.get('header'),
                 get_header=False
             )
         except Exception as e:
@@ -248,7 +249,7 @@ def plot_cutout(
 
     if fig is None:
         fig = plt.figure(figsize=[nplots * 4, 4 + 1.0], dpi=75, tight_layout=True)
-    
+
     if axs is not None:
         if not len(axs) == len(planes):
             raise ValueError('Number of axes must be same as number of cutouts')
@@ -260,7 +261,7 @@ def plot_cutout(
             else:
                 ax = fig.add_subplot(1, nplots, curplot)
             curplot += 1
-            
+
             # Set up parameters for stdpipe.plots.imshow
             params = {
                 'stretch': 'asinh' if name in ['image', 'template', 'convolved'] else 'linear',
@@ -269,16 +270,16 @@ def plot_cutout(
                 'show_colorbar': False,
                 'show_axis': False,
             }
-            
+
             # Override with user-provided qq or stretch
             if qq is not None:
                 params['qq'] = qq
             if stretch is not None and name == 'image':
                 params['stretch'] = stretch
-            
+
             # Update with any additional user kwargs
             params.update(kwargs)
-            
+
             # Use stdpipe's imshow for proper scaling
             plots.imshow(cutout[name], ax=ax, **params)
             ax.set_title(name.upper())
