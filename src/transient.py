@@ -1,9 +1,7 @@
 from stdpipe import (pipeline, cutouts,
-                     templates, catalogs, photometry)
+                     templates, catalogs, photometry, plots)
 import sep
 from astropy.coordinates import SkyCoord
-from astropy.visualization import (PercentileInterval, LinearStretch,
-                                   AsinhStretch)
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 import astropy.units as u
@@ -220,6 +218,7 @@ def plot_cutout(
     additional_title=None,
     qq=None,
     stretch='linear',
+    r0=None,
     **kwargs,
 ):
     """Routine for displaying various image planes from the cutout structure returned by :func:`stdpipe.cutouts.get_cutout`.
@@ -244,54 +243,44 @@ def plot_cutout(
     :param \**kwargs: All additional parameters will be directly passed to :func:`stdpipe.plots.imshow` calls on individual images
 
     """
+    curplot = 1
     nplots = len([_ for _ in planes if _ in cutout])
 
-    fig, axs = plt.subplots(1, nplots, figsize=(nplots * 4, 4 + 1.0), dpi=75,
-                            tight_layout=True)
-    if nplots == 1:
-        axs = [axs]
+    if fig is None:
+        fig = plt.figure(figsize=[nplots * 4, 4 + 1.0], dpi=75, tight_layout=True)
+    
+    if axs is not None:
+        if not len(axs) == len(planes):
+            raise ValueError('Number of axes must be same as number of cutouts')
 
     for ii, name in enumerate(planes):
         if name in cutout and cutout[name] is not None:
-            ax = axs[ii]
-            img = cutout[name].copy()
-
-            # Handle NaN values: replace with median of valid pixels
-            if np.isnan(img).any():
-                valid_mask = ~np.isnan(img)
-                if valid_mask.any():
-                    nan_replacement = np.nanmedian(img)
-                    img[~valid_mask] = nan_replacement
-                else:
-                    img = np.ones_like(img) * 0.5  # Fallback for all-NaN
-
-            # Apply percentile-based scaling and stretch only to science image
-            if name == 'image' and qq is not None:
-                interval = PercentileInterval(int(qq[0]), int(qq[1]))
-                img = interval(img)
-
-                if stretch == 'linear':
-                    img = LinearStretch()(img)
-                elif stretch == 'asinh':
-                    img = AsinhStretch()(img)
+            if axs is not None:
+                ax = axs[ii]
             else:
-                # For template: apply percentile-based interval and asinh stretch
-                if qq is not None:
-                    interval = PercentileInterval(int(qq[0]), int(qq[1]))
-                    img = interval(img)
-                    img = AsinhStretch()(img)
-                else:
-                    # Fallback: simple min-max normalization
-                    valid = img[~np.isnan(img)]
-                    if len(valid) > 0:
-                        vmin, vmax = np.min(valid), np.max(valid)
-                        if vmax > vmin:
-                            img = (img - vmin) / (vmax - vmin)
-
-            imshow_kwargs = {'cmap': 'Blues_r', 'vmin': 0, 'vmax': 1}
-            if 'cmap' in kwargs:
-                imshow_kwargs['cmap'] = kwargs['cmap']
-            ax.imshow(img, **imshow_kwargs)
+                ax = fig.add_subplot(1, nplots, curplot)
+            curplot += 1
+            
+            # Set up parameters for stdpipe.plots.imshow
+            params = {
+                'stretch': 'asinh' if name in ['image', 'template', 'convolved'] else 'linear',
+                'r0': r0 if name in ['image', 'template', 'diff'] else None,
+                'cmap': 'Blues_r',
+                'show_colorbar': False,
+                'show_axis': False,
+            }
+            
+            # Override with user-provided qq or stretch
+            if qq is not None:
+                params['qq'] = qq
+            if stretch is not None and name == 'image':
+                params['stretch'] = stretch
+            
+            # Update with any additional user kwargs
+            params.update(kwargs)
+            
+            # Use stdpipe's imshow for proper scaling
+            plots.imshow(cutout[name], ax=ax, **params)
             ax.set_title(name.upper())
 
             # Mark overlays
