@@ -358,9 +358,9 @@ def plot_cutout(
 def checker_fn(xobj, xcat, catname, filter_mag='r'):
     """Filter candidates based on magnitude consistency with reference catalog.
 
-    Identifies potential transients by selecting objects whose measured magnitudes
-    differ significantly (≥2.0 mag) from the reference catalog values, indicating
-    they may be genuine new sources rather than catalog mismatches.
+    Rejects objects that are significantly fainter than their catalog counterparts,
+    keeping only sources that are brighter or within the tolerance threshold.
+    This filters out most catalog matches while keeping potential transients/variables.
 
     Parameters
     ----------
@@ -376,7 +376,10 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
     Returns
     -------
     numpy.ndarray
-        Boolean mask where True indicates objects with significant magnitude differences
+        Boolean mask where True keeps sources that are:
+        - Brighter than catalog (diff < 0)
+        - Within 2.0 mag fainter than catalog (-2.0 < diff < 0)
+        False rejects sources much fainter than catalog (diff <= -2.0)
     """
     # Initialize: all objects pass by default if no catalog match found
     xidx = np.ones_like(xobj, dtype=bool)
@@ -423,9 +426,11 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
             median_diff = np.nanmedian(diff)
             diff -= median_diff
 
-        # Select objects with large magnitude deviations (genuine transient candidates)
-        # Threshold: ≥2.0 mag difference indicates likely new source
-        xidx = diff >= 2.0
+        # Select objects that are BRIGHTER than catalog (potential transients/variables)
+        # Negative diff means detected source is brighter than catalog
+        # Threshold: > -1.5 means reject only if fainter by more than 2.0 mags
+        # This keeps: all brighter sources + sources within 2.0 mag fainter
+        xidx = diff > -1.5
 
     return xidx
 
