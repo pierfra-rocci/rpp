@@ -58,7 +58,6 @@ def find_candidates(
         The image data where to search for transients.
     mask : 2D array
         The mask data corresponding to the image."""
-    st.warning("⚠️ Transient detection is working but there are too many candidates. Further development is ongoing.")
     if header.get('GAIN'):
         gain = header.get('GAIN')
     else:
@@ -428,9 +427,9 @@ def checker_fn(xobj, xcat, catname, filter_mag='r'):
 
         # Select objects that are BRIGHTER than catalog (potential transients/variables)
         # Negative diff means detected source is brighter than catalog
-        # Threshold: > -1.5 means reject only if fainter by more than 2.0 mags
+        # Threshold: > -2.0 means reject only if fainter by more than 2.0 mags
         # This keeps: all brighter sources + sources within 2.0 mag fainter
-        xidx = diff > -1.5
+        xidx = diff > -2.0
 
     return xidx
 
