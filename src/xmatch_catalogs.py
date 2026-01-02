@@ -204,11 +204,18 @@ def cross_match_with_gaia(
                     f"INFO: Retrieved {len(catalog_table)} sources from {catalog_name} via Vizier"
                 )
                 
-                # Ensure ra/dec columns exist - Vizier returns RAJ2000/DEJ2000
-                if 'RAJ2000' in catalog_table.colnames and 'ra' not in catalog_table.colnames:
-                    catalog_table['ra'] = catalog_table['RAJ2000']
-                if 'DEJ2000' in catalog_table.colnames and 'dec' not in catalog_table.colnames:
-                    catalog_table['dec'] = catalog_table['DEJ2000']
+                # Ensure ra/dec columns exist - different catalogs use different column names
+                # PANSTARRS uses RAJ2000/DEJ2000, SkyMapper uses RAICRS/DEICRS
+                if 'ra' not in catalog_table.colnames:
+                    if 'RAJ2000' in catalog_table.colnames:
+                        catalog_table['ra'] = catalog_table['RAJ2000']
+                    elif 'RAICRS' in catalog_table.colnames:
+                        catalog_table['ra'] = catalog_table['RAICRS']
+                if 'dec' not in catalog_table.colnames:
+                    if 'DEJ2000' in catalog_table.colnames:
+                        catalog_table['dec'] = catalog_table['DEJ2000']
+                    elif 'DEICRS' in catalog_table.colnames:
+                        catalog_table['dec'] = catalog_table['DEICRS']
 
             except Exception as catalog_error:
                 log_messages.append(
@@ -341,12 +348,14 @@ def cross_match_with_gaia(
         # Prepare catalog coordinates for matching
         if is_sloan_filter:
             # For PANSTARRS/SkyMapper via Vizier, use Vizier standard column names
-            # Vizier uses RAJ2000/DEJ2000 for coordinates
+            # PANSTARRS uses RAJ2000/DEJ2000, SkyMapper uses RAICRS/DEICRS
             ra_col = None
             dec_col = None
             
             if "RAJ2000" in catalog_table_filtered.colnames and "DEJ2000" in catalog_table_filtered.colnames:
                 ra_col, dec_col = "RAJ2000", "DEJ2000"
+            elif "RAICRS" in catalog_table_filtered.colnames and "DEICRS" in catalog_table_filtered.colnames:
+                ra_col, dec_col = "RAICRS", "DEICRS"
             elif "raMean" in catalog_table_filtered.colnames and "decMean" in catalog_table_filtered.colnames:
                 ra_col, dec_col = "raMean", "decMean"
             elif "ra" in catalog_table_filtered.colnames and "dec" in catalog_table_filtered.colnames:
