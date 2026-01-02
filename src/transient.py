@@ -105,6 +105,10 @@ def find_candidates(
     )
 
     # Calculate magnitudes from aperture flux with proper error propagation
+    if zero_point_value is None:
+        st.warning("Zero point is None - using instrumental magnitudes only")
+        zero_point_value = 0.0
+    
     mag = np.round(-2.5*np.log10(np.abs(flux)) + zero_point_value, 2)
     # Propagate flux errors to magnitude errors using standard formula
     mag_err = np.round(2.5 / np.log(10) * flux_err / np.abs(flux), 3)

@@ -98,7 +98,7 @@ def cross_match_with_gaia(
     try:
         # Validate RA/DEC coordinates before using them
         if "RA" not in science_header or "DEC" not in science_header:
-            return None, ["ERROR: Missing RA/DEC coordinates in header"]
+            return None, ["ERROR: Missing RA/DEC coordinates in header. Header must contain RA and DEC keywords for field center determination."]
 
         image_center_ra_dec = [science_header["RA"], science_header["DEC"]]
 

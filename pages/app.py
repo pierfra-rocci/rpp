@@ -872,6 +872,19 @@ if science_file is not None:
         image_to_process = science_data
         header_to_process = science_header.copy()
 
+        # Ensure RA/DEC are in the header for catalog queries
+        if "RA" not in header_to_process or "DEC" not in header_to_process:
+            # Try to get from session state (validated coordinates)
+            if "valid_ra" in st.session_state and "valid_dec" in st.session_state:
+                header_to_process["RA"] = st.session_state["valid_ra"]
+                header_to_process["DEC"] = st.session_state["valid_dec"]
+                st.info(f"Set header RA/DEC from validated coordinates: RA={header_to_process['RA']:.4f}°, DEC={header_to_process['DEC']:.4f}°")
+            # Fallback to CRVAL1/CRVAL2 if available
+            elif "CRVAL1" in header_to_process and "CRVAL2" in header_to_process:
+                header_to_process["RA"] = header_to_process["CRVAL1"]
+                header_to_process["DEC"] = header_to_process["CRVAL2"]
+                st.info(f"Set header RA/DEC from CRVAL: RA={header_to_process['RA']:.4f}°, DEC={header_to_process['DEC']:.4f}°")
+
         # Initialize zero_point variables to avoid undefined variable errors later
         zero_point_value = None
         zero_point_std = None
