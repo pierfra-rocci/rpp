@@ -140,12 +140,31 @@ def find_candidates(
             st.write(f"Catalog query returned {len(cat)} sources.")
 
             # Normalize coordinate column names for stdpipe compatibility
-            # SkyMapper uses RAICRS/DEICRS, PANSTARRS uses RAJ2000/DEJ2000
+            # Different catalogs use different column names:
+            # - SkyMapper: RAICRS/DEICRS
+            # - PanSTARRS: RAJ2000/DEJ2000 or raMean/decMean or _RAJ2000/_DEJ2000
+            # - Vizier internal: _RAJ2000/_DEJ2000
             # stdpipe expects 'RA' and 'DEC' columns
+
+            # Debug: show available columns
+            st.write(f"Catalog columns: {cat.colnames[:15]}...")  # Show first 15 columns
+
+            # PanSTARRS variants (check these first as they're most specific)
+            if 'raMean' in cat.colnames and 'RA' not in cat.colnames:
+                cat.rename_column('raMean', 'RA')
+            if 'decMean' in cat.colnames and 'DEC' not in cat.colnames:
+                cat.rename_column('decMean', 'DEC')
+            # Vizier internal coordinate columns (prefixed with underscore)
+            if '_RAJ2000' in cat.colnames and 'RA' not in cat.colnames:
+                cat.rename_column('_RAJ2000', 'RA')
+            if '_DEJ2000' in cat.colnames and 'DEC' not in cat.colnames:
+                cat.rename_column('_DEJ2000', 'DEC')
+            # SkyMapper
             if 'RAICRS' in cat.colnames and 'RA' not in cat.colnames:
                 cat.rename_column('RAICRS', 'RA')
             if 'DEICRS' in cat.colnames and 'DEC' not in cat.colnames:
                 cat.rename_column('DEICRS', 'DEC')
+            # Standard J2000 names
             if 'RAJ2000' in cat.colnames and 'RA' not in cat.colnames:
                 cat.rename_column('RAJ2000', 'RA')
             if 'DEJ2000' in cat.colnames and 'DEC' not in cat.colnames:
@@ -155,6 +174,10 @@ def find_candidates(
                 cat.rename_column('ra', 'RA')
             if 'dec' in cat.colnames and 'DEC' not in cat.colnames:
                 cat.rename_column('dec', 'DEC')
+
+            # Final check - log which columns were used
+            if 'RA' in cat.colnames and 'DEC' in cat.colnames:
+                st.write("✓ Coordinates normalized to RA/DEC columns")
 
             if 'RA' not in cat.colnames or 'DEC' not in cat.colnames:
                 st.error(f"ERROR: Could not find/create RA/DEC columns. Available: {cat.colnames}")
