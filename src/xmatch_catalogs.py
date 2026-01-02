@@ -280,24 +280,37 @@ def cross_match_with_gaia(
         if is_sloan_filter and catalog_name == "SkyMapper":
             mag_column = skymapper_band_mapping.get(filter_band, filter_band)
         
+        # Debug: log available columns before filtering
+        log_messages.append(f"DEBUG: Catalog columns before filtering: {catalog_table.colnames}")
+        
         # Apply magnitude filter
         mag_filter = catalog_table[mag_column] < filter_max_mag
         catalog_table_filtered = catalog_table[mag_filter]
+        
+        # Debug: log available columns after filtering
+        log_messages.append(f"DEBUG: Catalog columns after filtering: {catalog_table_filtered.colnames}")
 
         # Apply quality filters based on catalog type
         if is_sloan_filter:
             # For PANSTARRS/SkyMapper, apply basic filters
             # Note: Column names from Vizier:
             # - PANSTARRS: Nd = number of detections
-            # - SkyMapper: nDetections
+            # - SkyMapper: Ngood = number of good observations
             try:
                 # Basic quality filter: sources must have multiple detections
-                detection_col = "Nd" if "Nd" in catalog_table_filtered.colnames else "nDetections"
-                if detection_col in catalog_table_filtered.colnames:
+                detection_col = None
+                if "Nd" in catalog_table_filtered.colnames:
+                    detection_col = "Nd"
+                elif "Ngood" in catalog_table_filtered.colnames:
+                    detection_col = "Ngood"
+                elif "nDetections" in catalog_table_filtered.colnames:
+                    detection_col = "nDetections"
+                    
+                if detection_col is not None:
                     catalog_table_filtered = catalog_table_filtered[
                         catalog_table_filtered[detection_col] > 1
                     ]
-                log_messages.append("INFO: Applied detection quality filter.")
+                log_messages.append(f"INFO: Applied detection quality filter using column '{detection_col}'.")
             except Exception as quality_error:
                 log_messages.append(
                     f"WARNING: Could not apply quality filter: {quality_error}"
