@@ -1088,6 +1088,21 @@ if science_file is not None:
                                 # Clean up the figure
                                 plt.close(fig_mag)
 
+                                # Calculate search radius for both catalog enhancement and transient finding
+                                try:
+                                    search_radius = (
+                                        max(
+                                            header_to_process["NAXIS1"],
+                                            header_to_process["NAXIS2"],
+                                        )
+                                        * pixel_size_arcsec
+                                        / 2.0
+                                    )
+                                except Exception as e:
+                                    st.warning(f"Could not calculate search radius from header: {e}")
+                                    # Fallback: assume 1800 arcsec (0.5 degrees) as reasonable default
+                                    search_radius = 1800.0
+
                                 if (
                                     final_table is not None
                                     and "ra" in final_table.columns
