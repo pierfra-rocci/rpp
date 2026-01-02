@@ -1088,16 +1088,6 @@ if science_file is not None:
                                 # Clean up the figure
                                 plt.close(fig_mag)
 
-                                # Calculate search radius for both catalog enhancement and transient finding
-                                search_radius = (
-                                    max(
-                                        header_to_process["NAXIS1"],
-                                        header_to_process["NAXIS2"],
-                                    )
-                                    * pixel_size_arcsec
-                                    / 2.0
-                                )
-
                                 if (
                                     final_table is not None
                                     and "ra" in final_table.columns
@@ -1150,6 +1140,21 @@ if science_file is not None:
             except Exception as e:
                 st.error(f"Error during zero point calibration: {str(e)}")
                 st.exception(e)
+
+            # Calculate search radius for catalog enhancement and transient finding
+            # This needs to be outside the try-except block so it's available for transient finder
+            try:
+                search_radius = (
+                    max(
+                        header_to_process["NAXIS1"],
+                        header_to_process["NAXIS2"],
+                    )
+                    * pixel_size_arcsec
+                    / 2.0
+                )
+            except Exception as e:
+                st.warning(f"Could not calculate search radius: {e}. Using default value.")
+                search_radius = 1800.0  # Default 0.5 degrees in arcseconds
 
             ra_center = None
             dec_center = None

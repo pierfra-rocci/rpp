@@ -516,13 +516,19 @@ def detection_and_photometry(
     daofind = None
 
     try:
-        w, wcs_error, _ = safe_wcs_create(science_header)
+        w, wcs_error, log_msgs = safe_wcs_create(science_header)
         if w is None:
-            st.error(f"Error creating WCS: {wcs_error}")
-            return None, None, daofind, None, None, None, None, None
+            st.error(f"Error creating WCS in detection_and_photometry: {wcs_error}")
+            st.error("Will attempt to proceed without WCS - coordinates will not be available")
+            # Don't return here - allow photometry to continue without coordinates
+            # return None, None, daofind, None, None, None, None, None
+        else:
+            st.success("WCS object created successfully in detection_and_photometry")
     except Exception as e:
-        st.error(f"Error creating WCS: {e}")
-        return None, None, daofind, None, None, None, None, None
+        st.error(f"Exception while creating WCS in detection_and_photometry: {e}")
+        w = None
+        # Don't return - allow photometry to continue
+        # return None, None, daofind, None, None, None, None, None
 
     pixel_scale = science_header.get(
         "PIXSCALE",
@@ -799,11 +805,13 @@ def detection_and_photometry(
 
         try:
             if wcs_obj is not None:
+                st.info("Adding RA/Dec coordinates to photometry tables...")
                 ra, dec = wcs_obj.pixel_to_world_values(
                     phot_table["xcenter"], phot_table["ycenter"]
                 )
                 phot_table["ra"] = ra * u.deg
                 phot_table["dec"] = dec * u.deg
+                st.success(f"Added RA/Dec coordinates to {len(phot_table)} sources")
 
                 if epsf_table is not None:
                     try:
@@ -812,9 +820,11 @@ def detection_and_photometry(
                         )
                         epsf_table["ra"] = epsf_ra * u.deg
                         epsf_table["dec"] = epsf_dec * u.deg
+                        st.success(f"Added RA/Dec coordinates to {len(epsf_table)} PSF sources")
                     except Exception as e:
                         st.warning(f"Could not add coordinates to EPSF table: {e}")
             else:
+                st.warning("No WCS object available - coordinates will not be added")
                 if all(
                     key in science_header for key in ["RA", "DEC", "NAXIS1", "NAXIS2"]
                 ):
