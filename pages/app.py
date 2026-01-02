@@ -533,6 +533,26 @@ if science_file is not None:
                     pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(
                         science_header
                     )
+                    
+                    # If pixel scale extraction failed, calculate from WCS object
+                    if pixel_size_arcsec == 0 or not np.isfinite(pixel_size_arcsec):
+                        try:
+                            from stdpipe import astrometry
+                            pixel_size_arcsec = astrometry.get_pixscale(wcs=wcs_obj) * 3600
+                            pixel_scale_source = "WCS calculation"
+                            write_to_log(
+                                log_buffer,
+                                f"Calculated pixel scale from WCS: {pixel_size_arcsec:.3f} arcsec/pixel"
+                            )
+                        except Exception as e:
+                            write_to_log(
+                                log_buffer,
+                                f"ERROR: Could not calculate pixel scale: {e}",
+                                level="ERROR"
+                            )
+                            pixel_size_arcsec = 1.0  # Fallback value
+                            pixel_scale_source = "fallback default"
+                    
                     seeing = st.session_state.analysis_parameters["seeing"]
                     mean_fwhm_pixel = seeing / pixel_size_arcsec
 
