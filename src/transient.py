@@ -144,43 +144,39 @@ def find_candidates(
             # - SkyMapper: RAICRS/DEICRS
             # - PanSTARRS: RAJ2000/DEJ2000 or raMean/decMean or _RAJ2000/_DEJ2000
             # - Vizier internal: _RAJ2000/_DEJ2000
-            # stdpipe expects 'RA' and 'DEC' columns
+            # stdpipe expects 'ra' and 'dec' columns (lowercase)
+            # IMPORTANT: We ADD columns instead of renaming, because stdpipe may
+            # internally access the original column names (e.g., 'RAJ2000')
 
             # Debug: show available columns
             st.write(f"Catalog columns: {cat.colnames[:15]}...")  # Show first 15 columns
 
-            # PanSTARRS variants (check these first as they're most specific)
-            if 'raMean' in cat.colnames and 'RA' not in cat.colnames:
-                cat.rename_column('raMean', 'RA')
-            if 'decMean' in cat.colnames and 'DEC' not in cat.colnames:
-                cat.rename_column('decMean', 'DEC')
-            # Vizier internal coordinate columns (prefixed with underscore)
-            if '_RAJ2000' in cat.colnames and 'RA' not in cat.colnames:
-                cat.rename_column('_RAJ2000', 'RA')
-            if '_DEJ2000' in cat.colnames and 'DEC' not in cat.colnames:
-                cat.rename_column('_DEJ2000', 'DEC')
-            # SkyMapper
-            if 'RAICRS' in cat.colnames and 'RA' not in cat.colnames:
-                cat.rename_column('RAICRS', 'RA')
-            if 'DEICRS' in cat.colnames and 'DEC' not in cat.colnames:
-                cat.rename_column('DEICRS', 'DEC')
-            # Standard J2000 names
-            if 'RAJ2000' in cat.colnames and 'RA' not in cat.colnames:
-                cat.rename_column('RAJ2000', 'RA')
-            if 'DEJ2000' in cat.colnames and 'DEC' not in cat.colnames:
-                cat.rename_column('DEJ2000', 'DEC')
-            # Also handle lowercase variants
-            if 'ra' in cat.colnames and 'RA' not in cat.colnames:
-                cat.rename_column('ra', 'RA')
-            if 'dec' in cat.colnames and 'DEC' not in cat.colnames:
-                cat.rename_column('dec', 'DEC')
+            # Find the RA column and create 'ra' alias
+            ra_col = None
+            dec_col = None
+            for col in ['raMean', '_RAJ2000', 'RAICRS', 'RAJ2000', 'RA', 'ra']:
+                if col in cat.colnames:
+                    ra_col = col
+                    break
+            for col in ['decMean', '_DEJ2000', 'DEICRS', 'DEJ2000', 'DEC', 'dec']:
+                if col in cat.colnames:
+                    dec_col = col
+                    break
 
-            # Final check - log which columns were used
-            if 'RA' in cat.colnames and 'DEC' in cat.colnames:
-                st.write("✓ Coordinates normalized to RA/DEC columns")
-
-            if 'RA' not in cat.colnames or 'DEC' not in cat.colnames:
-                st.error(f"ERROR: Could not find/create RA/DEC columns. Available: {cat.colnames}")
+            if ra_col and dec_col:
+                # Add lowercase 'ra' and 'dec' columns (stdpipe standard)
+                if 'ra' not in cat.colnames:
+                    cat['ra'] = cat[ra_col]
+                if 'dec' not in cat.colnames:
+                    cat['dec'] = cat[dec_col]
+                # Also add uppercase 'RA' and 'DEC' for compatibility
+                if 'RA' not in cat.colnames:
+                    cat['RA'] = cat[ra_col]
+                if 'DEC' not in cat.colnames:
+                    cat['DEC'] = cat[dec_col]
+                st.write(f"✓ Added ra/dec columns from '{ra_col}'/'{dec_col}'")
+            else:
+                st.error(f"ERROR: Could not find RA/DEC columns. Available: {cat.colnames}")
                 return []
         else:
             st.warning("Catalog query returned no sources")
