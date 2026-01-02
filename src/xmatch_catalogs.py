@@ -126,6 +126,14 @@ def cross_match_with_gaia(
         # Determine if we should use PANSTARRS or GAIA based on filter_band
         sloan_bands = ["gmag", "rmag", "imag", "zmag"]
         is_sloan_filter = filter_band in sloan_bands
+        
+        # Mapping from Sloan/PANSTARRS band names to SkyMapper column names
+        skymapper_band_mapping = {
+            "gmag": "gPSF",
+            "rmag": "rPSF",
+            "imag": "iPSF",
+            "zmag": "zPSF"
+        }
 
         # Create a SkyCoord object for coordinate handling
         center_coord = SkyCoord(
@@ -260,8 +268,14 @@ def cross_match_with_gaia(
         return None, ["WARNING: No catalog sources found within search radius."]
 
     try:
+        # Use the appropriate column name for magnitude filtering
+        # For SkyMapper, we need to translate band names
+        mag_column = filter_band
+        if is_sloan_filter and catalog_name == "SkyMapper":
+            mag_column = skymapper_band_mapping.get(filter_band, filter_band)
+        
         # Apply magnitude filter
-        mag_filter = catalog_table[filter_band] < filter_max_mag
+        mag_filter = catalog_table[mag_column] < filter_max_mag
         catalog_table_filtered = catalog_table[mag_filter]
 
         # Apply quality filters based on catalog type
@@ -387,8 +401,12 @@ def cross_match_with_gaia(
                 matched_indices_catalog
             ])
 
-        # Add the filter_band magnitude
-        matched_table[filter_band] = np.asarray(catalog_table_filtered[filter_band][
+        # Add the filter_band magnitude (use the correct column name)
+        mag_column_for_output = filter_band
+        if is_sloan_filter and catalog_name == "SkyMapper":
+            mag_column_for_output = skymapper_band_mapping.get(filter_band, filter_band)
+        
+        matched_table[filter_band] = np.asarray(catalog_table_filtered[mag_column_for_output][
             matched_indices_catalog
         ])
 
