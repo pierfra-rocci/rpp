@@ -932,6 +932,20 @@ if science_file is not None:
 
                     if phot_table_qtable is not None:
                         phot_table_df = phot_table_qtable.to_pandas().copy(deep=True)
+                        
+                        # Ensure RA/Dec columns are present
+                        if 'ra' not in phot_table_df.columns or 'dec' not in phot_table_df.columns:
+                            st.warning("RA/Dec columns not found in photometry table, attempting to add them...")
+                            if w is not None:
+                                try:
+                                    ra, dec = w.pixel_to_world_values(
+                                        phot_table_df["xcenter"], phot_table_df["ycenter"]
+                                    )
+                                    phot_table_df["ra"] = ra
+                                    phot_table_df["dec"] = dec
+                                    st.success("Added RA/Dec coordinates from WCS")
+                                except Exception as e:
+                                    st.error(f"Could not add RA/Dec coordinates: {e}")
                     else:
                         st.error("No sources detected in the image.")
                         phot_table_df = None
@@ -1074,6 +1088,16 @@ if science_file is not None:
                                 # Clean up the figure
                                 plt.close(fig_mag)
 
+                                # Calculate search radius for both catalog enhancement and transient finding
+                                search_radius = (
+                                    max(
+                                        header_to_process["NAXIS1"],
+                                        header_to_process["NAXIS2"],
+                                    )
+                                    * pixel_size_arcsec
+                                    / 2.0
+                                )
+
                                 if (
                                     final_table is not None
                                     and "ra" in final_table.columns
@@ -1081,14 +1105,6 @@ if science_file is not None:
                                 ):
                                     st.subheader(
                                         "Cross-matching with Astronomical Catalogs"
-                                    )
-                                    search_radius = (
-                                        max(
-                                            header_to_process["NAXIS1"],
-                                            header_to_process["NAXIS2"],
-                                        )
-                                        * pixel_size_arcsec
-                                        / 2.0
                                     )
                                     # Get colibri API key from session state
                                     colibri_api_key = st.session_state.get(
