@@ -161,10 +161,8 @@ def cross_match_with_gaia(
                     # Query SkyMapper via Vizier (V/161)
                     # SkyMapper DR4 catalog in Vizier
                     try:
-                        v = Vizier(columns=['RAJ2000', 'DEJ2000', 'e_RAJ2000', 'e_DEJ2000',
-                                            'gPSF', 'e_gPSF', 'rPSF', 'e_rPSF',
-                                            'iPSF', 'e_iPSF', 'zPSF', 'e_zPSF',
-                                            'ClassStar', 'Ngood'])
+                        # Use '+all' to get all available columns including coordinates
+                        v = Vizier(columns=['**', '+_r'])  # Get all columns plus distance
                         v.ROW_LIMIT = -1  # No row limit
                         catalog_table = v.query_region(
                             center_coord,
@@ -173,6 +171,7 @@ def cross_match_with_gaia(
                         )
                         if len(catalog_table) > 0:
                             catalog_table = catalog_table[0]
+                            log_messages.append(f"DEBUG: SkyMapper columns returned: {catalog_table.colnames}")
                     except Exception as vizier_error:
                         log_messages.append(f"INFO: Vizier SkyMapper query failed, trying alternative: {vizier_error}")
                         catalog_table = None
@@ -180,10 +179,8 @@ def cross_match_with_gaia(
                     # Query PANSTARRS DR1 via Vizier (II/349)
                     # PANSTARRS DR1 catalog in Vizier
                     try:
-                        v = Vizier(columns=['RAJ2000', 'DEJ2000', 'e_RAJ2000', 'e_DEJ2000',
-                                            'gmag', 'e_gmag', 'rmag', 'e_rmag',
-                                            'imag', 'e_imag', 'zmag', 'e_zmag',
-                                            'Nd', 'objID'])
+                        # Use '+all' to get all available columns including coordinates
+                        v = Vizier(columns=['**', '+_r'])  # Get all columns plus distance
                         v.ROW_LIMIT = -1  # No row limit
                         catalog_table = v.query_region(
                             center_coord,
@@ -192,6 +189,7 @@ def cross_match_with_gaia(
                         )
                         if len(catalog_table) > 0:
                             catalog_table = catalog_table[0]
+                            log_messages.append(f"DEBUG: PANSTARRS columns returned: {catalog_table.colnames}")
                     except Exception as vizier_error:
                         log_messages.append(f"INFO: Vizier PANSTARRS query failed, trying alternative: {vizier_error}")
                         catalog_table = None
