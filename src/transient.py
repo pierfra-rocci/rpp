@@ -134,6 +134,26 @@ def find_candidates(
         cat = catalogs.get_cat_vizier(
             ra_center, dec_center, sr, catalog, filters={filter_name + "mag": mag_limit}
         )
+        
+        # Normalize coordinate column names for stdpipe compatibility
+        # SkyMapper uses RAICRS/DEICRS, PANSTARRS uses RAJ2000/DEJ2000
+        # stdpipe expects 'RA' and 'DEC' columns
+        if cat is not None and len(cat) > 0:
+            # Check for various coordinate column names and rename to RA/DEC
+            if 'RAICRS' in cat.colnames and 'RA' not in cat.colnames:
+                cat.rename_column('RAICRS', 'RA')
+            if 'DEICRS' in cat.colnames and 'DEC' not in cat.colnames:
+                cat.rename_column('DEICRS', 'DEC')
+            if 'RAJ2000' in cat.colnames and 'RA' not in cat.colnames:
+                cat.rename_column('RAJ2000', 'RA')
+            if 'DEJ2000' in cat.colnames and 'DEC' not in cat.colnames:
+                cat.rename_column('DEJ2000', 'DEC')
+            # Also handle lowercase variants
+            if 'ra' in cat.colnames and 'RA' not in cat.colnames:
+                cat.rename_column('ra', 'RA')
+            if 'dec' in cat.colnames and 'DEC' not in cat.colnames:
+                cat.rename_column('dec', 'DEC')
+                
     except Exception as e:
         st.error(f"Failed to query {catalog} catalog: {e}")
         return []
