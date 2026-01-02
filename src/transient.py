@@ -134,11 +134,11 @@ def find_candidates(
         cat = catalogs.get_cat_vizier(
             ra_center, dec_center, sr, catalog, filters={filter_name + "mag": mag_limit}
         )
-        
+
         # Debug: show what columns we got
         if cat is not None and len(cat) > 0:
             st.write(f"DEBUG: Catalog has {len(cat)} sources with columns: {cat.colnames}")
-            
+
             # Normalize coordinate column names for stdpipe compatibility
             # SkyMapper uses RAICRS/DEICRS, PANSTARRS uses RAJ2000/DEJ2000
             # stdpipe expects 'RA' and 'DEC' columns
@@ -162,15 +162,15 @@ def find_candidates(
             if 'dec' in cat.colnames and 'DEC' not in cat.colnames:
                 cat.rename_column('dec', 'DEC')
                 st.write("DEBUG: Renamed dec -> DEC")
-            
+
             # Final check
             st.write(f"DEBUG: Final catalog columns: {cat.colnames}")
             if 'RA' not in cat.colnames or 'DEC' not in cat.colnames:
                 st.error(f"ERROR: Could not find/create RA/DEC columns. Available: {cat.colnames}")
         else:
-            st.warning(f"Catalog query returned no sources")
+            st.warning("Catalog query returned no sources")
             return []
-                
+
     except Exception as e:
         st.error(f"Failed to query {catalog} catalog: {e}")
         import traceback
@@ -184,14 +184,18 @@ def find_candidates(
     obj = Table(obj)
     obj['flag'].name = 'flags'  # Rename to 'flags' for compatibility
 
+    # Build vizier catalog list - exclude the catalog we're already using as main
+    # to avoid duplicate queries and RA/DEC column naming issues in stdpipe
+    vizier_catalogs = ['gaiaedr3', 'ps1', 'sdss', 'apass', 'atlas', 'vsx', 'gsc', 'gaiadr3syn']
+    # Note: removed 'usnob1' as it has no magnitude columns for most filters
+
     candidates = pipeline.filter_transient_candidates(
         obj,
         cat=cat,
         fwhm=1.*fwhm*pixel_scale,
         time=header.get('DATE-OBS', None),
         skybot=True,
-        vizier=['gaiaedr3', 'ps1', 'skymapper', 'sdss',
-                'apass', 'atlas', 'vsx', 'gsc', 'usnob1', 'gaiadr3syn'],
+        vizier=vizier_catalogs,
         vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
         ned=False,
         verbose=True,
