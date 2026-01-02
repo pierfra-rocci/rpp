@@ -443,6 +443,9 @@ if science_file is not None:
     handle_log_messages(log_messages)
     # Initialize force_plate_solve as False by default
     force_plate_solve = st.session_state.get("astrometry_check", False)
+    
+    # Initialize use_astrometry to track if we ran plate solving
+    use_astrometry = False
 
     # If WCS creation fails due to singular matrix, try to proceed without WCS for detection
     proceed_without_wcs = False
