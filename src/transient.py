@@ -138,7 +138,7 @@ def find_candidates(
         # Debug: show what columns we got
         if cat is not None and len(cat) > 0:
             st.write(f"Catalog query returned {len(cat)} sources.")
-            
+
             # Normalize coordinate column names for stdpipe compatibility
             # SkyMapper uses RAICRS/DEICRS, PANSTARRS uses RAJ2000/DEJ2000
             # stdpipe expects 'RA' and 'DEC' columns
@@ -155,7 +155,7 @@ def find_candidates(
                 cat.rename_column('ra', 'RA')
             if 'dec' in cat.colnames and 'DEC' not in cat.colnames:
                 cat.rename_column('dec', 'DEC')
-            
+
             if 'RA' not in cat.colnames or 'DEC' not in cat.colnames:
                 st.error(f"ERROR: Could not find/create RA/DEC columns. Available: {cat.colnames}")
                 return []
@@ -176,23 +176,44 @@ def find_candidates(
     obj = Table(obj)
     obj['flag'].name = 'flags'  # Rename to 'flags' for compatibility
 
-    # Build vizier catalog list - exclude the catalog we're already using as main
-    # to avoid duplicate queries and RA/DEC column naming issues in stdpipe
-    vizier_catalogs = ['gaiaedr3', 'ps1', 'sdss', 'apass', 'atlas', 'vsx', 'gsc', 'gaiadr3syn']
-    # Note: removed 'usnob1' as it has no magnitude columns for most filters
+    # Build vizier catalog list - start with most reliable catalogs
+    # Some catalogs have RA/DEC column naming issues in stdpipe's internal queries
+    vizier_catalogs_full = ['gaiaedr3', 'ps1', 'sdss', 'apass', 'atlas', 'gsc', 'gaiadr3syn']
+    vizier_catalogs_minimal = ['gaiaedr3', 'gaiadr3syn', 'ps1','atlas']  # Fallback: only Gaia which is most reliable
 
-    candidates = pipeline.filter_transient_candidates(
-        obj,
-        cat=cat,
-        fwhm=1.*fwhm*pixel_scale,
-        time=header.get('DATE-OBS', None),
-        skybot=True,
-        vizier=vizier_catalogs,
-        vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
-        ned=False,
-        verbose=True,
-        flagged=True,
-    )
+    # Try with full catalog list first, fall back to minimal if there's a column naming issue
+    candidates = None
+    for attempt, vizier_catalogs in enumerate([vizier_catalogs_full, vizier_catalogs_minimal]):
+        try:
+            candidates = pipeline.filter_transient_candidates(
+                obj,
+                cat=cat,
+                fwhm=1.*fwhm*pixel_scale,
+                time=header.get('DATE-OBS', None),
+                skybot=True if attempt == 0 else False,  # Skip SkyBoT on fallback
+                vizier=vizier_catalogs,
+                vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
+                ned=False,
+                verbose=True,
+                flagged=True,
+            )
+            break  # Success, exit retry loop
+        except KeyError as e:
+            if attempt == 0:
+                st.warning(f"Catalog query failed with KeyError: {e}. Retrying with minimal catalog list...")
+                continue
+            else:
+                st.error(f"Transient filtering failed even with minimal catalogs: {e}")
+                return []
+        except Exception as e:
+            st.error(f"Unexpected error during transient filtering: {e}")
+            import traceback
+            st.error(traceback.format_exc())
+            return []
+
+    if candidates is None:
+        st.warning("No candidates returned from filtering.")
+        return []
 
     st.success(
         f"Candidate filtering complete. Found {len(candidates)} potential transients."
