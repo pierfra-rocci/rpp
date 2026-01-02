@@ -560,9 +560,9 @@ if science_file is not None:
         st.warning(
             "Proceeding without valid WCS - photometry will be limited to instrumental magnitudes"
         )
-
-    else:
-        # Extract pixel scale from existing header when not re-solving
+    elif not use_astrometry:
+        # Extract pixel scale from existing header only if we didn't run plate solving
+        # (plate solving already updated these values in session state)
         pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(science_header)
         seeing = st.session_state.analysis_parameters["seeing"]
         mean_fwhm_pixel = seeing / pixel_size_arcsec
