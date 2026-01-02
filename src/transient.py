@@ -205,10 +205,11 @@ def find_candidates(
     # Some catalogs have RA/DEC column naming issues in stdpipe's internal queries
     vizier_catalogs_full = ['gaiaedr3', 'sdss', 'apass', 'atlas', 'gsc', 'gaiadr3syn']
     vizier_catalogs_minimal = ['gaiaedr3', 'gaiadr3syn']  # Fallback: only Gaia which is most reliable
+    vizier_disabled = False  # Complete fallback: disable vizier cross-matching
 
-    # Try with full catalog list first, fall back to minimal if there's a column naming issue
+    # Try with full catalog list first, fall back to minimal, then disable entirely
     candidates = None
-    for attempt, vizier_catalogs in enumerate([vizier_catalogs_full, vizier_catalogs_minimal]):
+    for attempt, vizier_catalogs in enumerate([vizier_catalogs_full, vizier_catalogs_minimal, vizier_disabled]):
         try:
             candidates = pipeline.filter_transient_candidates(
                 obj,
@@ -224,11 +225,11 @@ def find_candidates(
             )
             break  # Success, exit retry loop
         except KeyError as e:
-            if attempt == 0:
-                st.warning(f"Catalog query failed with KeyError: {e}. Retrying with minimal catalog list...")
+            if attempt < 2:
+                st.warning(f"Catalog query failed with KeyError: {e}. Retrying with {'minimal' if attempt == 0 else 'no'} catalog list...")
                 continue
             else:
-                st.error(f"Transient filtering failed even with minimal catalogs: {e}")
+                st.error(f"Transient filtering failed even with vizier disabled: {e}")
                 return []
         except Exception as e:
             st.error(f"Unexpected error during transient filtering: {e}")
