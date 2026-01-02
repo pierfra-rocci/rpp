@@ -205,6 +205,12 @@ def cross_match_with_gaia(
                 log_messages.append(
                     f"INFO: Retrieved {len(catalog_table)} sources from {catalog_name} via Vizier"
                 )
+                
+                # Ensure ra/dec columns exist - Vizier returns RAJ2000/DEJ2000
+                if 'RAJ2000' in catalog_table.colnames and 'ra' not in catalog_table.colnames:
+                    catalog_table['ra'] = catalog_table['RAJ2000']
+                if 'DEJ2000' in catalog_table.colnames and 'dec' not in catalog_table.colnames:
+                    catalog_table['dec'] = catalog_table['DEJ2000']
 
             except Exception as catalog_error:
                 log_messages.append(
