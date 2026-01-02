@@ -137,34 +137,7 @@ def find_candidates(
 
         # Debug: show what columns we got
         if cat is not None and len(cat) > 0:
-            st.write(f"DEBUG: Catalog has {len(cat)} sources with columns: {cat.colnames}")
-
-            # Normalize coordinate column names for stdpipe compatibility
-            # SkyMapper uses RAICRS/DEICRS, PANSTARRS uses RAJ2000/DEJ2000
-            # stdpipe expects 'RA' and 'DEC' columns
-            # Check for various coordinate column names and rename to RA/DEC
-            if 'RAICRS' in cat.colnames and 'RA' not in cat.colnames:
-                cat.rename_column('RAICRS', 'RA')
-                st.write("DEBUG: Renamed RAICRS -> RA")
-            if 'DEICRS' in cat.colnames and 'DEC' not in cat.colnames:
-                cat.rename_column('DEICRS', 'DEC')
-                st.write("DEBUG: Renamed DEICRS -> DEC")
-            if 'RAJ2000' in cat.colnames and 'RA' not in cat.colnames:
-                cat.rename_column('RAJ2000', 'RA')
-                st.write("DEBUG: Renamed RAJ2000 -> RA")
-            if 'DEJ2000' in cat.colnames and 'DEC' not in cat.colnames:
-                cat.rename_column('DEJ2000', 'DEC')
-                st.write("DEBUG: Renamed DEJ2000 -> DEC")
-            # Also handle lowercase variants
-            if 'ra' in cat.colnames and 'RA' not in cat.colnames:
-                cat.rename_column('ra', 'RA')
-                st.write("DEBUG: Renamed ra -> RA")
-            if 'dec' in cat.colnames and 'DEC' not in cat.colnames:
-                cat.rename_column('dec', 'DEC')
-                st.write("DEBUG: Renamed dec -> DEC")
-
-            # Final check
-            st.write(f"DEBUG: Final catalog columns: {cat.colnames}")
+            st.write(f"Catalog query returned {len(cat)} sources.")
             if 'RA' not in cat.colnames or 'DEC' not in cat.colnames:
                 st.error(f"ERROR: Could not find/create RA/DEC columns. Available: {cat.colnames}")
         else:
