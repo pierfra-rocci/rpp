@@ -157,9 +157,9 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - Check internet connectivity for catalog queries (GAIA, SIMBAD, etc.).
 - Verify coordinate system and field center are correct.
 
-## Recent changes / Changelog (last update: 2025-12-30)
+## Recent changes / Changelog (last update: 2026-01-03)
 
-### Current Version (1.4.7)
+### Current Version (1.5.1)
 - **Python 3.12 Compatibility**: Project upgraded to require Python 3.12 with verified dependency resolution
 - **Enhanced Dependency Management**: Updated to latest stable versions:
   - astropy 7.1.1
@@ -171,6 +171,10 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - **Multi-catalog cross-matching**: GAIA DR3, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, 10 Parsec Catalog, and Astro-Colibri integration
 
 ### Version History
+
+#### Version 1.4.7
+- Python 3.12 Compatibility: Project upgraded to require Python 3.12 with verified dependency resolution
+- Enhanced Dependency Management: Updated to latest stable versions (astropy 7.1.1, aiohttp 3.11.18, certifi 2025.1.31)
 
 #### Version 1.4.5
 - Integrated `stdpipe` for robust local astrometric solving via Astrometry.net

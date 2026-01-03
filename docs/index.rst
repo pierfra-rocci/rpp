@@ -6,7 +6,7 @@ RAPAS Photometry Pipeline (RPP)
    :align: right
    :alt: RAPAS Photometry Pipeline logo
 
-**RAPAS Photometry Pipeline (RPP) v1.3.1** is a comprehensive web-based astronomical photometry system built with Streamlit and Python 3.12. It provides an end-to-end solution for processing astronomical images, performing precise photometry, and cross-matching results with major astronomical catalogs.
+**RAPAS Photometry Pipeline (RPP) v1.5.1** is a comprehensive web-based astronomical photometry system built with Streamlit and Python 3.12. It provides an end-to-end solution for processing astronomical images, performing precise photometry, and cross-matching results with major astronomical catalogs.
 
 The pipeline is designed for both amateur and professional astronomers, offering a user-friendly interface while maintaining the rigor and precision required for scientific analysis.
 

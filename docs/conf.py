@@ -15,12 +15,12 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 
 project = "RAPAS Photometry Pipeline (RPP)"
-copyright = "2024-2025, Pier-Francesco Rocci"
+copyright = "2024-2026, Pier-Francesco Rocci"
 author = "Pier-Francesco Rocci"
 
 # The full version, including alpha/beta/rc tags
-release = "1.4.6"
-version = "1.4"
+release = "1.5.1"
+version = "1.5"
 
 
 # -- General configuration ---------------------------------------------------

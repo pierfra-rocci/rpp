@@ -1,7 +1,7 @@
 User Guide
 =========
 
-**Current Version: 1.3.1 (December 2025)**
+**Current Version: 1.5.1 (January 2026)**
 
 Getting Started
 --------------

@@ -1,7 +1,7 @@
 Troubleshooting
 =============
 
-This section addresses common issues and provides solutions for RAPAS Photometry Pipeline (v1.3.1).
+This section addresses common issues and provides solutions for RAPAS Photometry Pipeline (v1.5.1).
 
 Installation & Setup Issues
 -------------------------

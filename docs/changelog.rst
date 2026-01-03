@@ -3,8 +3,19 @@ Changelog
 
 This document records all notable changes to RAPAS Photometry Pipeline.
 
-Version 1.3.1 (Current)
+Version 1.5.1 (Current)
 -----------------------
+
+**Released: January 3, 2026**
+
+**Current Status**
+*   All features from version 1.4.7 maintained and stabilized
+*   Python 3.12 compatibility confirmed
+*   All dependencies verified and up-to-date
+*   Production-ready release with comprehensive testing
+
+Version 1.4.7
+-------------
 
 **Released: December 30, 2025**
 

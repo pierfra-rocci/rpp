@@ -146,7 +146,7 @@ This step-by-step tutorial covers a complete workflow:
    * Obtain an Astro-Colibri UID key if you want transient matching.
 
 2. **Login & Configuration**
-   * Launch the frontend (`streamlit run run_frontend.py`) and log in.
+   * Launch the frontend (`streamlit run frontend.py`) and log in.
    * Upload your science image.
    * Configure Observatory, Process Options (CRR, Astrometry+), Analysis Parameters, Photometry Parameters, and Astro-Colibri key in the sidebar.
    * Click "Save Configuration" to store settings.
