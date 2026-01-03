@@ -556,7 +556,7 @@ def enhance_catalog(
     log_messages.append("INFO: Starting cross-match process...")
 
     if matched_table is not None and len(matched_table) > 0:
-        log_messages.append("INFO: Adding Gaia calibration matches...")
+        log_messages.append("INFO: Adding calibration matches...")
 
         # Use iloc-based matching on valid coordinates only
         valid_indices_list = np.where(valid_coords_mask)[0]
@@ -612,14 +612,14 @@ def enhance_catalog(
                 enhanced_table.iloc[valid_indices_list] = valid_enhanced
 
                 # Add gaia_calib_star column
-                enhanced_table["gaia_calib_star"] = False
+                enhanced_table["calib_star"] = False
                 enhanced_table.iloc[
                     valid_indices_list,
-                    enhanced_table.columns.get_loc("gaia_calib_star"),
+                    enhanced_table.columns.get_loc("calib_star"),
                 ] = valid_enhanced["match_id"].isin(matched_table["match_id"]).values
 
                 log_messages.append(
-                    f"SUCCESS: Added {len(matched_table)} Gaia calibration stars to catalog"
+                    f"SUCCESS: Added {len(matched_table)} calibration stars to catalog"
                 )
 
     if field_center_ra is not None and field_center_dec is not None:
