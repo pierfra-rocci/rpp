@@ -964,7 +964,7 @@ if science_file is not None:
                         phot_table_df = None
 
                 if phot_table_df is not None:
-                    with st.spinner("Cross-matching with Gaia..."):
+                    with st.spinner("Cross-matching with Catalogs for Zero Point..."):
                         matched_table, log_messages = cross_match_with_gaia(
                             phot_table_qtable,
                             header_to_process,
