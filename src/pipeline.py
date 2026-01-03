@@ -452,7 +452,16 @@ def fwhm_fit(
         xypos = list(zip(filtered_sources["xcentroid"], filtered_sources["ycentroid"]))
         fwhms = fit_fwhm(_img, xypos=xypos, fit_shape=box_size)
 
-        mean_fwhm = np.median(fwhms)
+        # fit_fwhm returns [fwhm_x, fwhm_y] for each source
+        # Average x and y FWHM for each source, then take median
+        if fwhms.ndim == 2 and fwhms.shape[1] == 2:
+            # Average x and y for each source
+            mean_fwhms_per_source = np.mean(fwhms, axis=1)
+            mean_fwhm = np.median(mean_fwhms_per_source)
+        else:
+            # Fallback if already 1D
+            mean_fwhm = np.median(fwhms)
+        
         st.success(f"FWHM using gaussian model : {round(mean_fwhm, 2)} pixels")
 
         return round(mean_fwhm, 2), clipped_std
@@ -584,11 +593,6 @@ def detection_and_photometry(
     # Ensure bkg_error is also float64
     bkg_error = np.full_like(
         image_sub, bkg.background_rms.astype(np.float64), dtype=np.float64
-    )
-
-    exposure_time = science_header.get(
-        "EXPTIME",
-        science_header.get("EXPOSURE", science_header.get("EXP_TIME", 1.0)),
     )
 
     # Get camera gain from header, fallback to computed value
