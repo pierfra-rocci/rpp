@@ -148,9 +148,6 @@ def find_candidates(
             # IMPORTANT: We ADD columns instead of renaming, because stdpipe may
             # internally access the original column names (e.g., 'RAJ2000')
 
-            # Debug: show available columns
-            st.write(f"Catalog columns: {cat.colnames[:15]}...")  # Show first 15 columns
-
             # Find the RA column and create 'ra' alias
             ra_col = None
             dec_col = None
