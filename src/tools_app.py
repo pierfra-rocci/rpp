@@ -244,7 +244,7 @@ def display_catalog_in_aladin(
     ra_col: str = "ra",
     dec_col: str = "dec",
     mag_col: str = "psf_mag",
-    alt_mag_col: str = "aperture_mag_1.1",
+    alt_mag_col: str = "aperture_mag_1_1",
     catalog_col: str = "catalog_matches",
     id_cols: list[str] = ["simbad_main_id", "aavso_Name"],
     fallback_id_prefix: str = "Source",
@@ -338,7 +338,7 @@ def display_catalog_in_aladin(
             # Get aperture magnitude (try multiple aperture columns)
             # Exclude error columns (which contain "err" anywhere in the name)
             aperture_mag_cols = [
-                col for col in final_table.columns 
+                col for col in final_table.columns
                 if col.startswith("aperture_mag_") and "err" not in col
             ]
             for ap_col in aperture_mag_cols:
