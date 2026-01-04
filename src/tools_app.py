@@ -244,7 +244,7 @@ def display_catalog_in_aladin(
     ra_col: str = "ra",
     dec_col: str = "dec",
     mag_col: str = "psf_mag",
-    alt_mag_col: str = "aperture_mag_1.5",
+    alt_mag_col: str = "aperture_mag_1.1",
     catalog_col: str = "catalog_matches",
     id_cols: list[str] = ["simbad_main_id", "aavso_Name"],
     fallback_id_prefix: str = "Source",
@@ -336,7 +336,9 @@ def display_catalog_in_aladin(
                     pass
 
             # Get aperture magnitude (try multiple aperture columns)
-            aperture_mag_cols = ["aperture_mag_1.5"]
+            aperture_mag_cols = [col for col in final_table.columns if col.startswith("aperture_mag_")]
+            if not aperture_mag_cols:
+                aperture_mag_cols = ["aperture_mag_1.1", "aperture_mag_1.3"]
             for ap_col in aperture_mag_cols:
                 if ap_col in present_optional_cols and pd.notna(row[ap_col]):
                     try:
@@ -779,7 +781,12 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     """
     fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
 
-    has_aperture = "aperture_mag_1.5" in final_table.columns
+    # Dynamically find available aperture magnitude columns
+    aperture_mag_cols = [col for col in final_table.columns if col.startswith("aperture_mag_") and not col.endswith("_err")]
+    aperture_mag_col = aperture_mag_cols[0] if aperture_mag_cols else None
+    aperture_err_col = f"{aperture_mag_col.replace('aperture_mag', 'aperture_mag_err')}" if aperture_mag_col else None
+    
+    has_aperture = aperture_mag_col is not None and aperture_mag_col in final_table.columns
     has_psf = "psf_mag" in final_table.columns
 
     if not has_aperture and not has_psf:
@@ -805,7 +812,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Calculate bins for magnitude distribution
     mag_values = []
     if has_aperture:
-        mag_values.extend(final_table["aperture_mag_1.5"].dropna().tolist())
+        mag_values.extend(final_table[aperture_mag_col].dropna().tolist())
     if has_psf:
         mag_values.extend(final_table["psf_mag"].dropna().tolist())
 
@@ -816,11 +823,13 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
 
     # Magnitude distribution histogram (left panel)
     if has_aperture:
+        # Extract aperture radius from column name for label
+        aperture_label = aperture_mag_col.replace("aperture_mag_", "") if aperture_mag_col else "unknown"
         ax_mag.hist(
-            final_table["aperture_mag_1.5"].dropna(),
+            final_table[aperture_mag_col].dropna(),
             bins=bins,
             alpha=0.6,
-            label="Aperture Calib Mag (1.5×FWHM)",
+            label=f"Aperture Calib Mag ({aperture_label}×FWHM)",
             color="tab:blue",
         )
     if has_psf:
@@ -839,12 +848,13 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     ax_mag.grid(True, alpha=0.3)
 
     # Scatter plot of magnitude vs error (right panel)
-    if has_aperture and "aperture_mag_err_1.5" in final_table.columns:
+    if has_aperture and aperture_err_col and aperture_err_col in final_table.columns:
+        aperture_label = aperture_mag_col.replace("aperture_mag_", "") if aperture_mag_col else "unknown"
         ax_err.scatter(
-            final_table["aperture_mag_1.5"],
-            final_table["aperture_mag_err_1.5"],
+            final_table[aperture_mag_col],
+            final_table[aperture_err_col],
             alpha=0.7,
-            label="Aperture (1.5×FWHM)",
+            label=f"Aperture ({aperture_label}×FWHM)",
             color="tab:blue",
             s=18,
         )

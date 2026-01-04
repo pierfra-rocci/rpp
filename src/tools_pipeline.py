@@ -823,7 +823,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     """
     Add calibrated magnitudes for both aperture and PSF.
     Handle cases where only one method is available.
-    More robust handling for instrumental_mag_bkg_corr_1.5 and _2.0 variants.
+    Dynamically handles different aperture radius suffixes.
     """
     if final_table is None or len(final_table) == 0:
         return final_table
@@ -831,7 +831,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     # Helper to compute aperture magnitude for a given radius label
     def _compute_aperture_mag_for_radius(tbl, radius_label):
         # candidate instrumental mag column names in preference order
-        candidates = [f"instrumental_mag_bkg_corr_{radius_label}"]
+        candidates = [f"instrumental_mag_bkg_corr_{radius_label}", f"instrumental_mag_{radius_label}"]
         inst_col = next((c for c in candidates if c in tbl.columns), None)
         mag_col = f"aperture_mag_{radius_label}"
         mag_err_col = f"aperture_mag_err_{radius_label}"
@@ -853,9 +853,22 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
             tbl[mag_err_col] = err
         return tbl
 
-    # Attempt to compute for common aperture radii
-    final_table = _compute_aperture_mag_for_radius(final_table, "1.5")
-    final_table = _compute_aperture_mag_for_radius(final_table, "2.0")
+    # Dynamically find available aperture radii from column names
+    aperture_radii = set()
+    for col in final_table.columns:
+        if col.startswith("instrumental_mag_") or col.startswith("instrumental_mag_bkg_corr_"):
+            # Extract radius suffix (e.g., "1.1" from "instrumental_mag_1.1")
+            parts = col.rsplit("_", 1)
+            if len(parts) == 2:
+                try:
+                    float(parts[1])  # Check if it's a valid number
+                    aperture_radii.add(parts[1])
+                except ValueError:
+                    pass
+    
+    # Compute calibrated magnitudes for each found radius
+    for radius_label in aperture_radii:
+        final_table = _compute_aperture_mag_for_radius(final_table, radius_label)
 
     # PSF magnitude (if available)
     if "psf_instrumental_mag" in final_table.columns:
@@ -863,25 +876,23 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
             final_table["psf_instrumental_mag"] + zero_point  # - 0.09 * airmass
         )
 
-    # remove columns from a list
+    # remove columns from a list (these are intermediate columns that may exist)
     cols_to_remove = [
-        "aperture_sum_1.5",
-        "aperture_sum_err_1.5",
-        "aperture_sum_2",
-        "aperture_sum_err_2",
         "sky_center.ra",
         "sky_center.dec",
-        "background_per_pixel_1.5",
-        "background_per_pixel_2.0",
-        "aperture_sum_err_2.0",
-        "aperture_sum_2.0",
-        "instrumental_mag_1.5",
-        "instrumental_mag_2.0",
         "match_id",
         "simbad_ids",
         "catalog_matches",
         "calib_mag",
     ]
+    
+    # Also remove aperture_sum and instrumental_mag columns for cleanup
+    for col in list(final_table.columns):
+        if col.startswith("aperture_sum_") or col.startswith("background_per_pixel_"):
+            cols_to_remove.append(col)
+        # Keep instrumental_mag columns but can remove them if desired
+        # if col.startswith("instrumental_mag_"):
+        #     cols_to_remove.append(col)
 
     final_table = final_table.drop(
         columns=[col for col in cols_to_remove if col in final_table.columns]

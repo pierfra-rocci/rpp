@@ -1003,15 +1003,23 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         fig, (ax, ax_resid) = plt.subplots(1, 2, figsize=(14, 6), dpi=100)
 
+        # Use the default aperture radius for plotting
+        aperture_mag_col = f"aperture_mag{radius_suffix}"
+
+        # Check if the aperture_mag column exists before calculating residuals
+        if aperture_mag_col not in _matched_table.columns:
+            st.warning(f"Column '{aperture_mag_col}' not found. Cannot create calibration plots.")
+            return round(zero_point_value, 2), round(zero_point_std, 2), None
+
         # Calculate residuals
         _matched_table["residual"] = (
-            _matched_table[filter_band] - _matched_table["aperture_mag_1.5"]
+            _matched_table[filter_band] - _matched_table[aperture_mag_col]
         )
 
         # Left plot: Zero point calibration
         ax.scatter(
             _matched_table[filter_band],
-            _matched_table["aperture_mag_1.5"],
+            _matched_table[aperture_mag_col],
             alpha=0.5,
             label="Matched sources",
             color="blue",
@@ -1019,7 +1027,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Calculate and plot regression line with variance
         x_data = _matched_table[filter_band].values
-        y_data = _matched_table["aperture_mag_1.5"].values
+        y_data = _matched_table[aperture_mag_col].values
 
         # Remove any NaN values for regression
         valid_mask = np.isfinite(x_data) & np.isfinite(y_data)
@@ -1067,11 +1075,11 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         mag_range = [
             min(
                 _matched_table[filter_band].min(),
-                _matched_table["aperture_mag_1.5"].min(),
+                _matched_table[aperture_mag_col].min(),
             ),
             max(
                 _matched_table[filter_band].max(),
-                _matched_table["aperture_mag_1.5"].max(),
+                _matched_table[aperture_mag_col].max(),
             ),
         ]
         ideal_mag = np.linspace(mag_range[0], mag_range[1], 100)
