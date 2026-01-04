@@ -21,81 +21,6 @@ from src.utils import ensure_output_directory
 from typing import Any, Optional, Tuple
 
 
-def create_gaussian_psf_from_stars(stars, fwhm):
-    """
-    Create a simple Gaussian PSF model from median-combined star cutouts.
-
-    Parameters
-    ----------
-    stars : EPSFStars
-        Extracted star cutouts
-    fwhm : float
-        Full Width at Half Maximum in pixels
-
-    Returns
-    -------
-    numpy.ndarray
-        2D Gaussian PSF model array
-    """
-    try:
-        # Get all valid star data arrays
-        star_arrays = []
-        for star in stars:
-            if hasattr(star, "data") and star.data is not None:
-                arr = np.asarray(star.data)
-                if arr.size > 0 and not np.isnan(arr).any() and not np.all(arr == 0):
-                    star_arrays.append(arr)
-
-        if len(star_arrays) == 0:
-            raise ValueError("No valid star arrays for Gaussian PSF creation")
-
-        # Get the shape from the first star (they should all be the same size)
-        shape = star_arrays[0].shape
-
-        # Median combine the stars (normalizing each first)
-        normalized_stars = []
-        for arr in star_arrays:
-            peak = np.max(arr)
-            if peak > 0:
-                normalized_stars.append(arr / peak)
-
-        median_psf = np.median(normalized_stars, axis=0)
-
-        # Fit a 2D Gaussian to the median combined PSF
-        y, x = np.mgrid[: shape[0], : shape[1]]
-
-        # Initial guess for Gaussian parameters
-        amplitude = np.max(median_psf)
-        x_mean = shape[1] / 2.0
-        y_mean = shape[0] / 2.0
-        sigma = fwhm / 2.355  # Convert FWHM to sigma
-
-        # Create the Gaussian model
-        gaussian = Gaussian2D(
-            amplitude=amplitude,
-            x_mean=x_mean,
-            y_mean=y_mean,
-            x_stddev=sigma,
-            y_stddev=sigma,
-        )
-
-        # Evaluate the Gaussian on the grid
-        gaussian_psf = gaussian(x, y)
-
-        # Normalize to have same peak as median PSF
-        gaussian_psf = gaussian_psf / np.max(gaussian_psf) * np.max(median_psf)
-
-        st.write(
-            f"Created Gaussian PSF fallback with FWHM={fwhm:.2f} pixels (sigma={sigma:.2f})"
-        )
-
-        return gaussian_psf
-
-    except Exception as e:
-        st.error(f"Error creating Gaussian PSF fallback: {e}")
-        raise
-
-
 def perform_psf_photometry(
     img: np.ndarray,
     photo_table: Table,
@@ -623,10 +548,8 @@ def perform_psf_photometry(
         raise
 
     try:
-        # Ensure fit_shape accommodates 1.5*FWHM aperture radius
-        # aperture_radius = fit_shape / 2.0, so:
-        # fit_shape >= 2 * 1.5 * FWHM = 3 * FWHM
-        fit_shape = max(11, int(3 * fwhm + 1))
+        # Ensure fit_shape accommodates 1.3*FWHM aperture radius
+        fit_shape = int(3 * fwhm)
         if fit_shape % 2 == 0:
             fit_shape += 1
         aperture_radius = fit_shape / 2.0
@@ -741,7 +664,7 @@ def perform_psf_photometry(
         # If there are a lot of stars, pick the brightest (by peak)
         if n_valid > max_stars_for_epsf:
             st.write(
-                f"⚡ Selecting top {max_stars_for_epsf} brightest stars from {n_valid} valid stars..."
+                f"Selecting top {max_stars_for_epsf} brightest stars from {n_valid} valid stars..."
             )
             peaks = np.array([s.data.max() for s in valid_stars])
             top_idx = np.argsort(peaks)[-max_stars_for_epsf:][::-1]
@@ -755,10 +678,9 @@ def perform_psf_photometry(
         # Try EPSFBuilder with retries and progressively simpler parameters
         epsf = None
         epsf_data = None
-        use_gaussian_fallback = False
 
         builder_attempts = [
-            dict(oversampling=2, maxiters=10),
+            dict(oversampling=2, maxiters=5),
         ]
 
         for params in builder_attempts:
