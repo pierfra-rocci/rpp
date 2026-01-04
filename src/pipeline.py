@@ -928,7 +928,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Use the first aperture radius as the default for zero point calculation
         default_radius = aperture_radii[0]
-        radius_suffix = f"_{default_radius:.1f}"
+        radius_suffix = f"_{str(default_radius).replace('.', '_')}"
         instrumental_mag_col = f"instrumental_mag{radius_suffix}"
 
         # Check if the column exists in matched table
