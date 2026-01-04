@@ -336,17 +336,21 @@ def display_catalog_in_aladin(
                     pass
 
             # Get aperture magnitude (try multiple aperture columns)
-            aperture_mag_cols = [col for col in final_table.columns if col.startswith("aperture_mag_")]
-            if not aperture_mag_cols:
-                aperture_mag_cols = ["aperture_mag_1.1", "aperture_mag_1.3"]
+            # Exclude error columns (which contain "err" anywhere in the name)
+            aperture_mag_cols = [
+                col for col in final_table.columns 
+                if col.startswith("aperture_mag_") and "err" not in col
+            ]
             for ap_col in aperture_mag_cols:
-                if ap_col in present_optional_cols and pd.notna(row[ap_col]):
-                    try:
-                        aperture_mag = float(row[ap_col])
-                        source["aperture_mag"] = aperture_mag
-                        break
-                    except (ValueError, TypeError):
-                        continue
+                if ap_col in final_table.columns:
+                    val = final_table.loc[idx, ap_col]
+                    if pd.notna(val):
+                        try:
+                            aperture_mag = float(val)
+                            source["aperture_mag"] = aperture_mag
+                            break
+                        except (ValueError, TypeError):
+                            continue
 
             # Handle catalog matches - collect individual catalog IDs
             catalog_matches = {}
