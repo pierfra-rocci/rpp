@@ -971,7 +971,8 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             _phot_table = _phot_table.to_pandas()
 
         # Remove old single-aperture columns if they exist
-        old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
+        old_columns = ["aperture_mag", "aperture_instrumental_mag",
+                       "aperture_mag_err"]
 
         for col in old_columns:
             if col in _phot_table.columns:
@@ -979,7 +980,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Add calibrated magnitudes for all aperture radii
         for radius in aperture_radii:
-            radius_suffix = f"_{radius:.1f}"
+            radius_suffix = f"_{str(radius).replace('.', '_')}"
             instrumental_col = f"instrumental_mag{radius_suffix}"
             aperture_mag_col = f"aperture_mag{radius_suffix}"
 
@@ -990,7 +991,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Also apply to matched table for all aperture radii
         for radius in aperture_radii:
-            radius_suffix = f"_{radius:.1f}"
+            radius_suffix = f"_{str(radius).replace('.', '_')}"
             instrumental_col = f"instrumental_mag{radius_suffix}"
             aperture_mag_col = f"aperture_mag{radius_suffix}"
 

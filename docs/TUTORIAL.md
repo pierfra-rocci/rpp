@@ -56,7 +56,7 @@ Once you have configured all parameters, the analysis pipeline executes with the
 2.  **Source Detection & Cosmic Ray Removal**: Identify astronomical sources using DAOStarFinder; automatically remove cosmic rays with L.A.Cosmic (astroscrappy)
 3.  **Photometry**: Perform multi-aperture photometry (1.5× , 2.0× FWHM) and PSF photometry using empirical ePSF modeling with Gaussian fallback
 4.  **Astrometric Refinement** (if enabled): Apply blind plate-solving via Astrometry.net/stdpipe to solve or refine WCS
-5.  **Photometric Calibration**: Cross-match with GAIA DR3 for absolute photometric zero-point determination with outlier rejection
+5.  **Photometric Calibration**: Cross-match with Catalogs for absolute photometric zero-point determination with outlier rejection
 6.  **Multi-Catalog Cross-Matching**: Query and cross-match sources with GAIA DR3 (stellar parameters), SIMBAD (object classification), SkyBoT (solar system objects), AAVSO VSX (variable stars), Milliquas (QSOs/AGN), 10 Parsec Catalog (nearby stars), and optionally Astro-Colibri (transient alerts)
 7.  **Transient Detection** (if enabled): Perform image subtraction against reference survey templates and flag candidate transient sources
 

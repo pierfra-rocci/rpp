@@ -141,7 +141,7 @@ Catalog Operations
 
 .. py:function:: cross_match_with_gaia(_phot_table, science_header, pixel_size_arcsec, mean_fwhm_pixel, filter_band, filter_max_mag, refined_wcs=None)
 
-   Cross-match detected sources with the GAIA DR3 star catalog.
+   Cross-match detected sources with the star catalogs.
    
    :param _phot_table: Table with detected source positions
    :type _phot_table: astropy.table.Table

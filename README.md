@@ -18,7 +18,7 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 - **Coordinate systems**: Support for multiple coordinate reference frames
 
 ### 📊 Photometric Calibration
-- **GAIA DR3 integration**: Automatic cross-matching with GAIA Data Release 3
+- **GAIA DR3 integration**: Automatic cross-matching with standard star catalogs
 - **Zero-point calculation**: Robust photometric calibration with outlier rejection
 - **Extinction correction**: Atmospheric extinction correction using airmass
 - **Multiple filter bands**: Support for GAIA G, BP, RP and synthetic photometry bands
