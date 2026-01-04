@@ -103,8 +103,8 @@ def perform_psf_photometry(
     daostarfind: Any,
     mask: Optional[np.ndarray] = None,
     error=None,
-    max_sources_for_psf: int = 500,
-    max_stars_for_epsf: int = 200,
+    max_sources_for_psf: int = 700,
+    max_stars_for_epsf: int = 350,
 ) -> Tuple[Optional[Table], Optional[Any]]:
     """
     Perform PSF (Point Spread Function) photometry using an empirically-constructed PSF model.
@@ -292,12 +292,12 @@ def perform_psf_photometry(
 
         # Define flux filtering criteria: keep bright, unsaturated stars
         # Avoid very faint sources (low S/N) and saturated sources
-        flux_min = flux_median - 2 * flux_std  # Don't go too faint
-        flux_max = flux_median + 2 * flux_std  # Avoid the very brightest (likely saturated)
+        flux_min = flux_median - 3 * flux_std  # Don't go too faint
+        flux_max = flux_median + 3 * flux_std  # Avoid the very brightest (likely saturated)
         
         st.write(
             f"Target flux range: {flux_min:.1f} "
-            f"→ {flux_max:.1f} (median ± 2σ)"
+            f"→ {flux_max:.1f} (median ± 3σ)"
         )
 
         # Create individual boolean masks with explicit NaN handling
@@ -362,11 +362,11 @@ def perform_psf_photometry(
         size_criteria = np.ones(n_sources, dtype=bool)
         valid_fwhm = np.isfinite(fwhm_sources)
         if np.any(valid_fwhm):
-            fwhm_median = np.median(fwhm_sources[valid_fwhm])
-            # Accept sources with FWHM within 0.7–1.3× median
+            # Use the fwhm parameter passed to the function
+            # Accept sources with FWHM within 0.7–1.3× expected FWHM
             # (rejects extended objects and under-sampled stars)
-            size_min = fwhm_median * 0.7
-            size_max = fwhm_median * 1.3
+            size_min = fwhm * 0.7
+            size_max = fwhm * 1.3
             size_criteria[valid_fwhm] = (
                 (fwhm_sources[valid_fwhm] >= size_min)
                 & (fwhm_sources[valid_fwhm] <= size_max)
@@ -385,11 +385,11 @@ def perform_psf_photometry(
         # Reject blends and optical defects using roundness and axis ratio
         roundness_criteria = np.zeros(n_sources, dtype=bool)
         roundness_criteria[valid_roundness] = (
-            np.abs(roundness1[valid_roundness]) < 0.2
+            np.abs(roundness1[valid_roundness]) < 0.25
         )  # Stricter than before
         n_roundness_pass = np.sum(roundness_criteria)
         st.write(
-            f"  ✓ Roundness (|r₁| < 0.2): {n_roundness_pass} sources"
+            f"  ✓ Roundness (|r₁| < 0.25): {n_roundness_pass} sources"
         )
 
         # Add axis-ratio check if semi-major/minor axes available
@@ -401,11 +401,11 @@ def perform_psf_photometry(
             # Ellipticity: 0 = circular, ~1 = very elongated
             ellipticity = 1.0 - axis_ratio
             ellipticity_criteria[valid_axes] = (
-                ellipticity < 0.15
+                ellipticity < 0.2
             )  # Reject highly elongated objects
             n_ellipticity_pass = np.sum(ellipticity_criteria)
             st.write(
-                f"  ✓ Ellipticity (ε < 0.15): "
+                f"  ✓ Ellipticity (ε < 0.2): "
                 f"{n_ellipticity_pass} sources"
             )
         else:
@@ -415,9 +415,9 @@ def perform_psf_photometry(
             )
 
         sharpness_criteria = np.zeros(n_sources, dtype=bool)
-        sharpness_criteria[valid_sharpness] = sharpness[valid_sharpness] > 0.5
+        sharpness_criteria[valid_sharpness] = sharpness[valid_sharpness] > 0.45
         n_sharpness_pass = np.sum(sharpness_criteria)
-        st.write(f"  ✓ Sharpness (sharp > 0.5): {n_sharpness_pass} sources")
+        st.write(f"  ✓ Sharpness (sharp > 0.45): {n_sharpness_pass} sources")
 
         # ========== CROWDING/ISOLATION FILTERING ==========
         # Reject stars with bright neighbors within ~40 pixels
@@ -542,9 +542,9 @@ def perform_psf_photometry(
             # Relax size criterion: accept wider range of FWHMs
             size_criteria_relaxed = np.ones(n_sources, dtype=bool)
             if np.any(valid_fwhm):
-                fwhm_median = np.median(fwhm_sources[valid_fwhm])
-                size_min_relax = fwhm_median * 0.5
-                size_max_relax = fwhm_median * 1.5
+                # Use the fwhm parameter passed to the function
+                size_min_relax = fwhm * 0.5
+                size_max_relax = fwhm * 1.5
                 size_criteria_relaxed[valid_fwhm] = (fwhm_sources[valid_fwhm] >= size_min_relax) & (
                     fwhm_sources[valid_fwhm] <= size_max_relax
                 )
