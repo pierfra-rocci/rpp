@@ -679,7 +679,7 @@ def detection_and_photometry(
             )
 
             # Add radius information and process results
-            radius_suffix = f"_{str(aperture_radii[0]).replace('.', '_')}"
+            radius_suffix = f"_{str(aperture_radii[i]).replace('.', '_')}"
 
             # Rename aperture columns
             if "aperture_sum" in phot_result.colnames:
