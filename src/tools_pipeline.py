@@ -856,15 +856,15 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     # Dynamically find available aperture radii from column names
     aperture_radii = set()
     for col in final_table.columns:
-        if col.startswith("instrumental_mag_") or col.startswith("instrumental_mag_bkg_corr_"):
-            # Extract radius suffix (e.g., "1.1" from "instrumental_mag_1.1")
-            parts = col.rsplit("_", 1)
-            if len(parts) == 2:
-                try:
-                    float(parts[1])  # Check if it's a valid number
-                    aperture_radii.add(parts[1])
-                except ValueError:
-                    pass
+        # Extract radius suffix by removing known prefixes
+        radius_label = None
+        if col.startswith("instrumental_mag_bkg_corr_"):
+            radius_label = col.replace("instrumental_mag_bkg_corr_", "", 1)
+        elif col.startswith("instrumental_mag_"):
+            radius_label = col.replace("instrumental_mag_", "", 1)
+
+        if radius_label:
+            aperture_radii.add(radius_label)
 
     # Compute calibrated magnitudes for each found radius
     for radius_label in aperture_radii:
