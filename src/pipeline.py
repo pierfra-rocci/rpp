@@ -740,7 +740,7 @@ def detection_and_photometry(
 
         # Calculate SNR and magnitudes for each aperture
         for i, radius in enumerate(aperture_radii):
-            radius_suffix = f"_{str(radius).reaplce('.', '_')}"
+            radius_suffix = f"_{str(radius).replace('.', '_')}"
             aperture_sum_col = f"aperture_sum{radius_suffix}"
             aperture_err_col = f"aperture_sum_err{radius_suffix}"
             bkg_corr_col = f"aperture_sum_bkg_corr{radius_suffix}"
