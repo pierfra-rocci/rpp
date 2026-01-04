@@ -782,9 +782,20 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
 
     # Dynamically find available aperture magnitude columns
-    aperture_mag_cols = [col for col in final_table.columns if col.startswith("aperture_mag_") and not col.endswith("_err")]
+    # Exclude error columns (which contain "err" anywhere in the name)
+    aperture_mag_cols = [
+        col for col in final_table.columns 
+        if col.startswith("aperture_mag_") and "err" not in col
+    ]
     aperture_mag_col = aperture_mag_cols[0] if aperture_mag_cols else None
-    aperture_err_col = f"{aperture_mag_col.replace('aperture_mag', 'aperture_mag_err')}" if aperture_mag_col else None
+    
+    # Construct the error column name: aperture_mag_1.1 -> aperture_mag_err_1.1
+    if aperture_mag_col:
+        # Extract the radius suffix (e.g., "1.1" from "aperture_mag_1.1")
+        radius_suffix = aperture_mag_col.replace("aperture_mag_", "")
+        aperture_err_col = f"aperture_mag_err_{radius_suffix}"
+    else:
+        aperture_err_col = None
     
     has_aperture = aperture_mag_col is not None and aperture_mag_col in final_table.columns
     has_psf = "psf_mag" in final_table.columns
