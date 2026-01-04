@@ -1008,9 +1008,7 @@ if science_file is not None:
                                             if not isinstance(epsf_table, pd.DataFrame)
                                             else epsf_table
                                         )
-                                        final_table = st.session_state[
-                                            "final_phot_table"
-                                        ]
+                                        final_table = phot_table_df.copy()
 
                                         # Merge keeping all sources
                                         final_table, log_messages = (
@@ -1047,7 +1045,39 @@ if science_file is not None:
                                             final_table
                                         )
                                         st.success(
-                                            f"Catalog includes {len(final_table)} sources."
+                                            f"Catalog includes {len(final_table)} sources (with PSF photometry)."
+                                        )
+                                    else:
+                                        # No PSF photometry - use aperture photometry only
+                                        st.info("Using aperture photometry only (PSF photometry not available).")
+                                        final_table = phot_table_df.copy()
+
+                                        # Add calibrated magnitudes
+                                        final_table = add_calibrated_magnitudes(
+                                            final_table,
+                                            zero_point=zero_point_value,
+                                            airmass=air,
+                                        )
+
+                                        # Add metadata
+                                        final_table["zero_point"] = zero_point_value
+                                        final_table["zero_point_std"] = zero_point_std
+                                        final_table["airmass"] = air
+
+                                        # Clean the table
+                                        final_table, log_messages = (
+                                            clean_photometry_table(
+                                                final_table, require_magnitude=True
+                                            )
+                                        )
+                                        handle_log_messages(log_messages)
+
+                                        # Save to session state
+                                        st.session_state["final_phot_table"] = (
+                                            final_table
+                                        )
+                                        st.success(
+                                            f"Catalog includes {len(final_table)} sources (aperture photometry only)."
                                         )
 
                                 except Exception as e:

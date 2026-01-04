@@ -626,7 +626,7 @@ def detection_and_photometry(
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
 
     # Create multiple circular apertures with different radii
-    aperture_radii = [1.5, 2.0]
+    aperture_radii = [1.1, 1.3]
     apertures = [
         CircularAperture(positions, r=radius * fwhm_estimate)
         for radius in aperture_radii
@@ -635,8 +635,8 @@ def detection_and_photometry(
     # Create circular annulus apertures for background estimation
     annulus_apertures = []
     for radius in aperture_radii:
-        r_in = 1.5 * radius * fwhm_estimate
-        r_out = 2.0 * radius * fwhm_estimate
+        r_in = 2.0 * radius * fwhm_estimate
+        r_out = 2.5 * radius * fwhm_estimate
         annulus_apertures.append(CircularAnnulus(positions, r_in=r_in, r_out=r_out))
 
     try:
@@ -781,16 +781,19 @@ def detection_and_photometry(
                 image_sub, sources, fwhm_estimate, daofind, mask, total_error
             )
 
-            epsf_table["snr"] = np.round(
-                epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"])
-            )
-            m_err = 1.0857 / epsf_table["snr"]
-            epsf_table["psf_mag_err"] = m_err
+            if epsf_table is not None:
+                epsf_table["snr"] = np.round(
+                    epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"])
+                )
+                m_err = 1.0857 / epsf_table["snr"]
+                epsf_table["psf_mag_err"] = m_err
 
-            epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"])
-            epsf_table["instrumental_mag"] = epsf_instrumental_mags
+                epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"])
+                epsf_table["instrumental_mag"] = epsf_instrumental_mags
+            else:
+                st.info("PSF photometry was not performed. Continuing with aperture photometry only.")
         except Exception as e:
-            st.error(f"Error performing EPSF photometry: {e}")
+            st.warning(f"Error performing EPSF photometry: {e}. Continuing with aperture photometry only.")
             epsf_table = None
 
         # Use the first aperture's columns (since "aperture_sum" was renamed)
@@ -921,7 +924,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
     try:
         # Define aperture radii (should match the ones used in detection_and_photometry)
-        aperture_radii = [1.5, 2.0]
+        aperture_radii = [1.1, 1.3]
 
         # Use the first aperture radius as the default for zero point calculation
         default_radius = aperture_radii[0]

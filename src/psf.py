@@ -105,13 +105,13 @@ def perform_psf_photometry(
     error=None,
     max_sources_for_psf: int = 500,
     max_stars_for_epsf: int = 200,
-) -> Tuple[Table, Any]:
+) -> Tuple[Optional[Table], Optional[Any]]:
     """
     Perform PSF (Point Spread Function) photometry using an empirically-constructed PSF model.
 
     This function builds an empirical PSF (EPSF) from bright stars in the image
     and then uses this model to perform PSF photometry on all detected sources.
-    If EPSF building fails, falls back to a simple Gaussian PSF model.
+    If EPSF building fails, returns None.
 
     Parameters
     ----------
@@ -136,9 +136,9 @@ def perform_psf_photometry(
 
     Returns
     -------
-    Tuple[astropy.table.Table, photutils.psf.EPSFModel or numpy.ndarray]
-        - phot_epsf_result : Table containing PSF photometry results, including fitted fluxes and positions
-        - epsf : The fitted EPSF model (or Gaussian fallback) used for photometry
+    Tuple[Optional[astropy.table.Table], Optional[photutils.psf.EPSFModel]]
+        - phot_epsf_result : Table containing PSF photometry results, or None if PSF building failed
+        - epsf : The fitted EPSF model, or None if PSF building failed
     """
     # Initial validation
     try:
@@ -778,51 +778,38 @@ def perform_psf_photometry(
                 )
                 epsf = None
 
-        # If EPSFBuilder failed completely, use Gaussian fallback
+        # Check if EPSFBuilder succeeded
         if epsf is None or (
             hasattr(epsf, "data")
             and (epsf.data is None or np.asarray(epsf.data).size == 0)
         ):
             st.warning(
-                "⚠️ EPSFBuilder failed. Creating Gaussian PSF fallback from median-combined stars..."
+                "⚠️ EPSFBuilder failed to create a valid PSF model. Continuing without PSF photometry."
             )
-            use_gaussian_fallback = True
-
-            try:
-                epsf_data = create_gaussian_psf_from_stars(stars_for_builder, fwhm)
-
-                # Create a simple object to hold the Gaussian PSF data
-                class GaussianPSF:
-                    def __init__(self, data, fwhm):
-                        self.data = data
-                        self.fwhm = fwhm
-                        self.oversampling = 1
-
-                epsf = GaussianPSF(epsf_data, fwhm)
-                st.success("✓ Gaussian PSF fallback created successfully")
-
-            except Exception as fallback_error:
-                st.error(f"Gaussian PSF fallback also failed: {fallback_error}")
-                raise ValueError("Both ePSF building and Gaussian fallback failed")
-        else:
-            epsf_data = np.asarray(epsf.data)
+            return None, None
+        
+        epsf_data = np.asarray(epsf.data)
 
         # Validate epsf_data
         if epsf_data is None or epsf_data.size == 0:
-            raise ValueError(
-                "ePSF data is invalid or empty after attempts and fallback"
+            st.warning(
+                "⚠️ ePSF data is invalid or empty. Continuing without PSF photometry."
             )
+            return None, None
 
         if np.isnan(epsf_data).any():
-            st.warning("ePSF data contains NaN values")
+            st.warning(
+                "⚠️ ePSF data contains NaN values. Continuing without PSF photometry."
+            )
+            return None, None
 
         st.write(f"Shape of PSF data: {epsf_data.shape}")
         st.session_state["epsf_model"] = epsf
-        st.session_state["used_gaussian_fallback"] = use_gaussian_fallback
+        st.session_state["used_gaussian_fallback"] = False
 
     except Exception as e:
-        st.error(f"Error fitting PSF model: {e}")
-        raise
+        st.warning(f"Error fitting PSF model: {e}. Continuing without PSF photometry.")
+        return None, None
 
     # Ensure we have a usable PSF model for PSFPhotometry
     try:
@@ -837,10 +824,10 @@ def perform_psf_photometry(
         # Save / display epsf as FITS and figure (best-effort)
         try:
             hdu = fits.PrimaryHDU(data=epsf_data)
-            model_type = "Gaussian PSF (fallback)" if use_gaussian_fallback else "EPSF"
+            model_type = "EPSF"
             hdu.header["COMMENT"] = f"PSF model: {model_type}"
             hdu.header["PSFTYPE"] = (
-                "GAUSSIAN" if use_gaussian_fallback else "EPSF",
+                "EPSF",
                 "Type of PSF model used",
             )
 
@@ -857,7 +844,7 @@ def perform_psf_photometry(
             hdu.header["FWHMPIX"] = (fwhm_val, "FWHM in pixels used for extraction")
 
             # OVERSAMP may be tuple/list/array; convert to safe FITS-friendly value
-            oversamp = getattr(epsf, "oversampling", 1 if use_gaussian_fallback else 3)
+            oversamp = getattr(epsf, "oversampling", 3)
             try:
                 if isinstance(oversamp, (list, tuple, np.ndarray)):
                     # store as comma-separated string to avoid illegal array header values
@@ -867,7 +854,7 @@ def perform_psf_photometry(
                 else:
                     oversamp_val = int(oversamp)
             except Exception:
-                oversamp_val = 1 if use_gaussian_fallback else 3
+                oversamp_val = 3
             hdu.header["OVERSAMP"] = (str(oversamp_val), "Oversampling factor(s)")
 
             # Number of stars used - ensure scalar int
@@ -899,15 +886,13 @@ def perform_psf_photometry(
                 interpolation="nearest",
             )
             title = f"Fitted PSF Model ({nstars_val} stars)"
-            if use_gaussian_fallback:
-                title += " - Gaussian Fallback"
             ax_epsf_model.set_title(title)
             st.pyplot(fig_epsf_model)
         except Exception as e:
             st.warning(f"Error working with PSF model display/save: {e}")
     except Exception as e:
-        st.error(f"Error preparing PSF model for photometry: {e}")
-        raise
+        st.warning(f"Error preparing PSF model for photometry: {e}. Continuing without PSF photometry.")
+        return None, None
 
     # Create PSF photometry object and perform photometry
     try:
@@ -923,7 +908,7 @@ def perform_psf_photometry(
             error = None
 
         # Create a SourceGrouper
-        min_separation = 2.0 * fwhm
+        min_separation = 1.9 * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
         sigma_clip = SigmaClip(sigma=3.0)
         bkgstat = MMMBackground(sigma_clip=sigma_clip)
@@ -1000,5 +985,5 @@ def perform_psf_photometry(
         return phot_epsf_result, epsf
 
     except Exception as e:
-        st.error(f"Error executing PSF photometry: {e}")
-        raise
+        st.warning(f"Error executing PSF photometry: {e}. Continuing without PSF photometry.")
+        return None, None
