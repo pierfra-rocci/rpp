@@ -1090,7 +1090,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         ax.set_title("Gaia magnitude vs Calibrated magnitude")
         ax.legend()
         ax.grid(True, alpha=0.5)
-        
+
         # Set axis limits to match the actual data range (not auto-scaled)
         margin = 0.5  # Add small margin for readability
         ax.set_xlim(mag_range[0] - margin, mag_range[1] + margin)

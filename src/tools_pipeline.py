@@ -865,7 +865,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
                     aperture_radii.add(parts[1])
                 except ValueError:
                     pass
-    
+
     # Compute calibrated magnitudes for each found radius
     for radius_label in aperture_radii:
         final_table = _compute_aperture_mag_for_radius(final_table, radius_label)
@@ -885,7 +885,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         "catalog_matches",
         "calib_mag",
     ]
-    
+
     # Also remove aperture_sum and instrumental_mag columns for cleanup
     for col in list(final_table.columns):
         if col.startswith("aperture_sum_") or col.startswith("background_per_pixel_"):

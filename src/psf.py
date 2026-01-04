@@ -272,7 +272,7 @@ def perform_psf_photometry(
         sharpness = _col_arr(photo_table_for_psf, "sharpness", np.nan)
         xcentroid = _col_arr(photo_table_for_psf, "xcentroid")
         ycentroid = _col_arr(photo_table_for_psf, "ycentroid")
-        
+
         # Additional attributes for improved filtering
         # Try to get source properties that indicate size and shape
         fwhm_sources = _col_arr(photo_table_for_psf, "fwhm", np.nan)  # if available
@@ -425,13 +425,13 @@ def perform_psf_photometry(
         neighbor_radius = 40.0  # pixels; typical for imaging
         # mag; reject if bright neighbor within this limit
         magnitude_threshold = 4.0
-        
+
         # Convert flux to magnitude for neighbor comparison
         # (simple: -2.5 log10(flux))
         # Avoid log of non-positive values
         flux_safe = np.where(flux > 0, flux, 1.0)
         magnitude = -2.5 * np.log10(flux_safe)
-        
+
         for i in range(n_sources):
             if not (
                 valid_xcentroid[i]
@@ -440,29 +440,29 @@ def perform_psf_photometry(
             ):
                 crowding_criteria[i] = False
                 continue
-            
+
             # Find all neighbors within the search radius
             dx = xcentroid - xcentroid[i]
             dy = ycentroid - ycentroid[i]
             dist = np.sqrt(dx**2 + dy**2)
-            
+
             # Exclude self (dist=0) and find neighbors
             neighbor_mask = (dist > 0.5) & (dist < neighbor_radius)
-            
+
             if np.any(neighbor_mask):
                 neighbor_mags = magnitude[neighbor_mask]
-                
+
                 # Count bright neighbors (within magnitude_threshold)
                 bright_neighbors = np.sum(
                     neighbor_mags < magnitude[i] + magnitude_threshold
                 )
-                
+
                 if bright_neighbors > 0:
                     crowding_criteria[i] = False
                     # Optionally log severely crowded sources
                     if bright_neighbors > 2:
                         pass  # Too crowded, reject
-            
+
         n_crowding_pass = np.sum(crowding_criteria)
         st.write(
             f"  ✓ Isolation (no bright neighbors within "
@@ -519,7 +519,7 @@ def perform_psf_photometry(
             )
 
             # Relax thresholds but maintain saturation and isolation checks (critical for PSF quality)
-            
+
             # Relax roundness: allow more elliptical shapes
             roundness_criteria_relaxed = np.zeros(n_sources, dtype=bool)
             roundness_criteria_relaxed[valid_roundness] = (
@@ -532,7 +532,7 @@ def perform_psf_photometry(
                 axis_ratio = semiminor[valid_axes] / semimajor[valid_axes]
                 ellipticity = 1.0 - axis_ratio
                 ellipticity_criteria_relaxed[valid_axes] = ellipticity < 0.25  # More permissive
-            
+
             # Relax sharpness: accept slightly broader profiles
             sharpness_criteria_relaxed = np.zeros(n_sources, dtype=bool)
             sharpness_criteria_relaxed[valid_sharpness] = (
@@ -548,13 +548,13 @@ def perform_psf_photometry(
                 size_criteria_relaxed[valid_fwhm] = (fwhm_sources[valid_fwhm] >= size_min_relax) & (
                     fwhm_sources[valid_fwhm] <= size_max_relax
                 )
-            
+
             # Relax flux criterion: broader range but still avoid saturation
             flux_criteria_relaxed = np.zeros(n_sources, dtype=bool)
             flux_criteria_relaxed[valid_flux] = (
                 flux[valid_flux] >= flux_median - 2.5 * flux_std
             ) & (flux[valid_flux] <= flux_median + 2.5 * flux_std)
-            
+
             # Relax isolation: allow one bright neighbor
             crowding_criteria_relaxed = np.ones(n_sources, dtype=bool)
             neighbor_radius_relaxed = 50.0  # Wider search radius
@@ -787,7 +787,7 @@ def perform_psf_photometry(
                 "⚠️ EPSFBuilder failed to create a valid PSF model. Continuing without PSF photometry."
             )
             return None, None
-        
+
         epsf_data = np.asarray(epsf.data)
 
         # Validate epsf_data

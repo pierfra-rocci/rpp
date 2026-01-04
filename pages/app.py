@@ -945,7 +945,7 @@ if science_file is not None:
 
                     if phot_table_qtable is not None:
                         phot_table_df = phot_table_qtable.to_pandas().copy(deep=True)
-                        
+
                         # Ensure RA/Dec columns are present
                         if 'ra' not in phot_table_df.columns or 'dec' not in phot_table_df.columns:
                             st.warning("RA/Dec columns not found in photometry table, attempting to add them...")

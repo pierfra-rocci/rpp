@@ -15,7 +15,6 @@ from astroquery.gaia import Gaia
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
 from astroquery.imcce import Skybot
-from astroquery.mast import Catalogs
 
 from src.tools_pipeline import URL
 from src.utils import safe_catalog_query
@@ -32,11 +31,9 @@ def cross_match_with_gaia(
 ):
     """
     Cross-match detected sources with the GAIA DR3 star catalog or PANSTARRS DR1/SkyMapper.
-    
     This function queries the appropriate catalog for a region matching the image field of view:
     - For g, r, i, z Sloan filters: queries PANSTARRS DR1 (north) or SkyMapper (south, dec < 0)
     - For other bands: queries GAIA DR3 with synthetic photometry
-    
     Applies filtering based on magnitude range and matches catalog sources to the detected sources.
     It also applies quality filters including variability, color index, and astrometric quality
     to ensure reliable photometric calibration stars.
@@ -126,7 +123,7 @@ def cross_match_with_gaia(
         # Determine if we should use PANSTARRS or GAIA based on filter_band
         sloan_bands = ["gmag", "rmag", "imag", "zmag"]
         is_sloan_filter = filter_band in sloan_bands
-        
+
         # Mapping from Sloan/PANSTARRS band names to SkyMapper column names
         skymapper_band_mapping = {
             "gmag": "gPSF",
@@ -203,7 +200,7 @@ def cross_match_with_gaia(
                 log_messages.append(
                     f"INFO: Retrieved {len(catalog_table)} sources from {catalog_name} via Vizier"
                 )
-                
+
                 # Ensure ra/dec columns exist - different catalogs use different column names
                 # PANSTARRS uses RAJ2000/DEJ2000, SkyMapper uses RAICRS/DEICRS
                 if 'ra' not in catalog_table.colnames:
@@ -284,14 +281,14 @@ def cross_match_with_gaia(
         mag_column = filter_band
         if is_sloan_filter and catalog_name == "SkyMapper":
             mag_column = skymapper_band_mapping.get(filter_band, filter_band)
-        
+
         # Debug: log available columns before filtering
         log_messages.append(f"DEBUG: Catalog columns before filtering: {catalog_table.colnames}")
-        
+
         # Apply magnitude filter
         mag_filter = catalog_table[mag_column] < filter_max_mag
         catalog_table_filtered = catalog_table[mag_filter]
-        
+
         # Debug: log available columns after filtering
         log_messages.append(f"DEBUG: Catalog columns after filtering: {catalog_table_filtered.colnames}")
 
@@ -310,7 +307,7 @@ def cross_match_with_gaia(
                     detection_col = "Ngood"
                 elif "nDetections" in catalog_table_filtered.colnames:
                     detection_col = "nDetections"
-                    
+
                 if detection_col is not None:
                     catalog_table_filtered = catalog_table_filtered[
                         catalog_table_filtered[detection_col] > 1
@@ -351,7 +348,7 @@ def cross_match_with_gaia(
             # PANSTARRS uses RAJ2000/DEJ2000, SkyMapper uses RAICRS/DEICRS
             ra_col = None
             dec_col = None
-            
+
             if "RAJ2000" in catalog_table_filtered.colnames and "DEJ2000" in catalog_table_filtered.colnames:
                 ra_col, dec_col = "RAJ2000", "DEJ2000"
             elif "RAICRS" in catalog_table_filtered.colnames and "DEICRS" in catalog_table_filtered.colnames:
@@ -369,7 +366,7 @@ def cross_match_with_gaia(
                     ra_col, dec_col = ra_candidates[0], dec_candidates[0]
                 else:
                     return None, ["ERROR: Cannot find RA/Dec columns in catalog table"]
-            
+
             catalog_skycoords = SkyCoord(
                 ra=catalog_table_filtered[ra_col],
                 dec=catalog_table_filtered[dec_col],
@@ -382,7 +379,7 @@ def cross_match_with_gaia(
                 dec=catalog_table_filtered["dec"],
                 unit="deg"
             )
-        
+
         idx, d2d, _ = source_positions_sky.match_to_catalog_sky(catalog_skycoords)
 
         max_sep_constraint = 2.5 * mean_fwhm_pixel * pixel_size_arcsec * u.arcsec
@@ -431,7 +428,7 @@ def cross_match_with_gaia(
         mag_column_for_output = filter_band
         if is_sloan_filter and catalog_name == "SkyMapper":
             mag_column_for_output = skymapper_band_mapping.get(filter_band, filter_band)
-        
+
         matched_table[filter_band] = np.asarray(catalog_table_filtered[mag_column_for_output][
             matched_indices_catalog
         ])

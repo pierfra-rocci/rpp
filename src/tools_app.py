@@ -471,14 +471,14 @@ def display_catalog_in_aladin(
                 sourcesData.forEach(function(source) {{
                     // Build comprehensive popup content
                     let popupContent = '<div style="padding:8px; max-width:300px; font-family:Arial,sans-serif;">';
-                    
+
                     // Header with catalog ID if available, otherwise source number
                     if(source.catalog_id) {{
                         popupContent += '<h4 style="margin:0 0 8px 0; color:#2c5282;">Source ID: ' + source.catalog_id + '</h4>';
                     }} else if(source.source_number) {{
                         popupContent += '<h4 style="margin:0 0 8px 0; color:#2c5282;">Source #' + source.source_number + '</h4>';
                     }}
-                    
+
                     // Coordinates section
                     popupContent += '<div style="background:#f7fafc; padding:6px; margin:4px 0; border-radius:4px;">';
                     popupContent += '<strong>Coordinates:</strong><br/>';
@@ -490,29 +490,29 @@ def display_catalog_in_aladin(
                     if(source.psf_mag || source.aperture_mag) {{
                         popupContent += '<div style="background:#edf2f7; padding:6px; margin:4px 0; border-radius:4px;">';
                         popupContent += '<strong>Photometry:</strong><br/>';
-                        
+
                         // Show PSF magnitude if available
                         if(source.psf_mag && source.psf_mag !== null && source.psf_mag !== undefined) {{
                             popupContent += 'PSF Mag: ' + (typeof source.psf_mag === 'number' ? source.psf_mag.toFixed(2) : source.psf_mag) + '<br/>';
                         }}
-                        
+
                         // Show aperture magnitude if available
                         if(source.aperture_mag && source.aperture_mag !== null && source.aperture_mag !== undefined) {{
                             popupContent += 'Aperture Mag: ' + (typeof source.aperture_mag === 'number' ? source.aperture_mag.toFixed(2) : source.aperture_mag) + '<br/>';
                         }}
-                        
+
                         // If only aperture_mag is available and psf_mag is not, show it prominently
                         if(!source.psf_mag && source.aperture_mag) {{
                             popupContent += '<em style="color:#2d3748;">Primary magnitude: Aperture</em><br/>';
                         }}
-                        
+
                         // Signal-to-noise ratio if available
                         if(source.snr) {{
                             popupContent += 'S/N: ' + (typeof source.snr === 'number' ? source.snr.toFixed(1) : source.snr);
                         }}
                         popupContent += '</div>';
                     }}
-                    
+
                     // Catalog matches section
                     if(source.catalog_matches && 
                        Object.keys(source.catalog_matches).length > 0) {{
