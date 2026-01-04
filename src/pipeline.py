@@ -679,7 +679,7 @@ def detection_and_photometry(
             )
 
             # Add radius information and process results
-            radius_suffix = f"_{aperture_radii[i]:.1f}"
+            radius_suffix = f"_{str(aperture_radii[0]).reaplce('.', '_')}"
 
             # Rename aperture columns
             if "aperture_sum" in phot_result.colnames:
@@ -740,7 +740,7 @@ def detection_and_photometry(
 
         # Calculate SNR and magnitudes for each aperture
         for i, radius in enumerate(aperture_radii):
-            radius_suffix = f"_{radius:.1f}"
+            radius_suffix = f"_{str(radius).reaplce('.', '_')}"
             aperture_sum_col = f"aperture_sum{radius_suffix}"
             aperture_err_col = f"aperture_sum_err{radius_suffix}"
             bkg_corr_col = f"aperture_sum_bkg_corr{radius_suffix}"
@@ -797,7 +797,7 @@ def detection_and_photometry(
             epsf_table = None
 
         # Use the first aperture's columns (since "aperture_sum" was renamed)
-        first_aperture_suffix = f"_{aperture_radii[0]:.1f}"
+        first_aperture_suffix = f"_{str(aperture_radii[0]).replace('.', '_')}"
         first_aperture_col = f"aperture_sum{first_aperture_suffix}"
         first_mag_col = f"instrumental_mag{first_aperture_suffix}"
 
