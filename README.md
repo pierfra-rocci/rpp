@@ -5,10 +5,10 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 ## Features
 
 ### 🔭 Core Photometry
-- **Multi-aperture photometry**: Automatic aperture photometry with multiple radii (1.5×, 2.0× FWHM)
-- **PSF photometry**: Effective Point Spread Function (ePSF) modeling with Gaussian fallback
+- **Multi-aperture photometry**: Automatic aperture photometry with multiple radii (1.1×, 1.3× FWHM)
+- **PSF photometry**: Effective Point Spread Function (ePSF) modeling.
 - **Background estimation**: Advanced 2D background modeling with SExtractor algorithm
-- **Source detection**: DAOStarFinder with configurable detection thresholds
+- **Source detection**: DAOStarFinder and Sep with configurable detection thresholds
 - **FWHM estimation**: Automatic seeing measurement with Gaussian profile fitting
 
 ### 🌌 Astrometric Solutions
@@ -18,10 +18,9 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 - **Coordinate systems**: Support for multiple coordinate reference frames
 
 ### 📊 Photometric Calibration
-- **GAIA DR3 integration**: Automatic cross-matching with standard star catalogs
+- **Catalogs integration**: Automatic cross-matching with standard star catalogs
 - **Zero-point calculation**: Robust photometric calibration with outlier rejection
-- **Extinction correction**: Atmospheric extinction correction using airmass
-- **Multiple filter bands**: Support for GAIA G, BP, RP and synthetic photometry bands
+- **Multiple filter bands**: Support for GAIA, synthetic, PanStarrs et SkyMapper photometry bands
 
 ### 🛰️ Multi-Catalog Cross-Matching
 - **GAIA DR3**: Stellar parameters, proper motions, and photometry
@@ -37,7 +36,7 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 - **Image enhancement**: Multiple visualization modes (ZScale, histogram equalization)
 - **Quality filtering**: Automated source quality assessment
 - **Error propagation**: Comprehensive photometric error calculation
-- **Transient Detection (Beta)**: Identification of transient candidates using survey templates
+- **Transient Detection**: Identification of transient candidates using survey templates
 
 ### 🖥️ User Interface
 - **Interactive web interface**: Streamlit-based GUI with real-time processing
@@ -48,7 +47,7 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 ## Installation
 
 ### Prerequisites
-- Python 3.10+
+- Python 3.12+
 - Astrometry.net local installation (`solve-field` binary must be in PATH)
 - Index files for Astrometry.net appropriate for your field of view
 
