@@ -5,8 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from astropy.table import Table
-from astropy.stats import SigmaClip
-from photutils.background import LocalBackground, MMMBackground
 from astropy.nddata import NDData
 from astropy.io import fits
 from astropy.visualization import simple_norm
@@ -212,7 +210,6 @@ def perform_psf_photometry(
             raise ValueError("No sources with finite flux values found")
 
         flux_median = np.median(flux_finite)
-        flux_std = np.std(flux_finite)
 
         # ========== S/N FILTERING (NEW - CRITICAL FOR PSF QUALITY) ==========
         # Compute S/N for each source if error data is available
@@ -253,7 +250,7 @@ def perform_psf_photometry(
                 st.write(f"  ⓘ Using adaptive S/N threshold (median S/N={snr_median:.1f})")
             else:
                 # Use fixed threshold for proper S/N values
-                snr_threshold = 50.0
+                snr_threshold = 20.0
         else:
             snr_threshold = 0.0  # No S/N filtering if no valid values
         
