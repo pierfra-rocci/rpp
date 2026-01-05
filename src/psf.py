@@ -394,10 +394,13 @@ def perform_psf_photometry(
                 "ellipticity filter skipped"
             )
 
-        sharpness_criteria = np.zeros(n_sources, dtype=bool)
-        sharpness_criteria[valid_sharpness] = sharpness[valid_sharpness] > 0.45
-        n_sharpness_pass = np.sum(sharpness_criteria)
-        st.write(f"  ✓ Sharpness (sharp > 0.45): {n_sharpness_pass} sources")
+        # Sharpness filtering DISABLED - too restrictive
+        # sharpness_criteria = np.zeros(n_sources, dtype=bool)
+        # sharpness_criteria[valid_sharpness] = sharpness[valid_sharpness] > 0.45
+        # n_sharpness_pass = np.sum(sharpness_criteria)
+        # st.write(f"  ✓ Sharpness (sharp > 0.45): {n_sharpness_pass} sources")
+        sharpness_criteria = np.ones(n_sources, dtype=bool)  # Accept all (disabled)
+        st.write("  ⓘ Sharpness filtering: disabled")
 
         # ========== CROWDING/ISOLATION FILTERING ==========
         # Reject stars with bright neighbors within isolation radius
@@ -595,7 +598,7 @@ def perform_psf_photometry(
 
         # Check if we have enough stars for HIGH-QUALITY PSF (target: 100+)
         min_stars_optimal = 100
-        min_stars_acceptable = 50  # Minimum required - below this, PSF is not computed
+        min_stars_acceptable = 15  # Minimum required - below this, PSF is not computed
         
         if len(filtered_photo_table) >= min_stars_optimal:
             st.success(
@@ -605,10 +608,10 @@ def perform_psf_photometry(
         elif len(filtered_photo_table) >= min_stars_acceptable:
             st.warning(
                 f"⚠ {len(filtered_photo_table)} PSF stars (acceptable but <{min_stars_optimal}). "
-                f"PSF model may have slightly reduced accuracy."
+                f"PSF model may have reduced accuracy."
             )
         else:
-            # Less than 50 stars: do not compute PSF
+            # Less than 15 stars: do not compute PSF
             st.error(
                 f"❌ Only {len(filtered_photo_table)} PSF stars available (minimum: {min_stars_acceptable}). "
                 f"PSF photometry will NOT be performed. Consider using aperture photometry only."
