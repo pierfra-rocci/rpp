@@ -882,7 +882,7 @@ def perform_psf_photometry(
             error = None
 
         # Create a SourceGrouper
-        min_separation = 1.75 * fwhm
+        min_separation = 1.9 * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
         # sigma_clip = SigmaClip(sigma=3.0)
         # bkgstat = MMMBackground(sigma_clip=sigma_clip)
@@ -892,7 +892,7 @@ def perform_psf_photometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,
             finder=daostarfind,
-            aperture_radius=1.1*aperture_radius,
+            aperture_radius=1.3*aperture_radius,
             grouper=grouper,
             # localbkg_estimator=localbkg_estimator,
         )
