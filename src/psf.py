@@ -838,13 +838,43 @@ def perform_psf_photometry(
 
     # Ensure we have a usable PSF model for PSFPhotometry
     try:
+        # Get oversampling from the EPSF model
+        oversamp = getattr(epsf, "oversampling", 2)
+        if isinstance(oversamp, (list, tuple, np.ndarray)):
+            oversamp = int(np.asarray(oversamp).ravel()[0])
+        else:
+            oversamp = int(oversamp)
+        
+        st.write(f"PSF oversampling factor: {oversamp}")
+        
         try:
             from photutils.psf import ImagePSF
-
-            psf_for_phot = ImagePSF(epsf_data)
-        except Exception:
+            
+            # CRITICAL: Pass oversampling to ImagePSF to preserve centering!
+            # Without this, the PSF model center is shifted causing magnitude offset
+            psf_for_phot = ImagePSF(epsf_data, oversampling=oversamp)
+            st.write(f"Created ImagePSF with oversampling={oversamp}")
+        except Exception as ipsf_err:
+            st.warning(f"ImagePSF creation failed: {ipsf_err}")
             # fallback to epsf object (works on newer photutils versions)
             psf_for_phot = epsf
+            st.write("Using EPSF model directly for photometry")
+
+        # Verify PSF model center
+        psf_center_y, psf_center_x = np.array(epsf_data.shape) / 2.0
+        st.write(f"PSF model center: ({psf_center_x:.2f}, {psf_center_y:.2f}) in oversampled pixels")
+        
+        # Check if PSF peak is at center
+        peak_y, peak_x = np.unravel_index(np.argmax(epsf_data), epsf_data.shape)
+        offset_x = (peak_x - psf_center_x) / oversamp
+        offset_y = (peak_y - psf_center_y) / oversamp
+        if abs(offset_x) > 0.5 or abs(offset_y) > 0.5:
+            st.warning(
+                f"⚠ PSF peak is offset from center by ({offset_x:.2f}, {offset_y:.2f}) pixels. "
+                f"This may cause photometry errors."
+            )
+        else:
+            st.write(f"✓ PSF peak offset from center: ({offset_x:.2f}, {offset_y:.2f}) pixels (acceptable)")
 
         # Save / display epsf as FITS and figure (best-effort)
         try:
