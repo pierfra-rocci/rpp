@@ -365,7 +365,7 @@ def perform_psf_photometry(
         # Reject blends and optical defects using roundness and axis ratio
         roundness_criteria = np.zeros(n_sources, dtype=bool)
         roundness_criteria[valid_roundness] = (
-            np.abs(roundness1[valid_roundness]) < 0.35
+            np.abs(roundness1[valid_roundness]) < 0.4
         )  # Relaxed from 0.25
         n_roundness_pass = np.sum(roundness_criteria)
         st.write(
@@ -381,7 +381,7 @@ def perform_psf_photometry(
             # Ellipticity: 0 = circular, ~1 = very elongated
             ellipticity = 1.0 - axis_ratio
             ellipticity_criteria[valid_axes] = (
-                ellipticity < 0.2
+                ellipticity < 0.3
             )  # Reject highly elongated objects
             n_ellipticity_pass = np.sum(ellipticity_criteria)
             st.write(
