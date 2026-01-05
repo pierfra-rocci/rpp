@@ -222,6 +222,7 @@ def perform_psf_photometry(
         
         # If S/N not directly available, compute from flux and error
         valid_snr = np.isfinite(snr)
+        snr_is_approximated = False  # Track if we're using Poisson approximation
         if not np.any(valid_snr):
             # Try to compute S/N from flux and flux_err
             valid_flux_err = np.isfinite(flux_err) & (flux_err > 0)
@@ -237,14 +238,32 @@ def perform_psf_photometry(
                 snr = np.full(n_sources, np.nan)
                 snr[valid_positive_flux] = np.sqrt(flux[valid_positive_flux])
                 valid_snr = np.isfinite(snr)
+                snr_is_approximated = True
                 st.write(f"  ⓘ S/N approximated as √flux for {np.sum(valid_snr)} sources (Poisson assumption)")
         
-        # S/N threshold: require high S/N for PSF model stars
-        snr_threshold = 50.0  # Minimum S/N for PSF stars
+        # S/N threshold: ADAPTIVE based on actual S/N distribution
+        # If S/N is approximated (Poisson), use percentile-based threshold instead of fixed value
+        snr_finite = snr[valid_snr]
+        if len(snr_finite) > 0:
+            snr_median = np.median(snr_finite)
+            
+            if snr_is_approximated or snr_median < 10:
+                # Use adaptive threshold: select top 50% of S/N values
+                snr_threshold = max(snr_median, np.percentile(snr_finite, 50))
+                st.write(f"  ⓘ Using adaptive S/N threshold (median S/N={snr_median:.1f})")
+            else:
+                # Use fixed threshold for proper S/N values
+                snr_threshold = 50.0
+        else:
+            snr_threshold = 0.0  # No S/N filtering if no valid values
+        
         snr_criteria = np.zeros(n_sources, dtype=bool)
-        snr_criteria[valid_snr] = snr[valid_snr] >= snr_threshold
+        if snr_threshold > 0:
+            snr_criteria[valid_snr] = snr[valid_snr] >= snr_threshold
+        else:
+            snr_criteria = np.ones(n_sources, dtype=bool)  # Skip S/N filtering
         n_snr_pass = np.sum(snr_criteria)
-        st.write(f"  ✓ S/N ≥ {snr_threshold}: {n_snr_pass} high-S/N sources")
+        st.write(f"  ✓ S/N ≥ {snr_threshold:.1f}: {n_snr_pass} high-S/N sources")
 
         # Define flux filtering criteria: keep BRIGHT, unsaturated stars
         # Focus on top percentile of flux distribution (bright stars have better S/N)
@@ -346,11 +365,11 @@ def perform_psf_photometry(
         # Reject blends and optical defects using roundness and axis ratio
         roundness_criteria = np.zeros(n_sources, dtype=bool)
         roundness_criteria[valid_roundness] = (
-            np.abs(roundness1[valid_roundness]) < 0.25
-        )  # Stricter than before
+            np.abs(roundness1[valid_roundness]) < 0.35
+        )  # Relaxed from 0.25
         n_roundness_pass = np.sum(roundness_criteria)
         st.write(
-            f"  ✓ Roundness (|r₁| < 0.25): {n_roundness_pass} sources"
+            f"  ✓ Roundness (|r₁| < 0.35): {n_roundness_pass} sources"
         )
 
         # Add axis-ratio check if semi-major/minor axes available
@@ -380,11 +399,11 @@ def perform_psf_photometry(
         n_sharpness_pass = np.sum(sharpness_criteria)
         st.write(f"  ✓ Sharpness (sharp > 0.45): {n_sharpness_pass} sources")
 
-        # ========== CROWDING/ISOLATION FILTERING (STRICTER) ==========
-        # Reject stars with ANY neighbors within ~5×FWHM (stricter isolation)
+        # ========== CROWDING/ISOLATION FILTERING ==========
+        # Reject stars with bright neighbors within isolation radius
         crowding_criteria = np.ones(n_sources, dtype=bool)
-        neighbor_radius = max(5.0 * fwhm, 50.0)  # At least 5×FWHM or 50 pixels (was 40)
-        # mag; reject if bright neighbor within this limit (stricter: 3 mag instead of 4)
+        neighbor_radius = max(4.0 * fwhm, 40.0)  # At least 4×FWHM or 40 pixels
+        # mag; reject if bright neighbor within this limit
         magnitude_threshold = 3.0
 
         # Convert flux to magnitude for neighbor comparison
