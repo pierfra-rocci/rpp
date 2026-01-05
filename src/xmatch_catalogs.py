@@ -321,7 +321,7 @@ def cross_match_with_gaia(
             # For GAIA, apply the original quality filters
             try:
                 var_filter = catalog_table_filtered["phot_variable_flag"] != "VARIABLE"
-                color_index_filter = (catalog_table_filtered["bp_rp"] > -1) & (
+                color_index_filter = (catalog_table_filtered["bp_rp"] > -3) & (
                     catalog_table_filtered["bp_rp"] < 3
                 )
 

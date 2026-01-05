@@ -1035,7 +1035,8 @@ def estimate_background(image_data, box_size=64, filter_size=5, figure=True):
 
                 # Plot the background model
                 im1 = ax1.imshow(
-                    bkg.background, origin="lower", cmap="viridis", vmin=vmin, vmax=vmax
+                    bkg.background, origin="lower", cmap="viridis", vmin=vmin,
+                    vmax=vmax
                 )
                 ax1.set_title("Estimated Background")
                 fig_bkg.colorbar(im1, ax=ax1, label="Flux")

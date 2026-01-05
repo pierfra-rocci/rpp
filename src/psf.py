@@ -818,7 +818,7 @@ def perform_psf_photometry(
             hdu.header["FWHMPIX"] = (fwhm_val, "FWHM in pixels used for extraction")
 
             # OVERSAMP may be tuple/list/array; convert to safe FITS-friendly value
-            oversamp = getattr(epsf, "oversampling", 3)
+            oversamp = getattr(epsf, "oversampling", 2)
             try:
                 if isinstance(oversamp, (list, tuple, np.ndarray)):
                     # store as comma-separated string to avoid illegal array header values
@@ -828,8 +828,8 @@ def perform_psf_photometry(
                 else:
                     oversamp_val = int(oversamp)
             except Exception:
-                oversamp_val = 3
-            hdu.header["OVERSAMP"] = (str(oversamp_val), "Oversampling factor(s)")
+                oversamp_val = 2
+            hdu.header["OVERSAMP"] = (str(oversamp_val), "Oversampling factor")
 
             # Number of stars used - ensure scalar int
             try:
@@ -882,11 +882,11 @@ def perform_psf_photometry(
             error = None
 
         # Create a SourceGrouper
-        min_separation = 1.9 * fwhm
+        min_separation = 1.7 * fwhm
         grouper = SourceGrouper(min_separation=min_separation)
-        sigma_clip = SigmaClip(sigma=3.0)
-        bkgstat = MMMBackground(sigma_clip=sigma_clip)
-        localbkg_estimator = LocalBackground(3.0 * fwhm, 5.0 * fwhm, bkgstat)
+        # sigma_clip = SigmaClip(sigma=3.0)
+        # bkgstat = MMMBackground(sigma_clip=sigma_clip)
+        # localbkg_estimator = LocalBackground(3.0 * fwhm, 5.0 * fwhm, bkgstat)
 
         psfphot = PSFPhotometry(
             psf_model=psf_for_phot,
@@ -894,7 +894,7 @@ def perform_psf_photometry(
             finder=daostarfind,
             aperture_radius=aperture_radius,
             grouper=grouper,
-            localbkg_estimator=localbkg_estimator,
+            # localbkg_estimator=localbkg_estimator,
         )
 
         initial_params = Table()
