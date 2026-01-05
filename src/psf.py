@@ -10,7 +10,6 @@ from photutils.background import LocalBackground, MMMBackground
 from astropy.nddata import NDData
 from astropy.io import fits
 from astropy.visualization import simple_norm
-from astropy.modeling.models import Gaussian2D
 
 from photutils.psf import EPSFBuilder, extract_stars, PSFPhotometry
 from photutils.psf import SourceGrouper, EPSFStars
@@ -217,8 +216,8 @@ def perform_psf_photometry(
 
         # Define flux filtering criteria: keep bright, unsaturated stars
         # Avoid very faint sources (low S/N) and saturated sources
-        flux_min = flux_median - 3 * flux_std  # Don't go too faint
-        flux_max = flux_median + 3 * flux_std  # Avoid the very brightest (likely saturated)
+        flux_min = flux_median - 1 * flux_std  # Don't go too faint
+        flux_max = flux_median + 5 * flux_std  # Avoid the very brightest
         
         st.write(
             f"Target flux range: {flux_min:.1f} "
@@ -288,10 +287,10 @@ def perform_psf_photometry(
         valid_fwhm = np.isfinite(fwhm_sources)
         if np.any(valid_fwhm):
             # Use the fwhm parameter passed to the function
-            # Accept sources with FWHM within 0.7–1.3× expected FWHM
+            # Accept sources with FWHM within 0.8–1.4× expected FWHM
             # (rejects extended objects and under-sampled stars)
-            size_min = fwhm * 0.7
-            size_max = fwhm * 1.3
+            size_min = fwhm * 0.75
+            size_max = fwhm * 1.5
             size_criteria[valid_fwhm] = (
                 (fwhm_sources[valid_fwhm] >= size_min)
                 & (fwhm_sources[valid_fwhm] <= size_max)
@@ -429,6 +428,38 @@ def perform_psf_photometry(
         filtered_photo_table = photo_table_for_psf[good_stars_mask]
         st.write(f"Flux range: {flux_min:.1f} -> {flux_max:.1f}")
         st.write(f"Stars after quality filtering: {len(filtered_photo_table)}")
+
+        if len(filtered_photo_table) >= 5:
+            try:
+                x_vals = np.asarray(filtered_photo_table["xcentroid"])
+                y_vals = np.asarray(filtered_photo_table["ycentroid"])
+                x_span = float(np.nanmax(x_vals) - np.nanmin(x_vals))
+                y_span = float(np.nanmax(y_vals) - np.nanmin(y_vals))
+                field_width = float(img.shape[1])
+                field_height = float(img.shape[0])
+                coverage_x = x_span / field_width if field_width > 0 else 0.0
+                coverage_y = y_span / field_height if field_height > 0 else 0.0
+                st.write(
+                    "Spatial coverage (normalized widths): "
+                    f"X={coverage_x:.2f}, Y={coverage_y:.2f}"
+                )
+                coverage_threshold = 0.35
+                if (
+                    coverage_x < coverage_threshold
+                    or coverage_y < coverage_threshold
+                ):
+                    st.warning(
+                        (
+                            "Les étoiles sélectionnées couvrent une zone "
+                            "restreinte du champ. Envisagez d'ajouter des "
+                            "étoiles dans d'autres régions."
+                        )
+                    )
+            except Exception as coverage_error:
+                st.warning(
+                    "Impossible d'évaluer la couverture spatiale: "
+                    f"{coverage_error}"
+                )
 
         # Save indices mapping to original full table
         orig_indices_preselection = np.asarray(photo_table_for_psf["orig_index"])
@@ -675,28 +706,49 @@ def perform_psf_photometry(
         else:
             stars_for_builder = EPSFStars(valid_stars)
 
-        # Try EPSFBuilder with retries and progressively simpler parameters
+        # Try EPSFBuilder with retries using tuned parameters
         epsf = None
         epsf_data = None
 
-        builder_attempts = [
-            dict(oversampling=2, maxiters=5),
-        ]
+        recentering_box = max(5, int(np.ceil(2.5 * fwhm)))
+        if recentering_box % 2 == 0:
+            recentering_box += 1
+        center_accuracy = max(0.02, min(0.1, 0.25 / max(float(fwhm), 1.0)))
+
+        builder_attempts = [dict(oversampling=2, maxiters=5)]
+        if n_valid >= 150:
+            builder_attempts.append(dict(oversampling=4, maxiters=5))
+        else:
+            st.write(
+                "Essai oversampling 4 ignoré (échantillon < 150 étoiles)."
+            )
 
         for params in builder_attempts:
             try:
-                epsf_builder = EPSFBuilder(progress_bar=False, **params)
-                # Pass the wrapped object (not a raw Python list) to EPSFBuilder
+                oversamp = int(params["oversampling"])
+                maxiters = int(params["maxiters"])
+                st.write(
+                    "Essai EPSFBuilder: oversampling="
+                    f"{oversamp}, maxiters={maxiters}"
+                )
+                epsf_builder = EPSFBuilder(
+                    oversampling=oversamp,
+                    maxiters=maxiters,
+                    recentering_boxsize=recentering_box,
+                    center_accuracy=center_accuracy,
+                    progress_bar=False,
+                )
                 epsf, _ = epsf_builder(stars_for_builder)
                 if epsf is not None:
                     st.write(
-                        f"EPSFBuilder succeeded with oversampling={params.get('oversampling')}"
+                        "EPSFBuilder réussi (oversampling=" f"{oversamp})"
                     )
                     epsf_data = np.asarray(epsf.data)
                     break
             except Exception as build_error:
                 st.warning(
-                    f"EPSFBuilder attempt oversampling={params.get('oversampling')} failed: {build_error}"
+                    "Échec EPSFBuilder oversampling="
+                    f"{oversamp}: {build_error}"
                 )
                 epsf = None
 
