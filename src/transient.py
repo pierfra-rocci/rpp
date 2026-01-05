@@ -95,7 +95,7 @@ def find_candidates(
 
     # Perform classical circular aperture photometry with proper error estimation
     # Use aperture radius of ~1.5 * FWHM for optimal signal-to-noise ratio
-    aperture_radius = 1.5 * fwhm
+    aperture_radius = 1.3 * fwhm
     flux, flux_err, _ = sep.sum_circle(
         image_sub,         # background-subtracted image
         obj['x'], obj['y'],  # object centroids
@@ -108,7 +108,7 @@ def find_candidates(
     if zero_point_value is None:
         st.warning("Zero point is None - using instrumental magnitudes only")
         zero_point_value = 0.0
-    
+
     mag = np.round(-2.5*np.log10(np.abs(flux)) + zero_point_value, 2)
     # Propagate flux errors to magnitude errors using standard formula
     mag_err = np.round(2.5 / np.log(10) * flux_err / np.abs(flux), 3)
