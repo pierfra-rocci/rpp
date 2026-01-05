@@ -214,14 +214,49 @@ def perform_psf_photometry(
         flux_median = np.median(flux_finite)
         flux_std = np.std(flux_finite)
 
-        # Define flux filtering criteria: keep bright, unsaturated stars
-        # Avoid very faint sources (low S/N) and saturated sources
-        flux_min = flux_median - 1 * flux_std  # Don't go too faint
-        flux_max = flux_median + 5 * flux_std  # Avoid the very brightest
+        # ========== S/N FILTERING (NEW - CRITICAL FOR PSF QUALITY) ==========
+        # Compute S/N for each source if error data is available
+        # S/N = flux / flux_error or approximate from flux and background noise
+        snr = _col_arr(photo_table_for_psf, "snr", np.nan)  # if available directly
+        flux_err = _col_arr(photo_table_for_psf, "flux_err", np.nan)  # flux uncertainty
+        
+        # If S/N not directly available, compute from flux and error
+        valid_snr = np.isfinite(snr)
+        if not np.any(valid_snr):
+            # Try to compute S/N from flux and flux_err
+            valid_flux_err = np.isfinite(flux_err) & (flux_err > 0)
+            if np.any(valid_flux_err):
+                snr = np.full(n_sources, np.nan)
+                snr[valid_flux_err] = flux[valid_flux_err] / flux_err[valid_flux_err]
+                valid_snr = np.isfinite(snr)
+                st.write(f"  ⓘ S/N computed from flux/flux_err for {np.sum(valid_snr)} sources")
+            else:
+                # Approximate S/N from flux assuming Poisson noise: S/N ≈ sqrt(flux)
+                # This is a rough approximation for photon-limited regime
+                valid_positive_flux = flux > 0
+                snr = np.full(n_sources, np.nan)
+                snr[valid_positive_flux] = np.sqrt(flux[valid_positive_flux])
+                valid_snr = np.isfinite(snr)
+                st.write(f"  ⓘ S/N approximated as √flux for {np.sum(valid_snr)} sources (Poisson assumption)")
+        
+        # S/N threshold: require high S/N for PSF model stars
+        snr_threshold = 50.0  # Minimum S/N for PSF stars
+        snr_criteria = np.zeros(n_sources, dtype=bool)
+        snr_criteria[valid_snr] = snr[valid_snr] >= snr_threshold
+        n_snr_pass = np.sum(snr_criteria)
+        st.write(f"  ✓ S/N ≥ {snr_threshold}: {n_snr_pass} high-S/N sources")
+
+        # Define flux filtering criteria: keep BRIGHT, unsaturated stars
+        # Focus on top percentile of flux distribution (bright stars have better S/N)
+        # Use percentiles instead of median ± σ to ensure we get the brightest stars
+        flux_25 = np.percentile(flux_finite, 25)  # Don't go below 25th percentile
+        flux_90 = np.percentile(flux_finite, 90)  # Upper limit to avoid saturation
+        flux_min = max(flux_25, flux_median)  # At least median brightness
+        flux_max = flux_90  # Stay below 90th percentile (likely saturated)
         
         st.write(
             f"Target flux range: {flux_min:.1f} "
-            f"→ {flux_max:.1f} (median ± 3σ)"
+            f"→ {flux_max:.1f} (25th-90th percentile, bright stars)"
         )
 
         # Create individual boolean masks with explicit NaN handling
@@ -254,30 +289,32 @@ def perform_psf_photometry(
         n_flux_pass = np.sum(flux_criteria)
         st.write(f"  ✓ Flux range: {n_flux_pass} sources")
 
-        # ========== SATURATION FILTERING ==========
-        # Reject sources with peak values very close to image maximum (likely saturated)
-        # Estimate saturation level: use 95th percentile of peak values or provide explicit limit
+        # ========== SATURATION FILTERING (STRICTER) ==========
+        # Reject sources with peak values close to saturation
+        # Use 85th percentile for stricter saturation rejection
         saturation_criteria = np.ones(n_sources, dtype=bool)
         valid_peak = np.isfinite(peak)
         if np.any(valid_peak):
             peak_values = peak[valid_peak]
-            # Use 95th percentile as a soft saturation limit
-            peak_95 = np.percentile(peak_values, 95)
-            saturation_threshold = peak_95 * 0.98  # 2% below 95th percentile
+            # Use 85th percentile as a STRICT saturation limit (was 95th)
+            peak_85 = np.percentile(peak_values, 85)
+            # Also check against image maximum (typical CCD saturation ~65535 for 16-bit)
+            img_max = np.nanmax(img)
+            saturation_limit = min(peak_85 * 0.95, img_max * 0.85)  # 5% below 85th or 85% of max
             saturation_criteria[valid_peak] = (
-                peak[valid_peak] < saturation_threshold
+                peak[valid_peak] < saturation_limit
             )
             n_sat_pass = np.sum(saturation_criteria)
             st.write(
-                f"  ✓ Saturation check: {n_sat_pass} "
-                f"unsaturated sources (limit: {saturation_threshold:.0f})"
+                f"  ✓ Saturation check (strict): {n_sat_pass} "
+                f"unsaturated sources (limit: {saturation_limit:.0f}, img_max: {img_max:.0f})"
             )
         else:
-            # No peak data available; check image max value directly
-            # (will be done after star extraction if possible)
+            # No peak data available; use image maximum as fallback
+            img_max = np.nanmax(img)
+            saturation_limit = img_max * 0.80  # 80% of image max
             st.write(
-                "  ⓘ No peak flux available in catalog; "
-                "saturation check deferred to star extraction"
+                f"  ⓘ No peak flux in catalog; using 80% of image max ({saturation_limit:.0f}) as limit"
             )
 
         # ========== SIZE/FWHM FILTERING ==========
@@ -343,12 +380,12 @@ def perform_psf_photometry(
         n_sharpness_pass = np.sum(sharpness_criteria)
         st.write(f"  ✓ Sharpness (sharp > 0.45): {n_sharpness_pass} sources")
 
-        # ========== CROWDING/ISOLATION FILTERING ==========
-        # Reject stars with bright neighbors within ~40 pixels
+        # ========== CROWDING/ISOLATION FILTERING (STRICTER) ==========
+        # Reject stars with ANY neighbors within ~5×FWHM (stricter isolation)
         crowding_criteria = np.ones(n_sources, dtype=bool)
-        neighbor_radius = 40.0  # pixels; typical for imaging
-        # mag; reject if bright neighbor within this limit
-        magnitude_threshold = 4.0
+        neighbor_radius = max(5.0 * fwhm, 50.0)  # At least 5×FWHM or 50 pixels (was 40)
+        # mag; reject if bright neighbor within this limit (stricter: 3 mag instead of 4)
+        magnitude_threshold = 3.0
 
         # Convert flux to magnitude for neighbor comparison
         # (simple: -2.5 log10(flux))
@@ -411,13 +448,82 @@ def perform_psf_photometry(
             f"{n_edge_pass} sources"
         )
 
-        # Combine all criteria with validity checks
+        # ========== LOCAL BACKGROUND FLATNESS CHECK ==========
+        # Ensure stars have flat local background (no gradients)
+        # This helps avoid PSF contamination from nebulosity or gradients
+        background_criteria = np.ones(n_sources, dtype=bool)
+        local_box_size = int(max(5 * fwhm, 25))  # Box size for local background check
+        half_box = local_box_size // 2
+        
+        n_background_checked = 0
+        for i in range(n_sources):
+            if not (valid_xcentroid[i] and valid_ycentroid[i]):
+                continue
+            
+            xi, yi = int(xcentroid[i]), int(ycentroid[i])
+            
+            # Define annulus around the star (exclude the star itself)
+            inner_radius = int(2.5 * fwhm)  # Inside this: the star
+            outer_radius = half_box
+            
+            # Check bounds
+            if (xi - outer_radius < 0 or xi + outer_radius >= img.shape[1] or
+                yi - outer_radius < 0 or yi + outer_radius >= img.shape[0]):
+                continue
+            
+            # Extract local region
+            local_region = img[yi - outer_radius:yi + outer_radius + 1,
+                              xi - outer_radius:xi + outer_radius + 1]
+            
+            # Create annular mask (background region)
+            y_local, x_local = np.ogrid[-outer_radius:outer_radius + 1,
+                                        -outer_radius:outer_radius + 1]
+            dist_from_center = np.sqrt(x_local**2 + y_local**2)
+            annular_mask = (dist_from_center >= inner_radius) & (dist_from_center <= outer_radius)
+            
+            if mask is not None:
+                # Also exclude masked pixels
+                local_mask = mask[yi - outer_radius:yi + outer_radius + 1,
+                                 xi - outer_radius:xi + outer_radius + 1]
+                annular_mask = annular_mask & ~local_mask
+            
+            if np.sum(annular_mask) < 20:  # Need enough pixels for statistics
+                continue
+            
+            background_values = local_region[annular_mask]
+            background_values = background_values[np.isfinite(background_values)]
+            
+            if len(background_values) < 10:
+                continue
+            
+            n_background_checked += 1
+            
+            # Check background flatness: std should be small relative to median
+            bkg_median = np.median(background_values)
+            bkg_std = np.std(background_values)
+            
+            # Reject if background is too variable (> 10% of median or > 3σ above typical)
+            # Also check for gradient by comparing quadrants
+            if bkg_median > 0:
+                bkg_variation = bkg_std / bkg_median
+                if bkg_variation > 0.15:  # More than 15% variation
+                    background_criteria[i] = False
+        
+        n_bkg_pass = np.sum(background_criteria)
+        st.write(
+            f"  ✓ Flat local background: {n_bkg_pass}/{n_background_checked} "
+            f"sources with uniform surroundings"
+        )
+
+        # Combine all criteria with validity checks (including S/N and background)
         good_stars_mask = (
             valid_all
+            & snr_criteria  # NEW: S/N filtering
             & flux_criteria
             & saturation_criteria
             & size_criteria
             & roundness_criteria
+            & background_criteria  # NEW: local background flatness
             & ellipticity_criteria
             & sharpness_criteria
             & crowding_criteria
@@ -468,101 +574,27 @@ def perform_psf_photometry(
         st.session_state["psf_preselected_indices"] = orig_indices_preselection
         st.session_state["psf_filtered_indices"] = orig_indices_filtered
 
-        # If too few, relax criteria (apply relaxed_mask to same preselected table)
-        if len(filtered_photo_table) < 10:
+        # Check if we have enough stars for HIGH-QUALITY PSF (target: 100+)
+        min_stars_optimal = 100
+        min_stars_acceptable = 50  # Minimum required - below this, PSF is not computed
+        
+        if len(filtered_photo_table) >= min_stars_optimal:
+            st.success(
+                f"✓ {len(filtered_photo_table)} high-quality PSF stars selected "
+                f"(target: ≥{min_stars_optimal})"
+            )
+        elif len(filtered_photo_table) >= min_stars_acceptable:
             st.warning(
-                f"Only {len(filtered_photo_table)} stars available for PSF model. Relaxing quality criteria..."
+                f"⚠ {len(filtered_photo_table)} PSF stars (acceptable but <{min_stars_optimal}). "
+                f"PSF model may have slightly reduced accuracy."
             )
-
-            # Relax thresholds but maintain saturation and isolation checks (critical for PSF quality)
-
-            # Relax roundness: allow more elliptical shapes
-            roundness_criteria_relaxed = np.zeros(n_sources, dtype=bool)
-            roundness_criteria_relaxed[valid_roundness] = (
-                np.abs(roundness1[valid_roundness]) < 0.35
+        else:
+            # Less than 50 stars: do not compute PSF
+            st.error(
+                f"❌ Only {len(filtered_photo_table)} PSF stars available (minimum: {min_stars_acceptable}). "
+                f"PSF photometry will NOT be performed. Consider using aperture photometry only."
             )
-
-            # Relax ellipticity: allow slightly elongated objects
-            ellipticity_criteria_relaxed = np.ones(n_sources, dtype=bool)
-            if np.any(valid_axes):
-                axis_ratio = semiminor[valid_axes] / semimajor[valid_axes]
-                ellipticity = 1.0 - axis_ratio
-                ellipticity_criteria_relaxed[valid_axes] = ellipticity < 0.25  # More permissive
-
-            # Relax sharpness: accept slightly broader profiles
-            sharpness_criteria_relaxed = np.zeros(n_sources, dtype=bool)
-            sharpness_criteria_relaxed[valid_sharpness] = (
-                sharpness[valid_sharpness] > 0.3
-            )
-
-            # Relax size criterion: accept wider range of FWHMs
-            size_criteria_relaxed = np.ones(n_sources, dtype=bool)
-            if np.any(valid_fwhm):
-                # Use the fwhm parameter passed to the function
-                size_min_relax = fwhm * 0.5
-                size_max_relax = fwhm * 1.5
-                size_criteria_relaxed[valid_fwhm] = (fwhm_sources[valid_fwhm] >= size_min_relax) & (
-                    fwhm_sources[valid_fwhm] <= size_max_relax
-                )
-
-            # Relax flux criterion: broader range but still avoid saturation
-            flux_criteria_relaxed = np.zeros(n_sources, dtype=bool)
-            flux_criteria_relaxed[valid_flux] = (
-                flux[valid_flux] >= flux_median - 2.5 * flux_std
-            ) & (flux[valid_flux] <= flux_median + 2.5 * flux_std)
-
-            # Relax isolation: allow one bright neighbor
-            crowding_criteria_relaxed = np.ones(n_sources, dtype=bool)
-            neighbor_radius_relaxed = 50.0  # Wider search radius
-            magnitude_threshold_relaxed = 3.0  # Tighter magnitude threshold
-            for i in range(n_sources):
-                if not (valid_xcentroid[i] and valid_ycentroid[i] and valid_flux[i]):
-                    crowding_criteria_relaxed[i] = False
-                    continue
-                dx = xcentroid - xcentroid[i]
-                dy = ycentroid - ycentroid[i]
-                dist = np.sqrt(dx**2 + dy**2)
-                neighbor_mask = (dist > 0.5) & (dist < neighbor_radius_relaxed)
-                if np.any(neighbor_mask):
-                    bright_neighbors = np.sum(magnitude[neighbor_mask] < magnitude[i] + magnitude_threshold_relaxed)
-                    if bright_neighbors > 1:  # Allow one neighbor (relaxed)
-                        crowding_criteria_relaxed[i] = False
-
-            # Keep saturation check (critical) and edge buffer
-            edge_criteria_relaxed = np.zeros(n_sources, dtype=bool)
-            edge_buffer_relaxed = max(2 * fwhm, 15)  # Slightly closer to edge allowed when relaxing
-            edge_criteria_relaxed[valid_coords] = (
-                (xcentroid[valid_coords] > edge_buffer_relaxed)
-                & (xcentroid[valid_coords] < img.shape[1] - edge_buffer_relaxed)
-                & (ycentroid[valid_coords] > edge_buffer_relaxed)
-                & (ycentroid[valid_coords] < img.shape[0] - edge_buffer_relaxed)
-            )
-
-            relaxed_mask = (
-                (valid_flux & valid_xcentroid & valid_ycentroid)
-                & flux_criteria_relaxed
-                & saturation_criteria  # Keep saturation check!
-                & size_criteria_relaxed
-                & roundness_criteria_relaxed
-                & ellipticity_criteria_relaxed
-                & sharpness_criteria_relaxed
-                & crowding_criteria_relaxed
-                & edge_criteria_relaxed
-            )
-
-            # Apply relaxed mask to the same table (photo_table_for_psf)
-            filtered_photo_table = photo_table_for_psf[relaxed_mask]
-
-            # Update original indices for filtered stars
-            orig_indices_filtered = orig_indices_preselection[relaxed_mask]
-            st.session_state["psf_filtered_indices"] = orig_indices_filtered
-
-            st.write(f"After relaxing criteria: {len(filtered_photo_table)} stars")
-
-        if len(filtered_photo_table) < 5:
-            raise ValueError(
-                "Too few good stars for PSF model construction. Need at least 5 stars."
-            )
+            return None, None
         # ---------- END REPLACEMENT BLOCK ----------
 
     except Exception as e:
