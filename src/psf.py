@@ -369,7 +369,7 @@ def perform_psf_photometry(
         )  # Relaxed from 0.25
         n_roundness_pass = np.sum(roundness_criteria)
         st.write(
-            f"  ✓ Roundness (|r₁| < 0.35): {n_roundness_pass} sources"
+            f"  ✓ Roundness (|r₁| < 0.4): {n_roundness_pass} sources"
         )
 
         # Add axis-ratio check if semi-major/minor axes available
@@ -385,7 +385,7 @@ def perform_psf_photometry(
             )  # Reject highly elongated objects
             n_ellipticity_pass = np.sum(ellipticity_criteria)
             st.write(
-                f"  ✓ Ellipticity (ε < 0.2): "
+                f"  ✓ Ellipticity (ε < 0.3): "
                 f"{n_ellipticity_pass} sources"
             )
         else:
