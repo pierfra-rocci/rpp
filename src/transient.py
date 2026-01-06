@@ -1,5 +1,6 @@
 from stdpipe import (pipeline, cutouts,
                      templates, catalogs, photometry, plots)
+from stdpipe import astrometry as stdpipe_astrometry
 import sep
 from astropy.coordinates import SkyCoord
 import matplotlib.pyplot as plt
@@ -9,6 +10,8 @@ from astropy.wcs import WCS
 import numpy as np
 import streamlit as st
 from astropy.table import Table
+from astropy.time import Time
+from astroquery.imcce import Skybot
 
 from src.tools_pipeline import fix_header
 
@@ -30,6 +33,101 @@ filter_ab_offset = {
     'BP': 0,
     'RP': 0,
 }
+
+
+def filter_skybot_candidates(candidates, obs_time, sr=10/3600, col_ra='ra', col_dec='dec'):
+    """Filter out Solar System objects from candidates using SkyBoT service.
+
+    This is a workaround for stdpipe's xmatch_skybot which has column naming issues
+    with newer versions of astroquery.
+
+    Parameters
+    ----------
+    candidates : astropy.table.Table
+        Table of candidates with 'ra' and 'dec' columns
+    obs_time : str or astropy.time.Time
+        Observation time
+    sr : float
+        Cross-matching radius in degrees (default: 10 arcsec)
+    col_ra : str
+        Name of RA column in candidates table
+    col_dec : str
+        Name of Dec column in candidates table
+
+    Returns
+    -------
+    astropy.table.Table
+        Candidates with Solar System objects removed
+    """
+    if candidates is None or len(candidates) == 0:
+        return candidates
+
+    try:
+        # Get center and radius of the candidates field
+        ra0, dec0, sr0 = stdpipe_astrometry.get_objects_center(candidates, col_ra=col_ra, col_dec=col_dec)
+
+        # Convert time if needed
+        if not isinstance(obs_time, Time):
+            obs_time = Time(obs_time)
+
+        # Query SkyBoT for Solar System objects in the field
+        skybot_results = Skybot.cone_search(
+            SkyCoord(ra0, dec0, unit='deg'),
+            (sr0 + 2.0 * sr) * u.deg,
+            obs_time
+        )
+
+        if skybot_results is None or len(skybot_results) == 0:
+            st.write("✓ SkyBoT: No Solar System objects found in field")
+            return candidates
+
+        # Astroquery's SkyBoT returns 'RA' and 'DEC' columns (uppercase)
+        # Check what columns we actually have
+        skybot_ra_col = None
+        skybot_dec_col = None
+        for col in ['RA', 'ra']:
+            if col in skybot_results.colnames:
+                skybot_ra_col = col
+                break
+        for col in ['DEC', 'dec', 'Dec']:
+            if col in skybot_results.colnames:
+                skybot_dec_col = col
+                break
+
+        if skybot_ra_col is None or skybot_dec_col is None:
+            st.warning(f"SkyBoT: Could not find RA/DEC columns. Available: {skybot_results.colnames}")
+            return candidates
+
+        # Cross-match candidates with SkyBoT results
+        oidx, cidx, dist = stdpipe_astrometry.spherical_match(
+            candidates[col_ra], candidates[col_dec],
+            skybot_results[skybot_ra_col], skybot_results[skybot_dec_col],
+            sr
+        )
+
+        if len(oidx) > 0:
+            # Create mask of candidates that are NOT matched to SkyBoT objects
+            keep_mask = np.ones(len(candidates), dtype=bool)
+            keep_mask[oidx] = False
+
+            n_removed = len(oidx)
+            st.write(f"✓ SkyBoT: Removed {n_removed} candidate(s) matching Solar System objects")
+
+            # Show which objects were removed
+            for i, idx in enumerate(oidx[:5]):  # Show first 5 matches
+                sso_name = skybot_results['Name'][cidx[i]] if 'Name' in skybot_results.colnames else 'unknown'
+                st.write(f"  - Candidate at RA={candidates[col_ra][idx]:.4f}, Dec={candidates[col_dec][idx]:.4f} → {sso_name}")
+            if len(oidx) > 5:
+                st.write(f"  ... and {len(oidx) - 5} more")
+
+            return candidates[keep_mask]
+        else:
+            st.write("✓ SkyBoT: No candidates match known Solar System objects")
+            return candidates
+
+    except Exception as e:
+        st.warning(f"SkyBoT query failed: {e}. Skipping Solar System object filtering.")
+        return candidates
 
 
 def find_candidates(
@@ -94,7 +192,7 @@ def find_candidates(
         return []
 
     # Perform classical circular aperture photometry with proper error estimation
-    # Use aperture radius of ~1.5 * FWHM for optimal signal-to-noise ratio
+    # Use aperture radius of ~1.3 * FWHM for optimal signal-to-noise ratio
     aperture_radius = 1.3 * fwhm
     flux, flux_err, _ = sep.sum_circle(
         image_sub,         # background-subtracted image
@@ -196,17 +294,14 @@ def find_candidates(
     # Note: 'apass' and 'gsc' excluded due to RA/DEC column naming issues in stdpipe
     vizier_catalogs = ['gaiaedr3', 'ps1', 'skymapper', 'sdss', 'atlas']
 
-    # SkyBoT (Solar System object matching) has RA/DEC column issues in stdpipe
-    # Disable it to avoid KeyError: 'RA' in xmatch_skybot
-    use_skybot = False
-
+    # First, run filter_transient_candidates WITHOUT SkyBoT (it has column naming issues)
     try:
         candidates = pipeline.filter_transient_candidates(
             obj,
             cat=cat,
             fwhm=1.*fwhm*pixel_scale,
             time=header.get('DATE-OBS', None),
-            skybot=use_skybot,
+            skybot=False,  # Disable stdpipe's SkyBoT - we'll do our own
             vizier=vizier_catalogs,
             vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
             ned=False,
@@ -218,6 +313,12 @@ def find_candidates(
         import traceback
         st.error(traceback.format_exc())
         return []
+
+    # Now apply our own SkyBoT filtering to remove Solar System objects
+    obs_time = header.get('DATE-OBS', None)
+    if candidates is not None and len(candidates) > 0 and obs_time is not None:
+        st.info("Checking for Solar System objects (SkyBoT)...")
+        candidates = filter_skybot_candidates(candidates, obs_time)
 
     if candidates is None:
         st.warning("No candidates returned from filtering.")
