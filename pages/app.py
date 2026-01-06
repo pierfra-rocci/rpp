@@ -977,7 +977,7 @@ if science_file is not None:
                         handle_log_messages(log_messages)
 
                     if matched_table is not None:
-                        st.subheader("Cross-matched Gaia Catalog (first 10 rows)")
+                        st.subheader("Cross-matched Catalog (first 10 rows)")
                         st.dataframe(matched_table.head(10))
 
                         with st.spinner("Calculating zero point..."):
