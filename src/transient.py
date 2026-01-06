@@ -293,7 +293,8 @@ def find_candidates(
 
     # Build vizier catalog list - include all useful catalogs
     # Note: 'apass' and 'gsc' excluded due to RA/DEC column naming issues in stdpipe
-    vizier_catalogs = ['gaiaedr3', 'ps1', 'skymapper', 'sdss', 'atlas']
+    vizier_catalogs = ['gaiaedr3', 'ps1', 'skymapper', 'sdss', 'atlas',
+                       'apass', 'gsc']
 
     # First, run filter_transient_candidates WITHOUT SkyBoT (it has column naming issues)
     try:
