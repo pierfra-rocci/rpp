@@ -196,8 +196,9 @@ def find_candidates(
     # Note: Don't include 'ps1' or 'skymapper' here since we already use them as the main
     # reference catalog (cat). Including them causes duplicate queries and column naming issues.
     # Some catalogs have RA/DEC column naming issues in stdpipe's internal queries
-    vizier_catalogs_full = ['gaiaedr3', 'sdss', 'apass', 'atlas', 'gsc', 'gaiadr3syn']
-    vizier_catalogs_minimal = ['gaiaedr3', 'gaiadr3syn']  # Fallback: only Gaia which is most reliable
+    vizier_catalogs_full = ['gaiaedr3', 'ps1', 'skymapper',
+                            'sdss', 'apass', 'atlas', 'gsc']
+    vizier_catalogs_minimal = ['gaiaedr3', 'ps1', 'skymapper']  # Fallback: only Gaia which is most reliable
     vizier_disabled = False  # Complete fallback: disable vizier cross-matching
 
     # Try with full catalog list first, fall back to minimal, then disable entirely
