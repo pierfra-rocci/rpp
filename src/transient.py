@@ -192,9 +192,13 @@ def find_candidates(
     obj = Table(obj)
     obj['flag'].name = 'flags'  # Rename to 'flags' for compatibility
 
-    # Build vizier catalog list - only include catalogs with reliable RA/DEC column naming
-    # Excluded: 'apass', 'gsc' - these have RA/DEC column naming issues in stdpipe's internal queries
+    # Build vizier catalog list - include all useful catalogs
+    # Note: 'apass' and 'gsc' excluded due to RA/DEC column naming issues in stdpipe
     vizier_catalogs = ['gaiaedr3', 'ps1', 'skymapper', 'sdss', 'atlas']
+
+    # SkyBoT (Solar System object matching) has RA/DEC column issues in stdpipe
+    # Disable it to avoid KeyError: 'RA' in xmatch_skybot
+    use_skybot = False
 
     try:
         candidates = pipeline.filter_transient_candidates(
@@ -202,7 +206,7 @@ def find_candidates(
             cat=cat,
             fwhm=1.*fwhm*pixel_scale,
             time=header.get('DATE-OBS', None),
-            skybot=True,
+            skybot=use_skybot,
             vizier=vizier_catalogs,
             vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
             ned=False,
