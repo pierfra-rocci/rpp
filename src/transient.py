@@ -328,8 +328,8 @@ def plot_cutout(
 
             # Set up parameters for stdpipe.plots.imshow
             params = {
-                'stretch': 'asinh' if name in ['image', 'template', 'convolved'] else 'linear',
-                'r0': r0 if name in ['image', 'template', 'diff'] else None,
+                'stretch': 'asinh' if name in ['image', 'template'] else 'linear',
+                'r0': r0 if name in ['image', 'template'] else None,
                 'cmap': 'Blues_r',
                 'show_colorbar': False,
                 'show_axis': False,
