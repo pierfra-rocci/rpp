@@ -395,7 +395,7 @@ def plot_cutout(
             if 'mag_limit' in cutout['meta']:
                 title += ' : limit %.2f' % cutout['meta']['mag_limit']
             if 'mag_calib' in cutout['meta']:
-                title += ' : mag = %.2f $\pm$ %.2f' % (
+                title += r' : mag = %.2f $\pm$ %.2f' % (
                     cutout['meta'].get('mag_calib', np.nan),
                     cutout['meta'].get(
                         'mag_calib_err', cutout['meta'].get('magerr', np.nan)
