@@ -223,9 +223,9 @@ def find_candidates(
         f"Candidate filtering complete. Found {len(candidates)} potential transients."
     )
 
-    if len(candidates) > 100:
+    if len(candidates) > 10:
         st.warning(
-            "More than 100 candidates found. Displaying only the first 10 candidates."
+            "More than 10 candidates found. Displaying only the first 10 candidates."
         )
         candidates = candidates[:100]
 
