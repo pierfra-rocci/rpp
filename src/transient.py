@@ -99,7 +99,7 @@ def filter_skybot_candidates(candidates, obs_time, sr=10/3600, col_ra='ra', col_
             return candidates
 
         # Cross-match candidates with SkyBoT results
-        oidx, cidx, dist = stdpipe_astrometry.spherical_match(
+        oidx, cidx, _ = stdpipe_astrometry.spherical_match(
             candidates[col_ra], candidates[col_dec],
             skybot_results[skybot_ra_col], skybot_results[skybot_dec_col],
             sr
