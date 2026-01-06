@@ -193,7 +193,6 @@ def find_candidates(
     obj['flag'].name = 'flags'  # Rename to 'flags' for compatibility
 
     # Build vizier catalog list - start with most reliable catalogs
-    # Note: Don't include 'ps1' or 'skymapper' here since we already use them as the main
     # reference catalog (cat). Including them causes duplicate queries and column naming issues.
     # Some catalogs have RA/DEC column naming issues in stdpipe's internal queries
     vizier_catalogs_full = ['gaiaedr3', 'ps1', 'skymapper',
