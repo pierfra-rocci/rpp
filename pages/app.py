@@ -1276,11 +1276,25 @@ if science_file is not None:
                                 )
                                 if candidates:
                                     st.subheader("Transient Candidates Found")
-                                    for idx, cand in enumerate(candidates,
-                                                               start=1):
-                                        st.markdown(
-                                            f"**Candidate {idx}:** RA={cand['ra']:.6f}°, DEC={cand['dec']:.6f}°, Mag={cand.get('mag_calib', 'N/A')}, "
-                                        )
+                                    # Create a DataFrame from the candidates
+                                    import pandas as pd
+                                    candidates_df = pd.DataFrame({
+                                        'ID': range(1, len(candidates) + 1),
+                                        'RA (deg)': [c['ra'] for c in candidates],
+                                        'DEC (deg)': [c['dec'] for c in candidates],
+                                        'Mag': [c.get('mag_calib', None) for c in candidates],
+                                        'Mag_err': [c.get('mag_calib_err', None) for c in candidates],
+                                        'X (pix)': [c.get('x', None) for c in candidates],
+                                        'Y (pix)': [c.get('y', None) for c in candidates],
+                                    })
+                                    # Display the DataFrame in Streamlit
+                                    st.dataframe(candidates_df, use_container_width=True)
+                                    
+                                    # Save the DataFrame to CSV with base_filename
+                                    base_filename = st.session_state.get("base_filename", "transients")
+                                    transients_csv_path = os.path.join(output_dir, f"{base_filename}_transients.csv")
+                                    candidates_df.to_csv(transients_csv_path, index=False)
+                                    st.success(f"Transient candidates saved to {os.path.basename(transients_csv_path)}")
                                 else:
                                     st.warning("No transient candidates found.")
                             except Exception as e:
