@@ -35,7 +35,8 @@ filter_ab_offset = {
 }
 
 
-def filter_skybot_candidates(candidates, obs_time, sr=10/3600, col_ra='ra', col_dec='dec'):
+def filter_skybot_candidates(candidates, obs_time, sr=10/3600,
+                             col_ra='ra', col_dec='dec'):
     """Filter out Solar System objects from candidates using SkyBoT service.
 
     This is a workaround for stdpipe's xmatch_skybot which has column naming issues
@@ -330,7 +331,7 @@ def find_candidates(
 
     if len(candidates) > 10:
         st.warning(
-            "More than 10 candidates found. Displaying only the first 10 candidates."
+            "Too many candidates. Displaying only the first 10 candidates."
         )
         candidates = candidates[:100]
 
