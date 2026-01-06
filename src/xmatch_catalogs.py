@@ -713,12 +713,11 @@ def enhance_catalog(
             sources = {
                 "ra": [],
                 "dec": [],
-                "discoverer_internal_name": [],
+                "source_name": [],
                 "type": [],
                 "classification": [],
             }
 
-            # astrostars = pd.DataFrame(source)
             enhanced_table["astrocolibri_name"] = None
             enhanced_table["astrocolibri_type"] = None
             enhanced_table["astrocolibri_classification"] = None
@@ -726,8 +725,8 @@ def enhance_catalog(
                 if "ra" in event and "dec" in event:
                     sources["ra"].append(event["ra"])
                     sources["dec"].append(event["dec"])
-                    sources["discoverer_internal_name"].append(
-                        event["discoverer_internal_name"]
+                    sources["source_name"].append(
+                        event["source_name"]
                     )
                     sources["type"].append(event["type"])
                     sources["classification"].append(event["classification"])
@@ -775,11 +774,11 @@ def enhance_catalog(
                     # Use iloc for safe pandas indexing
                     try:
                         enhanced_table.loc[original_idx, "astrocolibri_name"] = (
-                            astrostars.iloc[int(match_idx)]["discoverer_internal_name"]
+                            astrostars.iloc[int(match_idx)]["source_name"]
                         )
                     except Exception:
                         enhanced_table.loc[original_idx, "astrocolibri_name"] = (
-                            astrostars["discoverer_internal_name"].iloc[int(match_idx)]
+                            astrostars["source_name"].iloc[int(match_idx)]
                         )
 
                     try:
