@@ -192,43 +192,28 @@ def find_candidates(
     obj = Table(obj)
     obj['flag'].name = 'flags'  # Rename to 'flags' for compatibility
 
-    # Build vizier catalog list - start with most reliable catalogs
-    # reference catalog (cat). Including them causes duplicate queries and column naming issues.
-    # Some catalogs have RA/DEC column naming issues in stdpipe's internal queries
-    vizier_catalogs_full = ['gaiaedr3', 'ps1', 'skymapper',
-                            'sdss', 'apass', 'atlas', 'gsc']
-    vizier_catalogs_minimal = ['gaiaedr3', 'ps1', 'skymapper']  # Fallback: only Gaia which is most reliable
-    vizier_disabled = False  # Complete fallback: disable vizier cross-matching
+    # Build vizier catalog list - only include catalogs with reliable RA/DEC column naming
+    # Excluded: 'apass', 'gsc' - these have RA/DEC column naming issues in stdpipe's internal queries
+    vizier_catalogs = ['gaiaedr3', 'ps1', 'skymapper', 'sdss', 'atlas']
 
-    # Try with full catalog list first, fall back to minimal, then disable entirely
-    candidates = None
-    for attempt, vizier_catalogs in enumerate([vizier_catalogs_full, vizier_catalogs_minimal, vizier_disabled]):
-        try:
-            candidates = pipeline.filter_transient_candidates(
-                obj,
-                cat=cat,
-                fwhm=1.*fwhm*pixel_scale,
-                time=header.get('DATE-OBS', None),
-                skybot=True if attempt == 0 else False,  # Skip SkyBoT on fallback
-                vizier=vizier_catalogs,
-                vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
-                ned=False,
-                verbose=True,
-                flagged=True,
-            )
-            break  # Success, exit retry loop
-        except KeyError as e:
-            if attempt < 2:
-                st.warning(f"Catalog query failed with KeyError: {e}. Retrying with {'minimal' if attempt == 0 else 'no'} catalog list...")
-                continue
-            else:
-                st.error(f"Transient filtering failed even with vizier disabled: {e}")
-                return []
-        except Exception as e:
-            st.error(f"Unexpected error during transient filtering: {e}")
-            import traceback
-            st.error(traceback.format_exc())
-            return []
+    try:
+        candidates = pipeline.filter_transient_candidates(
+            obj,
+            cat=cat,
+            fwhm=1.*fwhm*pixel_scale,
+            time=header.get('DATE-OBS', None),
+            skybot=True,
+            vizier=vizier_catalogs,
+            vizier_checker_fn=lambda xobj, xcat, catname: checker_fn(xobj, xcat, catname, filter_mag=filter_cat),
+            ned=False,
+            verbose=True,
+            flagged=True,
+        )
+    except Exception as e:
+        st.error(f"Error during transient filtering: {e}")
+        import traceback
+        st.error(traceback.format_exc())
+        return []
 
     if candidates is None:
         st.warning("No candidates returned from filtering.")
