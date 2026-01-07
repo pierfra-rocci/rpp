@@ -85,6 +85,10 @@ This will install the project in editable mode and all the dependencies.
 
 ## Configuration
 
+### Environment Variables
+For the email functionality to work, you must set the following environment variable:
+- `SMTP_PASS`: Your SMTP password.
+
 ### Observatory Parameters
 - **Name**: Observatory identifier
 - **Latitude/Longitude**: Geographic coordinates (decimal degrees)
