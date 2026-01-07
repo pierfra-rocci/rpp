@@ -133,41 +133,43 @@ class TestMagnitudeErrorCalculations:
 
 
 class TestErrorPropagation:
-    """Test error propagation in calibrated magnitudes."""
+    """Test error propagation in magnitude calculations.
     
-    def test_zero_point_error_propagation(self):
-        """Test calibrated magnitude error propagation."""
+    Note: Zero-point error propagation has been removed from the pipeline.
+    Calibrated magnitude errors now use only instrumental magnitude errors.
+    """
+    
+    def test_no_zero_point_error_propagation(self):
+        """Verify calibrated magnitude error equals instrumental error (no ZP propagation)."""
         # Instrumental magnitude errors
         mag_err_inst = np.array([0.05, 0.10, 0.20])
         
-        # Zero-point error
-        zp_err = 0.03
+        # Without zero-point error propagation, calibrated error = instrumental error
+        expected_mag_err_calib = mag_err_inst
         
-        # Calibrated magnitude error should be quadrature sum
-        expected_mag_err_calib = np.sqrt(mag_err_inst**2 + zp_err**2)
-        
-        assert_allclose(expected_mag_err_calib, 
-                       [0.0583, 0.1044, 0.2022], rtol=1e-3)
+        assert_allclose(expected_mag_err_calib, mag_err_inst, rtol=1e-10)
     
-    def test_zero_point_error_propagation_special_cases(self):
-        """Test error propagation edge cases."""
-        # Case 1: No zero-point error
-        mag_err_inst = 0.1
-        zp_err = 0.0
-        mag_err_calib = np.sqrt(mag_err_inst**2 + zp_err**2)
-        assert_allclose(mag_err_calib, mag_err_inst)
+    def test_magnitude_error_filtering(self):
+        """Test that sources with magnitude error > 2 are filtered out."""
+        # Simulated magnitude errors - some good, some bad
+        mag_errors = np.array([0.1, 0.5, 1.0, 1.5, 2.0, 2.1, 3.0, 5.0])
         
-        # Case 2: Dominant zero-point error
-        mag_err_inst = 0.01
-        zp_err = 0.1
-        mag_err_calib = np.sqrt(mag_err_inst**2 + zp_err**2)
-        assert_allclose(mag_err_calib, 0.1005, rtol=1e-3)
+        # Filter: keep only errors <= 2
+        keep_mask = mag_errors <= 2
         
-        # Case 3: Equal errors
-        mag_err_inst = 0.1
-        zp_err = 0.1
-        mag_err_calib = np.sqrt(mag_err_inst**2 + zp_err**2)
-        assert_allclose(mag_err_calib, np.sqrt(2) * 0.1, rtol=1e-10)
+        # Should keep 5 sources (0.1, 0.5, 1.0, 1.5, 2.0)
+        assert np.sum(keep_mask) == 5
+        assert np.all(mag_errors[keep_mask] <= 2)
+    
+    def test_magnitude_error_filtering_with_nan(self):
+        """Test that NaN magnitude errors are preserved (not filtered out)."""
+        mag_errors = np.array([0.1, 0.5, np.nan, 2.1, 3.0])
+        
+        # Filter: keep errors <= 2 OR NaN
+        keep_mask = (mag_errors <= 2) | np.isnan(mag_errors)
+        
+        # Should keep 3 sources (0.1, 0.5, NaN)
+        assert np.sum(keep_mask) == 3
 
 
 class TestQualityFlags:

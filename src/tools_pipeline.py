@@ -819,12 +819,12 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.0):
     return final_table, log_messages
 
 
-def add_calibrated_magnitudes(final_table, zero_point, airmass, zero_point_error=0.0):
+def add_calibrated_magnitudes(final_table, zero_point, airmass):
     """
     Add calibrated magnitudes for both aperture and PSF.
     Handle cases where only one method is available.
     Dynamically handles different aperture radius suffixes.
-    Propagates zero-point uncertainty into calibrated magnitude errors.
+    Filters out sources with magnitude errors > 2.
     
     Parameters
     ----------
@@ -834,32 +834,28 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass, zero_point_error
         Photometric zero point
     airmass : float
         Airmass value
-    zero_point_error : float, optional
-        Uncertainty in zero point (default: 0.0)
     
     Returns
     -------
     pandas.DataFrame
-        Table with calibrated magnitudes and propagated errors
+        Table with calibrated magnitudes, filtered to remove poor photometry
     
     Mathematical Formulas
     ---------------------
     Calibrated Magnitude:
         mag_calib = mag_inst + zero_point
     
-    Error Propagation:
-        σ_mag_calib = √(σ_mag_inst² + σ_zero_point²)
+    Magnitude Error:
+        σ_mag = 1.0857 × (σ_flux / flux)
         
-        This is quadrature addition of independent errors:
-        - σ_mag_inst: Instrumental magnitude error (from flux measurements)
-        - σ_zero_point: Zero-point calibration uncertainty (from catalog matching)
+        Derived from error propagation of mag = -2.5 × log10(flux)
+        where 1.0857 = 2.5 / ln(10)
     
     Notes
     -----
-    - If instrumental magnitude error doesn't exist, it's computed from flux:
-      σ_mag_inst = 1.0857 × (σ_flux / flux)
+    - If instrumental magnitude error doesn't exist, it's computed from flux
     - Handles multiple aperture radii dynamically
-    - Applies same propagation to PSF photometry when available
+    - Removes sources with magnitude errors > 2 (unreliable photometry)
     """
     if final_table is None or len(final_table) == 0:
         return final_table
@@ -877,25 +873,14 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass, zero_point_error
         if inst_col:
             tbl[mag_col] = tbl[inst_col] + zero_point  #- 0.09 * airmass
 
-        # Compute or propagate magnitude error
+        # Compute magnitude error if not present
         if mag_err_col not in tbl.columns:
-            # Compute instrumental mag error if not present
             if flux_col in tbl.columns and flux_err_col in tbl.columns:
                 with np.errstate(divide="ignore", invalid="ignore"):
-                    inst_mag_err = 1.0857 * tbl[flux_err_col] / tbl[flux_col]
-                    inst_mag_err = inst_mag_err.replace([np.inf, -np.inf], np.nan)
-            else:
-                inst_mag_err = 0.0
-        else:
-            # Use existing instrumental mag error
-            inst_mag_err = tbl[mag_err_col]
+                    mag_err = 1.0857 * tbl[flux_err_col] / tbl[flux_col]
+                    mag_err = mag_err.replace([np.inf, -np.inf], np.nan)
+                tbl[mag_err_col] = mag_err
         
-        # Propagate zero-point error: mag_err_calib = sqrt(mag_err_inst^2 + zp_err^2)
-        with np.errstate(invalid="ignore"):
-            calibrated_mag_err = np.sqrt(inst_mag_err**2 + zero_point_error**2)
-            calibrated_mag_err = calibrated_mag_err.replace([np.inf, -np.inf], np.nan)
-        
-        tbl[mag_err_col] = calibrated_mag_err
         return tbl
 
     # Dynamically find available aperture radii from column names
@@ -920,14 +905,6 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass, zero_point_error
         final_table["psf_mag"] = (
             final_table["psf_instrumental_mag"] + zero_point  # - 0.09 * airmass
         )
-        
-        # Propagate zero-point error in PSF magnitude error
-        if "psf_mag_err" in final_table.columns:
-            psf_inst_mag_err = final_table["psf_mag_err"]
-            with np.errstate(invalid="ignore"):
-                calibrated_psf_mag_err = np.sqrt(psf_inst_mag_err**2 + zero_point_error**2)
-                calibrated_psf_mag_err = calibrated_psf_mag_err.replace([np.inf, -np.inf], np.nan)
-            final_table["psf_mag_err"] = calibrated_psf_mag_err
 
     # remove columns from a list (these are intermediate columns that may exist)
     cols_to_remove = [
@@ -952,6 +929,26 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass, zero_point_error
     )
 
     final_table["id"] = final_table["id"].astype("Int64")
+
+    # Filter out sources with magnitude errors > 2 (unreliable photometry)
+    initial_count = len(final_table)
+    mag_err_cols = [col for col in final_table.columns if "mag_err" in col]
+    
+    if mag_err_cols:
+        # Create mask: keep rows where ALL magnitude errors are <= 2 (or NaN)
+        keep_mask = np.ones(len(final_table), dtype=bool)
+        for col in mag_err_cols:
+            col_values = final_table[col]
+            # Keep if error <= 2 or is NaN (missing data is ok)
+            col_mask = (col_values <= 2) | pd.isna(col_values)
+            keep_mask &= col_mask
+        
+        final_table = final_table[keep_mask].reset_index(drop=True)
+        removed_count = initial_count - len(final_table)
+        
+        if removed_count > 0:
+            import streamlit as st
+            st.info(f"Removed {removed_count} sources with magnitude error > 2")
 
     return final_table
 
