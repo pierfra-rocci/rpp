@@ -331,11 +331,13 @@ def find_candidates(
     )
 
     if len(candidates) > 10:
-        st.warning(
-            "Too many candidates. Displaying only the first 10 candidates."
-        )
-        candidates = candidates[:100]
+        if len(candidates) > 50:
+            st.warning(
+                "⚠️ Too many candidates found (>50). Please refine your search criteria."
+            )
+            st.warning('(⚠️ Possibly due to a crowded field or filter band calibration)')
 
+    st.info("Generating cutouts and retrieving template images for the first 10 candidates...")
     for _, cand in list(enumerate(candidates))[:10]:
         # Create the cutout from image based on the candidate
         cutout = cutouts.get_cutout(
