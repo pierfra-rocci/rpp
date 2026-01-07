@@ -338,7 +338,8 @@ def find_candidates(
             st.warning('(⚠️ Possibly due to a crowded field or filter band calibration)')
 
     st.info("Generating cutouts and retrieving template images for the first 10 candidates...")
-    for _, cand in list(enumerate(candidates))[:10]:
+    sorted_candidates = np.sort(candidates, order='mag_calib')[::-1]
+    for _, cand in list(enumerate(sorted_candidates))[:10]:
         # Create the cutout from image based on the candidate
         cutout = cutouts.get_cutout(
             image,
