@@ -343,7 +343,7 @@ def find_candidates(
         cutout = cutouts.get_cutout(
             image,
             cand,
-            30,
+            25,
             header=header
         )
         try:
