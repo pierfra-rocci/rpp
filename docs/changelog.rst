@@ -3,8 +3,39 @@ Changelog
 
 This document records all notable changes to RAPAS Photometry Pipeline.
 
-Version 1.5.1 (Current)
+Version 1.5.3 (Current)
 -----------------------
+
+**Released: January 7, 2026**
+
+**Photometry Calculation Improvements**
+
+*   **Critical Bug Fix**: Fixed PSF S/N calculation that was incorrectly using ``sqrt(flux_err)`` instead of ``flux_err``. This was causing incorrect S/N values and magnitude errors for all PSF photometry.
+*   **Precision Enhancement**: Removed S/N rounding to preserve full floating-point precision and avoid divide-by-zero errors in magnitude error calculations.
+*   **Improved S/N Accuracy**: S/N now uses background-corrected flux (``aperture_sum_bkg_corr``) when available, providing more accurate estimates especially for faint sources.
+*   **Error Propagation**: Added proper zero-point error propagation in calibrated magnitudes using quadrature: ``σ_mag_calib = √(σ_mag_inst² + σ_zp²)``
+*   **Quality Flags**: Added photometric quality flags for both aperture and PSF photometry:
+    
+    - ``'good'``: S/N ≥ 5 (reliable photometry)
+    - ``'marginal'``: 3 ≤ S/N < 5 (use with caution)
+    - ``'poor'``: S/N < 3 (unreliable)
+    - ``'unknown'``: missing data
+
+**Documentation & Testing**
+
+*   Comprehensive mathematical documentation of S/N and magnitude error formulas
+*   New documentation file: ``docs/PHOTOMETRY_FORMULAS.md``
+*   Complete unit test suite: ``tests/test_photometry.py``
+*   Inline formula documentation in source code
+
+**Technical Details**
+
+*   S/N Formula: ``S/N = flux / flux_error``
+*   Magnitude Error Formula: ``σ_mag = 1.0857 × (σ_flux / flux)`` where 1.0857 = 2.5/ln(10)
+*   Calibrated Error: ``σ_mag_calib = √(σ_mag_inst² + σ_zp²)``
+
+Version 1.5.1
+-------------
 
 **Released: January 3, 2026**
 

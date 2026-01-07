@@ -819,11 +819,47 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.0):
     return final_table, log_messages
 
 
-def add_calibrated_magnitudes(final_table, zero_point, airmass):
+def add_calibrated_magnitudes(final_table, zero_point, airmass, zero_point_error=0.0):
     """
     Add calibrated magnitudes for both aperture and PSF.
     Handle cases where only one method is available.
     Dynamically handles different aperture radius suffixes.
+    Propagates zero-point uncertainty into calibrated magnitude errors.
+    
+    Parameters
+    ----------
+    final_table : pandas.DataFrame
+        Table with instrumental photometry
+    zero_point : float
+        Photometric zero point
+    airmass : float
+        Airmass value
+    zero_point_error : float, optional
+        Uncertainty in zero point (default: 0.0)
+    
+    Returns
+    -------
+    pandas.DataFrame
+        Table with calibrated magnitudes and propagated errors
+    
+    Mathematical Formulas
+    ---------------------
+    Calibrated Magnitude:
+        mag_calib = mag_inst + zero_point
+    
+    Error Propagation:
+        σ_mag_calib = √(σ_mag_inst² + σ_zero_point²)
+        
+        This is quadrature addition of independent errors:
+        - σ_mag_inst: Instrumental magnitude error (from flux measurements)
+        - σ_zero_point: Zero-point calibration uncertainty (from catalog matching)
+    
+    Notes
+    -----
+    - If instrumental magnitude error doesn't exist, it's computed from flux:
+      σ_mag_inst = 1.0857 × (σ_flux / flux)
+    - Handles multiple aperture radii dynamically
+    - Applies same propagation to PSF photometry when available
     """
     if final_table is None or len(final_table) == 0:
         return final_table
@@ -841,16 +877,25 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         if inst_col:
             tbl[mag_col] = tbl[inst_col] + zero_point  #- 0.09 * airmass
 
-        # try to compute mag error if not present but flux & flux_err exist
-        if (
-            mag_err_col not in tbl.columns
-            and flux_col in tbl.columns
-            and flux_err_col in tbl.columns
-        ):
-            with np.errstate(divide="ignore", invalid="ignore"):
-                err = 1.0857 * tbl[flux_err_col] / tbl[flux_col]
-                err = err.replace([np.inf, -np.inf], np.nan)
-            tbl[mag_err_col] = err
+        # Compute or propagate magnitude error
+        if mag_err_col not in tbl.columns:
+            # Compute instrumental mag error if not present
+            if flux_col in tbl.columns and flux_err_col in tbl.columns:
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    inst_mag_err = 1.0857 * tbl[flux_err_col] / tbl[flux_col]
+                    inst_mag_err = inst_mag_err.replace([np.inf, -np.inf], np.nan)
+            else:
+                inst_mag_err = 0.0
+        else:
+            # Use existing instrumental mag error
+            inst_mag_err = tbl[mag_err_col]
+        
+        # Propagate zero-point error: mag_err_calib = sqrt(mag_err_inst^2 + zp_err^2)
+        with np.errstate(invalid="ignore"):
+            calibrated_mag_err = np.sqrt(inst_mag_err**2 + zero_point_error**2)
+            calibrated_mag_err = calibrated_mag_err.replace([np.inf, -np.inf], np.nan)
+        
+        tbl[mag_err_col] = calibrated_mag_err
         return tbl
 
     # Dynamically find available aperture radii from column names
@@ -875,6 +920,14 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         final_table["psf_mag"] = (
             final_table["psf_instrumental_mag"] + zero_point  # - 0.09 * airmass
         )
+        
+        # Propagate zero-point error in PSF magnitude error
+        if "psf_mag_err" in final_table.columns:
+            psf_inst_mag_err = final_table["psf_mag_err"]
+            with np.errstate(invalid="ignore"):
+                calibrated_psf_mag_err = np.sqrt(psf_inst_mag_err**2 + zero_point_error**2)
+                calibrated_psf_mag_err = calibrated_psf_mag_err.replace([np.inf, -np.inf], np.nan)
+            final_table["psf_mag_err"] = calibrated_psf_mag_err
 
     # remove columns from a list (these are intermediate columns that may exist)
     cols_to_remove = [

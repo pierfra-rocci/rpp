@@ -1,7 +1,7 @@
 User Guide
 =========
 
-**Current Version: 1.5.1 (January 2026)**
+**Current Version: 1.5.3 (January 2026)**
 
 Getting Started
 --------------
@@ -69,12 +69,14 @@ Step 4: Run Photometric Calibration
    * Background estimation and 2D noise mapping with SExtractor algorithm
    * Source detection using DAOStarFinder with configurable threshold
    * FWHM (seeing) estimation and refinement from stellar profiles
-   * Multi-aperture photometry (1.5×, 2.0× FWHM with local background subtraction)
+   * Multi-aperture photometry (1.1×, 1.3× FWHM with local background subtraction)
+   * Background-corrected S/N calculation for accurate flux ratios
    * Empirical PSF model construction and PSF photometry with Gaussian fallback
+   * Quality flag assignment: 'good' (S/N≥5), 'marginal' (3≤S/N<5), 'poor' (S/N<3)
    * Optional WCS refinement using stdpipe and Astrometry.net/GAIA DR3
    * Cross-matching with GAIA DR3 for photometric calibration and zero-point determination
    * Atmospheric extinction correction using calculated airmass
-   * Complete error propagation through entire photometric pipeline
+   * Complete error propagation including zero-point uncertainty: σ_mag_calib = √(σ_mag_inst² + σ_zp²)
 
 Step 5: Catalog Enhancement
 --------------------------

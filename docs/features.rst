@@ -90,10 +90,12 @@ Source Detection & Photometry
    - Seeing estimation from stellar profiles
 
 **Multi-Aperture Photometry**:
-   - Two primary aperture radii: 1.5× and 2.0× FWHM (optimized for most use cases)
+   - Two primary aperture radii: 1.1× and 1.3× FWHM (optimized for most use cases)
    - Circular apertures with local background estimation using annular regions
    - Per-aperture background-corrected and raw flux measurements
-   - Signal-to-noise ratio (SNR) and magnitude error calculation for each aperture
+   - Signal-to-noise ratio (S/N) calculation using background-corrected flux
+   - Magnitude error calculation: ``σ_mag = 1.0857 × (σ_flux / flux)``
+   - Quality flags: 'good' (S/N≥5), 'marginal' (3≤S/N<5), 'poor' (S/N<3)
    - Magnitude calibration against GAIA DR3 zero-point
    - Support for aperture correction and PSF comparison
 
@@ -101,6 +103,8 @@ Source Detection & Photometry
    - Empirical PSF model construction using EPSFBuilder
    - Star selection with quality filtering criteria
    - Iterative PSF fitting with IterativePSFPhotometry
+   - Correct S/N calculation: ``S/N = flux_fit / flux_err``
+   - PSF-specific quality flags for reliability assessment
    - PSF model visualization and FITS output
    - Comparison metrics with aperture photometry
 
@@ -109,7 +113,8 @@ Source Detection & Photometry
    - Poisson noise plus read noise modeling
    - Background uncertainty propagation
    - Total error estimation with calc_total_error
-   - SNR-based magnitude error calculation
+   - Zero-point error propagation: ``σ_mag_calib = √(σ_mag_inst² + σ_zp²)``
+   - Full precision S/N (no rounding) to avoid divide-by-zero
 
 Photometric Calibration
 -----------------------
@@ -126,7 +131,8 @@ Photometric Calibration
    - Multiple aperture zero-point determination
    - Atmospheric extinction correction using airmass
    - Calibration star quality assessment
-   - Zero-point uncertainty estimation
+   - Zero-point uncertainty estimation and propagation
+   - Correct column name lookup for error columns
 
 **Magnitude Systems**:
    - GAIA G, BP, RP photometric bands

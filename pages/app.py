@@ -1020,11 +1020,12 @@ if science_file is not None:
                                         )
                                         handle_log_messages(log_messages)
 
-                                        # Add calibrated magnitudes
+                                        # Add calibrated magnitudes with error propagation
                                         final_table = add_calibrated_magnitudes(
                                             final_table,
                                             zero_point=zero_point_value,
                                             airmass=air,
+                                            zero_point_error=zero_point_std,
                                         )
 
                                         # Add metadata
@@ -1052,11 +1053,12 @@ if science_file is not None:
                                         st.info("Using aperture photometry only (PSF photometry not available).")
                                         final_table = phot_table_df.copy()
 
-                                        # Add calibrated magnitudes
+                                        # Add calibrated magnitudes with error propagation
                                         final_table = add_calibrated_magnitudes(
                                             final_table,
                                             zero_point=zero_point_value,
                                             airmass=air,
+                                            zero_point_error=zero_point_std,
                                         )
 
                                         # Add metadata

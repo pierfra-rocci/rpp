@@ -97,6 +97,13 @@ Source Detection & Photometry
    :type filter_band: str
    :return: Tuple of (phot_table, epsf_table, daofind, bkg, wcs_obj)
    :rtype: tuple(astropy.table.Table, astropy.table.Table, photutils.detection.DAOStarFinder, photutils.background.Background2D, astropy.wcs.WCS)
+   
+   **Photometric Formulas:**
+   
+   - Signal-to-Noise Ratio: ``S/N = flux / flux_error`` (uses background-corrected flux when available)
+   - Magnitude Error: ``σ_mag = 1.0857 × (σ_flux / flux)`` where 1.0857 = 2.5/ln(10)
+   - Instrumental Magnitude: ``m_inst = -2.5 × log10(flux)``
+   - Quality Flags: 'good' (S/N≥5), 'marginal' (3≤S/N<5), 'poor' (S/N<3)
 
 .. py:function:: perform_psf_photometry(img, photo_table, fwhm, daostarfind, mask=None, error=None)
 
@@ -174,6 +181,26 @@ Catalog Operations
    :type air: float
    :return: Tuple of (zero_point_value, zero_point_std, matplotlib_figure)
    :rtype: tuple(float, float, matplotlib.figure.Figure)
+
+.. py:function:: add_calibrated_magnitudes(final_table, zero_point, airmass, zero_point_error=0.0)
+
+   Add calibrated magnitudes with proper error propagation.
+   
+   :param final_table: Table with instrumental photometry
+   :type final_table: pandas.DataFrame
+   :param zero_point: Photometric zero point
+   :type zero_point: float
+   :param airmass: Airmass value
+   :type airmass: float
+   :param zero_point_error: Uncertainty in zero point (default: 0.0)
+   :type zero_point_error: float
+   :return: Table with calibrated magnitudes and propagated errors
+   :rtype: pandas.DataFrame
+   
+   **Mathematical Formulas:**
+   
+   - Calibrated Magnitude: ``mag_calib = mag_inst + zero_point``
+   - Error Propagation: ``σ_mag_calib = √(σ_mag_inst² + σ_zero_point²)``
 
 .. py:function:: enhance_catalog(api_key, final_table, matched_table, header, pixel_scale_arcsec, search_radius_arcsec=60)
 

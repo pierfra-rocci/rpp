@@ -6,7 +6,7 @@ RAPAS Photometry Pipeline (RPP)
    :align: right
    :alt: RAPAS Photometry Pipeline logo
 
-**RAPAS Photometry Pipeline (RPP) v1.5.1** is a comprehensive web-based astronomical photometry system built with Streamlit and Python 3.12. It provides an end-to-end solution for processing astronomical images, performing precise photometry, and cross-matching results with major astronomical catalogs.
+**RAPAS Photometry Pipeline (RPP) v1.5.3** is a comprehensive web-based astronomical photometry system built with Streamlit and Python 3.12. It provides an end-to-end solution for processing astronomical images, performing precise photometry, and cross-matching results with major astronomical catalogs.
 
 The pipeline is designed for both amateur and professional astronomers, offering a user-friendly interface while maintaining the rigor and precision required for scientific analysis.
 
@@ -14,12 +14,14 @@ Key Features
 -----------
 
 **Complete Photometry Pipeline**:
-   - Multi-aperture photometry with optimized radii (1.5×, 2.0× FWHM)
+   - Multi-aperture photometry with optimized radii (1.1×, 1.3× FWHM)
    - Empirical PSF model construction and PSF photometry with Gaussian fallback
    - Robust background estimation with SExtractor algorithm
    - Automatic source detection using DAOStarFinder with configurable thresholds
    - FWHM estimation through Gaussian fitting of stellar profiles
-   - Comprehensive error propagation through entire pipeline
+   - Background-corrected S/N calculation for accurate flux ratios
+   - Comprehensive error propagation with zero-point uncertainty
+   - Quality flags: 'good' (S/N≥5), 'marginal' (3≤S/N<5), 'poor' (S/N<3)
 
 **Advanced Astrometric Solutions**:
    - Local plate solving using Astrometry.net via stdpipe for blind astrometric solving
@@ -32,6 +34,7 @@ Key Features
    - Photometric calibration against Gaia DR3 catalog
    - Robust zero-point calculation with sigma clipping and outlier rejection
    - Atmospheric extinction correction based on airmass calculation
+   - Zero-point error propagation in calibrated magnitudes: ``σ_mag_calib = √(σ_mag_inst² + σ_zp²)``
    - Quality filtering for reliable calibration stars
    - Support for multiple Gaia photometric bands and synthetic photometry
 

@@ -54,7 +54,10 @@ Once you have configured all parameters, the analysis pipeline executes with the
 
 1.  **Background & Noise Estimation**: Compute 2D background model and RMS noise maps using SExtractor algorithm
 2.  **Source Detection & Cosmic Ray Removal**: Identify astronomical sources using DAOStarFinder; automatically remove cosmic rays with L.A.Cosmic (astroscrappy)
-3.  **Photometry**: Perform multi-aperture photometry (1.5× , 2.0× FWHM) and PSF photometry using empirical ePSF modeling with Gaussian fallback
+3.  **Photometry**: Perform multi-aperture photometry (1.1×, 1.3× FWHM) and PSF photometry using empirical ePSF modeling with Gaussian fallback. Includes:
+    - Background-corrected S/N calculation
+    - Proper magnitude error computation: σ_mag = 1.0857 × (σ_flux / flux)
+    - Quality flag assignment based on S/N thresholds
 4.  **Astrometric Refinement** (if enabled): Apply blind plate-solving via Astrometry.net/stdpipe to solve or refine WCS
 5.  **Photometric Calibration**: Cross-match with Catalogs for absolute photometric zero-point determination with outlier rejection
 6.  **Multi-Catalog Cross-Matching**: Query and cross-match sources with GAIA DR3 (stellar parameters), SIMBAD (object classification), SkyBoT (solar system objects), AAVSO VSX (variable stars), Milliquas (QSOs/AGN), 10 Parsec Catalog (nearby stars), and optionally Astro-Colibri (transient alerts)
@@ -64,12 +67,30 @@ Once you have configured all parameters, the analysis pipeline executes with the
 
 After the analysis is complete, the results will be available for download as a ZIP archive. Key output files include:
 
--   **`*_catalog.csv` / `.vot`**: Complete source catalog with instrumental magnitudes (aperture & PSF) and GAIA-calibrated absolute magnitudes, including photometric errors and cross-match flags
+-   **`*_catalog.csv` / `.vot`**: Complete source catalog with instrumental magnitudes (aperture & PSF) and GAIA-calibrated absolute magnitudes, including:
+    - Photometric errors with proper zero-point uncertainty propagation
+    - Quality flags: 'good' (S/N≥5), 'marginal' (3≤S/N<5), 'poor' (S/N<3)
+    - Background-corrected flux measurements
+    - Cross-match identifications from multiple catalogs
 -   **`*_background.fits`**: 2D background model and RMS noise maps used for source detection
 -   **`*_psf.fits`**: Empirical Point Spread Function (ePSF) model fitted to stellar sources (or Gaussian model if ePSF fails to converge)
 -   **`*_wcs_header.txt`**: Astrometric solution header (WCS) with plate-solve parameters if astrometry was performed
 -   **`*.log`**: Comprehensive processing log with timestamps, parameter values, and diagnostic messages for troubleshooting
 -   **`*.png`**: Diagnostic plots including FWHM profile analysis, magnitude distributions, zero-point calibration residuals, source detection map, and photometric quality indicators
+
+### Photometric Quality Assessment
+
+The pipeline provides quality flags to help assess the reliability of photometric measurements:
+
+| Quality Flag | S/N Range | Reliability | Recommended Use |
+|-------------|-----------|-------------|-----------------|
+| `good` | S/N ≥ 5 | High | Science-ready data |
+| `marginal` | 3 ≤ S/N < 5 | Moderate | Use with caution |
+| `poor` | S/N < 3 | Low | Exclude from analysis |
+
+The magnitude errors include proper error propagation:
+- **Instrumental error**: σ_mag = 1.0857 × (σ_flux / flux)
+- **Calibrated error**: σ_mag_calib = √(σ_mag_inst² + σ_zp²)
 
 **Interactive Analysis**: You can inspect results in real-time using the embedded Aladin Lite v3 sky viewer for interactive visualization of detections and catalog cross-matches, or export coordinates to ESA SkyView for broader context
 

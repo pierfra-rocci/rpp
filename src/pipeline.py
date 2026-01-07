@@ -521,6 +521,25 @@ def detection_and_photometry(
     - Adds RA/Dec coordinates to photometry tables if WCS is available.
     - Computes instrumental magnitudes for both aperture and PSF photometry.
     - Displays progress and results in the Streamlit interface.
+    
+    Photometric Formulas
+    --------------------
+    Signal-to-Noise Ratio (S/N):
+        S/N = flux / flux_error
+        where flux is background-corrected aperture sum (if available) or raw aperture sum
+        
+    Magnitude Error:
+        σ_mag = (2.5 / ln(10)) × (σ_flux / flux) = 1.0857 × (σ_flux / flux)
+        Derived from error propagation: mag = -2.5 × log10(flux)
+        
+    Instrumental Magnitude:
+        m_inst = -2.5 × log10(flux)
+        
+    Quality Flags:
+        - 'poor': S/N < 3 (unreliable photometry)
+        - 'marginal': 3 ≤ S/N < 5 (marginal quality)
+        - 'good': S/N ≥ 5 (reliable photometry)
+        - 'unknown': missing data or calculation failed
     """
     daofind = None
 
@@ -749,12 +768,39 @@ def detection_and_photometry(
                 aperture_sum_col in phot_table.colnames
                 and aperture_err_col in phot_table.colnames
             ):
-                # SNR for raw aperture sum
-                phot_table[f"snr{radius_suffix}"] = np.round(
-                    phot_table[aperture_sum_col] / phot_table[aperture_err_col]
+                # Use background-corrected flux for S/N if available (more accurate)
+                if bkg_corr_col in phot_table.colnames:
+                    # Use background-corrected flux for S/N calculation
+                    flux_for_snr = phot_table[bkg_corr_col]
+                    # For negative/zero bkg-corrected flux, fall back to raw flux
+                    use_raw = flux_for_snr <= 0
+                    flux_for_snr = np.where(use_raw, phot_table[aperture_sum_col], flux_for_snr)
+                else:
+                    # Fall back to raw flux if bkg-corrected not available
+                    flux_for_snr = phot_table[aperture_sum_col]
+                
+                # SNR calculation (no rounding to preserve precision)
+                # Formula: S/N = flux / flux_error
+                # Uses background-corrected flux when available for better accuracy
+                phot_table[f"snr{radius_suffix}"] = (
+                    flux_for_snr / phot_table[aperture_err_col]
                 )
-                m_err = 1.0857 / phot_table[f"snr{radius_suffix}"]
+                
+                # Calculate magnitude error directly from flux and flux_err
+                # Formula: σ_mag = 1.0857 × (σ_flux / flux)
+                # Derivation: From mag = -2.5 × log10(flux), using error propagation:
+                #   σ_mag = |d(mag)/d(flux)| × σ_flux = (2.5/ln(10)) × (σ_flux/flux)
+                #   where 2.5/ln(10) ≈ 1.0857
+                m_err = 1.0857 * phot_table[aperture_err_col] / phot_table[aperture_sum_col]
                 phot_table[f"aperture_mag_err{radius_suffix}"] = m_err
+
+                # Add quality flag based on S/N
+                snr_values = phot_table[f"snr{radius_suffix}"]
+                quality_flag = np.where(
+                    snr_values < 3, 'poor',
+                    np.where(snr_values < 5, 'marginal', 'good')
+                )
+                phot_table[f"quality_flag{radius_suffix}"] = quality_flag
 
                 # Instrumental magnitude for raw aperture sum
                 instrumental_mags = -2.5 * np.log10(phot_table[aperture_sum_col])
@@ -775,6 +821,7 @@ def detection_and_photometry(
                 phot_table[f"snr{radius_suffix}"] = np.nan
                 phot_table[f"aperture_mag_err{radius_suffix}"] = np.nan
                 phot_table[f"instrumental_mag{radius_suffix}"] = np.nan
+                phot_table[f"quality_flag{radius_suffix}"] = 'unknown'
 
         try:
             epsf_table, _ = perform_psf_photometry(
@@ -782,11 +829,25 @@ def detection_and_photometry(
             )
 
             if epsf_table is not None:
-                epsf_table["snr"] = np.round(
-                    epsf_table["flux_fit"] / np.sqrt(epsf_table["flux_err"])
+                # SNR for PSF photometry (no rounding, flux_err is already std dev not variance)
+                # Formula: S/N = flux_fit / flux_err
+                # Note: PSFPhotometry returns flux_err as standard deviation, not variance
+                epsf_table["snr"] = (
+                    epsf_table["flux_fit"] / epsf_table["flux_err"]
                 )
-                m_err = 1.0857 / epsf_table["snr"]
+                # Calculate magnitude error directly from flux and flux_err
+                # Formula: σ_mag = 1.0857 × (σ_flux / flux)
+                # Same derivation as aperture photometry (see above)
+                m_err = 1.0857 * epsf_table["flux_err"] / epsf_table["flux_fit"]
                 epsf_table["psf_mag_err"] = m_err
+
+                # Add quality flag for PSF photometry
+                psf_snr = epsf_table["snr"]
+                psf_quality_flag = np.where(
+                    psf_snr < 3, 'poor',
+                    np.where(psf_snr < 5, 'marginal', 'good')
+                )
+                epsf_table["psf_quality_flag"] = psf_quality_flag
 
                 epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"])
                 epsf_table["instrumental_mag"] = epsf_instrumental_mags
@@ -1103,8 +1164,9 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         zp_mean = zero_point_value
         residuals = mag_cat - (mag_inst + zp_mean)
 
-        # Look for error column matching the aperture radius
-        aperture_err_col = f"aperture_mag_err_{default_radius:.1f}"
+        # Look for error column matching the aperture radius (fix column naming)
+        # Use underscore format to match actual column names (e.g., aperture_mag_err_1_1)
+        aperture_err_col = f"aperture_mag_err{radius_suffix}"
         if aperture_err_col in _matched_table.columns:
             aperture_mag_err = _matched_table[aperture_err_col].values
         elif "aperture_mag_err" in _matched_table.columns:

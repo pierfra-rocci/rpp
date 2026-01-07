@@ -19,7 +19,7 @@ copyright = "2024-2026, Pier-Francesco Rocci"
 author = "Pier-Francesco Rocci"
 
 # The full version, including alpha/beta/rc tags
-release = "1.5.1"
+release = "1.5.3"
 version = "1.5"
 
 

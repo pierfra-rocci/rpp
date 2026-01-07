@@ -34,8 +34,8 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 ### 🔧 Advanced Processing
 - **Cosmic ray removal**: Automatic L.A.Cosmic algorithm implementation via astroscrappy
 - **Image enhancement**: Multiple visualization modes (ZScale, histogram equalization)
-- **Quality filtering**: Automated source quality assessment
-- **Error propagation**: Comprehensive photometric error calculation
+- **Quality filtering**: Automated source quality assessment with S/N-based flags
+- **Error propagation**: Comprehensive photometric error calculation with zero-point uncertainty
 - **Transient Detection**: Identification of transient candidates using survey templates
 
 ### 🖥️ User Interface
@@ -156,9 +156,19 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - Check internet connectivity for catalog queries (GAIA, SIMBAD, etc.).
 - Verify coordinate system and field center are correct.
 
-## Recent changes / Changelog (last update: 2026-01-03)
+## Recent changes / Changelog (last update: 2026-01-07)
 
-### Current Version (1.5.1)
+### Current Version (1.5.3)
+- **Photometry Calculation Improvements**: 
+  - Fixed critical PSF S/N calculation (was using `sqrt(flux_err)` instead of `flux_err`)
+  - Removed S/N rounding to preserve precision and avoid divide-by-zero errors
+  - Added proper error propagation for calibrated magnitudes: `σ_mag_calib = √(σ_mag_inst² + σ_zp²)`
+  - S/N now uses background-corrected flux for more accurate estimation
+  - Added quality flags for photometry: 'good' (S/N≥5), 'marginal' (3≤S/N<5), 'poor' (S/N<3)
+- **Documentation**: Comprehensive mathematical documentation of S/N and magnitude error formulas
+- **Testing**: New unit test suite for photometric calculations (`tests/test_photometry.py`)
+
+### Version 1.5.1
 - **Python 3.12 Compatibility**: Project upgraded to require Python 3.12 with verified dependency resolution
 - **Enhanced Dependency Management**: Updated to latest stable versions:
   - astropy 7.1.1
