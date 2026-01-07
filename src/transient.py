@@ -131,7 +131,7 @@ def filter_skybot_candidates(candidates, obs_time, sr=10/3600,
         return candidates
 
 
-def find_candidates(
+def find_candidates(photometry_table,
     zero_point_value,
     image,
     header,
@@ -170,11 +170,11 @@ def find_candidates(
     # Auto-select catalog based on hemisphere if not specified or if PanSTARRS
     if is_southern:
         catalog = "skymapper"
-        cat_cutout = "SkyMapper/"
+        cat_cutout = "SkyMapper/DR4/"
         st.info(f"🌏 Southern hemisphere detected (Dec={dec_center:.2f}°). Using SkyMapper catalog.")
     else:
         catalog = "ps1"
-        cat_cutout = "PanSTARRS/DR2/"
+        cat_cutout = "PanSTARRS/DR1/"
         st.info(f"🌍 Northern hemisphere detected (Dec={dec_center:.2f}°). Using PanSTARRS catalog.")
 
     st.info("Extracting source objects from image using SEP...")
@@ -188,34 +188,36 @@ def find_candidates(
     obj = sep.extract(image_sub, detect_thresh,
                       gain=gain, mask=mask, err=bkg.globalrms)
 
+
+
     if obj is None:
         st.warning("No objects found in the image.")
         return []
 
-    # Perform classical circular aperture photometry with proper error estimation
-    # Use aperture radius of ~1.3 * FWHM for optimal signal-to-noise ratio
-    aperture_radius = 1.3 * fwhm
-    flux, flux_err, _ = sep.sum_circle(
-        image_sub,         # background-subtracted image
-        obj['x'], obj['y'],  # object centroids
-        aperture_radius,   # aperture radius in pixels
-        err=bkg.globalrms,  # use global RMS for error estimation
-        gain=gain          # camera gain for Poisson noise
-    )
+    # # Perform classical circular aperture photometry with proper error estimation
+    # # Use aperture radius of ~1.3 * FWHM for optimal signal-to-noise ratio
+    # aperture_radius = 1.3 * fwhm
+    # flux, flux_err, _ = sep.sum_circle(
+    #     image_sub,         # background-subtracted image
+    #     obj['x'], obj['y'],  # object centroids
+    #     aperture_radius,   # aperture radius in pixels
+    #     err=bkg.globalrms,  # use global RMS for error estimation
+    #     gain=gain          # camera gain for Poisson noise
+    # )
 
-    # Calculate magnitudes from aperture flux with proper error propagation
-    if zero_point_value is None:
-        st.warning("Zero point is None - using instrumental magnitudes only")
-        zero_point_value = 0.0
+    # # Calculate magnitudes from aperture flux with proper error propagation
+    # if zero_point_value is None:
+    #     st.warning("Zero point is None - using instrumental magnitudes only")
+    #     zero_point_value = 0.0
 
-    mag = np.round(-2.5*np.log10(np.abs(flux)) + zero_point_value, 2)
-    # Propagate flux errors to magnitude errors using standard formula
-    mag_err = np.round(2.5 / np.log(10) * flux_err / np.abs(flux), 3)
+    # mag = np.round(-2.5*np.log10(np.abs(flux)) + zero_point_value, 2)
+    # # Propagate flux errors to magnitude errors using standard formula
+    # mag_err = np.round(2.5 / np.log(10) * flux_err / np.abs(flux), 3)
 
-    # Add photometry results to object table
-    obj = np.lib.recfunctions.append_fields(
-        obj, ['flux_aper', 'flux_aper_err', 'mag_calib', 'mag_calib_err'],
-        [flux, flux_err, mag, mag_err], usemask=False)
+    # # Add photometry results to object table
+    # obj = np.lib.recfunctions.append_fields(
+    #     obj, ['flux_aper', 'flux_aper_err', 'mag_calib', 'mag_calib_err'],
+    #     [flux, flux_err, mag, mag_err], usemask=False)
 
     st.info(f"Found {len(obj)} objects in the image.")
 
@@ -224,6 +226,44 @@ def find_candidates(
     obj = np.lib.recfunctions.append_fields(
         obj, ['ra', 'dec'], [ra_obj, dec_obj], usemask=False
     )
+
+    # Cross-match SEP detections with photometry_table to get PSF magnitudes
+    if photometry_table is not None and len(photometry_table) > 0:
+        st.info("Cross-matching SEP detections with PSF photometry table...")
+        
+        # Get coordinates from photometry_table
+        phot_ra = photometry_table['ra']
+        phot_dec = photometry_table['dec']
+        
+        # Cross-match using spherical matching (10 arcsec radius)
+        match_radius = 10 / 3600  # 10 arcsec in degrees
+        oidx, pidx, dist = stdpipe_astrometry.spherical_match(
+            obj['ra'], obj['dec'],
+            phot_ra, phot_dec,
+            match_radius
+        )
+        
+        if len(oidx) > 0:
+            st.info(f"Matched {len(oidx)} sources between SEP and PSF photometry")
+            
+            # Keep only matched objects
+            obj = obj[oidx]
+            
+            # Get PSF magnitudes from photometry_table for matched sources
+            psf_mag = np.array(photometry_table['psf_mag'][pidx])
+            psf_mag_err = np.array(photometry_table['psf_mag_err'][pidx])
+            
+            # Add PSF photometry as mag_calib (reference magnitude for transients)
+            obj = np.lib.recfunctions.append_fields(
+                obj, ['mag_calib', 'mag_calib_err'],
+                [psf_mag, psf_mag_err], usemask=False
+            )
+        else:
+            st.warning("No matches found between SEP detections and PSF photometry table")
+            return []
+    else:
+        st.warning("No photometry_table provided - cannot get PSF magnitudes")
+        return []
 
     # Query the appropriate catalog
     st.info(
