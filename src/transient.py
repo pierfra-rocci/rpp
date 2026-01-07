@@ -378,12 +378,15 @@ def find_candidates(photometry_table,
             st.warning('(⚠️ Possibly due to a crowded field or filter band calibration)')
 
     st.info("Generating cutouts and retrieving template images for the first 10 candidates...")
-    sorted_candidates = np.sort(candidates, order='mag_calib')[::-1]
+    sorted_indices = np.argsort(candidates['mag_calib'])[::-1]
+    sorted_candidates = candidates[sorted_indices]
     for _, cand in list(enumerate(sorted_candidates))[:10]:
+        # Convert row to dict for stdpipe compatibility
+        cand_dict = {col: cand[col] for col in cand.colnames}
         # Create the cutout from image based on the candidate
         cutout = cutouts.get_cutout(
             image,
-            cand,
+            cand_dict,
             25,
             header=header
         )
