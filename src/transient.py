@@ -366,6 +366,23 @@ def find_candidates(photometry_table,
         st.warning("No candidates returned from filtering.")
         return []
 
+    # Remove candidates with invalid magnitude errors (inf or nan)
+    valid_errors = np.isfinite(candidates['mag_calib_err'])
+    n_invalid = len(candidates) - np.sum(valid_errors)
+    if n_invalid > 0:
+        st.info(f"Removed {n_invalid} candidates with invalid magnitude errors (inf/nan)")
+        candidates = candidates[valid_errors]
+
+    # Remove candidates with low S/N (S/N < 5, i.e., mag_err > 0.217)
+    # S/N ≈ 1.0857 / mag_err for Poisson noise
+    min_snr = 5.0
+    max_mag_err = 1.0857 / min_snr  # ~0.217 mag
+    good_snr = candidates['mag_calib_err'] < max_mag_err
+    n_low_snr = len(candidates) - np.sum(good_snr)
+    if n_low_snr > 0:
+        st.info(f"Removed {n_low_snr} candidates with low S/N (<{min_snr})")
+        candidates = candidates[good_snr]
+
     st.success(
         f"Candidate filtering complete. Found {len(candidates)} potential transients."
     )
