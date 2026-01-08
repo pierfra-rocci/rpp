@@ -127,7 +127,7 @@ if not st.session_state.logged_in:
                         "base_url": st.session_state.api_base_url,
                     }
                     st.session_state.backend_status_message = (
-                        f"Using API backend at {st.session_state.api_base_url}"
+                        "Using API backend"
                     )
                     st.success(message)
                     st.rerun()
@@ -143,7 +143,7 @@ if not st.session_state.logged_in:
                         st.session_state.username = username
                         st.session_state.backend_mode = "legacy"
                         st.session_state.backend_status_message = (
-                            f"Using legacy backend at {legacy_url}"
+                            "Using legacy backend"
                         )
                         st.rerun()
                     else:

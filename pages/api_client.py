@@ -184,7 +184,7 @@ def detect_backend(timeout: float = 2.0) -> Dict[str, str]:
                 "mode": "api",
                 "api_base_url": api_url,
                 "legacy_backend_url": legacy_url,
-                "message": f"Using API backend at {api_url}",
+                "message": "Using API backend",
             }
     except requests.RequestException:
         pass
@@ -193,5 +193,5 @@ def detect_backend(timeout: float = 2.0) -> Dict[str, str]:
         "mode": "legacy",
         "api_base_url": api_url,
         "legacy_backend_url": legacy_url,
-        "message": (f"API backend not reachable. Using legacy server at {legacy_url}"),
+        "message": ("API backend not reachable. Using legacy server"),
     }
