@@ -41,6 +41,106 @@ GAIA_BANDS = [
     ("z", "zmag"),
 ]
 
+# Expanded filter dictionary to handle many common filter name variations
+FILTER_DICT = {
+    # Johnson-Cousins system
+    "u": "u_jkc_mag",
+    "b": "b_jkc_mag",
+    "v": "v_jkc_mag",
+    "r": "r_jkc_mag",
+    "i": "i_jkc_mag",
+    "johnson_u": "u_jkc_mag",
+    "johnson_b": "b_jkc_mag",
+    "johnson_v": "v_jkc_mag",
+    "cousins_r": "r_jkc_mag",
+    "cousins_i": "i_jkc_mag",
+
+    # SDSS system
+    "u_sdss": "u_sdss_mag",
+    "g_sdss": "gmag",
+    "r_sdss": "rmag",
+    "i_sdss": "imag",
+    "z_sdss": "zmag",
+    "sdss_u": "u_sdss_mag",
+    "sdss_g": "gmag",
+    "sdss_r": "rmag",
+    "sdss_i": "imag",
+    "sdss_z": "zmag",
+    "g": "gmag",
+    "z": "zmag",
+
+    # Gaia system
+    "gaia_g": "phot_g_mean_mag",
+    "gaia_bp": "phot_bp_mean_mag",
+    "gaia_rp": "phot_rp_mean_mag",
+    "bp": "phot_bp_mean_mag",
+    "rp": "phot_rp_mean_mag",
+    "g_gaia": "phot_g_mean_mag",
+    "bp_gaia": "phot_bp_mean_mag",
+    "rp_gaia": "phot_rp_mean_mag",
+
+    # Common clear/luminance filters
+    "clear": "phot_g_mean_mag",
+    "lum": "phot_g_mean_mag",
+    "l": "phot_g_mean_mag",
+    "luminance": "phot_g_mean_mag",
+    "a": "phot_g_mean_mag",  # Common in amateur setups
+    "c": "phot_rp_mean_mag",
+    "open": "phot_g_mean_mag",
+    "w": "phot_g_mean_mag",  # Wide/White
+
+    # Color filters (RGB)
+    "red": "rmag",
+    "green": "gmag",
+    "blue": "b_jkc_mag",
+    "rgb_r": "rmag",
+    "rgb_g": "gmag",
+    "rgb_b": "b_jkc_mag",
+
+    # Sloan variations with apostrophes
+    "u'": "u_sdss_mag",
+    "g'": "gmag",
+    "r'": "rmag",
+    "i'": "imag",
+    "z'": "zmag",
+    "sloan_u": "u_sdss_mag",
+    "sloan_g": "gmag",
+    "sloan_r": "rmag",
+    "sloan_i": "imag",
+    "sloan_z": "zmag",
+
+    # Pan-STARRS (map to closest SDSS equivalents)
+    "ps_g": "gmag",
+    "ps_r": "rmag",
+    "ps_i": "imag",
+    "ps_z": "zmag",
+    "ps1_g": "gmag",
+    "ps1_r": "rmag",
+    "ps1_i": "imag",
+    "ps1_z": "zmag",
+
+    # Common typos and variations
+    "clr": "phot_g_mean_mag",
+    "lumn": "phot_g_mean_mag",
+    "vis": "v_jkc_mag",
+    "visual": "v_jkc_mag",
+    "ha": "rmag",  # H-alpha, map to r
+    "oiii": "gmag",  # OIII, map to g
+
+    # Telescope-specific common names
+    "astrodon_r": "rmag",
+    "astrodon_g": "gmag",
+    "astrodon_b": "b_jkc_mag",
+    "baader_r": "rmag",
+    "baader_g": "gmag",
+    "baader_b": "b_jkc_mag",
+
+    # Default/unknown
+    "unknown": "phot_g_mean_mag",
+    "none": "phot_g_mean_mag",
+    "": "phot_g_mean_mag",
+}
+
 
 def safe_wcs_create(header):
     """
@@ -1114,3 +1214,42 @@ def estimate_background(image_data, box_size=64, filter_size=5, figure=True):
         return bkg, fig_bkg, None
     except Exception as e:
         return None, None, f"Background estimation error: {str(e)}"
+
+
+def extract_filter_from_header(header):
+    """
+    Extract and normalize filter name from FITS header.
+
+    Parameters
+    ----------
+    header : astropy.io.fits.Header or dict-like
+        FITS header to extract filter from
+
+    Returns
+    -------
+    tuple (str, str)
+        (raw_filter_name, mapped_gaia_band)
+        Returns ("Unknown", "phot_g_mean_mag") if no filter found
+    """
+    if header is None:
+        return "Unknown", "phot_g_mean_mag"
+
+    # Try multiple common filter keywords
+    filter_keywords = ["FILTER", "FILTERS", "FLT", "FILTER1", "INSFLNAM", "FILTNAME"]
+
+    raw_filter = None
+    for key in filter_keywords:
+        if key in header:
+            raw_filter = str(header[key]).strip()
+            break
+
+    if not raw_filter or raw_filter.upper() in ["NONE", "NULL", ""]:
+        return "Unknown", "phot_g_mean_mag"
+
+    # Normalize the filter name
+    normalized = raw_filter.lower().replace(" ", "_").replace("-", "_")
+
+    # Map to GAIA band
+    mapped_band = FILTER_DICT.get(normalized, "phot_g_mean_mag")
+
+    return raw_filter, mapped_band

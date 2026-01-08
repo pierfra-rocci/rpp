@@ -32,6 +32,7 @@ from src.tools_app import (
 # Local Application Imports
 from src.tools_pipeline import (
     GAIA_BANDS,
+    FILTER_DICT,
     extract_coordinates,
     extract_pixel_scale,
     safe_wcs_create,
@@ -369,7 +370,7 @@ if st.sidebar.button("💾 Save Settings"):
             st.sidebar.warning(f"Could not connect to backend: {e}")
 
 # Add archived files browser to sidebar
-with st.sidebar.expander("📁 Archive", expanded=False):
+with st.sidebar.expander("📁 Tasks Archive", expanded=False):
     username = st.session_state.get("username", "anonymous")
     output_dir = ensure_output_directory(directory=f"{username}_results")
     display_archived_files_browser(output_dir)
@@ -493,6 +494,39 @@ if science_file is not None:
                 st.session_state.log_buffer,
                 f"Observatory data updated from FITS header: {st.session_state.observatory_data}",
             )
+
+    # Extract filter from header with multiple possible keywords
+    filter_raw = None
+    for filter_key in ["FILTER", "FILTERS", "FLT", "FILTER1", "INSFLNAM"]:
+        if filter_key in science_header:
+            filter_raw = str(science_header[filter_key]).strip().upper()
+            break
+    
+    if filter_raw is None:
+        filter_raw = "Unknown"
+    
+    # Map the raw filter name to standardized GAIA band using FILTER_DICT
+    filter_mapped = FILTER_DICT.get(filter_raw.lower(), filter_raw)
+    
+    # Get the current selected filter band from analysis parameters
+    selected_filter = st.session_state.analysis_parameters["filter_band"]
+    
+    # Check if they match (comparing the mapped value)
+    if filter_mapped != selected_filter and filter_raw != "Unknown":
+        st.warning(
+            f"Filter in FITS header ({filter_raw}) maps to '{filter_mapped}' "
+            f"but selected filter is '{selected_filter}'. Consider updating your selection."
+        )
+        write_to_log(
+            st.session_state.log_buffer,
+            f"Filter mismatch: Header={filter_raw} (→{filter_mapped}), Selected={selected_filter}",
+            level="WARNING"
+        )
+    else:
+        write_to_log(
+            st.session_state.log_buffer,
+            f"Filter from header: {filter_raw} (→{filter_mapped})",
+        )
 
     # Test WCS creation with better error handling
     wcs_obj, wcs_error, log_messages = safe_wcs_create(science_header)
