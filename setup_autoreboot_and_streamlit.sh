@@ -23,7 +23,7 @@ cat > "$MGMT_SCRIPT" << 'MGMT_EOF'
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="$HOME/rpp"
+APP_DIR="${SCRIPT_DIR}/rpp"
 SCREEN_NAME="rpp_app"
 
 case "$1" in
@@ -134,6 +134,12 @@ case "$1" in
 
         if screen -ls | grep -q "$SCREEN_NAME"; then
             echo "Screen session already exists. Use 'restart' to restart."
+            exit 1
+        fi
+
+        # Check if run_all_linux.sh exists
+        if [ ! -f "$APP_DIR/run_all_linux.sh" ]; then
+            echo "Error: run_all_linux.sh not found in $APP_DIR"
             exit 1
         fi
 
