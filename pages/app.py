@@ -514,7 +514,7 @@ if science_file is not None:
     # Check if they match (comparing the mapped value)
     if filter_mapped != selected_filter and filter_raw != "Unknown":
         st.warning(
-            f"Filter in FITS header ({filter_raw}) maps to '{filter_mapped}' "
+            f"⚠️ Filter in FITS header ({filter_raw}) maps to '{filter_mapped}' "
             f"but selected filter is '{selected_filter}'. Consider updating your selection."
         )
         write_to_log(
