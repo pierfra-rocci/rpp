@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore")
 
 
 st.set_page_config(
-    page_title="RAPAS Photometry Pipeline (UNDER DEVELOPMENT BE CAREFUL!)",
+    page_title="RAPAS Photometry Pipeline - Login",
     page_icon=":sparkles:",
     layout="wide",
 )
@@ -68,7 +68,7 @@ def validate_password(password):
 
 
 if not st.session_state.logged_in:
-    st.title("**RAPAS Photometry Pipeline**")
+    st.title("**RAPAS Photometry Pipeline** *[UNDER DEVELOPMENT BE CAREFUL!]*")
     st.markdown("")
     st.markdown(
         "_Report feedback and bugs to_ : "
