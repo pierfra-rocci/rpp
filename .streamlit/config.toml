@@ -33,9 +33,9 @@ headless = true       # Do not open a browser on server
 folderWatchBlacklist = []
 
 # For public deployments, consider:
-# - enableCORS = false (unless you need cross-origin access)
-# - enableXsrfProtection = true (recommended)
-enableCORS = false
+# - enableCORS must be true when enableXsrfProtection is true
+# - enableXsrfProtection = true (recommended for security)
+enableCORS = true
 enableXsrfProtection = true
 
 # Max size, in megabytes, for files uploaded with the file_uploader.
