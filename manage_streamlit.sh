@@ -148,6 +148,12 @@ case "$1" in
             rm -f "$APP_DIR/fastapi_backend.pid" "$APP_DIR/streamlit_frontend.pid"
         fi
 
+        # Check if run_all_linux.sh exists
+        if [ ! -f "$APP_DIR/run_all_linux.sh" ]; then
+            echo "Error: run_all_linux.sh not found in $APP_DIR"
+            exit 1
+        fi
+
         # Ensure we're in the app directory
         cd "$APP_DIR"
         
