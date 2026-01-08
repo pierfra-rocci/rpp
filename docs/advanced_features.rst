@@ -1,7 +1,8 @@
 Advanced Features
 ===============
 
-This section covers advanced features and specialized use cases for RAPAS Photometry Pipeline.
+
+This section covers advanced features and specialized use cases for RAPAS Photometry Pipeline. The application supports both FastAPI (recommended) and legacy Flask backends for all advanced workflows.
 
 Transient Detection (Beta)
 -----------------------

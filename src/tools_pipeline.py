@@ -825,7 +825,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     Handle cases where only one method is available.
     Dynamically handles different aperture radius suffixes.
     Filters out sources with magnitude errors > 2.
-    
+
     Parameters
     ----------
     final_table : pandas.DataFrame
@@ -834,23 +834,23 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         Photometric zero point
     airmass : float
         Airmass value
-    
+
     Returns
     -------
     pandas.DataFrame
         Table with calibrated magnitudes, filtered to remove poor photometry
-    
+
     Mathematical Formulas
     ---------------------
     Calibrated Magnitude:
         mag_calib = mag_inst + zero_point
-    
+
     Magnitude Error:
         σ_mag = 1.0857 × (σ_flux / flux)
-        
+
         Derived from error propagation of mag = -2.5 × log10(flux)
         where 1.0857 = 2.5 / ln(10)
-    
+
     Notes
     -----
     - If instrumental magnitude error doesn't exist, it's computed from flux
@@ -863,7 +863,10 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     # Helper to compute aperture magnitude for a given radius label
     def _compute_aperture_mag_for_radius(tbl, radius_label):
         # candidate instrumental mag column names in preference order
-        candidates = [f"instrumental_mag_bkg_corr_{radius_label}", f"instrumental_mag_{radius_label}"]
+        candidates = [
+            f"instrumental_mag_bkg_corr_{radius_label}",
+            f"instrumental_mag_{radius_label}",
+        ]
         inst_col = next((c for c in candidates if c in tbl.columns), None)
         mag_col = f"aperture_mag_{radius_label}"
         mag_err_col = f"aperture_mag_err_{radius_label}"
@@ -871,7 +874,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         flux_err_col = f"aperture_sum_err_{radius_label}"
 
         if inst_col:
-            tbl[mag_col] = tbl[inst_col] + zero_point  #- 0.09 * airmass
+            tbl[mag_col] = tbl[inst_col] + zero_point  # - 0.09 * airmass
 
         # Compute magnitude error if not present
         if mag_err_col not in tbl.columns:
@@ -880,7 +883,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
                     mag_err = 1.0857 * tbl[flux_err_col] / tbl[flux_col]
                     mag_err = mag_err.replace([np.inf, -np.inf], np.nan)
                 tbl[mag_err_col] = mag_err
-        
+
         return tbl
 
     # Dynamically find available aperture radii from column names
@@ -933,7 +936,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     # Filter out sources with magnitude errors > 2 (unreliable photometry)
     initial_count = len(final_table)
     mag_err_cols = [col for col in final_table.columns if "mag_err" in col]
-    
+
     if mag_err_cols:
         # Create mask: keep rows where ALL magnitude errors are <= 2 (or NaN)
         keep_mask = np.ones(len(final_table), dtype=bool)
@@ -942,12 +945,13 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
             # Keep if error <= 2 or is NaN (missing data is ok)
             col_mask = (col_values <= 2) | pd.isna(col_values)
             keep_mask &= col_mask
-        
+
         final_table = final_table[keep_mask].reset_index(drop=True)
         removed_count = initial_count - len(final_table)
-        
+
         if removed_count > 0:
             import streamlit as st
+
             st.info(f"Removed {removed_count} sources with magnitude error > 2")
 
     return final_table
@@ -1085,8 +1089,7 @@ def estimate_background(image_data, box_size=64, filter_size=5, figure=True):
 
                 # Plot the background model
                 im1 = ax1.imshow(
-                    bkg.background, origin="lower", cmap="viridis", vmin=vmin,
-                    vmax=vmax
+                    bkg.background, origin="lower", cmap="viridis", vmin=vmin, vmax=vmax
                 )
                 ax1.set_title("Estimated Background")
                 fig_bkg.colorbar(im1, ax=ax1, label="Flux")

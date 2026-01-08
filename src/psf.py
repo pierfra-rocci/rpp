@@ -199,8 +199,12 @@ def perform_psf_photometry(
         # Try to get source properties that indicate size and shape
         fwhm_sources = _col_arr(photo_table_for_psf, "fwhm", np.nan)  # if available
         # Ellipticity can be inferred from roundness or derived from semi-major/minor axes if available
-        semimajor = _col_arr(photo_table_for_psf, "a", np.nan)  # semi-major axis if available
-        semiminor = _col_arr(photo_table_for_psf, "b", np.nan)  # semi-minor axis if available
+        semimajor = _col_arr(
+            photo_table_for_psf, "a", np.nan
+        )  # semi-major axis if available
+        semiminor = _col_arr(
+            photo_table_for_psf, "b", np.nan
+        )  # semi-minor axis if available
         # Peak value for saturation detection
         peak = _col_arr(photo_table_for_psf, "peak", np.nan)  # peak flux if available
 
@@ -216,7 +220,7 @@ def perform_psf_photometry(
         # S/N = flux / flux_error or approximate from flux and background noise
         snr = _col_arr(photo_table_for_psf, "snr", np.nan)  # if available directly
         flux_err = _col_arr(photo_table_for_psf, "flux_err", np.nan)  # flux uncertainty
-        
+
         # If S/N not directly available, compute from flux and error
         valid_snr = np.isfinite(snr)
         snr_is_approximated = False  # Track if we're using Poisson approximation
@@ -227,7 +231,9 @@ def perform_psf_photometry(
                 snr = np.full(n_sources, np.nan)
                 snr[valid_flux_err] = flux[valid_flux_err] / flux_err[valid_flux_err]
                 valid_snr = np.isfinite(snr)
-                st.write(f"  ⓘ S/N computed from flux/flux_err for {np.sum(valid_snr)} sources")
+                st.write(
+                    f"  ⓘ S/N computed from flux/flux_err for {np.sum(valid_snr)} sources"
+                )
             else:
                 # Approximate S/N from flux assuming Poisson noise: S/N ≈ sqrt(flux)
                 # This is a rough approximation for photon-limited regime
@@ -236,24 +242,28 @@ def perform_psf_photometry(
                 snr[valid_positive_flux] = np.sqrt(flux[valid_positive_flux])
                 valid_snr = np.isfinite(snr)
                 snr_is_approximated = True
-                st.write(f"  ⓘ S/N approximated as √flux for {np.sum(valid_snr)} sources (Poisson assumption)")
-        
+                st.write(
+                    f"  ⓘ S/N approximated as √flux for {np.sum(valid_snr)} sources (Poisson assumption)"
+                )
+
         # S/N threshold: ADAPTIVE based on actual S/N distribution
         # If S/N is approximated (Poisson), use percentile-based threshold instead of fixed value
         snr_finite = snr[valid_snr]
         if len(snr_finite) > 0:
             snr_median = np.median(snr_finite)
-            
+
             if snr_is_approximated or snr_median < 10:
                 # Use adaptive threshold: select top 50% of S/N values
                 snr_threshold = max(snr_median, np.percentile(snr_finite, 50))
-                st.write(f"  ⓘ Using adaptive S/N threshold (median S/N={snr_median:.1f})")
+                st.write(
+                    f"  ⓘ Using adaptive S/N threshold (median S/N={snr_median:.1f})"
+                )
             else:
                 # Use fixed threshold for proper S/N values
                 snr_threshold = 20.0
         else:
             snr_threshold = 0.0  # No S/N filtering if no valid values
-        
+
         snr_criteria = np.zeros(n_sources, dtype=bool)
         if snr_threshold > 0:
             snr_criteria[valid_snr] = snr[valid_snr] >= snr_threshold
@@ -269,7 +279,7 @@ def perform_psf_photometry(
         flux_90 = np.percentile(flux_finite, 90)  # Upper limit to avoid saturation
         flux_min = max(flux_25, flux_median)  # At least median brightness
         flux_max = flux_90  # Stay below 90th percentile (likely saturated)
-        
+
         st.write(
             f"Target flux range: {flux_min:.1f} "
             f"→ {flux_max:.1f} (25th-90th percentile, bright stars)"
@@ -316,10 +326,10 @@ def perform_psf_photometry(
             peak_85 = np.percentile(peak_values, 85)
             # Also check against image maximum (typical CCD saturation ~65535 for 16-bit)
             img_max = np.nanmax(img)
-            saturation_limit = min(peak_85 * 0.95, img_max * 0.85)  # 5% below 85th or 85% of max
-            saturation_criteria[valid_peak] = (
-                peak[valid_peak] < saturation_limit
-            )
+            saturation_limit = min(
+                peak_85 * 0.95, img_max * 0.85
+            )  # 5% below 85th or 85% of max
+            saturation_criteria[valid_peak] = peak[valid_peak] < saturation_limit
             n_sat_pass = np.sum(saturation_criteria)
             st.write(
                 f"  ✓ Saturation check (strict): {n_sat_pass} "
@@ -344,9 +354,8 @@ def perform_psf_photometry(
             # (rejects extended objects and under-sampled stars)
             size_min = fwhm * 0.75
             size_max = fwhm * 1.5
-            size_criteria[valid_fwhm] = (
-                (fwhm_sources[valid_fwhm] >= size_min)
-                & (fwhm_sources[valid_fwhm] <= size_max)
+            size_criteria[valid_fwhm] = (fwhm_sources[valid_fwhm] >= size_min) & (
+                fwhm_sources[valid_fwhm] <= size_max
             )
             n_size_pass = np.sum(size_criteria)
             st.write(
@@ -354,9 +363,7 @@ def perform_psf_photometry(
                 f"point-like sources ({size_min:.2f}–{size_max:.2f} px)"
             )
         else:
-            st.write(
-                "  ⓘ No FWHM data available; size filtering skipped"
-            )
+            st.write("  ⓘ No FWHM data available; size filtering skipped")
 
         # ========== SHAPE/ELLIPTICITY FILTERING ==========
         # Reject blends and optical defects using roundness and axis ratio
@@ -365,9 +372,7 @@ def perform_psf_photometry(
             np.abs(roundness1[valid_roundness]) < 0.4
         )  # Relaxed from 0.25
         n_roundness_pass = np.sum(roundness_criteria)
-        st.write(
-            f"  ✓ Roundness (|r₁| < 0.4): {n_roundness_pass} sources"
-        )
+        st.write(f"  ✓ Roundness (|r₁| < 0.4): {n_roundness_pass} sources")
 
         # Add axis-ratio check if semi-major/minor axes available
         ellipticity_criteria = np.ones(n_sources, dtype=bool)
@@ -381,15 +386,9 @@ def perform_psf_photometry(
                 ellipticity < 0.3
             )  # Reject highly elongated objects
             n_ellipticity_pass = np.sum(ellipticity_criteria)
-            st.write(
-                f"  ✓ Ellipticity (ε < 0.3): "
-                f"{n_ellipticity_pass} sources"
-            )
+            st.write(f"  ✓ Ellipticity (ε < 0.3): {n_ellipticity_pass} sources")
         else:
-            st.write(
-                "  ⓘ No axis data available; "
-                "ellipticity filter skipped"
-            )
+            st.write("  ⓘ No axis data available; ellipticity filter skipped")
 
         # Sharpness filtering DISABLED - too restrictive
         # sharpness_criteria = np.zeros(n_sources, dtype=bool)
@@ -413,11 +412,7 @@ def perform_psf_photometry(
         magnitude = -2.5 * np.log10(flux_safe)
 
         for i in range(n_sources):
-            if not (
-                valid_xcentroid[i]
-                and valid_ycentroid[i]
-                and valid_flux[i]
-            ):
+            if not (valid_xcentroid[i] and valid_ycentroid[i] and valid_flux[i]):
                 crowding_criteria[i] = False
                 continue
 
@@ -462,10 +457,7 @@ def perform_psf_photometry(
             & (ycentroid[valid_coords] < img.shape[0] - edge_buffer)
         )
         n_edge_pass = np.sum(edge_criteria)
-        st.write(
-            f"  ✓ Not near edges (>{edge_buffer:.0f}px): "
-            f"{n_edge_pass} sources"
-        )
+        st.write(f"  ✓ Not near edges (>{edge_buffer:.0f}px): {n_edge_pass} sources")
 
         # ========== LOCAL BACKGROUND FLATNESS CHECK ==========
         # Ensure stars have flat local background (no gradients)
@@ -473,61 +465,72 @@ def perform_psf_photometry(
         background_criteria = np.ones(n_sources, dtype=bool)
         local_box_size = int(max(5 * fwhm, 25))  # Box size for local background check
         half_box = local_box_size // 2
-        
+
         n_background_checked = 0
         for i in range(n_sources):
             if not (valid_xcentroid[i] and valid_ycentroid[i]):
                 continue
-            
+
             xi, yi = int(xcentroid[i]), int(ycentroid[i])
-            
+
             # Define annulus around the star (exclude the star itself)
             inner_radius = int(2.5 * fwhm)  # Inside this: the star
             outer_radius = half_box
-            
+
             # Check bounds
-            if (xi - outer_radius < 0 or xi + outer_radius >= img.shape[1] or
-                yi - outer_radius < 0 or yi + outer_radius >= img.shape[0]):
+            if (
+                xi - outer_radius < 0
+                or xi + outer_radius >= img.shape[1]
+                or yi - outer_radius < 0
+                or yi + outer_radius >= img.shape[0]
+            ):
                 continue
-            
+
             # Extract local region
-            local_region = img[yi - outer_radius:yi + outer_radius + 1,
-                              xi - outer_radius:xi + outer_radius + 1]
-            
+            local_region = img[
+                yi - outer_radius : yi + outer_radius + 1,
+                xi - outer_radius : xi + outer_radius + 1,
+            ]
+
             # Create annular mask (background region)
-            y_local, x_local = np.ogrid[-outer_radius:outer_radius + 1,
-                                        -outer_radius:outer_radius + 1]
+            y_local, x_local = np.ogrid[
+                -outer_radius : outer_radius + 1, -outer_radius : outer_radius + 1
+            ]
             dist_from_center = np.sqrt(x_local**2 + y_local**2)
-            annular_mask = (dist_from_center >= inner_radius) & (dist_from_center <= outer_radius)
-            
+            annular_mask = (dist_from_center >= inner_radius) & (
+                dist_from_center <= outer_radius
+            )
+
             if mask is not None:
                 # Also exclude masked pixels
-                local_mask = mask[yi - outer_radius:yi + outer_radius + 1,
-                                 xi - outer_radius:xi + outer_radius + 1]
+                local_mask = mask[
+                    yi - outer_radius : yi + outer_radius + 1,
+                    xi - outer_radius : xi + outer_radius + 1,
+                ]
                 annular_mask = annular_mask & ~local_mask
-            
+
             if np.sum(annular_mask) < 20:  # Need enough pixels for statistics
                 continue
-            
+
             background_values = local_region[annular_mask]
             background_values = background_values[np.isfinite(background_values)]
-            
+
             if len(background_values) < 10:
                 continue
-            
+
             n_background_checked += 1
-            
+
             # Check background flatness: std should be small relative to median
             bkg_median = np.median(background_values)
             bkg_std = np.std(background_values)
-            
+
             # Reject if background is too variable (> 10% of median or > 3σ above typical)
             # Also check for gradient by comparing quadrants
             if bkg_median > 0:
                 bkg_variation = bkg_std / bkg_median
                 if bkg_variation > 0.15:  # More than 15% variation
                     background_criteria[i] = False
-        
+
         n_bkg_pass = np.sum(background_criteria)
         st.write(
             f"  ✓ Flat local background: {n_bkg_pass}/{n_background_checked} "
@@ -569,10 +572,7 @@ def perform_psf_photometry(
                     f"X={coverage_x:.2f}, Y={coverage_y:.2f}"
                 )
                 coverage_threshold = 0.35
-                if (
-                    coverage_x < coverage_threshold
-                    or coverage_y < coverage_threshold
-                ):
+                if coverage_x < coverage_threshold or coverage_y < coverage_threshold:
                     st.warning(
                         (
                             "Les étoiles sélectionnées couvrent une zone "
@@ -582,8 +582,7 @@ def perform_psf_photometry(
                     )
             except Exception as coverage_error:
                 st.warning(
-                    "Impossible d'évaluer la couverture spatiale: "
-                    f"{coverage_error}"
+                    f"Impossible d'évaluer la couverture spatiale: {coverage_error}"
                 )
 
         # Save indices mapping to original full table
@@ -596,7 +595,7 @@ def perform_psf_photometry(
         # Check if we have enough stars for HIGH-QUALITY PSF (target: 100+)
         min_stars_optimal = 100
         min_stars_acceptable = 15  # Minimum required - below this, PSF is not computed
-        
+
         if len(filtered_photo_table) >= min_stars_optimal:
             st.success(
                 f"✓ {len(filtered_photo_table)} high-quality PSF stars selected "
@@ -638,7 +637,7 @@ def perform_psf_photometry(
         st.write(
             f"Fitting shape: {fit_shape} pixels "
             f"(aperture radius: {aperture_radius:.2f} px = "
-            f"{aperture_radius/fwhm:.2f} × FWHM)."
+            f"{aperture_radius / fwhm:.2f} × FWHM)."
         )
     except Exception as e:
         st.error(f"Error calculating fitting shape: {e}")
@@ -770,17 +769,14 @@ def perform_psf_photometry(
         if n_valid >= 150:
             builder_attempts.append(dict(oversampling=4, maxiters=5))
         else:
-            st.write(
-                "Essai oversampling 4 ignoré (échantillon < 150 étoiles)."
-            )
+            st.write("Essai oversampling 4 ignoré (échantillon < 150 étoiles).")
 
         for params in builder_attempts:
             try:
                 oversamp = int(params["oversampling"])
                 maxiters = int(params["maxiters"])
                 st.write(
-                    "Essai EPSFBuilder: oversampling="
-                    f"{oversamp}, maxiters={maxiters}"
+                    f"Essai EPSFBuilder: oversampling={oversamp}, maxiters={maxiters}"
                 )
                 epsf_builder = EPSFBuilder(
                     oversampling=oversamp,
@@ -791,16 +787,11 @@ def perform_psf_photometry(
                 )
                 epsf, _ = epsf_builder(stars_for_builder)
                 if epsf is not None:
-                    st.write(
-                        "EPSFBuilder réussi (oversampling=" f"{oversamp})"
-                    )
+                    st.write(f"EPSFBuilder réussi (oversampling={oversamp})")
                     epsf_data = np.asarray(epsf.data)
                     break
             except Exception as build_error:
-                st.warning(
-                    "Échec EPSFBuilder oversampling="
-                    f"{oversamp}: {build_error}"
-                )
+                st.warning(f"Échec EPSFBuilder oversampling={oversamp}: {build_error}")
                 epsf = None
 
         # Check if EPSFBuilder succeeded
@@ -844,12 +835,12 @@ def perform_psf_photometry(
             oversamp = int(np.asarray(oversamp).ravel()[0])
         else:
             oversamp = int(oversamp)
-        
+
         st.write(f"PSF oversampling factor: {oversamp}")
-        
+
         try:
             from photutils.psf import ImagePSF
-            
+
             # CRITICAL: Pass oversampling to ImagePSF to preserve centering!
             # Without this, the PSF model center is shifted causing magnitude offset
             psf_for_phot = ImagePSF(epsf_data, oversampling=oversamp)
@@ -862,8 +853,10 @@ def perform_psf_photometry(
 
         # Verify PSF model center
         psf_center_y, psf_center_x = np.array(epsf_data.shape) / 2.0
-        st.write(f"PSF model center: ({psf_center_x:.2f}, {psf_center_y:.2f}) in oversampled pixels")
-        
+        st.write(
+            f"PSF model center: ({psf_center_x:.2f}, {psf_center_y:.2f}) in oversampled pixels"
+        )
+
         # Check if PSF peak is at center
         peak_y, peak_x = np.unravel_index(np.argmax(epsf_data), epsf_data.shape)
         offset_x = (peak_x - psf_center_x) / oversamp
@@ -874,7 +867,9 @@ def perform_psf_photometry(
                 f"This may cause photometry errors."
             )
         else:
-            st.write(f"✓ PSF peak offset from center: ({offset_x:.2f}, {offset_y:.2f}) pixels (acceptable)")
+            st.write(
+                f"✓ PSF peak offset from center: ({offset_x:.2f}, {offset_y:.2f}) pixels (acceptable)"
+            )
 
         # Save / display epsf as FITS and figure (best-effort)
         try:
@@ -946,7 +941,9 @@ def perform_psf_photometry(
         except Exception as e:
             st.warning(f"Error working with PSF model display/save: {e}")
     except Exception as e:
-        st.warning(f"Error preparing PSF model for photometry: {e}. Continuing without PSF photometry.")
+        st.warning(
+            f"Error preparing PSF model for photometry: {e}. Continuing without PSF photometry."
+        )
         return None, None
 
     # Create PSF photometry object and perform photometry
@@ -973,7 +970,7 @@ def perform_psf_photometry(
             psf_model=psf_for_phot,
             fit_shape=fit_shape,
             finder=daostarfind,
-            aperture_radius=1.3*aperture_radius,
+            aperture_radius=1.3 * aperture_radius,
             grouper=grouper,
             # localbkg_estimator=localbkg_estimator,
         )
@@ -1040,5 +1037,7 @@ def perform_psf_photometry(
         return phot_epsf_result, epsf
 
     except Exception as e:
-        st.warning(f"Error executing PSF photometry: {e}. Continuing without PSF photometry.")
+        st.warning(
+            f"Error executing PSF photometry: {e}. Continuing without PSF photometry."
+        )
         return None, None

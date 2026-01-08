@@ -89,47 +89,49 @@ Key Features
    troubleshooting
    changelog
 
-Quick Start
-----------
 
-1. **Installation**: Install Python dependencies, Astrometry.net, and SCAMP
-2. **Launch**: Start backend (`python backend.py`) and frontend (`streamlit run frontend.py`)
-3. **Register**: Create user account and configure observatory settings
-4. **Upload**: Load FITS image file for analysis
-5. **Process**: Run photometric calibration pipeline
-6. **Explore**: View results in interactive Aladin viewer
-7. **Download**: Export complete analysis as ZIP archive
+Quick Start
+-----------
+
+1. **Install dependencies**: Python 3.12+, Astrometry.net, and (optionally) SCAMP
+2. **Start the backend**:
+    - *FastAPI (recommended):*
+       - Activate your virtual environment
+       - `python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000`
+       - Or use `run_all_cmd.bat` for one-click launch (Windows)
+    - *Legacy Flask backend:*
+       - `python backend.py`
+3. **Start the frontend**: `streamlit run frontend.py` or `streamlit run pages/app.py`
+4. **Login/Register**: Create an account or log in (or use anonymous mode)
+5. **Configure observatory**: Set location and parameters in the sidebar
+6. **Upload FITS file**: Use the main area uploader
+7. **Run analysis**: Adjust parameters and run the pipeline
+8. **Download results**: ZIP archive with catalogs, logs, plots, and models
+
 
 System Architecture
-------------------
+-------------------
 
-**Frontend (Streamlit)**:
-   - Interactive web interface for user interaction
-   - Real-time visualization and progress monitoring
-   - Session state management and configuration persistence
-   - File upload handling and result presentation
+**Frontend (Streamlit):**
+   - Modern web interface for user interaction and visualization
+   - Real-time progress, session state, and configuration management
+   - File upload, results display, and download options
 
-**Backend (Flask)**:
-   - User authentication and authorization
-   - Configuration storage and retrieval
-   - Multi-user workspace management
-   - API endpoints for frontend communication
+**Backend:**
+   - *FastAPI (recommended):* Modern REST API for user management, config, and file handling
+   - *Legacy Flask backend:* Supported for compatibility
+   - Multi-user support, authentication, and persistent configuration
 
-**Processing Pipeline**:
-   - Modular design with independent processing stages
-   - Robust error handling and recovery mechanisms
-   - Configurable parameters for different observation types
-   - Integration with external tools and services
+**Processing Pipeline:**
+   - Modular, robust, and configurable for different observation types
+   - Error handling, logging, and recovery
+   - Integration with Astrometry.net (via stdpipe), SCAMP, and major catalogs
 
-**External Integration**:
-
-   - Astrometry.net via stdpipe for local plate solving
-
-   - SCAMP for astrometric refinement
-
-   - Multiple astronomical catalog services
-
-   - Aladin Lite for interactive sky visualization
+**External Integration:**
+   - Astrometry.net (local plate solving)
+   - SCAMP (astrometric refinement)
+   - Gaia, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, Astro-Colibri
+   - Aladin Lite (interactive sky visualization)
 
 
 

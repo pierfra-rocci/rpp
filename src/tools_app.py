@@ -31,8 +31,10 @@ def try_gaia_server():
         Gaia.load_tables(only_names=True)
         return True
     except Exception:
-        st.warning("⚠️ Unable to reach GAIA Server through Astroquery. \n"
-                   f"The Server may be down or under maintenance. Please try again later !")
+        st.warning(
+            "⚠️ Unable to reach GAIA Server through Astroquery. \n"
+            "The Server may be down or under maintenance. Please try again later !"
+        )
         return False
 
 
@@ -338,7 +340,8 @@ def display_catalog_in_aladin(
             # Get aperture magnitude (try multiple aperture columns)
             # Exclude error columns (which contain "err" anywhere in the name)
             aperture_mag_cols = [
-                col for col in final_table.columns
+                col
+                for col in final_table.columns
                 if col.startswith("aperture_mag_") and "err" not in col
             ]
             for ap_col in aperture_mag_cols:
@@ -788,11 +791,12 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Dynamically find available aperture magnitude columns
     # Exclude error columns (which contain "err" anywhere in the name)
     aperture_mag_cols = [
-        col for col in final_table.columns 
+        col
+        for col in final_table.columns
         if col.startswith("aperture_mag_") and "err" not in col
     ]
     aperture_mag_col = aperture_mag_cols[0] if aperture_mag_cols else None
-    
+
     # Construct the error column name: aperture_mag_1.1 -> aperture_mag_err_1.1
     if aperture_mag_col:
         # Extract the radius suffix (e.g., "1.1" from "aperture_mag_1.1")
@@ -800,8 +804,10 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
         aperture_err_col = f"aperture_mag_err_{radius_suffix}"
     else:
         aperture_err_col = None
-    
-    has_aperture = aperture_mag_col is not None and aperture_mag_col in final_table.columns
+
+    has_aperture = (
+        aperture_mag_col is not None and aperture_mag_col in final_table.columns
+    )
     has_psf = "psf_mag" in final_table.columns
 
     if not has_aperture and not has_psf:
@@ -839,7 +845,11 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Magnitude distribution histogram (left panel)
     if has_aperture:
         # Extract aperture radius from column name for label
-        aperture_label = aperture_mag_col.replace("aperture_mag_", "") if aperture_mag_col else "unknown"
+        aperture_label = (
+            aperture_mag_col.replace("aperture_mag_", "")
+            if aperture_mag_col
+            else "unknown"
+        )
         ax_mag.hist(
             final_table[aperture_mag_col].dropna(),
             bins=bins,
@@ -864,7 +874,11 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
 
     # Scatter plot of magnitude vs error (right panel)
     if has_aperture and aperture_err_col and aperture_err_col in final_table.columns:
-        aperture_label = aperture_mag_col.replace("aperture_mag_", "") if aperture_mag_col else "unknown"
+        aperture_label = (
+            aperture_mag_col.replace("aperture_mag_", "")
+            if aperture_mag_col
+            else "unknown"
+        )
         ax_err.scatter(
             final_table[aperture_mag_col],
             final_table[aperture_err_col],

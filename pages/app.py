@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 # Third-Party Imports
 import streamlit as st
-import requests
+import requests  # type: ignore[import]
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ from src.tools_app import (
     clear_all_caches,
     handle_log_messages,
     cleanup_temp_files,
-    try_gaia_server
+    try_gaia_server,
 )
 
 # Local Application Imports
@@ -62,6 +62,8 @@ from src.transient import find_candidates
 
 from src.__version__ import version
 
+from pages.api_client import ApiClient, ApiError, detect_backend
+
 
 # Conditional Import (already present, just noting its location)
 if getattr(sys, "frozen", False):
@@ -75,6 +77,34 @@ if getattr(sys, "frozen", False):
         )
 
 warnings.filterwarnings("ignore")
+
+if "backend_status_message" not in st.session_state:
+    st.session_state.backend_status_message = "Determining backend..."
+if "backend_initialized" not in st.session_state:
+    st.session_state.backend_initialized = False
+if "api_mode" not in st.session_state:
+    st.session_state.api_mode = False
+if "backend_mode" not in st.session_state:
+    st.session_state.backend_mode = "legacy"
+if "api_base_url" not in st.session_state:
+    st.session_state.api_base_url = os.getenv(
+        "RPP_API_URL",
+        "http://localhost:8000",
+    )
+if "legacy_backend_url" not in st.session_state:
+    st.session_state.legacy_backend_url = os.getenv(
+        "RPP_LEGACY_URL",
+        "http://localhost:5000",
+    )
+
+if not st.session_state.backend_initialized:
+    backend_info = detect_backend()
+    st.session_state.api_base_url = backend_info["api_base_url"]
+    st.session_state.legacy_backend_url = backend_info["legacy_backend_url"]
+    st.session_state.api_mode = backend_info["mode"] == "api"
+    st.session_state.backend_mode = backend_info["mode"]
+    st.session_state.backend_status_message = backend_info["message"]
+    st.session_state.backend_initialized = True
 
 
 st.set_page_config(
@@ -117,6 +147,7 @@ st.markdown(
     "| [**RAPAS Home**](https://rapas.imcce.fr/) | [**Source**](https://github.com/pierfra-rocci/rpp) |",
     unsafe_allow_html=True,
 )
+st.caption(st.session_state.backend_status_message)
 
 # Added: Quick Start Tutorial link (now displayed in an expander)
 with st.expander("📘 Quick Start Tutorial"):
@@ -127,6 +158,7 @@ with st.expander("📘 Quick Start Tutorial"):
         st.warning("TUTORIAL.md not found. It should be in the `doc` folder.")
 
 st.sidebar.markdown(f"**Version:** _{version}_")
+st.sidebar.caption(st.session_state.backend_status_message)
 
 with st.sidebar.expander("🔭 Observatory", expanded=False):
     st.session_state.observatory_name = st.text_input(
@@ -280,7 +312,7 @@ with st.sidebar.expander("Transient Candidates", expanded=False):
     try:
         filter_index = filter_options.index(current_transient_filter)
     except ValueError:
-        filter_index = 1 # Default to "r" if stored value is not valid
+        filter_index = 1  # Default to "r" if stored value is not valid
 
     st.session_state.analysis_parameters["transient_filter"] = st.selectbox(
         "Reference Filter",
@@ -302,16 +334,39 @@ if st.sidebar.button("💾 Save Settings"):
     }
     name = st.session_state.get("username", "user")
 
-    try:
-        backend_url = "http://localhost:5000/save_config"
-        resp = requests.post(
-            backend_url,
-            json={"username": name, "config_json": json.dumps(params)},
+    mode = st.session_state.get("backend_mode", "legacy")
+
+    if mode == "api":
+        creds = st.session_state.get("api_credentials")
+        if not creds:
+            st.sidebar.warning("Missing API credentials. Please log in again.")
+        else:
+            client = ApiClient(creds.get("base_url"))
+            try:
+                client.save_config(
+                    username=creds["username"],
+                    password=creds["password"],
+                    config=params,
+                )
+                st.sidebar.success("Settings saved via API backend.")
+            except ApiError as exc:
+                st.sidebar.warning(f"Could not save config: {exc.message}")
+    else:
+        legacy_url = st.session_state.get(
+            "legacy_backend_url",
+            "http://localhost:5000",
         )
-        if resp.status_code != 200:
-            st.sidebar.warning(f"Could not save config to DB: {resp.text}")
-    except Exception as e:
-        st.sidebar.warning(f"Could not connect to backend: {e}")
+        try:
+            resp = requests.post(
+                f"{legacy_url}/save_config",
+                json={"username": name, "config_json": json.dumps(params)},
+            )
+            if resp.status_code != 200:
+                st.sidebar.warning(f"Could not save config to DB: {resp.text}")
+            else:
+                st.sidebar.success("Settings saved via legacy backend.")
+        except Exception as e:  # pragma: no cover - network failure
+            st.sidebar.warning(f"Could not connect to backend: {e}")
 
 # Add archived files browser to sidebar
 with st.sidebar.expander("📁 Archive", expanded=False):
@@ -331,6 +386,7 @@ if st.session_state.logged_in:
     if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
         st.session_state.username = None
+        st.session_state.api_credentials = None
         st.success("Logged out successfully.")
         st.switch_page("pages/login.py")
     st.sidebar.markdown("---")
@@ -443,7 +499,7 @@ if science_file is not None:
     handle_log_messages(log_messages)
     # Initialize force_plate_solve as False by default
     force_plate_solve = st.session_state.get("astrometry_check", False)
-    
+
     # Initialize use_astrometry to track if we ran plate solving
     use_astrometry = False
 
@@ -479,9 +535,7 @@ if science_file is not None:
             plate_solve_reason = (
                 "forced by user" if force_plate_solve else "no valid WCS found"
             )
-            with st.spinner(
-                "Running astrometry check and plate solving..."
-            ):
+            with st.spinner("Running astrometry check and plate solving..."):
                 wcs_obj, science_header, log_messages, error = solve_with_astrometrynet(
                     science_file_path
                 )
@@ -512,9 +566,7 @@ if science_file is not None:
                 log_buffer = st.session_state["log_buffer"]
 
                 if wcs_obj is not None:
-                    solve_type = (
-                        "Plate-solve" if force_plate_solve else "Initial solve"
-                    )
+                    solve_type = "Plate-solve" if force_plate_solve else "Initial solve"
                     st.success(f"{solve_type} successful")
                     write_to_log(
                         log_buffer, f"Astrometry check completed ({plate_solve_reason})"
@@ -533,26 +585,29 @@ if science_file is not None:
                     pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(
                         science_header
                     )
-                    
+
                     # If pixel scale extraction failed, calculate from WCS object
                     if pixel_size_arcsec == 0 or not np.isfinite(pixel_size_arcsec):
                         try:
                             from stdpipe import astrometry
-                            pixel_size_arcsec = astrometry.get_pixscale(wcs=wcs_obj) * 3600
+
+                            pixel_size_arcsec = (
+                                astrometry.get_pixscale(wcs=wcs_obj) * 3600
+                            )
                             pixel_scale_source = "WCS calculation"
                             write_to_log(
                                 log_buffer,
-                                f"Calculated pixel scale from WCS: {pixel_size_arcsec:.3f} arcsec/pixel"
+                                f"Calculated pixel scale from WCS: {pixel_size_arcsec:.3f} arcsec/pixel",
                             )
                         except Exception as e:
                             write_to_log(
                                 log_buffer,
                                 f"ERROR: Could not calculate pixel scale: {e}",
-                                level="ERROR"
+                                level="ERROR",
                             )
                             pixel_size_arcsec = 1.0  # Fallback value
                             pixel_scale_source = "fallback default"
-                    
+
                     seeing = st.session_state.analysis_parameters["seeing"]
                     mean_fwhm_pixel = seeing / pixel_size_arcsec
 
@@ -878,12 +933,16 @@ if science_file is not None:
             if "valid_ra" in st.session_state and "valid_dec" in st.session_state:
                 header_to_process["RA"] = st.session_state["valid_ra"]
                 header_to_process["DEC"] = st.session_state["valid_dec"]
-                st.info(f"Set header RA/DEC from validated coordinates: RA={header_to_process['RA']:.4f}°, DEC={header_to_process['DEC']:.4f}°")
+                st.info(
+                    f"Set header RA/DEC from validated coordinates: RA={header_to_process['RA']:.4f}°, DEC={header_to_process['DEC']:.4f}°"
+                )
             # Fallback to CRVAL1/CRVAL2 if available
             elif "CRVAL1" in header_to_process and "CRVAL2" in header_to_process:
                 header_to_process["RA"] = header_to_process["CRVAL1"]
                 header_to_process["DEC"] = header_to_process["CRVAL2"]
-                st.info(f"Set header RA/DEC from CRVAL: RA={header_to_process['RA']:.4f}°, DEC={header_to_process['DEC']:.4f}°")
+                st.info(
+                    f"Set header RA/DEC from CRVAL: RA={header_to_process['RA']:.4f}°, DEC={header_to_process['DEC']:.4f}°"
+                )
 
         # Initialize zero_point variables to avoid undefined variable errors later
         zero_point_value = None
@@ -934,7 +993,16 @@ if science_file is not None:
                     )
 
                     if isinstance(result, tuple) and len(result) == 8:
-                        phot_table_qtable, epsf_table, daofind, bkg, w, bkg_fig, fwhm_estimate, mask = result
+                        (
+                            phot_table_qtable,
+                            epsf_table,
+                            daofind,
+                            bkg,
+                            w,
+                            bkg_fig,
+                            fwhm_estimate,
+                            mask,
+                        ) = result
                     else:
                         st.error(
                             f"detection_and_photometry returned unexpected result: {type(result)}, length: {len(result) if hasattr(result, '__len__') else 'N/A'}"
@@ -947,12 +1015,18 @@ if science_file is not None:
                         phot_table_df = phot_table_qtable.to_pandas().copy(deep=True)
 
                         # Ensure RA/Dec columns are present
-                        if 'ra' not in phot_table_df.columns or 'dec' not in phot_table_df.columns:
-                            st.warning("RA/Dec columns not found in photometry table, attempting to add them...")
+                        if (
+                            "ra" not in phot_table_df.columns
+                            or "dec" not in phot_table_df.columns
+                        ):
+                            st.warning(
+                                "RA/Dec columns not found in photometry table, attempting to add them..."
+                            )
                             if w is not None:
                                 try:
                                     ra, dec = w.pixel_to_world_values(
-                                        phot_table_df["xcenter"], phot_table_df["ycenter"]
+                                        phot_table_df["xcenter"],
+                                        phot_table_df["ycenter"],
                                     )
                                     phot_table_df["ra"] = ra
                                     phot_table_df["dec"] = dec
@@ -1049,7 +1123,9 @@ if science_file is not None:
                                         )
                                     else:
                                         # No PSF photometry - use aperture photometry only
-                                        st.info("Using aperture photometry only (PSF photometry not available).")
+                                        st.info(
+                                            "Using aperture photometry only (PSF photometry not available)."
+                                        )
                                         final_table = phot_table_df.copy()
 
                                         # Add calibrated magnitudes
@@ -1142,7 +1218,9 @@ if science_file is not None:
                                         / 2.0
                                     )
                                 except Exception as e:
-                                    st.warning(f"Could not calculate search radius from header: {e}")
+                                    st.warning(
+                                        f"Could not calculate search radius from header: {e}"
+                                    )
                                     # Fallback: assume 1800 arcsec (0.5 degrees) as reasonable default
                                     search_radius = 1800.0
 
@@ -1211,7 +1289,9 @@ if science_file is not None:
                     / 2.0
                 )
             except Exception as e:
-                st.warning(f"Could not calculate search radius: {e}. Using default value.")
+                st.warning(
+                    f"Could not calculate search radius: {e}. Using default value."
+                )
                 search_radius = 1800.0  # Default 0.5 degrees in arcseconds
 
             ra_center = None
@@ -1270,7 +1350,9 @@ if science_file is not None:
                                     dec_center,
                                     search_radius / 3600,
                                     mask=mask,
-                                    filter_cat=st.session_state.analysis_parameters.get("filter_band"),
+                                    filter_cat=st.session_state.analysis_parameters.get(
+                                        "filter_band"
+                                    ),
                                     filter_name=st.session_state.analysis_parameters.get(
                                         "transient_filter", "r"
                                     ),
@@ -1279,23 +1361,46 @@ if science_file is not None:
                                     st.subheader("Transient Candidates Found")
                                     # Create a DataFrame from the candidates
                                     import pandas as pd
-                                    candidates_df = pd.DataFrame({
-                                        'ID': range(1, len(candidates) + 1),
-                                        'RA (deg)': [c['ra'] for c in candidates],
-                                        'DEC (deg)': [c['dec'] for c in candidates],
-                                        'Mag': [c.get('mag_calib', None) for c in candidates],
-                                        'Mag_err': [c.get('mag_calib_err', None) for c in candidates],
-                                        'X (pix)': [c.get('x', None) for c in candidates],
-                                        'Y (pix)': [c.get('y', None) for c in candidates],
-                                    })
+
+                                    candidates_df = pd.DataFrame(
+                                        {
+                                            "ID": range(1, len(candidates) + 1),
+                                            "RA (deg)": [c["ra"] for c in candidates],
+                                            "DEC (deg)": [c["dec"] for c in candidates],
+                                            "Mag": [
+                                                c.get("mag_calib", None)
+                                                for c in candidates
+                                            ],
+                                            "Mag_err": [
+                                                c.get("mag_calib_err", None)
+                                                for c in candidates
+                                            ],
+                                            "X (pix)": [
+                                                c.get("x", None) for c in candidates
+                                            ],
+                                            "Y (pix)": [
+                                                c.get("y", None) for c in candidates
+                                            ],
+                                        }
+                                    )
                                     # Display the DataFrame in Streamlit
-                                    st.dataframe(candidates_df, use_container_width=True)
-                                    
+                                    st.dataframe(
+                                        candidates_df, use_container_width=True
+                                    )
+
                                     # Save the DataFrame to CSV with base_filename
-                                    base_filename = st.session_state.get("base_filename", "transients")
-                                    transients_csv_path = os.path.join(output_dir, f"{base_filename}_transients.csv")
-                                    candidates_df.to_csv(transients_csv_path, index=False)
-                                    st.success(f"Transient candidates saved to {os.path.basename(transients_csv_path)}")
+                                    base_filename = st.session_state.get(
+                                        "base_filename", "transients"
+                                    )
+                                    transients_csv_path = os.path.join(
+                                        output_dir, f"{base_filename}_transients.csv"
+                                    )
+                                    candidates_df.to_csv(
+                                        transients_csv_path, index=False
+                                    )
+                                    st.success(
+                                        f"Transient candidates saved to {os.path.basename(transients_csv_path)}"
+                                    )
                                 else:
                                     st.warning("No transient candidates found.")
                             except Exception as e:

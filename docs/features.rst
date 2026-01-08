@@ -1,12 +1,13 @@
 Features
 ========
 
+
 User Authentication & Multi-User Support
----------------------------------------
+----------------------------------------
 
 **Secure User Management**:
-   - User registration and login system via Flask backend
-   - Password hashing with secure storage in SQLite database
+   - User registration and login system via FastAPI (recommended) or legacy Flask backend
+   - Password hashing with secure storage in SQLite or SQL database
    - Password recovery via email (requires SMTP configuration)
    - Individual user workspaces with isolated data storage
    - Session management with automatic logout options

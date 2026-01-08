@@ -1,18 +1,30 @@
 @echo off
-REM Activate virtual environment
+setlocal
+
+REM Windows helper for local development and testing only.
+
+if not exist .venv\Scripts\activate (
+	echo Virtual environment not found. Please create .venv first.
+	exit /b 1
+)
+
 call .venv\Scripts\activate
 
-REM Setup database
+REM Development environment variables
 set APP_ENV=development
+set RPP_API_URL=http://127.0.0.1:8000
+set RPP_LEGACY_URL=http://127.0.0.1:5000
 
-REM Start backend.py in a new terminal, redirecting output to backend.log
-start "Python Backend" cmd /k "python backend.py > backend.log 2>&1"
+REM Start FastAPI backend with auto-reload
+start "FastAPI Backend" cmd /k "python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000"
 
-REM Start Streamlit frontend in a new terminal
+REM Launch Streamlit frontend
 start "Streamlit Frontend" cmd /k "streamlit run frontend.py --server.port 8501 --server.address 127.0.0.1"
 
-REM Print URLs and log file names
-echo Backend URL: http://127.0.0.1:5000
-echo Frontend URL: http://127.0.0.1:8501
-echo Backend Log: backend.log (in its own window or file)
-echo Frontend output will be in its own terminal window.
+echo.
+echo FastAPI backend: http://127.0.0.1:8000
+echo Streamlit app:   http://127.0.0.1:8501
+echo Close the spawned terminals or press CTRL+C in each to stop services.
+echo.
+
+endlocal

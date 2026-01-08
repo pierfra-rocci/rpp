@@ -1,99 +1,112 @@
-Step-by-Step Photometry Tutorial
---------------------------------
 
-This tutorial will guide you through a typical analysis session from uploading an image to the final results.
+# Step-by-Step Photometry Tutorial
 
-### 0. Upload a FITS file
+This tutorial guides you through a typical analysis session, from launching the backend to downloading your results.
 
-In the main area of the page, you will find the file uploader.
+## 0. Launch the Application
 
--   Click "Browse files" or drag and drop your FITS image into the upload area.
--   Supported file extensions are: `.fits`, `.fit`, `.fts`, `.fits.gz` and `.fts.gz`.
+**Backend:**
 
-Once uploaded, the application will display a preview of your image, allowing you to visually confirm you have selected the correct file.
-Then it starts processing the image to extract initial metadata (e.g., WCS, observation time).
+- *FastAPI backend (recommended):*
+    - Activate your virtual environment:
+        ```powershell
+        .venv\Scripts\Activate.ps1
+        ```
+    - Start the backend:
+        ```powershell
+        python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+        ```
+    - Or use the provided batch file for Windows:
+        ```powershell
+        run_all_cmd.bat
+        ```
+- *Legacy backend (Flask):*
+    ```powershell
+    python backend.py
+    ```
 
-### 1. Configure Observatory
+**Frontend:**
 
-After logging in, you will see the main application interface. In the sidebar on the left, you need to configure your observatory's details. This information is crucial for accurate time-dependent calculations, such as airmass.
+In a new terminal (with the virtual environment activated):
+```powershell
+streamlit run frontend.py
+# OR
+streamlit run pages/app.py
+```
+Visit the URL printed by Streamlit (usually http://localhost:8501).
 
--   **Observatory Name**: A descriptive name for your observing location (e.g., "Backyard Observatory").
--   **Latitude, Longitude, Elevation**: The precise geographical coordinates (in decimal degrees for latitude/longitude and meters for elevation) of your observatory.
+## 1. Login or Register
 
-The application will attempt to automatically read these coordinates from the FITS file header if they are present (`SITELAT`, `SITELONG`, `SITEELEV`). However, it is good practice to verify and set them manually in the sidebar to ensure accuracy.
+Create an account or log in. You can also run in anonymous mode if the backend is not configured.
 
-### 2. Set Parameters
+## 2. Upload a FITS File
 
-Below the image preview and in the sidebar, you will find parameters to control the analysis. Fine-tuning these parameters is key to obtaining high-quality photometric results.
+In the main area, use the file uploader to select your FITS image. Supported extensions: `.fits`, `.fit`, `.fts`, `.fits.gz`, `.fts.gz`.
+The app will preview your image and extract initial metadata (WCS, observation time).
 
--   **Estimated Seeing (FWHM)**: The Full-Width at Half-Maximum of the stellar profiles in your image, measured in pixels or arcseconds (check the unit in the UI). This is a crucial parameter for accurate source extraction and PSF photometry.
--   **Detection Threshold**: The sigma threshold for detecting sources above the background noise. A value between 2.0 and 4.0 is typical.
--   **Border Mask**: The width of a border around the image to exclude from source detection. This helps avoid detecting partial sources at the edges.
--   **Calibration Filter Band**: Select the photometric band (e.g., G, Bp, Rp) that matches your observation. This selection determines which data is used for photometric calibration.
--   **Max Calibration Mag**: The magnitude limit for stars from the reference catalog to be used for calibration.
--   **Astrometry check**: If enabled, the pipeline will perform blind astrometric plate-solving using Astrometry.net through `stdpipe` integration and refine the WCS solution. Use this if your image lacks WCS metadata or has an inaccurate solution. This toggle is set automatically based on the initial WCS presence and quality in your FITS header.
+## 3. Configure Observatory
 
-*Note: Cosmic ray removal is automatically performed during preprocessing using the L.A.Cosmic algorithm (astroscrappy). This is now enabled by default to improve data quality.*
+In the sidebar, set your observatory details:
+- **Name**: e.g., "Backyard Observatory"
+- **Latitude, Longitude, Elevation**: Decimal degrees/meters. These may be auto-filled from the FITS header, but always verify.
 
-### 3. Astro_Colibri (Optional)
+## 4. Set Analysis Parameters
 
-If you have an Astro_Colibri API key, you can enter it in the designated field in the sidebar. This enables access to Astro-Colibri's real-time transient alerts and variable source information, enhancing the catalog cross-matching pipeline with up-to-date source classifications and transient annotations.
+In the sidebar, adjust:
+- **Estimated Seeing (FWHM)**: Initial guess in arcseconds
+- **Detection Threshold**: Sigma threshold for source detection
+- **Border Mask**: Pixels to exclude at the image edge
+- **Calibration Filter Band**: Choose the photometric band for calibration
+- **Max Calibration Mag**: Faintest magnitude for calibration stars
+- **Astrometry Check**: Enable to force plate solving/WCS refinement
 
-### 4. Transient Candidates (Beta Feature)
+*Cosmic ray removal is always performed automatically using the L.A.Cosmic algorithm (astroscrappy).* 
 
-In the sidebar, you will find an expander for "Transient Candidates" which enables the advanced transient detection pipeline.
--   **Enable Transient Finder**: Check this to run the transient detection module, which uses `stdpipe` image subtraction to compare your observation against reference surveys and identify potential transient sources.
--   **Reference Survey & Filter**: Automatically selects the optimal reference survey and filter bands based on your image location and coordinates:
-    - **Northern Hemisphere**: PanSTARRS1 g, r, i, z, y filters (covering full optical range)
-    - **Southern Hemisphere**: SkyMapper g, r, i filters
-    This selection determines which template images and catalogs are used for transient candidate identification.
+## 5. (Optional) Astro-Colibri API Key
 
-### 5. Run the Analysis
+Enter your Astro-Colibri API key in the sidebar to enable real-time transient alerts and variable source cross-matching.
 
-Once you have configured all parameters, the analysis pipeline executes with the following steps:
+## 6. (Optional) Transient Candidates (Beta)
 
-1.  **Background & Noise Estimation**: Compute 2D background model and RMS noise maps using SExtractor algorithm
-2.  **Source Detection & Cosmic Ray Removal**: Identify astronomical sources using DAOStarFinder; automatically remove cosmic rays with L.A.Cosmic (astroscrappy)
-3.  **Photometry**: Perform multi-aperture photometry (1.1×, 1.3× FWHM) and PSF photometry using empirical ePSF modeling with Gaussian fallback. Includes:
-    - Background-corrected S/N calculation
-    - Proper magnitude error computation: σ_mag = 1.0857 × (σ_flux / flux)
-    - Quality flag assignment based on S/N thresholds
-4.  **Astrometric Refinement** (if enabled): Apply blind plate-solving via Astrometry.net/stdpipe to solve or refine WCS
-5.  **Photometric Calibration**: Cross-match with Catalogs for absolute photometric zero-point determination with outlier rejection
-6.  **Multi-Catalog Cross-Matching**: Query and cross-match sources with GAIA DR3 (stellar parameters), SIMBAD (object classification), SkyBoT (solar system objects), AAVSO VSX (variable stars), Milliquas (QSOs/AGN), 10 Parsec Catalog (nearby stars), and optionally Astro-Colibri (transient alerts)
-7.  **Transient Detection** (if enabled): Perform image subtraction against reference survey templates and flag candidate transient sources
+Expand the "Transient Candidates" section in the sidebar:
+- **Enable Transient Finder**: Activates transient detection using image subtraction against reference surveys (PanSTARRS1 for north, SkyMapper for south).
+- **Reference Filter**: Select the filter band for template comparison.
 
-### Understanding the Outputs
+## 7. Run the Analysis
 
-After the analysis is complete, the results will be available for download as a ZIP archive. Key output files include:
+Click the button to start the photometry pipeline. The following steps are performed:
+1. **Background & Noise Estimation**
+2. **Source Detection & Cosmic Ray Removal**
+3. **Photometry**: Multi-aperture and PSF photometry, S/N and error calculation, quality flag assignment
+4. **Astrometric Refinement** (if enabled)
+5. **Photometric Calibration**: Cross-match with catalogs for zero-point
+6. **Multi-Catalog Cross-Matching**: GAIA DR3, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, 10 Parsec, Astro-Colibri
+7. **Transient Detection** (if enabled)
 
--   **`*_catalog.csv` / `.vot`**: Complete source catalog with instrumental magnitudes (aperture & PSF) and GAIA-calibrated absolute magnitudes, including:
-    - Photometric errors with proper zero-point uncertainty propagation
-    - Quality flags: 'good' (S/N≥5), 'marginal' (3≤S/N<5), 'poor' (S/N<3)
-    - Background-corrected flux measurements
-    - Cross-match identifications from multiple catalogs
--   **`*_background.fits`**: 2D background model and RMS noise maps used for source detection
--   **`*_psf.fits`**: Empirical Point Spread Function (ePSF) model fitted to stellar sources (or Gaussian model if ePSF fails to converge)
--   **`*_wcs_header.txt`**: Astrometric solution header (WCS) with plate-solve parameters if astrometry was performed
--   **`*.log`**: Comprehensive processing log with timestamps, parameter values, and diagnostic messages for troubleshooting
--   **`*.png`**: Diagnostic plots including FWHM profile analysis, magnitude distributions, zero-point calibration residuals, source detection map, and photometric quality indicators
+## 8. Download and Interpret Results
 
-### Photometric Quality Assessment
+After processing, download the ZIP archive containing:
+- `*_catalog.csv` / `.vot`: Source catalog with photometry, errors, flags, and cross-matches
+- `*_background.fits`: 2D background and RMS maps
+- `*_psf.fits`: Empirical PSF model
+- `*_wcs_header.txt`: Astrometric solution header
+- `*.log`: Processing log
+- `*.png`: Diagnostic plots
 
-The pipeline provides quality flags to help assess the reliability of photometric measurements:
+### Photometric Quality Flags
 
 | Quality Flag | S/N Range | Reliability | Recommended Use |
 |-------------|-----------|-------------|-----------------|
-| `good` | S/N ≥ 5 | High | Science-ready data |
-| `marginal` | 3 ≤ S/N < 5 | Moderate | Use with caution |
-| `poor` | S/N < 3 | Low | Exclude from analysis |
+| `good`      | S/N ≥ 5   | High        | Science-ready   |
+| `marginal`  | 3 ≤ S/N < 5 | Moderate   | Use with caution|
+| `poor`      | S/N < 3   | Low         | Exclude         |
 
-The magnitude errors include proper error propagation:
+Magnitude errors are propagated as:
 - **Instrumental error**: σ_mag = 1.0857 × (σ_flux / flux)
 - **Calibrated error**: σ_mag_calib = √(σ_mag_inst² + σ_zp²)
 
-**Interactive Analysis**: You can inspect results in real-time using the embedded Aladin Lite v3 sky viewer for interactive visualization of detections and catalog cross-matches, or export coordinates to ESA SkyView for broader context
+**Interactive Analysis**: Use the embedded Aladin Lite viewer for real-time exploration, or export coordinates to ESA SkyView.
 
-### Support
+## Support
 
-If you encounter any issues, please check the log file first. For bugs or feedback, contact `rpp_support@saf-astronomie.fr`.
+If you encounter issues, check the log file. For bugs or feedback, contact `rpp_support@saf-astronomie.fr`.

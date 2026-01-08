@@ -1,15 +1,3 @@
-# [theme]
-# base="dark"
-
-# ---- Main area ----
-# primaryColor="#268bd2"              # Solarized blue for highlights
-# backgroundColor="#002b36"           # Base03: very dark cyan
-# textColor="#93a1a1"                 # Base1: light grey-cyan
-# font="monospace"
-
-# ---- Sidebar variation ----
-# secondaryBackgroundColor="#073642"  # Base02: slightly lighter, for sidebar contrast
-
 [theme]
 primaryColor = "#bb5a38"
 backgroundColor = "#f4f3ed"
@@ -26,12 +14,9 @@ showSidebarBorder = true
 headingFontSizes = ["40px", "32px", "24px"]
 headingFontWeights = 500
 
-
 [theme.sidebar]
 backgroundColor = "#e8e7dd"
 secondaryBackgroundColor = "#ecebe3"
-
-################################################
 
 [global]
 developmentMode = false
@@ -43,22 +28,17 @@ messageFormat = "%(asctime)s %(message)s"
 
 [server]
 port = 8501
+address = "0.0.0.0"  # Listen on all interfaces for production
+headless = true       # Do not open a browser on server
 folderWatchBlacklist = []
 
-# If XSRF protection is enabled and CORS protection is disabled at the
-# same time, Streamlit will enable them both instead.
-# Default: true
-enableCORS = true
-
-# Enables support for Cross-Site Request Forgery (XSRF) protection, for
-# added security.
-# If XSRF protection is enabled and CORS protection is disabled at the
-# same time, Streamlit will enable them both instead.
-# Default: true
+# For public deployments, consider:
+# - enableCORS = false (unless you need cross-origin access)
+# - enableXsrfProtection = true (recommended)
+enableCORS = false
 enableXsrfProtection = true
 
 # Max size, in megabytes, for files uploaded with the file_uploader.
-# Default: 200
 maxUploadSize = 200
 
 fileWatcherType = "none"
@@ -76,10 +56,6 @@ runOnSave = false
 # Whether to send usage statistics to Streamlit.
 # Default: true
 gatherUsageStats = false
-
-# Internet address of the server that the browser should connect to. Can be IP address or DNS name.
-# Default: 'localhost'
-# serverAddress = "0.0.0.0"
 
 [client]
 # Default: "full"
