@@ -102,24 +102,27 @@ case "$1" in
         ;;
     logs)
         if [ -f "$APP_DIR/fastapi_backend.log" ] || [ -f "$APP_DIR/streamlit_frontend.log" ]; then
-            echo "Choose log to view:"
-            echo "  1) Backend (FastAPI/Gunicorn)"
-            echo "  2) Frontend (Streamlit)"
-            echo "  3) Both (split view)"
-            read -p "Selection [1-3]: " choice
-            case $choice in
-                1)
+            case "${2:-}" in
+                backend|1)
                     tail -f "$APP_DIR/fastapi_backend.log"
                     ;;
-                2)
+                frontend|2)
                     tail -f "$APP_DIR/streamlit_frontend.log"
                     ;;
-                3)
+                both|3)
                     tail -f "$APP_DIR/fastapi_backend.log" "$APP_DIR/streamlit_frontend.log"
                     ;;
                 *)
-                    echo "Invalid choice"
-                    exit 1
+                    echo "Available logs:"
+                    echo "  $0 logs backend   - View backend logs"
+                    echo "  $0 logs frontend  - View frontend logs"
+                    echo "  $0 logs both      - View both logs"
+                    echo ""
+                    echo "Recent backend log:"
+                    tail -20 "$APP_DIR/fastapi_backend.log" 2>/dev/null || echo "  No backend log"
+                    echo ""
+                    echo "Recent frontend log:"
+                    tail -20 "$APP_DIR/streamlit_frontend.log" 2>/dev/null || echo "  No frontend log"
                     ;;
             esac
         else
@@ -157,7 +160,7 @@ case "$1" in
         echo "  restart - Stop and restart the application"
         echo "  stop    - Stop the application gracefully"
         echo "  clean   - Force kill all related processes"
-        echo "  logs    - View application logs (backend/frontend)"
+        echo "  logs [backend|frontend|both] - View application logs"
         exit 1
         ;;
 esac

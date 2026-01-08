@@ -16,10 +16,20 @@ case "$1" in
         pgrep -fa "streamlit run" || echo "  Not running"
         echo ""
         if [ -f "$APP_DIR/fastapi_backend.pid" ]; then
-            echo "Backend PID file: $(cat $APP_DIR/fastapi_backend.pid)"
+            backend_pid=$(cat "$APP_DIR/fastapi_backend.pid" 2>/dev/null)
+            if [ -n "$backend_pid" ] && ps -p "$backend_pid" > /dev/null 2>&1; then
+                echo "Backend PID: $backend_pid (running)"
+            else
+                echo "Backend PID file exists but process not running"
+            fi
         fi
         if [ -f "$APP_DIR/streamlit_frontend.pid" ]; then
-            echo "Frontend PID file: $(cat $APP_DIR/streamlit_frontend.pid)"
+            frontend_pid=$(cat "$APP_DIR/streamlit_frontend.pid" 2>/dev/null)
+            if [ -n "$frontend_pid" ] && ps -p "$frontend_pid" > /dev/null 2>&1; then
+                echo "Frontend PID: $frontend_pid (running)"
+            else
+                echo "Frontend PID file exists but process not running"
+            fi
         fi
         ;;
     attach)
@@ -33,42 +43,51 @@ case "$1" in
     restart)
         echo "Restarting application..."
         $0 stop
-        sleep 2
+        sleep 3
         $0 start
         ;;
     stop)
         echo "Stopping application..."
         
-        # Stop via screen session (run_all_linux.sh cleanup trap will handle graceful shutdown)
+        # Stop via screen session first (run_all_linux.sh cleanup trap will handle graceful shutdown)
         if screen -ls | grep -q "$SCREEN_NAME"; then
+            echo "Sending quit command to screen session..."
             screen -S "$SCREEN_NAME" -X quit 2>/dev/null || true
-            sleep 3
+            sleep 4
         fi
         
         # Fallback: kill processes using PID files
         if [ -f "$APP_DIR/fastapi_backend.pid" ]; then
-            backend_pid=$(cat "$APP_DIR/fastapi_backend.pid")
-            if ps -p "$backend_pid" > /dev/null 2>&1; then
+            backend_pid=$(cat "$APP_DIR/fastapi_backend.pid" 2>/dev/null)
+            if [ -n "$backend_pid" ] && ps -p "$backend_pid" > /dev/null 2>&1; then
+                echo "Stopping backend process $backend_pid..."
                 kill "$backend_pid" 2>/dev/null || true
-                sleep 1
-                kill -9 "$backend_pid" 2>/dev/null || true
+                sleep 2
+                # Force kill if still running
+                if ps -p "$backend_pid" > /dev/null 2>&1; then
+                    kill -9 "$backend_pid" 2>/dev/null || true
+                fi
             fi
             rm -f "$APP_DIR/fastapi_backend.pid"
         fi
         
         if [ -f "$APP_DIR/streamlit_frontend.pid" ]; then
-            frontend_pid=$(cat "$APP_DIR/streamlit_frontend.pid")
-            if ps -p "$frontend_pid" > /dev/null 2>&1; then
+            frontend_pid=$(cat "$APP_DIR/streamlit_frontend.pid" 2>/dev/null)
+            if [ -n "$frontend_pid" ] && ps -p "$frontend_pid" > /dev/null 2>&1; then
+                echo "Stopping frontend process $frontend_pid..."
                 kill "$frontend_pid" 2>/dev/null || true
-                sleep 1
-                kill -9 "$frontend_pid" 2>/dev/null || true
+                sleep 2
+                # Force kill if still running
+                if ps -p "$frontend_pid" > /dev/null 2>&1; then
+                    kill -9 "$frontend_pid" 2>/dev/null || true
+                fi
             fi
             rm -f "$APP_DIR/streamlit_frontend.pid"
         fi
         
-        # Final cleanup
+        # Final cleanup - check for any remaining processes
         pkill -f "gunicorn.*api.main:app" 2>/dev/null || true
-        pkill -f "streamlit run" 2>/dev/null || true
+        pkill -f "streamlit run frontend.py" 2>/dev/null || true
         
         echo "✓ Application stopped"
         ;;
@@ -79,32 +98,39 @@ case "$1" in
         pkill -9 -f "uvicorn" || true
         screen -S "$SCREEN_NAME" -X quit 2>/dev/null || true
         rm -f "$APP_DIR/fastapi_backend.pid" "$APP_DIR/streamlit_frontend.pid"
+        rm -f "$APP_DIR/fastapi_backend.log" "$APP_DIR/streamlit_frontend.log"
         echo "✓ Cleanup complete"
         ;;
     logs)
         if [ -f "$APP_DIR/fastapi_backend.log" ] || [ -f "$APP_DIR/streamlit_frontend.log" ]; then
-            echo "Choose log to view:"
-            echo "  1) Backend (FastAPI/Gunicorn)"
-            echo "  2) Frontend (Streamlit)"
-            echo "  3) Both (split view)"
-            read -p "Selection [1-3]: " choice
-            case $choice in
-                1)
+            case "${2:-}" in
+                backend|1)
                     tail -f "$APP_DIR/fastapi_backend.log"
                     ;;
-                2)
+                frontend|2)
                     tail -f "$APP_DIR/streamlit_frontend.log"
                     ;;
-                3)
+                both|3)
                     tail -f "$APP_DIR/fastapi_backend.log" "$APP_DIR/streamlit_frontend.log"
                     ;;
                 *)
-                    echo "Invalid choice"
-                    exit 1
+                    echo "Available logs:"
+                    echo "  $0 logs backend   - View backend logs (follow)"
+                    echo "  $0 logs frontend  - View frontend logs (follow)"
+                    echo "  $0 logs both      - View both logs (follow)"
+                    echo ""
+                    echo "Recent backend log:"
+                    tail -20 "$APP_DIR/fastapi_backend.log" 2>/dev/null || echo "  No backend log"
+                    echo ""
+                    echo "Recent frontend log:"
+                    tail -20 "$APP_DIR/streamlit_frontend.log" 2>/dev/null || echo "  No frontend log"
                     ;;
             esac
         else
-            echo "No log files found. Try: tail -f ~/rpp_output.log"
+            echo "No log files found in $APP_DIR"
+            if [ -f "$HOME/rpp_output.log" ]; then
+                echo "Try: tail -f ~/rpp_output.log"
+            fi
         fi
         ;;
     start)
@@ -116,23 +142,51 @@ case "$1" in
             exit 1
         fi
 
+        # Check for stale PID files
+        if [ -f "$APP_DIR/fastapi_backend.pid" ] || [ -f "$APP_DIR/streamlit_frontend.pid" ]; then
+            echo "Stale PID files found. Cleaning up..."
+            rm -f "$APP_DIR/fastapi_backend.pid" "$APP_DIR/streamlit_frontend.pid"
+        fi
+
         # Ensure we're in the app directory
         cd "$APP_DIR"
         
-        # Start in screen session
-        screen -dmS "$SCREEN_NAME" bash -c './run_all_linux.sh 2>&1 | tee ~/rpp_output.log; echo "Press enter to close"; read'
+        # Start in screen session with proper shell handling
+        screen -dmS "$SCREEN_NAME" bash -c "cd '$APP_DIR' && ./run_all_linux.sh 2>&1 | tee ~/rpp_output.log; echo 'Services stopped. Press enter to close.'; read"
 
-        sleep 5
+        echo "Waiting for services to start..."
+        sleep 8
         
         # Verify services started
-        if pgrep -f "gunicorn.*api.main:app" > /dev/null && pgrep -f "streamlit run" > /dev/null; then
-            echo "✓ Application started successfully"
-        else
-            echo "⚠ Application may not have started correctly. Check logs."
+        backend_running=false
+        frontend_running=false
+        
+        if pgrep -f "gunicorn.*api.main:app" > /dev/null; then
+            backend_running=true
         fi
         
-        echo "Attach to session: $0 attach"
-        echo "View logs: $0 logs"
+        if pgrep -f "streamlit run frontend.py" > /dev/null; then
+            frontend_running=true
+        fi
+        
+        if $backend_running && $frontend_running; then
+            echo "✓ Application started successfully"
+            echo ""
+            echo "Backend:  http://localhost:8000"
+            echo "Frontend: http://localhost:8501"
+        else
+            echo "⚠ Application may not have started correctly:"
+            [ "$backend_running" = false ] && echo "  - Backend not detected"
+            [ "$frontend_running" = false ] && echo "  - Frontend not detected"
+            echo ""
+            echo "Check logs with: $0 logs"
+        fi
+        
+        echo ""
+        echo "Commands:"
+        echo "  Attach to session: $0 attach"
+        echo "  View logs:         $0 logs"
+        echo "  Check status:      $0 status"
         ;;
     *)
         echo "Usage: $0 {status|attach|start|restart|stop|clean|logs}"
@@ -143,7 +197,7 @@ case "$1" in
         echo "  restart - Stop and restart the application"
         echo "  stop    - Stop the application gracefully"
         echo "  clean   - Force kill all related processes"
-        echo "  logs    - View application logs (backend/frontend)"
+        echo "  logs [backend|frontend|both] - View application logs"
         exit 1
         ;;
 esac
