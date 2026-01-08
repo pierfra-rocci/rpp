@@ -1,4 +1,104 @@
-echo "✓ Application stopped"
+#!/bin/bash
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run as root (use sudo)"
+    exit 1
+fi
+
+# Get the actual user who invoked sudo
+ACTUAL_USER="${SUDO_USER:-$USER}"
+if [ "$ACTUAL_USER" = "root" ]; then
+    echo "Error: Cannot determine non-root user. Please run with: sudo -u username $0"
+    exit 1
+fi
+
+APP_DIR="/home/$ACTUAL_USER/rpp"
+
+# ...existing code for sections 1-4...
+
+# 5. Create management script
+MGMT_SCRIPT="/home/$ACTUAL_USER/manage_streamlit.sh"
+cat > "$MGMT_SCRIPT" << 'MGMT_EOF'
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$HOME/rpp"
+SCREEN_NAME="rpp_app"
+
+case "$1" in
+    status)
+        echo "=== Screen Sessions ==="
+        screen -ls | grep "$SCREEN_NAME" || echo "No screen session found"
+        echo ""
+        echo "=== Running Processes ==="
+        echo "FastAPI/Gunicorn:"
+        pgrep -fa "gunicorn.*api.main:app" || echo "  Not running"
+        echo "Streamlit:"
+        pgrep -fa "streamlit run" || echo "  Not running"
+        echo ""
+        if [ -f "$APP_DIR/fastapi_backend.pid" ]; then
+            echo "Backend PID file: $(cat $APP_DIR/fastapi_backend.pid)"
+        fi
+        if [ -f "$APP_DIR/streamlit_frontend.pid" ]; then
+            echo "Frontend PID file: $(cat $APP_DIR/streamlit_frontend.pid)"
+        fi
+        ;;
+    attach)
+        if screen -ls | grep -q "$SCREEN_NAME"; then
+            screen -r "$SCREEN_NAME"
+        else
+            echo "No screen session named '$SCREEN_NAME' found."
+            exit 1
+        fi
+        ;;
+    restart)
+        echo "Restarting application..."
+        $0 stop
+        sleep 2
+        $0 start
+        ;;
+    stop)
+        echo "Stopping application..."
+        
+        if screen -ls | grep -q "$SCREEN_NAME"; then
+            screen -S "$SCREEN_NAME" -X quit 2>/dev/null || true
+            sleep 3
+        fi
+        
+        if [ -f "$APP_DIR/fastapi_backend.pid" ]; then
+            backend_pid=$(cat "$APP_DIR/fastapi_backend.pid")
+            if ps -p "$backend_pid" > /dev/null 2>&1; then
+                kill "$backend_pid" 2>/dev/null || true
+                sleep 1
+                kill -9 "$backend_pid" 2>/dev/null || true
+            fi
+            rm -f "$APP_DIR/fastapi_backend.pid"
+        fi
+        
+        if [ -f "$APP_DIR/streamlit_frontend.pid" ]; then
+            frontend_pid=$(cat "$APP_DIR/streamlit_frontend.pid")
+            if ps -p "$frontend_pid" > /dev/null 2>&1; then
+                kill "$frontend_pid" 2>/dev/null || true
+                sleep 1
+                kill -9 "$frontend_pid" 2>/dev/null || true
+            fi
+            rm -f "$APP_DIR/streamlit_frontend.pid"
+        fi
+        
+        pkill -f "gunicorn.*api.main:app" 2>/dev/null || true
+        pkill -f "streamlit run" 2>/dev/null || true
+        
+        echo "✓ Application stopped"
+        ;;
+    clean)
+        echo "Cleaning up ALL processes..."
+        pkill -9 -f "streamlit" || true
+        pkill -9 -f "gunicorn" || true
+        pkill -9 -f "uvicorn" || true
+        screen -S "$SCREEN_NAME" -X quit 2>/dev/null || true
+        rm -f "$APP_DIR/fastapi_backend.pid" "$APP_DIR/streamlit_frontend.pid"
+        echo "✓ Cleanup complete"
         ;;
     logs)
         if [ -f "$APP_DIR/fastapi_backend.log" ] || [ -f "$APP_DIR/streamlit_frontend.log" ]; then
@@ -25,6 +125,28 @@ echo "✓ Application stopped"
         else
             echo "No log files found. Try: tail -f ~/rpp_output.log"
         fi
+        ;;
+    start)
+        echo "Starting application..."
+
+        if screen -ls | grep -q "$SCREEN_NAME"; then
+            echo "Screen session already exists. Use 'restart' to restart."
+            exit 1
+        fi
+
+        cd "$APP_DIR"
+        screen -dmS "$SCREEN_NAME" bash -c './run_all_linux.sh 2>&1 | tee ~/rpp_output.log; echo "Press enter to close"; read'
+
+        sleep 5
+        
+        if pgrep -f "gunicorn.*api.main:app" > /dev/null && pgrep -f "streamlit run" > /dev/null; then
+            echo "✓ Application started successfully"
+        else
+            echo "⚠ Application may not have started correctly. Check logs."
+        fi
+        
+        echo "Attach to session: $0 attach"
+        echo "View logs: $0 logs"
         ;;
     *)
         echo "Usage: $0 {status|attach|start|restart|stop|clean|logs}"
