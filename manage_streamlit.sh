@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="${SCRIPT_DIR}/rpp"
+APP_DIR="${SCRIPT_DIR}"
 SCREEN_NAME="rpp_app"
 
 case "$1" in

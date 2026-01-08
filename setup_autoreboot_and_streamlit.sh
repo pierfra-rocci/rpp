@@ -18,12 +18,12 @@ APP_DIR="/home/$ACTUAL_USER/rpp"
 # ...existing code for sections 1-4...
 
 # 5. Create management script
-MGMT_SCRIPT="/home/$ACTUAL_USER/manage_streamlit.sh"
+MGMT_SCRIPT="$APP_DIR/manage_streamlit.sh"
 cat > "$MGMT_SCRIPT" << 'MGMT_EOF'
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_DIR="${SCRIPT_DIR}/rpp"
+APP_DIR="${SCRIPT_DIR}"
 SCREEN_NAME="rpp_app"
 
 case "$1" in
