@@ -4,6 +4,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="${SCRIPT_DIR}"
 SCREEN_NAME="rpp_app"
 
+# Warn if running as root (except for clean)
+if [ "$EUID" -eq 0 ] && [ "${1:-}" != "clean" ]; then
+    echo "Warning: Running as root is not recommended."
+    echo "The screen session and processes should be owned by your regular user."
+    echo "Consider running without sudo: ./manage_streamlit.sh $1"
+    echo ""
+fi
+
 case "$1" in
     status)
         echo "=== Screen Sessions ==="
@@ -13,7 +21,7 @@ case "$1" in
         echo "FastAPI/Gunicorn:"
         pgrep -fa "gunicorn.*api.main:app" || echo "  Not running"
         echo "Streamlit:"
-        pgrep -fa "streamlit run" || echo "  Not running"
+        pgrep -fa "streamlit.*frontend" || echo "  Not running"
         echo ""
         if [ -f "$APP_DIR/fastapi_backend.pid" ]; then
             backend_pid=$(cat "$APP_DIR/fastapi_backend.pid" 2>/dev/null)
@@ -87,7 +95,7 @@ case "$1" in
         
         # Final cleanup - check for any remaining processes
         pkill -f "gunicorn.*api.main:app" 2>/dev/null || true
-        pkill -f "streamlit run frontend.py" 2>/dev/null || true
+        pkill -f "streamlit.*frontend" 2>/dev/null || true
         
         echo "✓ Application stopped"
         ;;
@@ -157,11 +165,11 @@ case "$1" in
         # Ensure we're in the app directory
         cd "$APP_DIR"
         
-        # Start in screen session with proper shell handling
-        screen -dmS "$SCREEN_NAME" bash -c "cd '$APP_DIR' && ./run_all_linux.sh 2>&1 | tee ~/rpp_output.log; echo 'Services stopped. Press enter to close.'; read"
+        # Start in screen session
+        screen -dmS "$SCREEN_NAME" bash -c './run_all_linux.sh 2>&1 | tee ~/rpp_output.log; echo "Press enter to close"; read'
 
         echo "Waiting for services to start..."
-        sleep 8
+        sleep 5
         
         # Verify services started
         backend_running=false
@@ -171,7 +179,7 @@ case "$1" in
             backend_running=true
         fi
         
-        if pgrep -f "streamlit run frontend.py" > /dev/null; then
+        if pgrep -f "streamlit.*frontend" > /dev/null; then
             frontend_running=true
         fi
         

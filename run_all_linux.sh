@@ -104,13 +104,13 @@ if ! ps -p "$frontend_pid" > /dev/null 2>&1; then
     exit 1
 fi
 
-echo
-    echo "Services started successfully."
-    echo "FastAPI backend: http://$API_HOST:$API_PORT (PID: $backend_pid)"
-    echo "Streamlit app:   http://$STREAMLIT_HOST:$STREAMLIT_PORT (PID: $frontend_pid)"
-    echo "Backend log: tail -f $backend_log"
-    echo "Frontend log: tail -f $frontend_log"
-    echo
-    echo "Press Ctrl+C to stop both services"
+echo ""
+echo "Services started successfully."
+echo "FastAPI backend: http://$API_HOST:$API_PORT (PID: $backend_pid)"
+echo "Streamlit app:   http://$STREAMLIT_HOST:$STREAMLIT_PORT (PID: $frontend_pid)"
+echo "Backend log: tail -f $backend_log"
+echo "Frontend log: tail -f $frontend_log"
+echo ""
+echo "Press Ctrl+C to stop both services"
 
 wait
