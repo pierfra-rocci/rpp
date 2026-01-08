@@ -501,16 +501,16 @@ if science_file is not None:
         if filter_key in science_header:
             filter_raw = str(science_header[filter_key]).strip().upper()
             break
-    
+
     if filter_raw is None:
         filter_raw = "Unknown"
-    
+
     # Map the raw filter name to standardized GAIA band using FILTER_DICT
     filter_mapped = FILTER_DICT.get(filter_raw.lower(), filter_raw)
-    
+
     # Get the current selected filter band from analysis parameters
     selected_filter = st.session_state.analysis_parameters["filter_band"]
-    
+
     # Check if they match (comparing the mapped value)
     if filter_mapped != selected_filter and filter_raw != "Unknown":
         st.warning(
