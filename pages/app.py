@@ -497,7 +497,7 @@ if science_file is not None:
 
     # Extract filter from header with multiple possible keywords
     filter_raw = None
-    for filter_key in ["FILTER", "FILTERS", "FLT", "FILTER1", "INSFLNAM"]:
+    for filter_key in ["FILTER", "FILTERS", "FLT", "FILTER1", "FILTRE", "INSFLNAM"]:
         if filter_key in science_header:
             filter_raw = str(science_header[filter_key]).strip().upper()
             break
