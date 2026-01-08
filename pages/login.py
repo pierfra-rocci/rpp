@@ -11,7 +11,7 @@ warnings.filterwarnings("ignore")
 
 
 st.set_page_config(
-    page_title="RAPAS Photometry Pipeline",
+    page_title="RAPAS Photometry Pipeline (UNDER DEVELOPMENT BE CAREFUL!)",
     page_icon=":sparkles:",
     layout="wide",
 )
