@@ -49,6 +49,7 @@ from src.utils import (
     zip_results_on_exit,
     save_header_to_txt,
     save_catalog_files,
+    save_fits_with_wcs,
 )
 
 from src.pipeline import (
@@ -615,6 +616,21 @@ if science_file is not None:
                     )
                     if wcs_header_file_path:
                         st.info("Updated WCS header saved")
+
+                    # Save the FITS file with updated WCS header
+                    wcs_fits_path, wcs_fits_error = save_fits_with_wcs(
+                        science_file_path,
+                        science_header,
+                        output_dir,
+                        filename_suffix="_wcs",
+                        also_save_to_data_dir=True,
+                    )
+                    if wcs_fits_path:
+                        st.info(f"WCS-solved FITS saved: {os.path.basename(wcs_fits_path)}")
+                        write_to_log(log_buffer, f"WCS-solved FITS saved to {wcs_fits_path}")
+                    elif wcs_fits_error:
+                        st.warning(f"Could not save WCS FITS: {wcs_fits_error}")
+                        write_to_log(log_buffer, f"Warning: {wcs_fits_error}", level="WARNING")
 
                     # Re-extract pixel scale and recalculate seeing with updated header
                     pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(

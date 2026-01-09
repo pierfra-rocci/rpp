@@ -435,7 +435,7 @@ def save_header_to_fits(header, filename, output_dir):
 
 
 def save_fits_with_wcs(original_path, updated_header, output_dir,
-                       filename_suffix="_wcs"):
+                       filename_suffix="_wcs", also_save_to_data_dir=True):
     """
     Save a FITS file with original image data and updated WCS header.
 
@@ -446,9 +446,12 @@ def save_fits_with_wcs(original_path, updated_header, output_dir,
     updated_header : astropy.io.fits.Header
         Updated header containing the new WCS solution.
     output_dir : str
-        The directory to save the file in.
+        The directory to save the file in (for ZIP archive).
     filename_suffix : str, optional
         Suffix to append to the original filename (default: "_wcs").
+    also_save_to_data_dir : bool, optional
+        If True, also save a copy to rpp_data/fits/ without timestamp (default: True).
+        This copy will be overwritten if the same file is processed again.
 
     Returns
     -------
@@ -471,15 +474,35 @@ def save_fits_with_wcs(original_path, updated_header, output_dir,
         primary_hdu = fits.PrimaryHDU(data=image_data, header=updated_header)
         hdul_new = fits.HDUList([primary_hdu])
 
-        # Build output filename
+        # Build output filename for the results directory (goes into ZIP)
         base_name = os.path.splitext(os.path.basename(original_path))[0]
         output_filename = os.path.join(output_dir, f"{base_name}{filename_suffix}.fits")
 
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
 
-        # Write FITS file
+        # Write FITS file to results directory
         hdul_new.writeto(output_filename, overwrite=True)
+
+        # Also save a copy to rpp_data/fits/ without timestamp (overwrites existing)
+        if also_save_to_data_dir:
+            try:
+                # Get rpp_data/fits path (same level as rpp_results)
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                project_root = os.path.dirname(script_dir)
+                parent_dir = os.path.dirname(project_root)
+                data_fits_dir = os.path.join(parent_dir, "rpp_data", "fits")
+                os.makedirs(data_fits_dir, exist_ok=True)
+
+                # Save without timestamp suffix - just base_name_wcs.fits
+                data_output_filename = os.path.join(
+                    data_fits_dir, f"{base_name}{filename_suffix}.fits"
+                )
+                hdul_new.writeto(data_output_filename, overwrite=True)
+            except Exception as data_save_error:
+                # Don't fail the whole operation if data dir save fails
+                print(f"Warning: Could not save to rpp_data/fits: {data_save_error}")
+
         hdul_new.close()
 
         return output_filename, None
