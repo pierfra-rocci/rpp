@@ -440,8 +440,7 @@ def fwhm_fit(
 
         # Randomly sample 1000 sources if more than 1000 are available
         if len(filtered_sources) > 1000:
-            indices = np.random.choice(len(filtered_sources), size=1000,
-                                       replace=False)
+            indices = np.random.choice(len(filtered_sources), size=1000, replace=False)
             filtered_sources = filtered_sources[indices]
             st.info("Too many sources, sampled 1000 sources for FWHM calculation")
 
@@ -461,7 +460,7 @@ def fwhm_fit(
         else:
             # Fallback if already 1D
             mean_fwhm = np.median(fwhms)
-        
+
         st.success(f"FWHM using gaussian model : {round(mean_fwhm, 2)} pixels")
 
         return round(mean_fwhm, 2), clipped_std
@@ -521,20 +520,20 @@ def detection_and_photometry(
     - Adds RA/Dec coordinates to photometry tables if WCS is available.
     - Computes instrumental magnitudes for both aperture and PSF photometry.
     - Displays progress and results in the Streamlit interface.
-    
+
     Photometric Formulas
     --------------------
     Signal-to-Noise Ratio (S/N):
         S/N = flux / flux_error
         where flux is background-corrected aperture sum (if available) or raw aperture sum
-        
+
     Magnitude Error:
         σ_mag = (2.5 / ln(10)) × (σ_flux / flux) = 1.0857 × (σ_flux / flux)
         Derived from error propagation: mag = -2.5 × log10(flux)
-        
+
     Instrumental Magnitude:
         m_inst = -2.5 × log10(flux)
-        
+
     Quality Flags:
         - 'poor': S/N < 3 (unreliable photometry)
         - 'marginal': 3 ≤ S/N < 5 (marginal quality)
@@ -547,7 +546,9 @@ def detection_and_photometry(
         w, wcs_error, log_msgs = safe_wcs_create(science_header)
         if w is None:
             st.error(f"Error creating WCS in detection_and_photometry: {wcs_error}")
-            st.error("Will attempt to proceed without WCS - coordinates will not be available")
+            st.error(
+                "Will attempt to proceed without WCS - coordinates will not be available"
+            )
             # Don't return here - allow photometry to continue without coordinates
             # return None, None, daofind, None, None, None, None, None
         else:
@@ -615,14 +616,15 @@ def detection_and_photometry(
     )
 
     # Get camera gain from header, fallback to computed value
-    camera_gain = science_header.get('GAIN')
+    camera_gain = science_header.get("GAIN")
     if camera_gain is None:
         camera_gain = 65635 / np.nanmax(image_data)
 
     # Convert to float64 to ensure compatibility with calc_total_error
     total_error = calc_total_error(
-        image_sub.astype(np.float64), bkg_error.astype(np.float64),
-        effective_gain=np.float64(camera_gain)
+        image_sub.astype(np.float64),
+        bkg_error.astype(np.float64),
+        effective_gain=np.float64(camera_gain),
     )
 
     st.write("Estimating FWHM ...")
@@ -774,31 +776,34 @@ def detection_and_photometry(
                     flux_for_snr = phot_table[bkg_corr_col]
                     # For negative/zero bkg-corrected flux, fall back to raw flux
                     use_raw = flux_for_snr <= 0
-                    flux_for_snr = np.where(use_raw, phot_table[aperture_sum_col], flux_for_snr)
+                    flux_for_snr = np.where(
+                        use_raw, phot_table[aperture_sum_col], flux_for_snr
+                    )
                 else:
                     # Fall back to raw flux if bkg-corrected not available
                     flux_for_snr = phot_table[aperture_sum_col]
-                
+
                 # SNR calculation (no rounding to preserve precision)
                 # Formula: S/N = flux / flux_error
                 # Uses background-corrected flux when available for better accuracy
                 phot_table[f"snr{radius_suffix}"] = (
                     flux_for_snr / phot_table[aperture_err_col]
                 )
-                
+
                 # Calculate magnitude error directly from flux and flux_err
                 # Formula: σ_mag = 1.0857 × (σ_flux / flux)
                 # Derivation: From mag = -2.5 × log10(flux), using error propagation:
                 #   σ_mag = |d(mag)/d(flux)| × σ_flux = (2.5/ln(10)) × (σ_flux/flux)
                 #   where 2.5/ln(10) ≈ 1.0857
-                m_err = 1.0857 * phot_table[aperture_err_col] / phot_table[aperture_sum_col]
+                m_err = (
+                    1.0857 * phot_table[aperture_err_col] / phot_table[aperture_sum_col]
+                )
                 phot_table[f"aperture_mag_err{radius_suffix}"] = m_err
 
                 # Add quality flag based on S/N
                 snr_values = phot_table[f"snr{radius_suffix}"]
                 quality_flag = np.where(
-                    snr_values < 3, 'poor',
-                    np.where(snr_values < 5, 'marginal', 'good')
+                    snr_values < 3, "poor", np.where(snr_values < 5, "marginal", "good")
                 )
                 phot_table[f"quality_flag{radius_suffix}"] = quality_flag
 
@@ -821,7 +826,7 @@ def detection_and_photometry(
                 phot_table[f"snr{radius_suffix}"] = np.nan
                 phot_table[f"aperture_mag_err{radius_suffix}"] = np.nan
                 phot_table[f"instrumental_mag{radius_suffix}"] = np.nan
-                phot_table[f"quality_flag{radius_suffix}"] = 'unknown'
+                phot_table[f"quality_flag{radius_suffix}"] = "unknown"
 
         try:
             epsf_table, _ = perform_psf_photometry(
@@ -832,9 +837,7 @@ def detection_and_photometry(
                 # SNR for PSF photometry (no rounding, flux_err is already std dev not variance)
                 # Formula: S/N = flux_fit / flux_err
                 # Note: PSFPhotometry returns flux_err as standard deviation, not variance
-                epsf_table["snr"] = (
-                    epsf_table["flux_fit"] / epsf_table["flux_err"]
-                )
+                epsf_table["snr"] = epsf_table["flux_fit"] / epsf_table["flux_err"]
                 # Calculate magnitude error directly from flux and flux_err
                 # Formula: σ_mag = 1.0857 × (σ_flux / flux)
                 # Same derivation as aperture photometry (see above)
@@ -844,17 +847,20 @@ def detection_and_photometry(
                 # Add quality flag for PSF photometry
                 psf_snr = epsf_table["snr"]
                 psf_quality_flag = np.where(
-                    psf_snr < 3, 'poor',
-                    np.where(psf_snr < 5, 'marginal', 'good')
+                    psf_snr < 3, "poor", np.where(psf_snr < 5, "marginal", "good")
                 )
                 epsf_table["psf_quality_flag"] = psf_quality_flag
 
                 epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"])
                 epsf_table["instrumental_mag"] = epsf_instrumental_mags
             else:
-                st.info("PSF photometry was not performed. Continuing with aperture photometry only.")
+                st.info(
+                    "PSF photometry was not performed. Continuing with aperture photometry only."
+                )
         except Exception as e:
-            st.warning(f"Error performing EPSF photometry: {e}. Continuing with aperture photometry only.")
+            st.warning(
+                f"Error performing EPSF photometry: {e}. Continuing with aperture photometry only."
+            )
             epsf_table = None
 
         # Use the first aperture's columns (since "aperture_sum" was renamed)
@@ -888,7 +894,9 @@ def detection_and_photometry(
                         )
                         epsf_table["ra"] = epsf_ra * u.deg
                         epsf_table["dec"] = epsf_dec * u.deg
-                        st.success(f"Added RA/Dec coordinates to {len(epsf_table)} PSF sources")
+                        st.success(
+                            f"Added RA/Dec coordinates to {len(epsf_table)} PSF sources"
+                        )
                     except Exception as e:
                         st.warning(f"Could not add coordinates to EPSF table: {e}")
             else:
@@ -922,7 +930,16 @@ def detection_and_photometry(
             )
 
         st.write(f"Found {len(phot_table)} sources and performed photometry.")
-        return phot_table, epsf_table, daofind, bkg, wcs_obj, bkg_fig, fwhm_estimate, mask
+        return (
+            phot_table,
+            epsf_table,
+            daofind,
+            bkg,
+            wcs_obj,
+            bkg_fig,
+            fwhm_estimate,
+            mask,
+        )
     except Exception as e:
         st.error(f"Error performing aperture photometry: {e}")
         return None, None, daofind, bkg, wcs_obj, None, fwhm_estimate, mask
@@ -1032,8 +1049,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
             _phot_table = _phot_table.to_pandas()
 
         # Remove old single-aperture columns if they exist
-        old_columns = ["aperture_mag", "aperture_instrumental_mag",
-                       "aperture_mag_err"]
+        old_columns = ["aperture_mag", "aperture_instrumental_mag", "aperture_mag_err"]
 
         for col in old_columns:
             if col in _phot_table.columns:
@@ -1047,7 +1063,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
             if instrumental_col in _phot_table.columns:
                 _phot_table[aperture_mag_col] = (
-                    _phot_table[instrumental_col] + zero_point_value  #- 0.09 * air
+                    _phot_table[instrumental_col] + zero_point_value  # - 0.09 * air
                 )
 
         # Also apply to matched table for all aperture radii
@@ -1058,7 +1074,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
             if instrumental_col in _matched_table.columns:
                 _matched_table[aperture_mag_col] = (
-                    _matched_table[instrumental_col] + zero_point_value  #- 0.09 * air
+                    _matched_table[instrumental_col] + zero_point_value  # - 0.09 * air
                 )
 
         st.session_state["final_phot_table"] = _phot_table
@@ -1070,7 +1086,9 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Check if the aperture_mag column exists before calculating residuals
         if aperture_mag_col not in _matched_table.columns:
-            st.warning(f"Column '{aperture_mag_col}' not found. Cannot create calibration plots.")
+            st.warning(
+                f"Column '{aperture_mag_col}' not found. Cannot create calibration plots."
+            )
             return round(zero_point_value, 2), round(zero_point_std, 2), None
 
         # Calculate residuals

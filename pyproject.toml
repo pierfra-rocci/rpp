@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pfr"
-version = "1.3.1"
-description = "Photometry Factory for RAPAS"
+name = "RPP"
+version = "1.6.0"
+description = "RAPAS Photometry pipeline"
 readme = "README.md"
 requires-python = "==3.12"
 license = {text = "MIT"}
 authors = [
-    {name = "PFR Team"}
+    {name = "Pier-Francesco Rocci"}
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -57,7 +57,8 @@ dependencies = [
     "deprecation==2.1.0",
     "docutils==0.21.2",
     "donfig==0.8.1.post1",
-    "filelock==3.18.0",
+    "email-validator==2.3.0",
+    "fastapi==0.128.0",
     "Flask==3.1.0",
     "flask-cors==5.0.1",
     "Flask-Login==0.6.3",
@@ -127,6 +128,7 @@ dependencies = [
     "pyparsing==3.2.3",
     "pytest-mock==3.14.0",
     "python-dateutil==2.9.0.post0",
+    "python-multipart==0.0.21",
     "pytz==2025.2",
     "pyvo==1.6.2",
     "pywin32-ctypes==0.2.3",

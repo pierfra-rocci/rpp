@@ -1,96 +1,116 @@
-#!/bin/bash
+﻿#!/bin/bash
 
-# Activate virtual environment
-source .venv/bin/activate
+set -euo pipefail
 
-# Check if virtual environment is activated
-if [ -z "$VIRTUAL_ENV" ]; then
-    echo "Error: Virtual environment not activated. Please run 'source .venv/bin/activate' first."
+VENV_PATH=".venv/bin/activate"
+
+if [ ! -f "$VENV_PATH" ]; then
+    echo "Error: virtual environment not found at $VENV_PATH"
     exit 1
 fi
 
-backend_log="backend.log"
-frontend_log="frontend.log"
-backend_pid_file="backend.pid"
-frontend_pid_file="frontend.pid"
-export APP_ENV=production
+source "$VENV_PATH"
 
-# Function to cleanup on exit
+if [ -z "${VIRTUAL_ENV:-}" ]; then
+    echo "Error: failed to activate the virtual environment."
+    exit 1
+fi
+
+export APP_ENV="${APP_ENV:-production}"
+export RPP_API_URL="${RPP_API_URL:-http://127.0.0.1:8000}"
+export RPP_LEGACY_URL="${RPP_LEGACY_URL:-http://127.0.0.1:5000}"
+
+API_HOST="${API_HOST:-0.0.0.0}"
+API_PORT="${API_PORT:-8000}"
+STREAMLIT_HOST="${STREAMLIT_HOST:-0.0.0.0}"
+STREAMLIT_PORT="${STREAMLIT_PORT:-8501}"
+GUNICORN_WORKERS="${GUNICORN_WORKERS:-2}"
+GUNICORN_TIMEOUT="${GUNICORN_TIMEOUT:-60}"
+
+backend_log="fastapi_backend.log"
+frontend_log="streamlit_frontend.log"
+backend_pid_file="fastapi_backend.pid"
+frontend_pid_file="streamlit_frontend.pid"
+
 cleanup() {
-    echo ""
+    echo
     echo "Shutting down services..."
-    
+
     if [ -f "$backend_pid_file" ]; then
         backend_pid=$(cat "$backend_pid_file")
-        if ps -p $backend_pid > /dev/null 2>&1; then
-            echo "Stopping backend (PID: $backend_pid)..."
-            kill $backend_pid 2>/dev/null
-            # Wait a bit, then force kill if needed
+        if ps -p "$backend_pid" > /dev/null 2>&1; then
+            echo "Stopping FastAPI backend (PID: $backend_pid)..."
+            kill "$backend_pid" 2>/dev/null || true
             sleep 2
-            kill -9 $backend_pid 2>/dev/null
+            kill -9 "$backend_pid" 2>/dev/null || true
         fi
         rm -f "$backend_pid_file"
     fi
-    
+
     if [ -f "$frontend_pid_file" ]; then
         frontend_pid=$(cat "$frontend_pid_file")
-        if ps -p $frontend_pid > /dev/null 2>&1; then
-            echo "Stopping frontend (PID: $frontend_pid)..."
-            kill $frontend_pid 2>/dev/null
+        if ps -p "$frontend_pid" > /dev/null 2>&1; then
+            echo "Stopping Streamlit frontend (PID: $frontend_pid)..."
+            kill "$frontend_pid" 2>/dev/null || true
             sleep 2
-            kill -9 $frontend_pid 2>/dev/null
+            kill -9 "$frontend_pid" 2>/dev/null || true
         fi
         rm -f "$frontend_pid_file"
     fi
-    
-    # Extra safety: kill any remaining processes
-    pkill -f "gunicorn.*backend:app" 2>/dev/null
-    pkill -f "streamlit run frontend.py" 2>/dev/null
-    
+
+    pkill -f "gunicorn .* api.main:app" 2>/dev/null || true
+    pkill -f "uvicorn api.main:app" 2>/dev/null || true
+    pkill -f "streamlit run frontend.py" 2>/dev/null || true
+
     echo "Cleanup complete"
-    exit 0
 }
 
-# Set up trap to call cleanup on script exit
 trap cleanup EXIT INT TERM
 
-echo "Starting backend with gunicorn in background..."
-gunicorn --workers 2 --threads 4 --worker-class gthread --bind 0.0.0.0:5000 --log-level=info --timeout 60 --keep-alive 5 --error-logfile - backend:app > $backend_log 2>&1 &
+echo "Starting FastAPI backend with gunicorn..."
+gunicorn \
+    --workers "$GUNICORN_WORKERS" \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind "$API_HOST:$API_PORT" \
+    --log-level info \
+    --timeout "$GUNICORN_TIMEOUT" \
+    api.main:app \
+    >"$backend_log" 2>&1 &
 backend_pid=$!
-echo $backend_pid > $backend_pid_file
-echo "Backend started with PID: $backend_pid"
+echo "$backend_pid" > "$backend_pid_file"
+echo "FastAPI backend started with PID: $backend_pid"
 
-echo "Waiting for backend to start..."
+echo "Waiting for backend to accept connections..."
 sleep 5
 
-# Verify backend is running
-if ! ps -p $backend_pid > /dev/null 2>&1; then
-    echo "ERROR: Backend failed to start. Check $backend_log"
+if ! ps -p "$backend_pid" > /dev/null 2>&1; then
+    echo "ERROR: FastAPI backend failed to start. Check $backend_log"
     exit 1
 fi
 
-echo "Starting frontend.py in background..."
-streamlit run frontend.py > $frontend_log 2>&1 &
+echo "Starting Streamlit app..."
+streamlit run frontend.py \
+    --server.address "$STREAMLIT_HOST" \
+    --server.port "$STREAMLIT_PORT" \
+    >"$frontend_log" 2>&1 &
 frontend_pid=$!
-echo $frontend_pid > $frontend_pid_file
-echo "Frontend started with PID: $frontend_pid"
+echo "$frontend_pid" > "$frontend_pid_file"
+echo "Streamlit frontend started with PID: $frontend_pid"
 
 sleep 3
 
-# Verify frontend is running
-if ! ps -p $frontend_pid > /dev/null 2>&1; then
-    echo "ERROR: Frontend failed to start. Check $frontend_log"
+if ! ps -p "$frontend_pid" > /dev/null 2>&1; then
+    echo "ERROR: Streamlit frontend failed to start. Check $frontend_log"
     exit 1
 fi
 
 echo ""
-echo "✓ Services started successfully!"
-echo "Backend URL: http://127.0.0.1:5000 (PID: $backend_pid)"
-echo "Frontend URL: http://127.0.0.1:8501 (PID: $frontend_pid)"
+echo "Services started successfully."
+echo "FastAPI backend: http://$API_HOST:$API_PORT (PID: $backend_pid)"
+echo "Streamlit app:   http://$STREAMLIT_HOST:$STREAMLIT_PORT (PID: $frontend_pid)"
 echo "Backend log: tail -f $backend_log"
 echo "Frontend log: tail -f $frontend_log"
 echo ""
 echo "Press Ctrl+C to stop both services"
 
-# Wait for both processes
 wait

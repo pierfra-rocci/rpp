@@ -3,16 +3,24 @@ User Guide
 
 **Current Version: 1.5.3 (January 2026)**
 
+
 Getting Started
---------------
+---------------
 
 RAPAS Photometry Pipeline (RPP) provides a streamlined workflow for astronomical image analysis through a user-friendly web interface. This guide walks you through the complete process from login and image upload to final photometric catalog generation with multi-catalog cross-matching.
 
-**Prerequisites:** Ensure the backend server (`backend.py`) is running before launching the frontend.
+**Prerequisites:** Ensure the backend server is running before launching the frontend. You can use either:
 
-1. Launch the backend: `python backend.py`
-2. Launch the frontend: `streamlit run frontend.py`
-3. Access the URL (e.g., http://localhost:8501) and log in or register.
+- FastAPI backend (recommended):
+   - `python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000`
+   - Or use `run_all_cmd.bat` (Windows)
+- Legacy Flask backend:
+   - `python backend.py`
+
+Then launch the frontend:
+- `streamlit run frontend.py` or `streamlit run pages/app.py`
+
+Access the URL (e.g., http://localhost:8501) and log in or register.
 
 Application Layout
 -----------------

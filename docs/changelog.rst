@@ -3,8 +3,53 @@ Changelog
 
 This document records all notable changes to RAPAS Photometry Pipeline.
 
-Version 1.5.3 (Current)
+Version 1.6.0 (Current)
 -----------------------
+
+**Released: January 9, 2026**
+
+**Storage & Data Organization**
+
+*   **New FITS Storage Location**: Moved FITS file storage from ``data/fits/`` (inside project) to ``rpp_data/fits/`` (at parent level, same as ``rpp_results/``)
+*   **WCS-Solved FITS Export**: New utility function ``save_fits_with_wcs()`` to save original FITS images with updated WCS headers after astrometric solving
+*   **Consistent Directory Structure**: Both results (``rpp_results/``) and data files (``rpp_data/fits/``) are now stored at the same directory level outside the project folder
+
+**Database Tracking System**
+
+*   **New Database Tables**: Added three new tables for tracking analysis results:
+    
+    - ``wcs_fits_files``: Tracks WCS-solved FITS files stored in ``rpp_data/fits/``
+    - ``zip_archives``: Tracks result ZIP archives stored in ``rpp_results/``
+    - ``wcs_fits_zip_assoc``: Junction table linking FITS files to their associated ZIP archives (many-to-many relationship)
+
+*   **Analysis History**: Each user can now view their complete analysis history including which FITS files generated which result archives
+*   **Migration Script**: New script ``scripts/migrate_add_wcs_zip_tables.py`` safely adds new tables to existing databases without data loss
+*   **Database Helper Module**: New ``src/db_tracking.py`` module provides functions for recording and querying analysis results
+
+**API Improvements**
+
+*   Updated ``FITS_STORAGE_ROOT`` configuration to use the new storage path
+*   Added ``PARENT_DIR`` export for consistent path management across the application
+*   New Pydantic schemas for WCS FITS files and ZIP archive API responses
+*   New ORM models with proper relationships and constraints
+
+**Quality Improvements**
+
+*   Magnitude error threshold reduced from 2.0 to 1.5 for stricter quality filtering
+*   Added absolute value handling for occasional negative magnitude error values
+
+**Testing**
+
+*   New comprehensive test suite ``tests/test_database.py`` with 35 tests covering:
+    
+    - ORM model creation and relationships
+    - Pydantic schema validation
+    - Database tracking functions
+    - Migration script functionality
+    - Integration workflows
+
+Version 1.5.3
+-------------
 
 **Released: January 7, 2026**
 

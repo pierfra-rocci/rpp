@@ -68,20 +68,54 @@ This will install the project in editable mode and all the dependencies.
   brew install astrometry-net
   ```
 
+
 ## Quick Start
 
-1. **Start the application**:
-   ```bash
-   streamlit run frontend.py
-   # OR
-   streamlit run pages/app.py
-   ```
+### 1. Start the Backend
 
-2. **Login**: Create an account or login with existing credentials (or run in anonymous mode if backend is not configured).
+You must start the backend server before launching the frontend. Two modes are supported:
 
-3. **Configure observatory**: Set your observatory location and parameters in the sidebar.
+- **FastAPI (recommended, modern):**
+  ```bash
+  # Windows PowerShell
+  .venv\Scripts\Activate.ps1
+  python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+  # Or use run_all_cmd.bat for one-click launch
+  run_all_cmd.bat
+  ```
+- **Legacy Flask backend:**
+  ```bash
+  python backend.py
+  ```
 
-4. **Upload FITS file**: Upload your astronomical image to the main area.
+### 2. Start the Frontend
+
+In a new terminal (with the virtual environment activated):
+```bash
+streamlit run frontend.py
+# OR
+streamlit run pages/app.py
+```
+Visit the URL printed by Streamlit (usually http://localhost:8501).
+
+### 3. Login or Register
+
+Create an account or login with existing credentials. You can also run in anonymous mode if the backend is not configured.
+
+### 4. Configure Observatory
+
+Set your observatory location and parameters in the sidebar (name, latitude, longitude, elevation).
+
+### 5. Upload FITS File
+
+Upload your astronomical image to the main area. Supported extensions: `.fits`, `.fit`, `.fts`, `.fits.gz`, `.fts.gz`.
+
+### 6. Run Analysis
+
+Adjust analysis parameters as needed (seeing, detection threshold, border mask, filter band, etc.) and run the photometry pipeline. Results and logs will be available for download as a ZIP archive.
+
+---
+
 
 ## Configuration
 
@@ -94,9 +128,20 @@ This will install the project in editable mode and all the dependencies.
 - **Estimated Seeing (FWHM)**: Initial estimate in arcseconds
 - **Detection Threshold**: Source detection sigma threshold
 - **Border Mask**: Pixel border exclusion size
-- **Filter Band**: GAIA magnitude band for calibration
+- **Filter Band**: GAIA or synthetic magnitude band for calibration
 - **Max Calibration Mag**: Faintest magnitude for calibration stars
 - **Astrometry Check**: Toggle to force a plate solve/WCS refinement
+
+### Output Files
+- **Photometry Catalog**: CSV and VOTable with multi-aperture and PSF photometry
+- **Background Model**: 2D background and RMS maps (FITS)
+- **PSF Model**: Empirical PSF (FITS)
+- **WCS Header**: Astrometric solution (TXT)
+- **WCS-Solved FITS**: Original image with updated WCS header (when astrometry is performed)
+- **Plots**: FWHM, magnitude distributions, zero-point calibration
+- **Log File**: Detailed processing log
+
+---
 
 ### Transient Candidates (Beta)
 - **Enable Transient Finder**: Activates the transient search pipeline
@@ -122,6 +167,7 @@ The pipeline generates comprehensive output files, available as a ZIP download:
 - **PSF Model** (FITS): Empirical PSF (or Gaussian fallback) for the field
 - **Plots**: FWHM analysis, magnitude distributions, zero-point calibration
 - **WCS Header** (TXT): Updated astrometric solution
+- **WCS-Solved FITS**: Original image with refined WCS embedded in header (saved to `rpp_data/fits/`)
 
 ## Technical Details
 
@@ -156,9 +202,28 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - Check internet connectivity for catalog queries (GAIA, SIMBAD, etc.).
 - Verify coordinate system and field center are correct.
 
-## Recent changes / Changelog (last update: 2026-01-07)
+## Recent changes / Changelog (last update: 2026-01-09)
 
-### Current Version (1.5.3)
+### Current Version (1.6.0)
+- **New Storage Structure**: 
+  - FITS file storage moved from `data/fits/` to `rpp_data/fits/` (same level as `rpp_results/`)
+  - WCS-solved FITS files are now saved both in the ZIP archive and to `rpp_data/fits/`
+  - Permanent copy in `rpp_data/fits/` is overwritten when the same file is reprocessed
+- **WCS-Solved FITS Export**: 
+  - New `save_fits_with_wcs()` utility function saves original image with updated WCS header
+  - Automatically triggered after successful astrometry solving
+- **Database Tracking System**:
+  - New tables track WCS-solved FITS files and result ZIP archives per user
+  - Many-to-many relationship: one FITS file can be linked to multiple analysis runs
+  - Migration script `scripts/migrate_add_wcs_zip_tables.py` for existing databases
+  - Query functions to retrieve user's analysis history
+- **Improved Quality Filtering**:
+  - Magnitude error threshold reduced from 2.0 to 1.5 for stricter quality control
+  - Added absolute value handling for occasional negative error values
+- **Testing**:
+  - New test suite `tests/test_database.py` with 35 tests for database functionality
+
+### Version 1.5.3
 - **Photometry Calculation Improvements**: 
   - Fixed critical PSF S/N calculation (was using `sqrt(flux_err)` instead of `flux_err`)
   - Removed S/N rounding to preserve precision and avoid divide-by-zero errors

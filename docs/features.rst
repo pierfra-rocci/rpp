@@ -1,12 +1,13 @@
 Features
 ========
 
+
 User Authentication & Multi-User Support
----------------------------------------
+----------------------------------------
 
 **Secure User Management**:
-   - User registration and login system via Flask backend
-   - Password hashing with secure storage in SQLite database
+   - User registration and login system via FastAPI (recommended) or legacy Flask backend
+   - Password hashing with secure storage in SQLite or SQL database
    - Password recovery via email (requires SMTP configuration)
    - Individual user workspaces with isolated data storage
    - Session management with automatic logout options
@@ -16,6 +17,13 @@ User Authentication & Multi-User Support
    - Observatory parameters, analysis settings, and API keys
    - Automatic loading of saved configurations on login
    - Local and remote configuration synchronization
+
+**Analysis History Tracking**:
+   - Database tracking of all WCS-solved FITS files per user
+   - Complete archive of result ZIP files with timestamps
+   - Many-to-many linking between FITS files and result archives
+   - Query functions to retrieve analysis history
+   - Safe migration scripts for database schema updates
 
 Advanced Image Processing
 ------------------------
@@ -270,12 +278,14 @@ Output Generation & Export
 **Comprehensive Result Files**:
    - CSV catalogs with complete photometric measurements
    - FITS files for background and PSF models
+   - WCS-solved FITS files with refined astrometric headers
    - PNG plots for all analysis visualizations
    - Text files for headers and processing logs
    - ZIP archives for convenient result distribution
 
 **Data Organization**:
-   - User-specific result directories
+   - User-specific result directories (``rpp_results/``)
+   - Dedicated FITS storage with WCS solutions (``rpp_data/fits/``)
    - Timestamped file naming for version control
    - Automatic file categorization by type
    - Metadata preservation in output files

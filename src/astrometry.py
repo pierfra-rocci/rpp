@@ -29,15 +29,15 @@ def _try_source_detection(
                 # get_objects_sextractor handles background estimation internally
                 # but we pass the background-subtracted image 'image_sub'.
                 # 'thresh' corresponds to the detection threshold (sigma).
-                if header.get('GAIN'):
-                    gain = header.get('GAIN')
+                if header.get("GAIN"):
+                    gain = header.get("GAIN")
                 else:
-                    gain = 65635/np.max(image)
+                    gain = 65635 / np.max(image)
 
                 sources = photometry.get_objects_sextractor(
                     image,
                     thresh=thresh,
-                    aper=1.5*fwhm_est,
+                    aper=1.5 * fwhm_est,
                     gain=gain,
                     edge=10,
                     bg_size=64,
@@ -50,10 +50,10 @@ def _try_source_detection(
                         sources,
                         image,
                         fwhm=fwhm_est,
-                        aper=1.,  # Aperture radius in FWHM units
+                        aper=1.0,  # Aperture radius in FWHM units
                         bkgann=[2.0, 3.0],  # Background annulus in FWHM units
                         verbose=False,
-                        sn=5.0  # Minimum S/N
+                        sn=5.0,  # Minimum S/N
                     )
 
                     if sources is not None and len(sources) >= min_sources:
@@ -69,9 +69,7 @@ def _try_source_detection(
                     )
 
             except Exception as e:
-                st.write(
-                    f"Detection failed with FWHM={fwhm_est} : {e}"
-                )
+                st.write(f"Detection failed with FWHM={fwhm_est} : {e}")
                 continue
     return None
 
@@ -125,9 +123,7 @@ def solve_with_astrometrynet(file_path):
         try:
             existing_wcs = WCS(header)
             if existing_wcs.is_celestial:
-                log_messages.append(
-                    "INFO: Proceeding with blind plate solve"
-                )
+                log_messages.append("INFO: Proceeding with blind plate solve")
         except Exception:
             log_messages.append(
                 "INFO: No valid WCS found in header. Proceeding with blind solve"
@@ -138,7 +134,7 @@ def solve_with_astrometrynet(file_path):
             image_data,
             header,
             fwhm_estimates=[3.5, 4.0, 5.0],
-            threshold_multi=[2., 1.5],
+            threshold_multi=[2.0, 1.5],
             min_sources=50,
         )
 
@@ -151,7 +147,7 @@ def solve_with_astrometrynet(file_path):
                 image_data,
                 header,
                 fwhm_estimates=[2.0, 2.5, 3.0],
-                threshold_multi=[1., 0.5],
+                threshold_multi=[1.0, 0.5],
                 min_sources=25,
             )
 
@@ -320,26 +316,24 @@ def solve_with_astrometrynet(file_path):
 
                 # --- Refinement Step (Gaia DR2) ---
                 try:
-                    log_messages.append("INFO: Attempting WCS refinement using Gaia DR2")
+                    log_messages.append(
+                        "INFO: Attempting WCS refinement using Gaia DR2"
+                    )
 
                     # 1. Get image parameters from the initial solution
                     height, width = image_data.shape
 
                     # Get frame center and radius
                     center_ra, center_dec, center_sr = astrometry.get_frame_center(
-                        wcs=solved_wcs,
-                        width=width,
-                        height=height
+                        wcs=solved_wcs, width=width, height=height
                     )
 
                     # 2. Fetch Gaia DR2 catalog
-                    log_messages.append(f"INFO: Fetching Gaia DR2 catalog around RA={center_ra:.4f}, DEC={center_dec:.4f}, r={center_sr:.2f} deg")
+                    log_messages.append(
+                        f"INFO: Fetching Gaia DR2 catalog around RA={center_ra:.4f}, DEC={center_dec:.4f}, r={center_sr:.2f} deg"
+                    )
                     cat = catalogs.get_cat_vizier(
-                        center_ra,
-                        center_dec,
-                        center_sr,
-                        'ps1',
-                        filters={'rmag': '<19'}
+                        center_ra, center_dec, center_sr, "ps1", filters={"rmag": "<19"}
                     )
 
                     if cat is not None and len(cat) > 10:
@@ -354,21 +348,29 @@ def solve_with_astrometrynet(file_path):
                             cat,
                             sr=7 * pixscale_deg,  # Matching radius ~ 5 pixels
                             wcs=solved_wcs,
-                            method='scamp',  # Prefer SCAMP as per notebook, falls back if not avail?
-                            cat_col_mag='rmag',
-                            verbose=True
+                            method="scamp",  # Prefer SCAMP as per notebook, falls back if not avail?
+                            cat_col_mag="rmag",
+                            verbose=True,
                         )
 
                         if refined_wcs is not None:
                             solved_wcs = refined_wcs
-                            log_messages.append("SUCCESS: Astrometry refined using Gaia DR2")
+                            log_messages.append(
+                                "SUCCESS: Astrometry refined using Gaia DR2"
+                            )
                         else:
-                            log_messages.append("WARNING: Astrometric refinement failed, keeping initial solution")
+                            log_messages.append(
+                                "WARNING: Astrometric refinement failed, keeping initial solution"
+                            )
                     else:
-                        log_messages.append("WARNING: Could not retrieve sufficient catalog stars for refinement")
+                        log_messages.append(
+                            "WARNING: Could not retrieve sufficient catalog stars for refinement"
+                        )
 
                 except Exception as refine_error:
-                    log_messages.append(f"WARNING: Refinement process failed: {refine_error}")
+                    log_messages.append(
+                        f"WARNING: Refinement process failed: {refine_error}"
+                    )
 
                 # Update original header with WCS solution (refined or initial)
                 updated_header = header.copy()
@@ -386,7 +388,9 @@ def solve_with_astrometrynet(file_path):
                 updated_header.update(wcs_header)
 
                 # Add solution metadata
-                updated_header["COMMENT"] = "WCS solution from astrometry.net (refined with Gaia DR2)"
+                updated_header["COMMENT"] = (
+                    "WCS solution from astrometry.net (refined with Gaia DR2)"
+                )
                 updated_header["STDPIPE"] = (
                     True,
                     "Solved with astrometry.blind_match_objects + refinement",
