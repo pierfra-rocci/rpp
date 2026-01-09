@@ -668,7 +668,8 @@ def checker_fn(xobj, xcat, catname, filter_mag="r"):
             mag += filter_ab_offset.get(fname, 0)
 
         # Compute magnitude difference: detected vs. catalog
-        diff = mag - xcat[cat_col_mag]
+        # Use np.array() to ensure we have a writable copy (astropy columns are read-only)
+        diff = np.array(mag - xcat[cat_col_mag])
 
         # If sufficient valid measurements, remove systematic zeropoint offset
         # This accounts for photometric calibration differences
