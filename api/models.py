@@ -67,6 +67,16 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    wcs_fits_files: Mapped[List["WcsFitsFile"]] = relationship(
+        "WcsFitsFile",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    zip_archives: Mapped[List["ZipArchive"]] = relationship(
+        "ZipArchive",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"User(id={self.id!r}, username={self.username!r})"
@@ -234,3 +244,121 @@ class JobEvent(Base):
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
         return f"JobEvent(id={self.id!r}, type={self.event_type!r})"
+
+
+# ---------------------------------------------------------------------------
+# WCS FITS Files and ZIP Archives Tracking (v1.6.0)
+# ---------------------------------------------------------------------------
+
+
+class WcsFitsFile(Base):
+    """Tracks WCS-solved (or original) FITS files stored in rpp_data/fits/."""
+
+    __tablename__ = "wcs_fits_files"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "stored_filename",
+            name="uq_wcs_fits_user_filename",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_filename: Mapped[str] = mapped_column(String(512), nullable=False)
+    has_wcs: Mapped[bool] = mapped_column(default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="wcs_fits_files")
+    zip_associations: Mapped[List["WcsFitsZipAssoc"]] = relationship(
+        "WcsFitsZipAssoc",
+        back_populates="wcs_fits_file",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
+        return f"WcsFitsFile(id={self.id!r}, filename={self.stored_filename!r})"
+
+
+class ZipArchive(Base):
+    """Tracks result ZIP archives stored in rpp_results/."""
+
+    __tablename__ = "zip_archives"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "stored_relpath",
+            name="uq_zip_user_relpath",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+    archive_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_relpath: Mapped[str] = mapped_column(String(1024), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="zip_archives")
+    fits_associations: Mapped[List["WcsFitsZipAssoc"]] = relationship(
+        "WcsFitsZipAssoc",
+        back_populates="zip_archive",
+        cascade="all, delete-orphan",
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
+        return f"ZipArchive(id={self.id!r}, relpath={self.stored_relpath!r})"
+
+
+class WcsFitsZipAssoc(Base):
+    """Junction table linking WCS FITS files to ZIP archives (many-to-many)."""
+
+    __tablename__ = "wcs_fits_zip_assoc"
+    __table_args__ = (
+        UniqueConstraint(
+            "wcs_fits_id",
+            "zip_archive_id",
+            name="uq_wcs_fits_zip",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    wcs_fits_id: Mapped[int] = mapped_column(
+        ForeignKey("wcs_fits_files.id"),
+        nullable=False,
+    )
+    zip_archive_id: Mapped[int] = mapped_column(
+        ForeignKey("zip_archives.id"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    wcs_fits_file: Mapped["WcsFitsFile"] = relationship(
+        "WcsFitsFile",
+        back_populates="zip_associations",
+    )
+    zip_archive: Mapped["ZipArchive"] = relationship(
+        "ZipArchive",
+        back_populates="fits_associations",
+    )
+
+    def __repr__(self) -> str:  # pragma: no cover - debug helper
+        return f"WcsFitsZipAssoc(fits={self.wcs_fits_id!r}, zip={self.zip_archive_id!r})"

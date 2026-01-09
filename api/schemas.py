@@ -87,3 +87,55 @@ class FitsFileListResponse(BaseModel):
     """List of FITS files for the current user."""
 
     files: List[FitsFileSummary] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# WCS FITS Files and ZIP Archives Tracking Schemas (v1.6.0)
+# ---------------------------------------------------------------------------
+
+
+class WcsFitsFileSummary(BaseModel):
+    """Metadata describing a WCS-solved FITS file."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    original_filename: str
+    stored_filename: str
+    has_wcs: bool
+    created_at: datetime
+
+
+class ZipArchiveSummary(BaseModel):
+    """Metadata describing a result ZIP archive."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    archive_filename: str
+    stored_relpath: str
+    created_at: datetime
+
+
+class WcsFitsFileWithZips(WcsFitsFileSummary):
+    """WCS FITS file with its associated ZIP archives."""
+
+    zip_archives: List[ZipArchiveSummary] = Field(default_factory=list)
+
+
+class ZipArchiveWithFits(ZipArchiveSummary):
+    """ZIP archive with its associated FITS files."""
+
+    fits_files: List[WcsFitsFileSummary] = Field(default_factory=list)
+
+
+class WcsFitsFileListResponse(BaseModel):
+    """List of WCS FITS files for the current user."""
+
+    files: List[WcsFitsFileSummary] = Field(default_factory=list)
+
+
+class ZipArchiveListResponse(BaseModel):
+    """List of ZIP archives for the current user."""
+
+    archives: List[ZipArchiveSummary] = Field(default_factory=list)
