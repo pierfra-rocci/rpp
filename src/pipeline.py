@@ -21,15 +21,31 @@ from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photo
 
 from src.tools_pipeline import safe_wcs_create, estimate_background
 from src.utils import ensure_output_directory
+from src.progress import ProgressReporter, get_default_reporter
 
 from typing import Union, Optional, Dict, Tuple
 from src.psf import perform_psf_photometry
 
 
-def mask_and_remove_cosmic_rays(image_data, header):
+def mask_and_remove_cosmic_rays(
+    image_data,
+    header,
+    progress: Optional[ProgressReporter] = None,
+):
     """
     Create a mask for saturated pixels and cosmic rays using L.A.Cosmic.
+    
+    Parameters
+    ----------
+    image_data : numpy.ndarray
+        The image data array
+    header : dict or fits.Header
+        FITS header with SATURATE and GAIN keywords
+    progress : ProgressReporter, optional
+        Progress reporter for status updates. Uses default if None.
     """
+    progress = progress or get_default_reporter()
+    
     # Safe parse of header SATURATE -> float, fallback to robust max
     sat_hdr = header.get("SATURATE", None)
     try:
@@ -49,7 +65,7 @@ def mask_and_remove_cosmic_rays(image_data, header):
     except (ValueError, TypeError):
         gain = 1.0
 
-    st.info("Detecting cosmic rays using L.A.Cosmic ...")
+    progress.info("Detecting cosmic rays using L.A.Cosmic ...")
     # Run L.A.Cosmic (pass inmask explicitly)
     try:
         res = astroscrappy.detect_cosmics(
@@ -70,9 +86,9 @@ def mask_and_remove_cosmic_rays(image_data, header):
                 crmask = res[0].astype(bool)
         else:
             crmask = res.astype(bool)
-        st.success("Saturated pixels and Cosmic ray detection complete.")
+        progress.success("Saturated pixels and Cosmic ray detection complete.")
     except Exception:
-        st.warning("Cosmic ray detection failed, proceeding with saturation only mask.")
+        progress.warning("Cosmic ray detection failed, proceeding with saturation only mask.")
         crmask = np.zeros_like(mask, dtype=bool)
 
     mask |= crmask
@@ -84,6 +100,7 @@ def make_border_mask(
     border: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 50,
     invert: bool = True,
     dtype: np.dtype = bool,
+    progress: Optional[ProgressReporter] = None,
 ) -> np.ndarray:
     """
     Create a binary mask for an image excluding one or more border regions.
@@ -106,6 +123,8 @@ def make_border_mask(
         If False, the mask will be True for non-border regions
     dtype : numpy.dtype, default=bool
         Data type of the output mask
+    progress : ProgressReporter, optional
+        Progress reporter for status updates. Uses default if None.
 
     Returns
     -------

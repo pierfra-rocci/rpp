@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -139,3 +140,78 @@ class ZipArchiveListResponse(BaseModel):
     """List of ZIP archives for the current user."""
 
     archives: List[ZipArchiveSummary] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Analysis Job Schemas (Celery background tasks)
+# ---------------------------------------------------------------------------
+
+
+class JobType(str, Enum):
+    """Types of analysis jobs that can be submitted."""
+
+    PLATE_SOLVE = "plate_solve"
+    PHOTOMETRY = "photometry"
+    TRANSIENT_DETECTION = "transient_detection"
+    FULL_PIPELINE = "full_pipeline"
+
+
+class JobSubmitRequest(BaseModel):
+    """Request to submit a new analysis job."""
+
+    fits_file_id: int = Field(..., description="ID of the FITS file to process")
+    job_type: JobType = Field(..., description="Type of analysis to run")
+    parameters: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Processing parameters (depends on job type)",
+    )
+
+
+class JobSubmitResponse(BaseModel):
+    """Response after submitting a job."""
+
+    job_id: int
+    status: str
+    message: str
+
+
+class JobEventSummary(BaseModel):
+    """Summary of a job progress event."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    event_type: str
+    message: Optional[str]
+    created_at: datetime
+
+
+class JobStatusResponse(BaseModel):
+    """Current status of an analysis job."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    fits_file_id: int
+    status: str
+    parameters: Optional[Dict[str, Any]] = None
+    result_relpath: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+    events: List[JobEventSummary] = Field(default_factory=list)
+    progress: Optional[float] = Field(
+        default=None,
+        description="Latest progress value (0.0 to 1.0) if available",
+    )
+    progress_message: Optional[str] = Field(
+        default=None,
+        description="Latest progress message if available",
+    )
+
+
+class JobListResponse(BaseModel):
+    """List of analysis jobs for the current user."""
+
+    jobs: List[JobStatusResponse] = Field(default_factory=list)
+
