@@ -68,6 +68,17 @@ This will install the project in editable mode and all the dependencies.
   brew install astrometry-net
   ```
 
+## Environment Variables
+
+To enable email-related features such as registration confirmation and password recovery, you must configure the following environment variable:
+
+- `SMTP_PASS`: The password for the SMTP server account specified in `config.py`.
+
+Example:
+```bash
+export SMTP_PASS="your_smtp_password"
+```
+
 ## Quick Start
 
 1. **Start the application**:
