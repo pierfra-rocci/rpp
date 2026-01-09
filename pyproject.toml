@@ -229,6 +229,7 @@ include = '\.pyi?$'
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [tool.isort]
 profile = "black"
