@@ -137,6 +137,7 @@ Adjust analysis parameters as needed (seeing, detection threshold, border mask, 
 - **Background Model**: 2D background and RMS maps (FITS)
 - **PSF Model**: Empirical PSF (FITS)
 - **WCS Header**: Astrometric solution (TXT)
+- **WCS-Solved FITS**: Original image with updated WCS header (when astrometry is performed)
 - **Plots**: FWHM, magnitude distributions, zero-point calibration
 - **Log File**: Detailed processing log
 
@@ -166,6 +167,7 @@ The pipeline generates comprehensive output files, available as a ZIP download:
 - **PSF Model** (FITS): Empirical PSF (or Gaussian fallback) for the field
 - **Plots**: FWHM analysis, magnitude distributions, zero-point calibration
 - **WCS Header** (TXT): Updated astrometric solution
+- **WCS-Solved FITS**: Original image with refined WCS embedded in header (saved to `rpp_data/fits/`)
 
 ## Technical Details
 

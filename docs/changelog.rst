@@ -3,8 +3,24 @@ Changelog
 
 This document records all notable changes to RAPAS Photometry Pipeline.
 
-Version 1.5.3 (Current)
+Version 1.6.0 (Current)
 -----------------------
+
+**Released: January 9, 2026**
+
+**Storage & Data Organization**
+
+*   **New FITS Storage Location**: Moved FITS file storage from ``data/fits/`` (inside project) to ``rpp_data/fits/`` (at parent level, same as ``rpp_results/``)
+*   **WCS-Solved FITS Export**: New utility function ``save_fits_with_wcs()`` to save original FITS images with updated WCS headers after astrometric solving
+*   **Consistent Directory Structure**: Both results (``rpp_results/``) and data files (``rpp_data/fits/``) are now stored at the same directory level outside the project folder
+
+**API Improvements**
+
+*   Updated ``FITS_STORAGE_ROOT`` configuration to use the new storage path
+*   Added ``PARENT_DIR`` export for consistent path management across the application
+
+Version 1.5.3
+-------------
 
 **Released: January 7, 2026**
 

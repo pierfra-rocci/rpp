@@ -220,7 +220,9 @@ Example integration concept:
     import os
 
     # Directory where RPP results ZIPs were extracted
+    # Results are stored in rpp_results/, WCS-solved FITS in rpp_data/fits/
     rpp_output_dir = 'path/to/extracted/rpp_results'
+    rpp_fits_dir = 'path/to/rpp_data/fits'  # WCS-solved FITS files
 
     all_catalogs = []
     catalog_files = glob.glob(os.path.join(rpp_output_dir, '*_catalog.csv'))

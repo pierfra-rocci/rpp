@@ -271,12 +271,14 @@ Output Generation & Export
 **Comprehensive Result Files**:
    - CSV catalogs with complete photometric measurements
    - FITS files for background and PSF models
+   - WCS-solved FITS files with refined astrometric headers
    - PNG plots for all analysis visualizations
    - Text files for headers and processing logs
    - ZIP archives for convenient result distribution
 
 **Data Organization**:
-   - User-specific result directories
+   - User-specific result directories (``rpp_results/``)
+   - Dedicated FITS storage with WCS solutions (``rpp_data/fits/``)
    - Timestamped file naming for version control
    - Automatic file categorization by type
    - Metadata preservation in output files

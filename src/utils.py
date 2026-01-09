@@ -434,6 +434,60 @@ def save_header_to_fits(header, filename, output_dir):
         return None, f"Failed to save header as FITS file: {str(e)}"
 
 
+def save_fits_with_wcs(original_path, updated_header, output_dir,
+                       filename_suffix="_wcs"):
+    """
+    Save a FITS file with original image data and updated WCS header.
+
+    Parameters
+    ----------
+    original_path : str
+        Path to the original FITS file.
+    updated_header : astropy.io.fits.Header
+        Updated header containing the new WCS solution.
+    output_dir : str
+        The directory to save the file in.
+    filename_suffix : str, optional
+        Suffix to append to the original filename (default: "_wcs").
+
+    Returns
+    -------
+    tuple (str | None, str | None)
+        - (filepath, None): If successful.
+        - (None, error_message): If failed.
+    """
+    if updated_header is None:
+        return None, "Updated header is None"
+
+    if not os.path.exists(original_path):
+        return None, f"Original FITS file not found: {original_path}"
+
+    try:
+        # Open original FITS and get the image data
+        with fits.open(original_path) as hdul:
+            image_data = hdul[0].data
+
+        # Create new HDU with original data and updated header
+        primary_hdu = fits.PrimaryHDU(data=image_data, header=updated_header)
+        hdul_new = fits.HDUList([primary_hdu])
+
+        # Build output filename
+        base_name = os.path.splitext(os.path.basename(original_path))[0]
+        output_filename = os.path.join(output_dir, f"{base_name}{filename_suffix}.fits")
+
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Write FITS file
+        hdul_new.writeto(output_filename, overwrite=True)
+        hdul_new.close()
+
+        return output_filename, None
+
+    except Exception as e:
+        return None, f"Failed to save FITS with WCS: {str(e)}"
+
+
 def save_catalog_files(final_table, catalog_name, output_dir):
     """
     Save the final photometry table as both VOTable (XML) and CSV files.

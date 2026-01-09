@@ -21,9 +21,12 @@ if _db_override:
 else:
     DB_PATH = Path(PROJECT_ROOT / _default_db_name).resolve()
 
-# Root folder for FITS storage; defaults to <project>/data/fits
+# Parent directory (same level as rpp_results)
+PARENT_DIR = PROJECT_ROOT.parent
+
+# Root folder for FITS storage; defaults to <parent>/rpp_data/fits (same level as rpp_results)
 FITS_STORAGE_ROOT = Path(
-    os.getenv("RPP_FITS_ROOT", PROJECT_ROOT / "data" / "fits")
+    os.getenv("RPP_FITS_ROOT", PARENT_DIR / "rpp_data" / "fits")
 ).resolve()
 
 # Ensure the storage root exists without changing existing permissions
@@ -37,5 +40,6 @@ __all__ = [
     "APP_ENV",
     "DB_PATH",
     "FITS_STORAGE_ROOT",
+    "PARENT_DIR",
     "SQLALCHEMY_DATABASE_URL",
 ]

@@ -90,6 +90,7 @@ After processing, download the ZIP archive containing:
 - `*_background.fits`: 2D background and RMS maps
 - `*_psf.fits`: Empirical PSF model
 - `*_wcs_header.txt`: Astrometric solution header
+- `*_wcs.fits`: Original image with refined WCS header (also saved to `rpp_data/fits/`)
 - `*.log`: Processing log
 - `*.png`: Diagnostic plots
 
