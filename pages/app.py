@@ -624,6 +624,8 @@ if science_file is not None:
                         output_dir,
                         filename_suffix="_wcs",
                         also_save_to_data_dir=True,
+                        original_filename=science_file.name,
+                        username=st.session_state.get("username", "anonymous"),
                     )
                     if wcs_fits_path:
                         st.info(f"WCS-solved FITS saved: {os.path.basename(wcs_fits_path)}")

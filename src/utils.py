@@ -435,14 +435,15 @@ def save_header_to_fits(header, filename, output_dir):
 
 
 def save_fits_with_wcs(original_path, updated_header, output_dir,
-                       filename_suffix="_wcs", also_save_to_data_dir=True):
+                       filename_suffix="_wcs", also_save_to_data_dir=True,
+                       original_filename=None, username=None):
     """
     Save a FITS file with original image data and updated WCS header.
 
     Parameters
     ----------
     original_path : str
-        Path to the original FITS file.
+        Path to the original FITS file (may be a temp file path).
     updated_header : astropy.io.fits.Header
         Updated header containing the new WCS solution.
     output_dir : str
@@ -452,6 +453,11 @@ def save_fits_with_wcs(original_path, updated_header, output_dir,
     also_save_to_data_dir : bool, optional
         If True, also save a copy to rpp_data/fits/ without timestamp (default: True).
         This copy will be overwritten if the same file is processed again.
+    original_filename : str, optional
+        The original filename of the uploaded file (without temp prefix).
+        If None, extracts from original_path.
+    username : str, optional
+        Username to prefix the permanent copy filename.
 
     Returns
     -------
@@ -474,8 +480,13 @@ def save_fits_with_wcs(original_path, updated_header, output_dir,
         primary_hdu = fits.PrimaryHDU(data=image_data, header=updated_header)
         hdul_new = fits.HDUList([primary_hdu])
 
+        # Use original_filename if provided, otherwise extract from path
+        if original_filename:
+            base_name = os.path.splitext(original_filename)[0]
+        else:
+            base_name = os.path.splitext(os.path.basename(original_path))[0]
+
         # Build output filename for the results directory (goes into ZIP)
-        base_name = os.path.splitext(os.path.basename(original_path))[0]
         output_filename = os.path.join(output_dir, f"{base_name}{filename_suffix}.fits")
 
         # Ensure output directory exists
@@ -494,9 +505,15 @@ def save_fits_with_wcs(original_path, updated_header, output_dir,
                 data_fits_dir = os.path.join(parent_dir, "rpp_data", "fits")
                 os.makedirs(data_fits_dir, exist_ok=True)
 
-                # Save without timestamp suffix - just base_name_wcs.fits
+                # Build filename with username prefix if provided
+                if username:
+                    data_base_name = f"{username}_{base_name}"
+                else:
+                    data_base_name = base_name
+
+                # Save with username prefix - overwrites on reprocessing
                 data_output_filename = os.path.join(
-                    data_fits_dir, f"{base_name}{filename_suffix}.fits"
+                    data_fits_dir, f"{data_base_name}{filename_suffix}.fits"
                 )
                 hdul_new.writeto(data_output_filename, overwrite=True)
             except Exception as data_save_error:
