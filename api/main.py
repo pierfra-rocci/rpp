@@ -179,6 +179,31 @@ def health() -> Message:
     return Message(message="ok")
 
 
+@app.get("/api/jobs/health")
+def jobs_health():
+    """Check if Celery workers are available for background job processing."""
+    celery_available = False
+    worker_count = 0
+    
+    try:
+        from celery_app import celery_app
+        # Try to inspect active workers
+        inspect = celery_app.control.inspect()
+        active = inspect.active()
+        if active:
+            celery_available = True
+            worker_count = len(active)
+    except Exception:
+        # Celery not available or not configured
+        pass
+    
+    return {
+        "celery_available": celery_available,
+        "worker_count": worker_count,
+        "message": "Celery workers available" if celery_available else "No workers",
+    }
+
+
 @app.post(
     "/api/register",
     response_model=Message,

@@ -65,7 +65,7 @@ from src.transient import find_candidates
 
 from src.__version__ import version
 
-from pages.api_client import ApiClient, ApiError, detect_backend
+from pages.api_client import ApiClient, ApiError, detect_backend, check_celery_available
 
 
 # Conditional Import (already present, just noting its location)
@@ -377,6 +377,64 @@ with st.sidebar.expander("📁 Tasks Archive", expanded=False):
     output_dir = ensure_output_directory(directory=f"{username}_results")
     display_archived_files_browser(output_dir)
 
+# Background Jobs Section (only in API mode)
+if st.session_state.get("api_mode", False):
+    with st.sidebar.expander("🔄 Background Jobs", expanded=False):
+        # Check Celery availability
+        celery_available = check_celery_available(
+            st.session_state.get("api_base_url")
+        )
+        
+        if celery_available:
+            st.success("✅ Background workers available")
+            
+            # Show toggle for background mode
+            if "run_in_background" not in st.session_state:
+                st.session_state.run_in_background = False
+            
+            st.session_state.run_in_background = st.checkbox(
+                "Run analyses in background",
+                value=st.session_state.run_in_background,
+                help="When enabled, analyses will run on the server. "
+                     "You can close the browser and check results later.",
+            )
+            
+            # List recent jobs
+            creds = st.session_state.get("api_credentials")
+            if creds and st.button("📋 Refresh Jobs", key="refresh_jobs"):
+                try:
+                    client = ApiClient(creds.get("base_url"))
+                    jobs_data = client.list_jobs(
+                        username=creds["username"],
+                        password=creds["password"],
+                        limit=10,
+                    )
+                    st.session_state["recent_jobs"] = jobs_data.get("jobs", [])
+                except ApiError as exc:
+                    st.error(f"Error: {exc.message}")
+            
+            # Display recent jobs
+            recent_jobs = st.session_state.get("recent_jobs", [])
+            if recent_jobs:
+                st.markdown("**Recent Jobs:**")
+                for job in recent_jobs[:5]:
+                    status_icon = {
+                        "pending": "⏳",
+                        "running": "🔄",
+                        "succeeded": "✅",
+                        "failed": "❌",
+                        "cancelled": "🚫",
+                    }.get(job.get("status", ""), "❓")
+                    
+                    job_type = job.get("job_type", "unknown")
+                    job_id = job.get("id", "?")
+                    
+                    st.caption(f"{status_icon} #{job_id}: {job_type}")
+        else:
+            st.warning("⚠️ Background workers not available")
+            st.caption("Start Celery workers to enable background processing")
+            st.session_state.run_in_background = False
+
 with st.sidebar:
     if st.button("🧹 Clear Cache / Reset"):
         clear_all_caches()
@@ -398,6 +456,65 @@ if st.session_state.logged_in:
     )
 
 ###########################################################################
+
+# Show active background jobs monitor (if any running)
+if st.session_state.get("api_mode", False):
+    creds = st.session_state.get("api_credentials")
+    if creds:
+        # Auto-check for running jobs
+        try:
+            client = ApiClient(creds.get("base_url"))
+            jobs_data = client.list_jobs(
+                username=creds["username"],
+                password=creds["password"],
+                status="running",
+                limit=5,
+            )
+            running_jobs = jobs_data.get("jobs", [])
+            
+            if running_jobs:
+                with st.expander(
+                    f"🔄 {len(running_jobs)} Background Job(s) Running",
+                    expanded=True
+                ):
+                    for job in running_jobs:
+                        job_id = job.get("id")
+                        job_type = job.get("job_type", "unknown")
+                        
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.write(f"**Job #{job_id}**: {job_type}")
+                            
+                            # Get progress events
+                            try:
+                                events = client.get_job_events(
+                                    username=creds["username"],
+                                    password=creds["password"],
+                                    job_id=job_id,
+                                )
+                                event_list = events.get("events", [])
+                                if event_list:
+                                    latest = event_list[-1]
+                                    st.caption(f"Latest: {latest.get('message', '')}")
+                            except Exception:
+                                pass
+                        
+                        with col2:
+                            if st.button("🚫 Cancel", key=f"cancel_{job_id}"):
+                                try:
+                                    client.cancel_job(
+                                        username=creds["username"],
+                                        password=creds["password"],
+                                        job_id=job_id,
+                                    )
+                                    st.success(f"Job #{job_id} cancelled")
+                                    st.rerun()
+                                except ApiError as exc:
+                                    st.error(f"Error: {exc.message}")
+                    
+                    st.caption("Jobs continue running even if you close the browser")
+        except Exception:
+            pass  # Don't show errors for job checking
 
 # Persistent uploader: keep uploaded file bytes across reruns until cleared
 if "uploaded_bytes" not in st.session_state:
@@ -1040,6 +1157,80 @@ if science_file is not None:
             mean_fwhm_pixel = seeing / pixel_size_arcsec
 
         if image_to_process is not None:
+            # Check if user wants to run in background
+            run_in_background = st.session_state.get("run_in_background", False)
+            api_mode = st.session_state.get("api_mode", False)
+            creds = st.session_state.get("api_credentials")
+            
+            if run_in_background and api_mode and creds:
+                # Submit job to background worker
+                st.info("🔄 Submitting analysis to background worker...")
+                
+                try:
+                    client = ApiClient(creds.get("base_url"))
+                    
+                    # We need a fits_file_id - check if we have one
+                    fits_file_id = st.session_state.get("stored_fits_file_id")
+                    
+                    if not fits_file_id:
+                        st.warning(
+                            "Cannot run in background: FITS file must be "
+                            "uploaded to server first. Running locally instead."
+                        )
+                        run_in_background = False
+                    else:
+                        # Prepare job parameters
+                        job_params = {
+                            "fwhm": mean_fwhm_pixel,
+                            "threshold": st.session_state.analysis_parameters[
+                                "threshold_sigma"
+                            ],
+                            "detection_mask": st.session_state.analysis_parameters[
+                                "detection_mask"
+                            ],
+                            "filter_band": st.session_state.analysis_parameters[
+                                "filter_band"
+                            ],
+                            "filter_max_mag": st.session_state.analysis_parameters[
+                                "filter_max_mag"
+                            ],
+                        }
+                        
+                        # Submit photometry job
+                        result = client.submit_job(
+                            username=creds["username"],
+                            password=creds["password"],
+                            job_type="photometry",
+                            fits_file_id=fits_file_id,
+                            params=job_params,
+                        )
+                        
+                        job_id = result.get("job_id")
+                        st.success(
+                            f"✅ Job submitted! ID: #{job_id}\n\n"
+                            "You can close this browser - the analysis will "
+                            "continue on the server. Check the 'Background Jobs' "
+                            "section in the sidebar to monitor progress."
+                        )
+                        
+                        # Store job info in session
+                        if "submitted_jobs" not in st.session_state:
+                            st.session_state.submitted_jobs = []
+                        st.session_state.submitted_jobs.append({
+                            "job_id": job_id,
+                            "job_type": "photometry",
+                            "filename": science_file.name,
+                        })
+                        
+                        # Skip local processing
+                        st.stop()
+                        
+                except ApiError as exc:
+                    st.error(f"Failed to submit job: {exc.message}")
+                    st.info("Falling back to local processing...")
+                    run_in_background = False
+            
+            # Local processing (default or fallback)
             try:
                 with st.spinner(
                     "Background Extraction, FWHM Computation, Sources Detection and Photometry..."

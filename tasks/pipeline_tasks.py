@@ -7,9 +7,6 @@ Each task:
 2. Executes the processing function with progress callbacks
 3. Updates job status to SUCCEEDED or FAILED
 4. Records events for progress tracking
-
-Note: Full implementation requires Step 3 (callback interface in pipeline functions).
-      This is a placeholder structure that will be completed in later steps.
 """
 
 import json
@@ -20,13 +17,9 @@ from typing import Any, Dict, Optional
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 
-# These imports will be used once the callback interface is implemented
-# from src.astrometry import solve_with_astrometrynet
-# from src.pipeline import run_detection_and_photometry
-# from src.transient import find_transient_candidates
-
 from api.database import session_scope
 from api.models import AnalysisJob, JobEvent, JobStatus
+from src.progress import CallbackReporter
 
 logger = logging.getLogger(__name__)
 
@@ -70,16 +63,20 @@ def create_progress_callback(job_id: int):
     This callback can be passed to pipeline functions to report progress
     without depending on Streamlit.
     
-    Returns a callable that accepts (progress: float, message: str).
+    Returns a CallbackReporter that stores events in the database.
     """
-    def callback(progress: float, message: str) -> None:
+    def callback(progress: float, message: str, level: str) -> None:
         """Report progress (0.0 to 1.0) with a message."""
         add_job_event(
             job_id=job_id,
             event_type="progress",
-            message=json.dumps({"progress": progress, "message": message}),
+            message=json.dumps({
+                "progress": progress,
+                "message": message,
+                "level": level,
+            }),
         )
-    return callback
+    return CallbackReporter(callback)
 
 
 @shared_task(bind=True, name="tasks.run_plate_solve")
@@ -100,23 +97,39 @@ def run_plate_solve(
     Returns:
         Dict with success status and result path or error message
     """
+    from src.astrometry import solve_with_astrometrynet
+    
     logger.info(f"Starting plate solve task for job {job_id}")
     update_job_status(job_id, JobStatus.RUNNING)
     add_job_event(job_id, "started", "Plate solving started")
     
     try:
-        # TODO: Step 3 - Call refactored solve_with_astrometrynet with callback
-        # progress_callback = create_progress_callback(job_id)
-        # result = solve_with_astrometrynet(
-        #     fits_path=fits_path,
-        #     progress_callback=progress_callback,
-        #     **params
-        # )
+        progress_reporter = create_progress_callback(job_id)
         
-        # Placeholder - will be implemented in Step 3
-        raise NotImplementedError(
-            "Plate solve task requires callback interface (Step 3)"
+        # Call the plate solving function with progress reporter
+        wcs_obj, header, log_messages, error = solve_with_astrometrynet(
+            fits_path,
+            progress=progress_reporter,
         )
+        
+        if error:
+            update_job_status(job_id, JobStatus.FAILED, error_message=error)
+            add_job_event(job_id, "failed", error)
+            return {"success": False, "error": error}
+        
+        if wcs_obj is None:
+            error_msg = "Plate solving returned no WCS solution"
+            update_job_status(job_id, JobStatus.FAILED, error_message=error_msg)
+            add_job_event(job_id, "failed", error_msg)
+            return {"success": False, "error": error_msg}
+        
+        # Success
+        update_job_status(job_id, JobStatus.SUCCEEDED)
+        add_job_event(job_id, "completed", "Plate solving completed successfully")
+        return {
+            "success": True,
+            "log_messages": log_messages,
+        }
         
     except SoftTimeLimitExceeded:
         error_msg = "Plate solving timed out (exceeded 30 minutes)"
@@ -151,23 +164,55 @@ def run_photometry(
     Returns:
         Dict with success status and result path or error message
     """
+    from astropy.io import fits
+    from src.pipeline import detection_and_photometry
+    
     logger.info(f"Starting photometry task for job {job_id}")
     update_job_status(job_id, JobStatus.RUNNING)
     add_job_event(job_id, "started", "Photometry pipeline started")
     
     try:
-        # TODO: Step 3 - Call refactored run_detection_and_photometry with callback
-        # progress_callback = create_progress_callback(job_id)
-        # result = run_detection_and_photometry(
-        #     fits_path=fits_path,
-        #     progress_callback=progress_callback,
-        #     **params
-        # )
+        progress_reporter = create_progress_callback(job_id)
         
-        # Placeholder - will be implemented in Step 3
-        raise NotImplementedError(
-            "Photometry task requires callback interface (Step 3)"
+        # Load FITS file
+        with fits.open(fits_path) as hdul:
+            image_data = hdul[0].data
+            header = hdul[0].header.copy()
+        
+        # Extract parameters with defaults
+        fwhm = params.get("fwhm", 3.5)
+        threshold = params.get("threshold", 5.0)
+        detection_mask = params.get("detection_mask", 50)
+        
+        # Run detection and photometry
+        result = detection_and_photometry(
+            image_data=image_data,
+            science_header=header,
+            mean_fwhm_pixel=fwhm,
+            threshold_sigma=threshold,
+            detection_mask=detection_mask,
+            progress=progress_reporter,
         )
+        
+        phot_table, epsf_table, daofind, bkg, wcs_obj, bkg_fig, fwhm_est, mask = result
+        
+        if phot_table is None:
+            error_msg = "Photometry returned no results"
+            update_job_status(job_id, JobStatus.FAILED, error_message=error_msg)
+            add_job_event(job_id, "failed", error_msg)
+            return {"success": False, "error": error_msg}
+        
+        # Success
+        update_job_status(job_id, JobStatus.SUCCEEDED)
+        add_job_event(
+            job_id, "completed",
+            f"Photometry completed: {len(phot_table)} sources detected"
+        )
+        return {
+            "success": True,
+            "num_sources": len(phot_table),
+            "fwhm_estimate": fwhm_est,
+        }
         
     except SoftTimeLimitExceeded:
         error_msg = "Photometry timed out (exceeded 30 minutes)"
@@ -201,24 +246,30 @@ def run_transient_detection(
     
     Returns:
         Dict with success status and result path or error message
+    
+    Note: Full implementation depends on transient.py being refactored
+          with progress callback support.
     """
     logger.info(f"Starting transient detection task for job {job_id}")
     update_job_status(job_id, JobStatus.RUNNING)
     add_job_event(job_id, "started", "Transient detection started")
     
     try:
-        # TODO: Step 3 - Call refactored find_transient_candidates with callback
-        # progress_callback = create_progress_callback(job_id)
+        progress_reporter = create_progress_callback(job_id)
+        
+        # TODO: Implement transient detection task when src/transient.py
+        # is refactored with progress callback support
+        # from src.transient import find_transient_candidates
         # result = find_transient_candidates(
         #     fits_path=fits_path,
-        #     progress_callback=progress_callback,
+        #     progress=progress_reporter,
         #     **params
         # )
         
-        # Placeholder - will be implemented in Step 3
-        raise NotImplementedError(
-            "Transient detection task requires callback interface (Step 3)"
-        )
+        error_msg = "Transient detection task not yet fully implemented"
+        update_job_status(job_id, JobStatus.FAILED, error_message=error_msg)
+        add_job_event(job_id, "failed", error_msg)
+        return {"success": False, "error": error_msg}
         
     except SoftTimeLimitExceeded:
         error_msg = "Transient detection timed out (exceeded 30 minutes)"

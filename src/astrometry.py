@@ -1,5 +1,6 @@
 import os
 import streamlit as st
+from typing import Optional
 
 import numpy as np
 
@@ -12,18 +13,27 @@ from stdpipe import photometry
 from stdpipe import catalogs
 from stdpipe import pipeline as stdpipe_pipeline
 
+from src.progress import ProgressReporter, get_default_reporter
+
 
 def _try_source_detection(
-    image, header, fwhm_estimates, threshold_multi, min_sources=10
+    image,
+    header,
+    fwhm_estimates,
+    threshold_multi,
+    min_sources=10,
+    progress: Optional[ProgressReporter] = None,
 ):
     """Helper function to try different detection parameters.
     Refactored to use stdpipe (SExtractor/SEP + photutils measurement)
     """
+    progress = progress or get_default_reporter()
+    
     # We iterate through parameters to find a good set
     for fwhm_est in fwhm_estimates:
         for thresh in threshold_multi:
             try:
-                st.info(f"Trying detection with thresh={thresh}, FWHM={fwhm_est}")
+                progress.info(f"Trying detection with thresh={thresh}, FWHM={fwhm_est}")
 
                 # 1. Detect objects using SExtractor/SEP via stdpipe
                 # get_objects_sextractor handles background estimation internally
@@ -57,24 +67,24 @@ def _try_source_detection(
                     )
 
                     if sources is not None and len(sources) >= min_sources:
-                        st.success(
+                        progress.success(
                             f"Found {len(sources)} sources with "
                             f"thresh={thresh}, FWHM={fwhm_est}"
                         )
                         return sources
 
                 if sources is not None:
-                    st.write(
+                    progress.write(
                         f"Found {len(sources)} sources (need at least {min_sources})"
                     )
 
             except Exception as e:
-                st.write(f"Detection failed with FWHM={fwhm_est} : {e}")
+                progress.write(f"Detection failed with FWHM={fwhm_est} : {e}")
                 continue
     return None
 
 
-def solve_with_astrometrynet(file_path):
+def solve_with_astrometrynet(file_path, progress: Optional[ProgressReporter] = None):
     """
     Solve astrometric plate using local Astrometry.Net installation via stdpipe.
     This function loads a FITS image, detects objects using photutils, and uses stdpipe's
@@ -105,6 +115,7 @@ def solve_with_astrometrynet(file_path):
 
     Uses stdpipe.astrometry.blind_match_objects for cleaner interface.
     """
+    progress = progress or get_default_reporter()
     log_messages = []
     try:
         if not os.path.exists(file_path):
@@ -112,6 +123,7 @@ def solve_with_astrometrynet(file_path):
 
         # Load the FITS file
         log_messages.append("INFO: Loading FITS file for local plate solving")
+        progress.info("Loading FITS file for plate solving...")
         with fits.open(file_path) as hdul:
             image_data = hdul[0].data
             header = hdul[0].header.copy()
@@ -136,6 +148,7 @@ def solve_with_astrometrynet(file_path):
             fwhm_estimates=[3.5, 4.0, 5.0],
             threshold_multi=[2.0, 1.5],
             min_sources=50,
+            progress=progress,
         )
 
         # If that fails, try more aggressive parameters
@@ -149,6 +162,7 @@ def solve_with_astrometrynet(file_path):
                 fwhm_estimates=[2.0, 2.5, 3.0],
                 threshold_multi=[1.0, 0.5],
                 min_sources=25,
+                progress=progress,
             )
 
         if sources is None or len(sources) < 5:

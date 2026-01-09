@@ -194,7 +194,10 @@ def make_border_mask(
     inner[top : height - bottom, left : width - right] = True
 
     mask = ~inner if invert else inner
-    st.info(
+    
+    # Use progress reporter if provided
+    progress = progress or get_default_reporter()
+    progress.info(
         f"Border mask created with borders (top={top}, bottom={bottom}, left={left}, right={right})"
     )
 
@@ -202,7 +205,10 @@ def make_border_mask(
 
 
 def airmass(
-    _header: Dict, observatory: Optional[Dict] = None, return_details: bool = False
+    _header: Dict,
+    observatory: Optional[Dict] = None,
+    return_details: bool = False,
+    progress: Optional[ProgressReporter] = None,
 ) -> Union[float, Tuple[float, Dict]]:
     """
     Calculate the airmass for a celestial object from observation parameters.
@@ -228,6 +234,8 @@ def airmass(
         }
     return_details : bool, optional
         If True, returns additional information about the observation.
+    progress : ProgressReporter, optional
+        Progress reporter for status updates. Uses default if None.
 
     Returns
     -------
@@ -249,6 +257,7 @@ def airmass(
     displays warnings for extreme values. It also determines whether
     the observation was taken during night, twilight or day.
     """
+    progress = progress or get_default_reporter()
 
     # Check if airmass already exists in header
     airmass_keywords = ["AIRMASS", "SECZ", "AIRMASS_START", "AIRMASS_END"]
@@ -258,17 +267,17 @@ def airmass(
                 existing_airmass = float(_header[keyword])
                 # Validate the existing airmass value
                 if 1.0 <= existing_airmass <= 30.0:
-                    st.write("Using existing airmass from header...")
+                    progress.write("Using existing airmass from header...")
                     if return_details:
                         return existing_airmass, {"airmass_source": f"header_{keyword}"}
                     return existing_airmass
                 else:
-                    st.warning(
+                    progress.warning(
                         f"Invalid airmass value in header ({existing_airmass}), calculating from coordinates"
                     )
                     break
             except (ValueError, TypeError):
-                st.warning(
+                progress.warning(
                     f"Could not parse airmass value from header keyword {keyword}"
                 )
                 continue
@@ -345,10 +354,10 @@ def airmass(
         airmass_value = float(altaz.secz)
 
         if airmass_value < 1.0:
-            st.warning("Calculated airmass is less than 1 (impossible)")
+            progress.warning("Calculated airmass is less than 1 (impossible)")
             airmass_value = 1.0
         elif airmass_value > 30.0:
-            st.warning("Extremely high airmass (>30), object near horizon")
+            progress.warning("Extremely high airmass (>30), object near horizon")
 
         sun_altaz = get_sun(obstime).transform_to(altaz_frame)
         sun_alt = float(sun_altaz.alt.deg)
@@ -368,9 +377,9 @@ def airmass(
             },
         }
 
-        st.write(f"Date and time of observation (UTC): {obstime.iso}")
-        st.write(
-            f"Altitude: {details['altaz']['altitude']}° \n"
+        progress.write(f"Date and time of observation (UTC): {obstime.iso}")
+        progress.write(
+            f"Altitude: {details['altaz']['altitude']}° - "
             f"Azimuth: {details['altaz']['azimuth']}°"
         )
 
@@ -379,7 +388,7 @@ def airmass(
         return round(airmass_value, 2)
 
     except Exception as e:
-        st.warning(f"Error calculating airmass: {str(e)}")
+        progress.warning(f"Error calculating airmass: {str(e)}")
         if return_details:
             return 0.0, {}
         return 0.0
@@ -391,6 +400,7 @@ def fwhm_fit(
     mask: Optional[np.ndarray] = None,
     std_lo: float = 0.5,
     std_hi: float = 0.5,
+    progress: Optional[ProgressReporter] = None,
 ) -> Optional[float]:
     """
     Estimate the Full Width at Half Maximum (FWHM) of stars in an astronomical image.
@@ -413,6 +423,8 @@ def fwhm_fit(
         Lower bound for flux filtering, in standard deviations below median flux
     std_hi : float, default=0.5
         Upper bound for flux filtering, in standard deviations above median flux
+    progress : ProgressReporter, optional
+        Progress reporter for status updates. Uses default if None.
 
     Returns
     -------
@@ -429,15 +441,17 @@ def fwhm_fit(
     If more than 1000 sources are detected after filtering, a random sample of 1000
     sources is selected for FWHM calculation to improve performance.
 
-    Progress updates and error messages are displayed using Streamlit.
+    Progress updates and error messages are displayed using the progress reporter.
     """
+    progress = progress or get_default_reporter()
+    
     try:
         _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
         daofind = DAOStarFinder(fwhm=1.5 * fwhm, threshold=7 * clipped_std)
         sources = daofind(_img, mask=mask)
         if sources is None:
-            st.warning("No sources found !")
+            progress.warning("No sources found !")
             return None, None
 
         flux = sources["flux"]
@@ -450,18 +464,18 @@ def fwhm_fit(
 
         filtered_sources = filtered_sources[~np.isnan(filtered_sources["flux"])]
 
-        st.write(f"Sources after filtering : {len(filtered_sources)}")
+        progress.write(f"Sources after filtering : {len(filtered_sources)}")
 
         if len(filtered_sources) == 0:
             msg = "No valid sources for fitting found after filtering."
-            st.error(msg)
+            progress.error(msg)
             raise ValueError(msg)
 
         # Randomly sample 1000 sources if more than 1000 are available
         if len(filtered_sources) > 1000:
             indices = np.random.choice(len(filtered_sources), size=1000, replace=False)
             filtered_sources = filtered_sources[indices]
-            st.info("Too many sources, sampled 1000 sources for FWHM calculation")
+            progress.info("Too many sources, sampled 1000 sources for FWHM calculation")
 
         box_size = int(6 * round(fwhm))
         if box_size % 2 == 0:
@@ -480,18 +494,23 @@ def fwhm_fit(
             # Fallback if already 1D
             mean_fwhm = np.median(fwhms)
 
-        st.success(f"FWHM using gaussian model : {round(mean_fwhm, 2)} pixels")
+        progress.success(f"FWHM using gaussian model : {round(mean_fwhm, 2)} pixels")
 
         return round(mean_fwhm, 2), clipped_std
     except ValueError as e:
         raise e
     except Exception as e:
-        st.error(f"Unexpected error in fwhm_fit: {e}")
+        progress.error(f"Unexpected error in fwhm_fit: {e}")
         raise ValueError(f"Unexpected error in fwhm_fit: {e}")
 
 
 def detection_and_photometry(
-    image_data, science_header, mean_fwhm_pixel, threshold_sigma, detection_mask
+    image_data,
+    science_header,
+    mean_fwhm_pixel,
+    threshold_sigma,
+    detection_mask,
+    progress: Optional[ProgressReporter] = None,
 ):
     """
     Perform a complete photometry workflow on an astronomical image.
@@ -515,10 +534,8 @@ def detection_and_photometry(
         Detection threshold in sigma above background.
     detection_mask : int
         Border size in pixels to mask during detection.
-    filter_band : str
-        Photometric band for catalog matching and calibration.
-    gb : str, optional
-        Gaia band name for catalog queries (default: "Gmag").
+    progress : ProgressReporter, optional
+        Progress reporter for status updates. Uses default if None.
 
     Returns
     -------
@@ -538,7 +555,7 @@ def detection_and_photometry(
     - WCS refinement uses stdpipe and GAIA DR3 if enabled in session state.
     - Adds RA/Dec coordinates to photometry tables if WCS is available.
     - Computes instrumental magnitudes for both aperture and PSF photometry.
-    - Displays progress and results in the Streamlit interface.
+    - Displays progress and results via the progress reporter.
 
     Photometric Formulas
     --------------------
@@ -559,21 +576,22 @@ def detection_and_photometry(
         - 'good': S/N ≥ 5 (reliable photometry)
         - 'unknown': missing data or calculation failed
     """
+    progress = progress or get_default_reporter()
     daofind = None
 
     try:
         w, wcs_error, log_msgs = safe_wcs_create(science_header)
         if w is None:
-            st.error(f"Error creating WCS in detection_and_photometry: {wcs_error}")
-            st.error(
+            progress.error(f"Error creating WCS in detection_and_photometry: {wcs_error}")
+            progress.error(
                 "Will attempt to proceed without WCS - coordinates will not be available"
             )
             # Don't return here - allow photometry to continue without coordinates
             # return None, None, daofind, None, None, None, None, None
         else:
-            st.success("WCS object created successfully in detection_and_photometry")
+            progress.success("WCS object created successfully in detection_and_photometry")
     except Exception as e:
-        st.error(f"Exception while creating WCS in detection_and_photometry: {e}")
+        progress.error(f"Exception while creating WCS in detection_and_photometry: {e}")
         w = None
         # Don't return - allow photometry to continue
         # return None, None, daofind, None, None, None, None, None
@@ -586,15 +604,15 @@ def detection_and_photometry(
     bkg, bkg_fig, bkg_error = estimate_background(image_data)
 
     if bkg is None:
-        st.error(f"Error estimating background: {bkg_error}")
+        progress.error(f"Error estimating background: {bkg_error}")
         return None, None, daofind, None, None, None, None, None
 
     # border mask (True = masked)
-    border_mask = make_border_mask(image_data, border=detection_mask)
+    border_mask = make_border_mask(image_data, border=detection_mask, progress=progress)
 
     # cosmic-ray mask produced by LA Cosmic / custom routine (True = masked)
     try:
-        cr_mask = mask_and_remove_cosmic_rays(image_data, science_header)
+        cr_mask = mask_and_remove_cosmic_rays(image_data, science_header, progress=progress)
     except Exception:
         cr_mask = np.zeros_like(border_mask, dtype=bool)
 
@@ -619,15 +637,20 @@ def detection_and_photometry(
     )
     mask = final_mask
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.imshow(mask, cmap="viridis", origin="lower")
-    st.pyplot(fig)
-    st.pyplot(bkg_fig)
+    # Only show plots if running in Streamlit context
+    from src.progress import is_streamlit_context
+    if is_streamlit_context():
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.imshow(mask, cmap="viridis", origin="lower")
+        st.pyplot(fig)
+        st.pyplot(bkg_fig)
+        plt.close(fig)
 
     # Ensure image_sub is float64 to avoid casting errors
     image_sub = image_data.astype(np.float64) - bkg.background.astype(np.float64)
 
-    show_subtracted_image(image_sub)
+    if is_streamlit_context():
+        show_subtracted_image(image_sub)
 
     # Ensure bkg_error is also float64
     bkg_error = np.full_like(
@@ -646,11 +669,11 @@ def detection_and_photometry(
         effective_gain=np.float64(camera_gain),
     )
 
-    st.write("Estimating FWHM ...")
-    fwhm_estimate, clipped_std = fwhm_fit(image_sub, mean_fwhm_pixel, mask)
+    progress.write("Estimating FWHM ...")
+    fwhm_estimate, clipped_std = fwhm_fit(image_sub, mean_fwhm_pixel, mask, progress=progress)
 
     if fwhm_estimate is None:
-        st.warning("Failed to estimate FWHM. Using the initial estimate.")
+        progress.warning("Failed to estimate FWHM. Using the initial estimate.")
         fwhm_estimate = mean_fwhm_pixel
 
     daofind = DAOStarFinder(
@@ -660,7 +683,7 @@ def detection_and_photometry(
     sources = daofind(image_sub, mask=mask)
 
     if sources is None or len(sources) == 0:
-        st.warning("No sources found!")
+        progress.warning("No sources found!")
         return None, None, daofind, bkg, None, None, fwhm_estimate, mask
 
     positions = np.transpose((sources["xcentroid"], sources["ycentroid"]))
@@ -687,9 +710,9 @@ def detection_and_photometry(
                 wcs_obj = w
                 if wcs_obj.pixel_n_dim > 2:
                     wcs_obj = wcs_obj.celestial
-                    st.info("Reduced WCS to 2D celestial coordinates for photometry")
+                    progress.info("Reduced WCS to 2D celestial coordinates for photometry")
             except Exception as e:
-                st.warning(f"Error creating WCS object: {e}")
+                progress.warning(f"Error creating WCS object: {e}")
                 wcs_obj = None
         elif "CTYPE1" in science_header:
             try:
@@ -697,9 +720,9 @@ def detection_and_photometry(
                 wcs_obj = WCS(science_header)
                 if wcs_obj.pixel_n_dim > 2:
                     wcs_obj = wcs_obj.celestial
-                    st.info("Reduced WCS to 2D celestial coordinates for photometry")
+                    progress.info("Reduced WCS to 2D celestial coordinates for photometry")
             except Exception as e:
-                st.warning(f"Error creating WCS object: {e}")
+                progress.warning(f"Error creating WCS object: {e}")
                 wcs_obj = None
 
         # Perform photometry for all apertures
@@ -873,11 +896,11 @@ def detection_and_photometry(
                 epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"])
                 epsf_table["instrumental_mag"] = epsf_instrumental_mags
             else:
-                st.info(
+                progress.info(
                     "PSF photometry was not performed. Continuing with aperture photometry only."
                 )
         except Exception as e:
-            st.warning(
+            progress.warning(
                 f"Error performing EPSF photometry: {e}. Continuing with aperture photometry only."
             )
             epsf_table = None
@@ -898,13 +921,13 @@ def detection_and_photometry(
 
         try:
             if wcs_obj is not None:
-                st.info("Adding RA/Dec coordinates to photometry tables...")
+                progress.info("Adding RA/Dec coordinates to photometry tables...")
                 ra, dec = wcs_obj.pixel_to_world_values(
                     phot_table["xcenter"], phot_table["ycenter"]
                 )
                 phot_table["ra"] = ra * u.deg
                 phot_table["dec"] = dec * u.deg
-                st.success(f"Added RA/Dec coordinates to {len(phot_table)} sources")
+                progress.success(f"Added RA/Dec coordinates to {len(phot_table)} sources")
 
                 if epsf_table is not None:
                     try:
@@ -913,17 +936,17 @@ def detection_and_photometry(
                         )
                         epsf_table["ra"] = epsf_ra * u.deg
                         epsf_table["dec"] = epsf_dec * u.deg
-                        st.success(
+                        progress.success(
                             f"Added RA/Dec coordinates to {len(epsf_table)} PSF sources"
                         )
                     except Exception as e:
-                        st.warning(f"Could not add coordinates to EPSF table: {e}")
+                        progress.warning(f"Could not add coordinates to EPSF table: {e}")
             else:
-                st.warning("No WCS object available - coordinates will not be added")
+                progress.warning("No WCS object available - coordinates will not be added")
                 if all(
                     key in science_header for key in ["RA", "DEC", "NAXIS1", "NAXIS2"]
                 ):
-                    st.info("Using simple linear approximation for RA/DEC coordinates")
+                    progress.info("Using simple linear approximation for RA/DEC coordinates")
                     center_ra = science_header["RA"]
                     center_dec = science_header["DEC"]
                     width = science_header["NAXIS1"]
@@ -944,11 +967,11 @@ def detection_and_photometry(
                         )
                         phot_table[i]["dec"] = center_dec + dy
         except Exception as e:
-            st.warning(
+            progress.warning(
                 f"WCS transformation failed: {e}. RA and Dec not added to tables."
             )
 
-        st.write(f"Found {len(phot_table)} sources and performed photometry.")
+        progress.write(f"Found {len(phot_table)} sources and performed photometry.")
         return (
             phot_table,
             epsf_table,
@@ -960,7 +983,7 @@ def detection_and_photometry(
             mask,
         )
     except Exception as e:
-        st.error(f"Error performing aperture photometry: {e}")
+        progress.error(f"Error performing aperture photometry: {e}")
         return None, None, daofind, bkg, wcs_obj, None, fwhm_estimate, mask
 
 
@@ -982,7 +1005,13 @@ def show_subtracted_image(image_sub):
     plt.close(fig)
 
 
-def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
+def calculate_zero_point(
+    _phot_table,
+    _matched_table,
+    filter_band,
+    air,
+    progress: Optional[ProgressReporter] = None,
+):
     """
     Calculate photometric zero point from matched sources with GAIA.
 
@@ -1015,8 +1044,10 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
     - Stores the calibrated photometry table in session state as 'final_phot_table'
     - Creates and saves a plot showing the relation between GAIA and calibrated magnitudes
     """
+    progress = progress or get_default_reporter()
+    
     if _matched_table is None or len(_matched_table) == 0:
-        st.warning("No matched sources to calculate zero point.")
+        progress.warning("No matched sources to calculate zero point.")
         return None, None, None
 
     try:
@@ -1030,7 +1061,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Check if the column exists in matched table
         if instrumental_mag_col not in _matched_table.columns:
-            st.error(
+            progress.error(
                 f"Column '{instrumental_mag_col}' not found in matched table. Available columns: {list(_matched_table.columns)}"
             )
             return None, None, None
@@ -1096,7 +1127,10 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
                     _matched_table[instrumental_col] + zero_point_value  # - 0.09 * air
                 )
 
-        st.session_state["final_phot_table"] = _phot_table
+        # Only store in session state if running in Streamlit
+        from src.progress import is_streamlit_context
+        if is_streamlit_context():
+            st.session_state["final_phot_table"] = _phot_table
 
         fig, (ax, ax_resid) = plt.subplots(1, 2, figsize=(14, 6), dpi=100)
 
@@ -1105,7 +1139,7 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Check if the aperture_mag column exists before calculating residuals
         if aperture_mag_col not in _matched_table.columns:
-            st.warning(
+            progress.warning(
                 f"Column '{aperture_mag_col}' not found. Cannot create calibration plots."
             )
             return round(zero_point_value, 2), round(zero_point_std, 2), None
@@ -1232,27 +1266,34 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
 
         # Adjust layout and display
         fig.tight_layout()
-        st.pyplot(fig)
+        
+        # Only show plot in Streamlit context
+        if is_streamlit_context():
+            st.pyplot(fig)
 
-        st.success(
+        progress.success(
             f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f}"
         )
 
         try:
-            base_name = st.session_state.get("base_filename", "photometry")
-            username = st.session_state.get("username", "anonymous")
+            if is_streamlit_context():
+                base_name = st.session_state.get("base_filename", "photometry")
+                username = st.session_state.get("username", "anonymous")
+            else:
+                base_name = "photometry"
+                username = "background_task"
             output_dir = ensure_output_directory(directory=f"{username}_results")
             zero_point_plot_path = os.path.join(
                 output_dir, f"{base_name}_zero_point_plot.png"
             )
             fig.savefig(zero_point_plot_path)
         except Exception as e:
-            st.warning(f"Could not save plot to file: {e}")
+            progress.warning(f"Could not save plot to file: {e}")
 
         return round(zero_point_value, 2), round(zero_point_std, 2), fig
     except Exception as e:
-        st.error(f"Error calculating zero point: {e}")
+        progress.error(f"Error calculating zero point: {e}")
         import traceback
 
-        st.error(traceback.format_exc())
+        progress.error(traceback.format_exc())
         return None, None, None

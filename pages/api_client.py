@@ -30,6 +30,87 @@ class ApiClient:
         self.base_url = root.rstrip("/")
 
     # ------------------------------------------------------------------
+    # Job management endpoints
+    # ------------------------------------------------------------------
+    def submit_job(
+        self,
+        username: str,
+        password: str,
+        job_type: str,
+        fits_file_id: int,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Submit a background job for processing."""
+        payload = {
+            "job_type": job_type,
+            "fits_file_id": fits_file_id,
+            "params": params or {},
+        }
+        response = self._post(
+            "/api/jobs/submit",
+            json=payload,
+            auth=HTTPBasicAuth(username, password),
+        )
+        return response.json()
+
+    def get_job_status(
+        self,
+        username: str,
+        password: str,
+        job_id: int,
+    ) -> Dict[str, Any]:
+        """Get the status and details of a job."""
+        response = self._get(
+            f"/api/jobs/{job_id}/status",
+            auth=HTTPBasicAuth(username, password),
+        )
+        return response.json()
+
+    def get_job_events(
+        self,
+        username: str,
+        password: str,
+        job_id: int,
+    ) -> Dict[str, Any]:
+        """Get progress events for a job."""
+        response = self._get(
+            f"/api/jobs/{job_id}/events",
+            auth=HTTPBasicAuth(username, password),
+        )
+        return response.json()
+
+    def list_jobs(
+        self,
+        username: str,
+        password: str,
+        status: Optional[str] = None,
+        limit: int = 20,
+    ) -> Dict[str, Any]:
+        """List jobs for the current user."""
+        params = {"limit": limit}
+        if status:
+            params["status"] = status
+        response = self._get(
+            "/api/jobs",
+            auth=HTTPBasicAuth(username, password),
+            params=params,
+        )
+        return response.json()
+
+    def cancel_job(
+        self,
+        username: str,
+        password: str,
+        job_id: int,
+    ) -> str:
+        """Cancel a pending or running job."""
+        response = self._delete(
+            f"/api/jobs/{job_id}",
+            auth=HTTPBasicAuth(username, password),
+        )
+        return self._extract_message(response)
+
+    # ------------------------------------------------------------------
     # Authentication helpers
     # ------------------------------------------------------------------
     def login(self, username: str, password: str) -> str:
@@ -103,11 +184,13 @@ class ApiClient:
         self,
         path: str,
         auth: Optional[HTTPBasicAuth],
+        params: Optional[Dict[str, Any]] = None,
     ) -> requests.Response:
         try:
             response = requests.get(
                 f"{self.base_url}{path}",
                 auth=auth,
+                params=params,
                 timeout=_REQUEST_TIMEOUT,
             )
         except requests.RequestException as exc:  # pragma: no cover
@@ -125,6 +208,22 @@ class ApiClient:
             response = requests.post(
                 f"{self.base_url}{path}",
                 json=json,
+                auth=auth,
+                timeout=_REQUEST_TIMEOUT,
+            )
+        except requests.RequestException as exc:  # pragma: no cover
+            raise ApiError(status_code=0, message=str(exc)) from exc
+        self._raise_for_status(response)
+        return response
+
+    def _delete(
+        self,
+        path: str,
+        auth: Optional[HTTPBasicAuth],
+    ) -> requests.Response:
+        try:
+            response = requests.delete(
+                f"{self.base_url}{path}",
                 auth=auth,
                 timeout=_REQUEST_TIMEOUT,
             )
@@ -195,3 +294,16 @@ def detect_backend(timeout: float = 2.0) -> Dict[str, str]:
         "legacy_backend_url": legacy_url,
         "message": ("API backend not reachable. Using legacy server"),
     }
+
+
+def check_celery_available(base_url: Optional[str] = None, timeout: float = 2.0) -> bool:
+    """Check if Celery workers are available for background processing."""
+    api_url = (base_url or DEFAULT_API_URL).rstrip("/")
+    try:
+        response = requests.get(f"{api_url}/api/jobs/health", timeout=timeout)
+        if response.ok:
+            data = response.json()
+            return data.get("celery_available", False)
+    except requests.RequestException:
+        pass
+    return False
