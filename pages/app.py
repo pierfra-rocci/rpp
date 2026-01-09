@@ -51,6 +51,7 @@ from src.utils import (
     save_catalog_files,
     save_fits_with_wcs,
 )
+from src.db_tracking import record_analysis_result
 
 from src.pipeline import (
     calculate_zero_point,
@@ -448,7 +449,22 @@ st.session_state["output_dir"] = output_dir
 
 if st.session_state.get("final_phot_table") is not None:
     provide_download_buttons(output_dir)
-    zip_results_on_exit(science_file, output_dir)
+    zip_filename, zip_path = zip_results_on_exit(science_file, output_dir)
+    
+    # Record in database if ZIP was created and we have a stored FITS file
+    if zip_filename and st.session_state.get("stored_fits_filename"):
+        try:
+            record_analysis_result(
+                username=username,
+                original_filename=science_file.name,
+                stored_fits_filename=st.session_state["stored_fits_filename"],
+                zip_archive_filename=zip_filename,
+                zip_stored_relpath=zip_path,
+                has_wcs=st.session_state.get("has_wcs", True)
+            )
+        except Exception as db_error:
+            # Don't fail the app if database tracking fails
+            print(f"Warning: Could not record analysis in database: {db_error}")
 
 
 if science_file is not None:
@@ -618,7 +634,7 @@ if science_file is not None:
                         st.info("Updated WCS header saved")
 
                     # Save the FITS file with updated WCS header
-                    wcs_fits_path, wcs_fits_error = save_fits_with_wcs(
+                    wcs_fits_path, wcs_fits_error, stored_fits_filename = save_fits_with_wcs(
                         science_file_path,
                         science_header,
                         output_dir,
@@ -630,6 +646,9 @@ if science_file is not None:
                     if wcs_fits_path:
                         st.info(f"WCS-solved FITS saved: {os.path.basename(wcs_fits_path)}")
                         write_to_log(log_buffer, f"WCS-solved FITS saved to {wcs_fits_path}")
+                        # Store the filename for database tracking later
+                        st.session_state["stored_fits_filename"] = stored_fits_filename
+                        st.session_state["has_wcs"] = True
                     elif wcs_fits_error:
                         st.warning(f"Could not save WCS FITS: {wcs_fits_error}")
                         write_to_log(log_buffer, f"Warning: {wcs_fits_error}", level="WARNING")
@@ -1509,7 +1528,22 @@ if science_file is not None:
                 if final_phot_table is not None:
                     provide_download_buttons(output_dir)
                     cleanup_temp_files()
-                    zip_results_on_exit(science_file, output_dir)
+                    zip_filename, zip_path = zip_results_on_exit(science_file, output_dir)
+                    
+                    # Record in database if ZIP was created and we have a stored FITS file
+                    if zip_filename and st.session_state.get("stored_fits_filename"):
+                        try:
+                            record_analysis_result(
+                                username=st.session_state.get("username", "anonymous"),
+                                original_filename=science_file.name,
+                                stored_fits_filename=st.session_state["stored_fits_filename"],
+                                zip_archive_filename=zip_filename,
+                                zip_stored_relpath=zip_path,
+                                has_wcs=st.session_state.get("has_wcs", True)
+                            )
+                        except Exception as db_error:
+                            # Don't fail the app if database tracking fails
+                            print(f"Warning: Could not record analysis in database: {db_error}")
             else:
                 st.warning(
                     "Could not determine coordinates from image header. Cannot display ESASky or Aladin Viewer."

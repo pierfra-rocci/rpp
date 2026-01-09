@@ -98,6 +98,12 @@ After processing, download the ZIP archive containing:
 1. **In the ZIP archive** (`*_wcs.fits`) - included with your download
 2. **In `rpp_data/fits/`** - a permanent copy that gets overwritten if you reprocess the same file
 
+**Analysis Tracking**: All analysis results are automatically tracked in the database:
+- Each WCS-solved FITS file is recorded with your username
+- Each ZIP archive is linked to its source FITS file(s)
+- You can have multiple analysis runs from the same FITS file (different parameters)
+- Query your analysis history programmatically using `src/db_tracking.py` functions
+
 ### Photometric Quality Flags
 
 | Quality Flag | S/N Range | Reliability | Recommended Use |

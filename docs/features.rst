@@ -18,6 +18,13 @@ User Authentication & Multi-User Support
    - Automatic loading of saved configurations on login
    - Local and remote configuration synchronization
 
+**Analysis History Tracking**:
+   - Database tracking of all WCS-solved FITS files per user
+   - Complete archive of result ZIP files with timestamps
+   - Many-to-many linking between FITS files and result archives
+   - Query functions to retrieve analysis history
+   - Safe migration scripts for database schema updates
+
 Advanced Image Processing
 ------------------------
 

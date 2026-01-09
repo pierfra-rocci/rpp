@@ -212,9 +212,16 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - **WCS-Solved FITS Export**: 
   - New `save_fits_with_wcs()` utility function saves original image with updated WCS header
   - Automatically triggered after successful astrometry solving
+- **Database Tracking System**:
+  - New tables track WCS-solved FITS files and result ZIP archives per user
+  - Many-to-many relationship: one FITS file can be linked to multiple analysis runs
+  - Migration script `scripts/migrate_add_wcs_zip_tables.py` for existing databases
+  - Query functions to retrieve user's analysis history
 - **Improved Quality Filtering**:
   - Magnitude error threshold reduced from 2.0 to 1.5 for stricter quality control
   - Added absolute value handling for occasional negative error values
+- **Testing**:
+  - New test suite `tests/test_database.py` with 35 tests for database functionality
 
 ### Version 1.5.3
 - **Photometry Calculation Improvements**: 

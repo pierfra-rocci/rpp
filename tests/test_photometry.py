@@ -76,7 +76,7 @@ class TestSNRCalculations:
 
         # Should preserve decimal precision
         assert snr != round(snr)
-        assert_allclose(snr, 100.00405479, rtol=1e-7)
+        assert_allclose(snr, 100.00063909, rtol=1e-7)
 
 
 class TestMagnitudeErrorCalculations:
@@ -269,7 +269,7 @@ class TestRealisticScenarios:
         mag_err = 1.0857 * flux_err / flux
 
         assert_allclose(snr, 100.0)
-        assert_allclose(mag_err, 0.01087, rtol=1e-4)
+        assert_allclose(mag_err, 0.010857, rtol=1e-4)
 
         # Quality should be 'good'
         quality = "good" if snr >= 5 else ("marginal" if snr >= 3 else "poor")

@@ -330,10 +330,16 @@ def safe_catalog_query(query_func, error_msg, *args, **kwargs):
 
 
 def zip_results_on_exit(science_file_obj, outputdir):
-    """Compresses analysis result files into a timestamped ZIP archive."""
+    """Compresses analysis result files into a timestamped ZIP archive.
+    
+    Returns:
+        tuple (str, str) or (None, None): 
+            - (zip_filename, zip_path) if successful
+            - (None, None) if no files to zip or output_dir doesn't exist
+    """
     output_dir = outputdir
     if not os.path.exists(output_dir):
-        return
+        return None, None
     base_name = get_base_filename(science_file_obj)
     files = [
         f
@@ -343,7 +349,7 @@ def zip_results_on_exit(science_file_obj, outputdir):
         and not f.lower().endswith(".zip")
     ]
     if not files:
-        return
+        return None, None
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_filename = f"{base_name}_{timestamp}.zip"
     zip_path = os.path.join(os.path.dirname(output_dir + "/rpp_results"), zip_filename)
@@ -356,6 +362,8 @@ def zip_results_on_exit(science_file_obj, outputdir):
             os.remove(os.path.join(output_dir, file))
         except Exception as e:
             print(f"Warning: Could not remove file {file} after zipping: {e}")
+    
+    return zip_filename, zip_path
 
 
 def save_header_to_txt(header, filename, output_dir):
@@ -461,15 +469,18 @@ def save_fits_with_wcs(original_path, updated_header, output_dir,
 
     Returns
     -------
-    tuple (str | None, str | None)
-        - (filepath, None): If successful.
-        - (None, error_message): If failed.
+    tuple (str | None, str | None, str | None)
+        - (filepath, None, stored_filename): If successful.
+          stored_filename is the name of the file saved to rpp_data/fits/
+        - (None, error_message, None): If failed.
     """
     if updated_header is None:
-        return None, "Updated header is None"
+        return None, "Updated header is None", None
 
     if not os.path.exists(original_path):
-        return None, f"Original FITS file not found: {original_path}"
+        return None, f"Original FITS file not found: {original_path}", None
+
+    stored_filename = None  # Track the filename saved to rpp_data/fits/
 
     try:
         # Open original FITS and get the image data
@@ -512,20 +523,20 @@ def save_fits_with_wcs(original_path, updated_header, output_dir,
                     data_base_name = base_name
 
                 # Save with username prefix - overwrites on reprocessing
-                data_output_filename = os.path.join(
-                    data_fits_dir, f"{data_base_name}{filename_suffix}.fits"
-                )
+                stored_filename = f"{data_base_name}{filename_suffix}.fits"
+                data_output_filename = os.path.join(data_fits_dir, stored_filename)
                 hdul_new.writeto(data_output_filename, overwrite=True)
             except Exception as data_save_error:
                 # Don't fail the whole operation if data dir save fails
                 print(f"Warning: Could not save to rpp_data/fits: {data_save_error}")
+                stored_filename = None
 
         hdul_new.close()
 
-        return output_filename, None
+        return output_filename, None, stored_filename
 
     except Exception as e:
-        return None, f"Failed to save FITS with WCS: {str(e)}"
+        return None, f"Failed to save FITS with WCS: {str(e)}", None
 
 
 def save_catalog_files(final_table, catalog_name, output_dir):

@@ -4,6 +4,82 @@ Advanced Features
 
 This section covers advanced features and specialized use cases for RAPAS Photometry Pipeline. The application supports both FastAPI (recommended) and legacy Flask backends for all advanced workflows.
 
+Database Tracking System
+------------------------
+
+Starting with version 1.6.0, RPP includes a comprehensive database tracking system for analysis results. This enables users to track their analysis history and the relationships between input FITS files and output ZIP archives.
+
+**Database Schema**:
+
+The tracking system uses three interconnected tables:
+
+.. code-block:: text
+
+    ┌─────────────────────┐
+    │ wcs_fits_files      │
+    ├─────────────────────┤
+    │ id (PK)             │
+    │ user_id (FK→users)  │
+    │ original_filename   │  ← Original uploaded filename
+    │ stored_filename     │  ← Filename in rpp_data/fits/
+    │ has_wcs             │  ← True if WCS-solved
+    │ created_at          │
+    └─────────────────────┘
+             │
+             │ (1:N)
+             ▼
+    ┌─────────────────────┐     ┌─────────────────────┐
+    │ wcs_fits_zip_assoc  │     │ zip_archives        │
+    ├─────────────────────┤     ├─────────────────────┤
+    │ id (PK)             │     │ id (PK)             │
+    │ wcs_fits_id (FK)────┼────>│ user_id (FK→users)  │
+    │ zip_archive_id (FK) │<────┼─archive_filename    │
+    │ created_at          │     │ stored_relpath      │
+    └─────────────────────┘     │ created_at          │
+                                └─────────────────────┘
+
+**Key Features**:
+
+*   **One FITS → Many ZIPs**: A single FITS file can be associated with multiple analysis runs (different parameters, filters, etc.)
+*   **User Isolation**: Each user's data is completely isolated from other users
+*   **Automatic Recording**: Analysis results are automatically recorded when processing completes
+*   **Upsert Behavior**: Re-processing the same file updates existing records rather than creating duplicates
+
+**Migrating Existing Databases**:
+
+If you have an existing production database, use the migration script to add the new tables:
+
+.. code-block:: bash
+
+    # Creates a timestamped backup before migrating
+    python scripts/migrate_add_wcs_zip_tables.py --db-path /path/to/users.db
+    
+    # Skip backup (not recommended for production)
+    python scripts/migrate_add_wcs_zip_tables.py --skip-backup
+
+The migration is idempotent and can be run multiple times safely.
+
+**Querying Analysis History**:
+
+.. code-block:: python
+
+    from src.db_tracking import (
+        get_fits_files_for_user,
+        get_zip_archives_for_user,
+        get_zips_for_fits,
+    )
+    
+    # Get all WCS-solved FITS files for a user
+    fits_files = get_fits_files_for_user("alice")
+    for f in fits_files:
+        print(f"Original: {f['original_filename']} → Stored: {f['stored_filename']}")
+    
+    # Get all ZIP archives for a user
+    archives = get_zip_archives_for_user("alice")
+    
+    # Get all ZIPs associated with a specific FITS file
+    zips = get_zips_for_fits(fits_id=1)
+
 Transient Detection (Beta)
 -----------------------
 
