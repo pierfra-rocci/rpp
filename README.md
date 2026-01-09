@@ -202,9 +202,21 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - Check internet connectivity for catalog queries (GAIA, SIMBAD, etc.).
 - Verify coordinate system and field center are correct.
 
-## Recent changes / Changelog (last update: 2026-01-07)
+## Recent changes / Changelog (last update: 2026-01-09)
 
-### Current Version (1.5.3)
+### Current Version (1.6.0)
+- **New Storage Structure**: 
+  - FITS file storage moved from `data/fits/` to `rpp_data/fits/` (same level as `rpp_results/`)
+  - WCS-solved FITS files are now saved both in the ZIP archive and to `rpp_data/fits/`
+  - Permanent copy in `rpp_data/fits/` is overwritten when the same file is reprocessed
+- **WCS-Solved FITS Export**: 
+  - New `save_fits_with_wcs()` utility function saves original image with updated WCS header
+  - Automatically triggered after successful astrometry solving
+- **Improved Quality Filtering**:
+  - Magnitude error threshold reduced from 2.0 to 1.5 for stricter quality control
+  - Added absolute value handling for occasional negative error values
+
+### Version 1.5.3
 - **Photometry Calculation Improvements**: 
   - Fixed critical PSF S/N calculation (was using `sqrt(flux_err)` instead of `flux_err`)
   - Removed S/N rounding to preserve precision and avoid divide-by-zero errors
