@@ -34,7 +34,7 @@ def mask_and_remove_cosmic_rays(
 ):
     """
     Create a mask for saturated pixels and cosmic rays using L.A.Cosmic.
-    
+
     Parameters
     ----------
     image_data : numpy.ndarray
@@ -45,7 +45,7 @@ def mask_and_remove_cosmic_rays(
         Progress reporter for status updates. Uses default if None.
     """
     progress = progress or get_default_reporter()
-    
+
     # Safe parse of header SATURATE -> float, fallback to robust max
     sat_hdr = header.get("SATURATE", None)
     try:
@@ -88,7 +88,9 @@ def mask_and_remove_cosmic_rays(
             crmask = res.astype(bool)
         progress.success("Saturated pixels and Cosmic ray detection complete.")
     except Exception:
-        progress.warning("Cosmic ray detection failed, proceeding with saturation only mask.")
+        progress.warning(
+            "Cosmic ray detection failed, proceeding with saturation only mask."
+        )
         crmask = np.zeros_like(mask, dtype=bool)
 
     mask |= crmask
@@ -194,7 +196,7 @@ def make_border_mask(
     inner[top : height - bottom, left : width - right] = True
 
     mask = ~inner if invert else inner
-    
+
     # Use progress reporter if provided
     progress = progress or get_default_reporter()
     progress.info(
@@ -444,7 +446,7 @@ def fwhm_fit(
     Progress updates and error messages are displayed using the progress reporter.
     """
     progress = progress or get_default_reporter()
-    
+
     try:
         _, _, clipped_std = sigma_clipped_stats(_img, sigma=3.0)
 
@@ -582,14 +584,18 @@ def detection_and_photometry(
     try:
         w, wcs_error, log_msgs = safe_wcs_create(science_header)
         if w is None:
-            progress.error(f"Error creating WCS in detection_and_photometry: {wcs_error}")
+            progress.error(
+                f"Error creating WCS in detection_and_photometry: {wcs_error}"
+            )
             progress.error(
                 "Will attempt to proceed without WCS - coordinates will not be available"
             )
             # Don't return here - allow photometry to continue without coordinates
             # return None, None, daofind, None, None, None, None, None
         else:
-            progress.success("WCS object created successfully in detection_and_photometry")
+            progress.success(
+                "WCS object created successfully in detection_and_photometry"
+            )
     except Exception as e:
         progress.error(f"Exception while creating WCS in detection_and_photometry: {e}")
         w = None
@@ -612,7 +618,9 @@ def detection_and_photometry(
 
     # cosmic-ray mask produced by LA Cosmic / custom routine (True = masked)
     try:
-        cr_mask = mask_and_remove_cosmic_rays(image_data, science_header, progress=progress)
+        cr_mask = mask_and_remove_cosmic_rays(
+            image_data, science_header, progress=progress
+        )
     except Exception:
         cr_mask = np.zeros_like(border_mask, dtype=bool)
 
@@ -639,6 +647,7 @@ def detection_and_photometry(
 
     # Only show plots if running in Streamlit context
     from src.progress import is_streamlit_context
+
     if is_streamlit_context():
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.imshow(mask, cmap="viridis", origin="lower")
@@ -670,7 +679,9 @@ def detection_and_photometry(
     )
 
     progress.write("Estimating FWHM ...")
-    fwhm_estimate, clipped_std = fwhm_fit(image_sub, mean_fwhm_pixel, mask, progress=progress)
+    fwhm_estimate, clipped_std = fwhm_fit(
+        image_sub, mean_fwhm_pixel, mask, progress=progress
+    )
 
     if fwhm_estimate is None:
         progress.warning("Failed to estimate FWHM. Using the initial estimate.")
@@ -710,7 +721,9 @@ def detection_and_photometry(
                 wcs_obj = w
                 if wcs_obj.pixel_n_dim > 2:
                     wcs_obj = wcs_obj.celestial
-                    progress.info("Reduced WCS to 2D celestial coordinates for photometry")
+                    progress.info(
+                        "Reduced WCS to 2D celestial coordinates for photometry"
+                    )
             except Exception as e:
                 progress.warning(f"Error creating WCS object: {e}")
                 wcs_obj = None
@@ -720,7 +733,9 @@ def detection_and_photometry(
                 wcs_obj = WCS(science_header)
                 if wcs_obj.pixel_n_dim > 2:
                     wcs_obj = wcs_obj.celestial
-                    progress.info("Reduced WCS to 2D celestial coordinates for photometry")
+                    progress.info(
+                        "Reduced WCS to 2D celestial coordinates for photometry"
+                    )
             except Exception as e:
                 progress.warning(f"Error creating WCS object: {e}")
                 wcs_obj = None
@@ -927,7 +942,9 @@ def detection_and_photometry(
                 )
                 phot_table["ra"] = ra * u.deg
                 phot_table["dec"] = dec * u.deg
-                progress.success(f"Added RA/Dec coordinates to {len(phot_table)} sources")
+                progress.success(
+                    f"Added RA/Dec coordinates to {len(phot_table)} sources"
+                )
 
                 if epsf_table is not None:
                     try:
@@ -940,13 +957,19 @@ def detection_and_photometry(
                             f"Added RA/Dec coordinates to {len(epsf_table)} PSF sources"
                         )
                     except Exception as e:
-                        progress.warning(f"Could not add coordinates to EPSF table: {e}")
+                        progress.warning(
+                            f"Could not add coordinates to EPSF table: {e}"
+                        )
             else:
-                progress.warning("No WCS object available - coordinates will not be added")
+                progress.warning(
+                    "No WCS object available - coordinates will not be added"
+                )
                 if all(
                     key in science_header for key in ["RA", "DEC", "NAXIS1", "NAXIS2"]
                 ):
-                    progress.info("Using simple linear approximation for RA/DEC coordinates")
+                    progress.info(
+                        "Using simple linear approximation for RA/DEC coordinates"
+                    )
                     center_ra = science_header["RA"]
                     center_dec = science_header["DEC"]
                     width = science_header["NAXIS1"]
@@ -1045,7 +1068,7 @@ def calculate_zero_point(
     - Creates and saves a plot showing the relation between GAIA and calibrated magnitudes
     """
     progress = progress or get_default_reporter()
-    
+
     if _matched_table is None or len(_matched_table) == 0:
         progress.warning("No matched sources to calculate zero point.")
         return None, None, None
@@ -1129,6 +1152,7 @@ def calculate_zero_point(
 
         # Only store in session state if running in Streamlit
         from src.progress import is_streamlit_context
+
         if is_streamlit_context():
             st.session_state["final_phot_table"] = _phot_table
 
@@ -1266,7 +1290,7 @@ def calculate_zero_point(
 
         # Adjust layout and display
         fig.tight_layout()
-        
+
         # Only show plot in Streamlit context
         if is_streamlit_context():
             st.pyplot(fig)

@@ -381,24 +381,22 @@ with st.sidebar.expander("📁 Tasks Archive", expanded=False):
 if st.session_state.get("api_mode", False):
     with st.sidebar.expander("🔄 Background Jobs", expanded=False):
         # Check Celery availability
-        celery_available = check_celery_available(
-            st.session_state.get("api_base_url")
-        )
-        
+        celery_available = check_celery_available(st.session_state.get("api_base_url"))
+
         if celery_available:
             st.success("✅ Background workers available")
-            
+
             # Show toggle for background mode
             if "run_in_background" not in st.session_state:
                 st.session_state.run_in_background = False
-            
+
             st.session_state.run_in_background = st.checkbox(
                 "Run analyses in background",
                 value=st.session_state.run_in_background,
                 help="When enabled, analyses will run on the server. "
-                     "You can close the browser and check results later.",
+                "You can close the browser and check results later.",
             )
-            
+
             # List recent jobs
             creds = st.session_state.get("api_credentials")
             if creds and st.button("📋 Refresh Jobs", key="refresh_jobs"):
@@ -412,7 +410,7 @@ if st.session_state.get("api_mode", False):
                     st.session_state["recent_jobs"] = jobs_data.get("jobs", [])
                 except ApiError as exc:
                     st.error(f"Error: {exc.message}")
-            
+
             # Display recent jobs
             recent_jobs = st.session_state.get("recent_jobs", [])
             if recent_jobs:
@@ -425,10 +423,10 @@ if st.session_state.get("api_mode", False):
                         "failed": "❌",
                         "cancelled": "🚫",
                     }.get(job.get("status", ""), "❓")
-                    
+
                     job_type = job.get("job_type", "unknown")
                     job_id = job.get("id", "?")
-                    
+
                     st.caption(f"{status_icon} #{job_id}: {job_type}")
         else:
             st.warning("⚠️ Background workers not available")
@@ -471,20 +469,19 @@ if st.session_state.get("api_mode", False):
                 limit=5,
             )
             running_jobs = jobs_data.get("jobs", [])
-            
+
             if running_jobs:
                 with st.expander(
-                    f"🔄 {len(running_jobs)} Background Job(s) Running",
-                    expanded=True
+                    f"🔄 {len(running_jobs)} Background Job(s) Running", expanded=True
                 ):
                     for job in running_jobs:
                         job_id = job.get("id")
                         job_type = job.get("job_type", "unknown")
-                        
+
                         col1, col2 = st.columns([3, 1])
                         with col1:
                             st.write(f"**Job #{job_id}**: {job_type}")
-                            
+
                             # Get progress events
                             try:
                                 events = client.get_job_events(
@@ -498,7 +495,7 @@ if st.session_state.get("api_mode", False):
                                     st.caption(f"Latest: {latest.get('message', '')}")
                             except Exception:
                                 pass
-                        
+
                         with col2:
                             if st.button("🚫 Cancel", key=f"cancel_{job_id}"):
                                 try:
@@ -511,7 +508,7 @@ if st.session_state.get("api_mode", False):
                                     st.rerun()
                                 except ApiError as exc:
                                     st.error(f"Error: {exc.message}")
-                    
+
                     st.caption("Jobs continue running even if you close the browser")
         except Exception:
             pass  # Don't show errors for job checking
@@ -567,7 +564,7 @@ st.session_state["output_dir"] = output_dir
 if st.session_state.get("final_phot_table") is not None:
     provide_download_buttons(output_dir)
     zip_filename, zip_path = zip_results_on_exit(science_file, output_dir)
-    
+
     # Record in database if ZIP was created and we have a stored FITS file
     if zip_filename and st.session_state.get("stored_fits_filename"):
         try:
@@ -577,7 +574,7 @@ if st.session_state.get("final_phot_table") is not None:
                 stored_fits_filename=st.session_state["stored_fits_filename"],
                 zip_archive_filename=zip_filename,
                 zip_stored_relpath=zip_path,
-                has_wcs=st.session_state.get("has_wcs", True)
+                has_wcs=st.session_state.get("has_wcs", True),
             )
         except Exception as db_error:
             # Don't fail the app if database tracking fails
@@ -631,8 +628,7 @@ if science_file is not None:
 
     # Extract filter from header with multiple possible keywords
     filter_raw = None
-    for filter_key in ["FILTER", "FILTERS", "FLT",
-                       "FILTER1", "FILTRE", "INSFLNAM"]:
+    for filter_key in ["FILTER", "FILTERS", "FLT", "FILTER1", "FILTRE", "INSFLNAM"]:
         if filter_key in science_header:
             filter_raw = str(science_header[filter_key]).strip().upper()
             break
@@ -655,7 +651,7 @@ if science_file is not None:
         write_to_log(
             st.session_state.log_buffer,
             f"Filter mismatch: Header={filter_raw} (→{filter_mapped}), Selected={selected_filter}",
-            level="WARNING"
+            level="WARNING",
         )
     else:
         write_to_log(
@@ -751,24 +747,32 @@ if science_file is not None:
                         st.info("Updated WCS header saved")
 
                     # Save the FITS file with updated WCS header
-                    wcs_fits_path, wcs_fits_error, stored_fits_filename = save_fits_with_wcs(
-                        science_file_path,
-                        science_header,
-                        output_dir,
-                        filename_suffix="_wcs",
-                        also_save_to_data_dir=True,
-                        original_filename=science_file.name,
-                        username=st.session_state.get("username", "anonymous"),
+                    wcs_fits_path, wcs_fits_error, stored_fits_filename = (
+                        save_fits_with_wcs(
+                            science_file_path,
+                            science_header,
+                            output_dir,
+                            filename_suffix="_wcs",
+                            also_save_to_data_dir=True,
+                            original_filename=science_file.name,
+                            username=st.session_state.get("username", "anonymous"),
+                        )
                     )
                     if wcs_fits_path:
-                        st.info(f"WCS-solved FITS saved: {os.path.basename(wcs_fits_path)}")
-                        write_to_log(log_buffer, f"WCS-solved FITS saved to {wcs_fits_path}")
+                        st.info(
+                            f"WCS-solved FITS saved: {os.path.basename(wcs_fits_path)}"
+                        )
+                        write_to_log(
+                            log_buffer, f"WCS-solved FITS saved to {wcs_fits_path}"
+                        )
                         # Store the filename for database tracking later
                         st.session_state["stored_fits_filename"] = stored_fits_filename
                         st.session_state["has_wcs"] = True
                     elif wcs_fits_error:
                         st.warning(f"Could not save WCS FITS: {wcs_fits_error}")
-                        write_to_log(log_buffer, f"Warning: {wcs_fits_error}", level="WARNING")
+                        write_to_log(
+                            log_buffer, f"Warning: {wcs_fits_error}", level="WARNING"
+                        )
 
                     # Re-extract pixel scale and recalculate seeing with updated header
                     pixel_size_arcsec, pixel_scale_source = extract_pixel_scale(
@@ -1161,17 +1165,17 @@ if science_file is not None:
             run_in_background = st.session_state.get("run_in_background", False)
             api_mode = st.session_state.get("api_mode", False)
             creds = st.session_state.get("api_credentials")
-            
+
             if run_in_background and api_mode and creds:
                 # Submit job to background worker
                 st.info("🔄 Submitting analysis to background worker...")
-                
+
                 try:
                     client = ApiClient(creds.get("base_url"))
-                    
+
                     # We need a fits_file_id - check if we have one
                     fits_file_id = st.session_state.get("stored_fits_file_id")
-                    
+
                     if not fits_file_id:
                         st.warning(
                             "Cannot run in background: FITS file must be "
@@ -1195,7 +1199,7 @@ if science_file is not None:
                                 "filter_max_mag"
                             ],
                         }
-                        
+
                         # Submit photometry job
                         result = client.submit_job(
                             username=creds["username"],
@@ -1204,7 +1208,7 @@ if science_file is not None:
                             fits_file_id=fits_file_id,
                             params=job_params,
                         )
-                        
+
                         job_id = result.get("job_id")
                         st.success(
                             f"✅ Job submitted! ID: #{job_id}\n\n"
@@ -1212,24 +1216,26 @@ if science_file is not None:
                             "continue on the server. Check the 'Background Jobs' "
                             "section in the sidebar to monitor progress."
                         )
-                        
+
                         # Store job info in session
                         if "submitted_jobs" not in st.session_state:
                             st.session_state.submitted_jobs = []
-                        st.session_state.submitted_jobs.append({
-                            "job_id": job_id,
-                            "job_type": "photometry",
-                            "filename": science_file.name,
-                        })
-                        
+                        st.session_state.submitted_jobs.append(
+                            {
+                                "job_id": job_id,
+                                "job_type": "photometry",
+                                "filename": science_file.name,
+                            }
+                        )
+
                         # Skip local processing
                         st.stop()
-                        
+
                 except ApiError as exc:
                     st.error(f"Failed to submit job: {exc.message}")
                     st.info("Falling back to local processing...")
                     run_in_background = False
-            
+
             # Local processing (default or fallback)
             try:
                 with st.spinner(
@@ -1719,22 +1725,28 @@ if science_file is not None:
                 if final_phot_table is not None:
                     provide_download_buttons(output_dir)
                     cleanup_temp_files()
-                    zip_filename, zip_path = zip_results_on_exit(science_file, output_dir)
-                    
+                    zip_filename, zip_path = zip_results_on_exit(
+                        science_file, output_dir
+                    )
+
                     # Record in database if ZIP was created and we have a stored FITS file
                     if zip_filename and st.session_state.get("stored_fits_filename"):
                         try:
                             record_analysis_result(
                                 username=st.session_state.get("username", "anonymous"),
                                 original_filename=science_file.name,
-                                stored_fits_filename=st.session_state["stored_fits_filename"],
+                                stored_fits_filename=st.session_state[
+                                    "stored_fits_filename"
+                                ],
                                 zip_archive_filename=zip_filename,
                                 zip_stored_relpath=zip_path,
-                                has_wcs=st.session_state.get("has_wcs", True)
+                                has_wcs=st.session_state.get("has_wcs", True),
                             )
                         except Exception as db_error:
                             # Don't fail the app if database tracking fails
-                            print(f"Warning: Could not record analysis in database: {db_error}")
+                            print(
+                                f"Warning: Could not record analysis in database: {db_error}"
+                            )
             else:
                 st.warning(
                     "Could not determine coordinates from image header. Cannot display ESASky or Aladin Viewer."

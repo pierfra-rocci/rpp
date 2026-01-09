@@ -28,7 +28,7 @@ def _try_source_detection(
     Refactored to use stdpipe (SExtractor/SEP + photutils measurement)
     """
     progress = progress or get_default_reporter()
-    
+
     # We iterate through parameters to find a good set
     for fwhm_est in fwhm_estimates:
         for thresh in threshold_multi:

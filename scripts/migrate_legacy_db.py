@@ -52,24 +52,19 @@ def parse_args() -> argparse.Namespace:
         "--skip-existing",
         action="store_true",
         help=(
-            "Skip inserts when a conflicting row already exists in the "
-            "target table."
+            "Skip inserts when a conflicting row already exists in the target table."
         ),
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help=(
-            "Do not write anything; only report the actions that would be "
-            "taken."
-        ),
+        help=("Do not write anything; only report the actions that would be taken."),
     )
     parser.add_argument(
         "--backup",
         action="store_true",
         help=(
-            "Create a timestamped backup copy of the legacy database "
-            "before migrating."
+            "Create a timestamped backup copy of the legacy database before migrating."
         ),
     )
     return parser.parse_args()
@@ -158,11 +153,7 @@ def row_exists(
             filters.append(table.c[key] == payload[key])
     if not filters:
         return False
-    stmt = (
-        select(table.c[next(iter(table.c.keys()))])
-        .where(and_(*filters))
-        .limit(1)
-    )
+    stmt = select(table.c[next(iter(table.c.keys()))]).where(and_(*filters)).limit(1)
     return session.execute(stmt).first() is not None
 
 
@@ -196,10 +187,7 @@ def transfer_rows(
         )
     else:
         session.commit()
-        print(
-            f"Inserted {inserted} rows into '{table.name}' "
-            f"(skipped {skipped})."
-        )
+        print(f"Inserted {inserted} rows into '{table.name}' (skipped {skipped}).")
 
 
 def main() -> None:

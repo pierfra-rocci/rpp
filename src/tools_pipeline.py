@@ -54,7 +54,6 @@ FILTER_DICT = {
     "johnson_v": "v_jkc_mag",
     "cousins_r": "r_jkc_mag",
     "cousins_i": "i_jkc_mag",
-
     # SDSS system
     "u_sdss": "u_sdss_mag",
     "g_sdss": "gmag",
@@ -68,7 +67,6 @@ FILTER_DICT = {
     "sdss_z": "zmag",
     "g": "gmag",
     "z": "zmag",
-
     # Gaia system
     "gaia_g": "phot_g_mean_mag",
     "gaia_bp": "phot_bp_mean_mag",
@@ -78,7 +76,6 @@ FILTER_DICT = {
     "g_gaia": "phot_g_mean_mag",
     "bp_gaia": "phot_bp_mean_mag",
     "rp_gaia": "phot_rp_mean_mag",
-
     # Common clear/luminance filters
     "clear": "phot_g_mean_mag",
     "lum": "phot_g_mean_mag",
@@ -88,7 +85,6 @@ FILTER_DICT = {
     "c": "phot_rp_mean_mag",
     "open": "phot_g_mean_mag",
     "w": "phot_g_mean_mag",  # Wide/White
-
     # Color filters (RGB)
     "red": "rmag",
     "green": "gmag",
@@ -96,7 +92,6 @@ FILTER_DICT = {
     "rgb_r": "rmag",
     "rgb_g": "gmag",
     "rgb_b": "b_jkc_mag",
-
     # Sloan variations with apostrophes
     "u'": "u_sdss_mag",
     "g'": "gmag",
@@ -108,7 +103,6 @@ FILTER_DICT = {
     "sloan_r": "rmag",
     "sloan_i": "imag",
     "sloan_z": "zmag",
-
     # Pan-STARRS (map to closest SDSS equivalents)
     "ps_g": "gmag",
     "ps_r": "rmag",
@@ -118,7 +112,6 @@ FILTER_DICT = {
     "ps1_r": "rmag",
     "ps1_i": "imag",
     "ps1_z": "zmag",
-
     # Common typos and variations
     "clr": "phot_g_mean_mag",
     "lumn": "phot_g_mean_mag",
@@ -126,7 +119,6 @@ FILTER_DICT = {
     "visual": "v_jkc_mag",
     "ha": "rmag",  # H-alpha, map to r
     "oiii": "gmag",  # OIII, map to g
-
     # Telescope-specific common names
     "astrodon_r": "rmag",
     "astrodon_g": "gmag",
@@ -134,7 +126,6 @@ FILTER_DICT = {
     "baader_r": "rmag",
     "baader_g": "gmag",
     "baader_b": "b_jkc_mag",
-
     # Default/unknown
     "unknown": "phot_g_mean_mag",
     "none": "phot_g_mean_mag",

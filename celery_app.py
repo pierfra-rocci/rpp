@@ -38,21 +38,16 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    
     # Result expiration (24 hours)
     result_expires=86400,
-    
     # Task execution settings
     task_acks_late=True,  # Acknowledge after task completes (safer for long tasks)
     task_reject_on_worker_lost=True,  # Requeue if worker crashes
-    
     # Rate limiting (prevent overload)
     worker_prefetch_multiplier=1,  # One task at a time per worker
-    
     # Task time limits (seconds)
     task_soft_time_limit=1800,  # 30 minutes soft limit (raises exception)
     task_time_limit=2100,  # 35 minutes hard limit (kills task)
-    
     # Task result settings
     task_track_started=True,  # Track when task starts
     task_send_sent_event=True,  # Send event when task is dispatched

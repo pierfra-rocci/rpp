@@ -21,6 +21,6 @@ from tasks.pipeline_tasks import (
 
 __all__ = [
     "run_plate_solve",
-    "run_photometry", 
+    "run_photometry",
     "run_transient_detection",
 ]

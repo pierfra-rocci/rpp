@@ -214,4 +214,3 @@ class JobListResponse(BaseModel):
     """List of analysis jobs for the current user."""
 
     jobs: List[JobStatusResponse] = Field(default_factory=list)
-

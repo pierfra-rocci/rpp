@@ -296,7 +296,9 @@ def detect_backend(timeout: float = 2.0) -> Dict[str, str]:
     }
 
 
-def check_celery_available(base_url: Optional[str] = None, timeout: float = 2.0) -> bool:
+def check_celery_available(
+    base_url: Optional[str] = None, timeout: float = 2.0
+) -> bool:
     """Check if Celery workers are available for background processing."""
     api_url = (base_url or DEFAULT_API_URL).rstrip("/")
     try:

@@ -28,7 +28,15 @@ from sqlalchemy.orm import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .database import Base, engine, get_db
-from .models import AnalysisJob, FitsFile, FitsFileStatus, JobEvent, JobStatus, PasswordRecoveryCode, User
+from .models import (
+    AnalysisJob,
+    FitsFile,
+    FitsFileStatus,
+    JobEvent,
+    JobStatus,
+    PasswordRecoveryCode,
+    User,
+)
 from .schemas import (
     ConfigResponse,
     ConfigUpdateRequest,
@@ -184,9 +192,10 @@ def jobs_health():
     """Check if Celery workers are available for background job processing."""
     celery_available = False
     worker_count = 0
-    
+
     try:
         from celery_app import celery_app
+
         # Try to inspect active workers
         inspect = celery_app.control.inspect()
         active = inspect.active()
@@ -196,7 +205,7 @@ def jobs_health():
     except Exception:
         # Celery not available or not configured
         pass
-    
+
     return {
         "celery_available": celery_available,
         "worker_count": worker_count,
@@ -501,11 +510,13 @@ def list_fits_files(
 # ---------------------------------------------------------------------------
 
 
-def _extract_progress_from_events(events: list[JobEvent]) -> tuple[float | None, str | None]:
+def _extract_progress_from_events(
+    events: list[JobEvent],
+) -> tuple[float | None, str | None]:
     """Extract latest progress value and message from job events."""
     progress = None
     progress_message = None
-    
+
     # Find the latest progress event
     for event in reversed(events):
         if event.event_type == "progress" and event.message:
@@ -516,21 +527,21 @@ def _extract_progress_from_events(events: list[JobEvent]) -> tuple[float | None,
                 break
             except (json.JSONDecodeError, TypeError):
                 continue
-    
+
     return progress, progress_message
 
 
 def _build_job_status_response(job: AnalysisJob) -> JobStatusResponse:
     """Build a JobStatusResponse from an AnalysisJob model."""
     progress, progress_message = _extract_progress_from_events(job.events)
-    
+
     parameters = None
     if job.parameters_json:
         try:
             parameters = json.loads(job.parameters_json)
         except json.JSONDecodeError:
             parameters = None
-    
+
     return JobStatusResponse(
         id=job.id,
         fits_file_id=job.fits_file_id,
@@ -541,8 +552,7 @@ def _build_job_status_response(job: AnalysisJob) -> JobStatusResponse:
         created_at=job.created_at,
         completed_at=job.completed_at,
         events=[
-            JobEventSummary.model_validate(e, from_attributes=True)
-            for e in job.events
+            JobEventSummary.model_validate(e, from_attributes=True) for e in job.events
         ],
         progress=progress,
         progress_message=progress_message,
@@ -561,7 +571,7 @@ def submit_job(
 ) -> JobSubmitResponse:
     """
     Submit a new analysis job for background processing.
-    
+
     The job will be queued and processed by a Celery worker.
     Use GET /api/jobs/{job_id}/status to monitor progress.
     """
@@ -579,24 +589,26 @@ def submit_job(
             status_code=404,
             detail="FITS file not found or access denied.",
         )
-    
+
     if fits_file.status != FitsFileStatus.STORED:
         raise HTTPException(
             status_code=400,
             detail="FITS file is not ready for processing.",
         )
-    
+
     # Create the job record
     job = AnalysisJob(
         user_id=current_user.id,
         fits_file_id=payload.fits_file_id,
-        parameters_json=json.dumps({
-            "job_type": payload.job_type.value,
-            **(payload.parameters or {}),
-        }),
+        parameters_json=json.dumps(
+            {
+                "job_type": payload.job_type.value,
+                **(payload.parameters or {}),
+            }
+        ),
         status=JobStatus.QUEUED,
     )
-    
+
     db.add(job)
     try:
         db.commit()
@@ -607,7 +619,7 @@ def submit_job(
             status_code=400,
             detail="Unable to create job.",
         ) from exc
-    
+
     # Add initial event
     event = JobEvent(
         job_id=job.id,
@@ -616,7 +628,7 @@ def submit_job(
     )
     db.add(event)
     db.commit()
-    
+
     # TODO: Step 3 - Dispatch Celery task based on job_type
     # Example:
     # from tasks.pipeline_tasks import run_plate_solve, run_photometry
@@ -624,7 +636,7 @@ def submit_job(
     #     run_plate_solve.delay(job.id, fits_file.stored_relpath, payload.parameters or {})
     # elif payload.job_type == JobType.PHOTOMETRY:
     #     run_photometry.delay(job.id, fits_file.stored_relpath, payload.parameters or {})
-    
+
     return JobSubmitResponse(
         job_id=job.id,
         status=job.status.value,
@@ -652,7 +664,7 @@ def get_job_status(
             status_code=404,
             detail="Job not found or access denied.",
         )
-    
+
     return _build_job_status_response(job)
 
 
@@ -676,11 +688,8 @@ def get_job_events(
             status_code=404,
             detail="Job not found or access denied.",
         )
-    
-    return [
-        JobEventSummary.model_validate(e, from_attributes=True)
-        for e in job.events
-    ]
+
+    return [JobEventSummary.model_validate(e, from_attributes=True) for e in job.events]
 
 
 @app.get("/api/jobs", response_model=JobListResponse)
@@ -692,13 +701,13 @@ def list_jobs(
 ) -> JobListResponse:
     """
     List analysis jobs for the authenticated user.
-    
+
     Args:
         limit: Maximum number of jobs to return (default 50)
         status_filter: Filter by status (queued, running, succeeded, failed)
     """
     query = db.query(AnalysisJob).filter(AnalysisJob.user_id == current_user.id)
-    
+
     if status_filter:
         try:
             status_enum = JobStatus(status_filter)
@@ -708,12 +717,10 @@ def list_jobs(
                 status_code=400,
                 detail=f"Invalid status: {status_filter}. Must be one of: queued, running, succeeded, failed",
             )
-    
+
     jobs = query.order_by(AnalysisJob.created_at.desc()).limit(limit).all()
-    
-    return JobListResponse(
-        jobs=[_build_job_status_response(job) for job in jobs]
-    )
+
+    return JobListResponse(jobs=[_build_job_status_response(job) for job in jobs])
 
 
 @app.delete("/api/jobs/{job_id}", response_model=Message)
@@ -738,17 +745,17 @@ def cancel_job(
             status_code=404,
             detail="Job not found or access denied.",
         )
-    
+
     if job.status != JobStatus.QUEUED:
         raise HTTPException(
             status_code=400,
             detail=f"Cannot cancel job with status: {job.status.value}. Only queued jobs can be cancelled.",
         )
-    
+
     job.status = JobStatus.FAILED
     job.error_message = "Cancelled by user"
     job.completed_at = datetime.now(timezone.utc)
-    
+
     event = JobEvent(
         job_id=job.id,
         event_type="cancelled",
@@ -756,9 +763,9 @@ def cancel_job(
     )
     db.add(event)
     db.commit()
-    
+
     # TODO: If task was already dispatched to Celery, revoke it
     # from celery_app import celery_app
     # celery_app.control.revoke(task_id, terminate=True)
-    
+
     return Message(message=f"Job {job_id} cancelled.")

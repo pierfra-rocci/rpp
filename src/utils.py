@@ -331,9 +331,9 @@ def safe_catalog_query(query_func, error_msg, *args, **kwargs):
 
 def zip_results_on_exit(science_file_obj, outputdir):
     """Compresses analysis result files into a timestamped ZIP archive.
-    
+
     Returns:
-        tuple (str, str) or (None, None): 
+        tuple (str, str) or (None, None):
             - (zip_filename, zip_path) if successful
             - (None, None) if no files to zip or output_dir doesn't exist
     """
@@ -362,7 +362,7 @@ def zip_results_on_exit(science_file_obj, outputdir):
             os.remove(os.path.join(output_dir, file))
         except Exception as e:
             print(f"Warning: Could not remove file {file} after zipping: {e}")
-    
+
     return zip_filename, zip_path
 
 
@@ -442,9 +442,15 @@ def save_header_to_fits(header, filename, output_dir):
         return None, f"Failed to save header as FITS file: {str(e)}"
 
 
-def save_fits_with_wcs(original_path, updated_header, output_dir,
-                       filename_suffix="_wcs", also_save_to_data_dir=True,
-                       original_filename=None, username=None):
+def save_fits_with_wcs(
+    original_path,
+    updated_header,
+    output_dir,
+    filename_suffix="_wcs",
+    also_save_to_data_dir=True,
+    original_filename=None,
+    username=None,
+):
     """
     Save a FITS file with original image data and updated WCS header.
 
