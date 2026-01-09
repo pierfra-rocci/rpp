@@ -37,6 +37,7 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 - **Quality filtering**: Automated source quality assessment with S/N-based flags
 - **Error propagation**: Comprehensive photometric error calculation with zero-point uncertainty
 - **Transient Detection**: Identification of transient candidates using survey templates
+- **Background Jobs**: Celery + Redis task queue for browser-independent processing
 
 ### 🖥️ User Interface
 - **Interactive web interface**: Streamlit-based GUI with real-time processing
@@ -68,6 +69,20 @@ This will install the project in editable mode and all the dependencies.
   brew install astrometry-net
   ```
 
+- **Redis**: Required for background job processing (optional but recommended)
+  ```bash
+  # Ubuntu/Debian
+  sudo apt-get install redis-server
+  sudo systemctl enable redis-server
+  
+  # macOS with Homebrew
+  brew install redis
+  brew services start redis
+  
+  # Windows (via Docker)
+  docker run -d -p 6379:6379 redis
+  ```
+
 
 ## Quick Start
 
@@ -80,7 +95,7 @@ You must start the backend server before launching the frontend. Two modes are s
   # Windows PowerShell
   .venv\Scripts\Activate.ps1
   python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
-  # Or use run_all_cmd.bat for one-click launch
+  # Or use run_all_cmd.bat for one-click launch (includes Celery if Redis is available)
   run_all_cmd.bat
   ```
 - **Legacy Flask backend:**
@@ -88,7 +103,24 @@ You must start the backend server before launching the frontend. Two modes are s
   python backend.py
   ```
 
-### 2. Start the Frontend
+### 2. Start Celery Worker (Optional, for background jobs)
+
+To enable browser-independent analysis, start a Celery worker:
+```bash
+# Requires Redis to be running
+celery -A celery_app worker --loglevel=info
+```
+
+Or use the all-in-one script that starts everything:
+```bash
+# Linux - starts FastAPI + Celery + Streamlit
+./run_all_linux.sh
+
+# Or use the management script
+./manage_streamlit.sh start
+```
+
+### 3. Start the Frontend
 
 In a new terminal (with the virtual environment activated):
 ```bash
@@ -98,21 +130,23 @@ streamlit run pages/app.py
 ```
 Visit the URL printed by Streamlit (usually http://localhost:8501).
 
-### 3. Login or Register
+### 4. Login or Register
 
 Create an account or login with existing credentials. You can also run in anonymous mode if the backend is not configured.
 
-### 4. Configure Observatory
+### 5. Configure Observatory
 
 Set your observatory location and parameters in the sidebar (name, latitude, longitude, elevation).
 
-### 5. Upload FITS File
+### 6. Upload FITS File
 
 Upload your astronomical image to the main area. Supported extensions: `.fits`, `.fit`, `.fts`, `.fits.gz`, `.fts.gz`.
 
-### 6. Run Analysis
+### 7. Run Analysis
 
 Adjust analysis parameters as needed (seeing, detection threshold, border mask, filter band, etc.) and run the photometry pipeline. Results and logs will be available for download as a ZIP archive.
+
+**Background Processing**: If Celery workers are running, you can enable "Run analyses in background" in the sidebar. This allows you to close your browser while the analysis continues on the server.
 
 ---
 

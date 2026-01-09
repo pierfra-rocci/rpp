@@ -378,3 +378,141 @@ Example: Perform photometry and zero-point calibration
     
     # Apply zero point to get calibrated magnitudes
     calibrated_mags = phot_table['instrumental_mag'] + zp + 0.1*1.0  # Apply extinction
+
+REST API Endpoints
+-----------------
+
+Job Management API
+^^^^^^^^^^^^^^^^^
+
+The following REST API endpoints are available for background job management:
+
+.. http:post:: /api/jobs/submit
+
+   Submit a new background job for processing.
+   
+   **Request Body (JSON):**
+   
+   .. code-block:: json
+   
+      {
+          "job_type": "photometry",
+          "fits_file_id": 123,
+          "params": {
+              "fwhm": 3.5,
+              "threshold": 5.0,
+              "detection_mask": 50
+          }
+      }
+   
+   **Response:**
+   
+   .. code-block:: json
+   
+      {
+          "job_id": 456,
+          "message": "Job submitted successfully"
+      }
+   
+   :reqheader Authorization: HTTP Basic Auth
+   :statuscode 200: Job submitted successfully
+   :statuscode 400: Invalid request parameters
+   :statuscode 401: Authentication required
+
+.. http:get:: /api/jobs/(int:job_id)/status
+
+   Get the current status of a job.
+   
+   **Response:**
+   
+   .. code-block:: json
+   
+      {
+          "id": 456,
+          "job_type": "photometry",
+          "status": "running",
+          "progress": 0.45,
+          "progress_message": "Detecting sources...",
+          "created_at": "2026-01-09T12:00:00Z",
+          "started_at": "2026-01-09T12:00:05Z",
+          "fits_file_id": 123
+      }
+   
+   :reqheader Authorization: HTTP Basic Auth
+   :statuscode 200: Success
+   :statuscode 404: Job not found
+
+.. http:get:: /api/jobs/(int:job_id)/events
+
+   Get detailed progress events for a job.
+   
+   **Response:**
+   
+   .. code-block:: json
+   
+      {
+          "events": [
+              {"event_type": "started", "message": "Job started", "timestamp": "..."},
+              {"event_type": "progress", "message": "{\"progress\": 0.3, \"message\": \"Background estimation\"}", "timestamp": "..."}
+          ]
+      }
+   
+   :reqheader Authorization: HTTP Basic Auth
+   :statuscode 200: Success
+
+.. http:get:: /api/jobs
+
+   List jobs for the current user.
+   
+   **Query Parameters:**
+   
+   - ``status`` (optional): Filter by status (queued, running, succeeded, failed)
+   - ``limit`` (optional): Maximum number of jobs to return (default: 20)
+   
+   **Response:**
+   
+   .. code-block:: json
+   
+      {
+          "jobs": [
+              {"id": 456, "job_type": "photometry", "status": "succeeded", ...},
+              {"id": 455, "job_type": "plate_solve", "status": "failed", ...}
+          ],
+          "total": 25
+      }
+   
+   :reqheader Authorization: HTTP Basic Auth
+   :statuscode 200: Success
+
+.. http:delete:: /api/jobs/(int:job_id)
+
+   Cancel a pending or running job.
+   
+   **Response:**
+   
+   .. code-block:: json
+   
+      {
+          "message": "Job cancelled successfully"
+      }
+   
+   :reqheader Authorization: HTTP Basic Auth
+   :statuscode 200: Job cancelled
+   :statuscode 400: Job cannot be cancelled (already completed)
+   :statuscode 404: Job not found
+
+.. http:get:: /api/jobs/health
+
+   Check if Celery workers are available.
+   
+   **Response:**
+   
+   .. code-block:: json
+   
+      {
+          "celery_available": true,
+          "worker_count": 2,
+          "message": "Celery workers available"
+      }
+   
+   :statuscode 200: Success

@@ -11,6 +11,7 @@ Minimum Requirements
 - Python 3.12 (exactly) - required for verified dependency compatibility
 - pip (latest version recommended)
 - 2-3 GB free disk space (more recommended for large image sets and temporary processing files)
+- Redis server (optional, required for background job processing)
 
 
 Quick Install (PowerShell)
@@ -41,6 +42,21 @@ Optional External Tools
 
 - Astrometry.net: required for blind plate solving (solve-field). Install via package manager or from source and ensure `solve-field` is on PATH.
 - SCAMP: optional, for astrometric refinement.
+- Redis: required for background job processing (Celery task queue).
+
+  .. code-block:: bash
+
+     # Ubuntu/Debian
+     sudo apt-get install redis-server
+     sudo systemctl enable redis-server
+     sudo systemctl start redis-server
+
+     # macOS with Homebrew
+     brew install redis
+     brew services start redis
+
+     # Windows (via Docker)
+     docker run -d -p 6379:6379 redis
 
 
 Environment Variables
@@ -54,6 +70,22 @@ Set SMTP credentials if you want the app to send emails (password can be base64-
    $env:SMTP_PORT = '587'
    $env:SMTP_USER = 'you@example.com'
    $env:SMTP_PASS_ENCODED = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('your-app-password'))
+
+Set Redis/Celery configuration for background job processing:
+
+.. code-block:: powershell
+
+   # Windows PowerShell
+   $env:REDIS_URL = 'redis://localhost:6379/0'
+   $env:CELERY_BROKER_URL = 'redis://localhost:6379/0'
+   $env:CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+.. code-block:: bash
+
+   # Linux/macOS
+   export REDIS_URL='redis://localhost:6379/0'
+   export CELERY_BROKER_URL='redis://localhost:6379/0'
+   export CELERY_RESULT_BACKEND='redis://localhost:6379/0'
 
 
 Verification

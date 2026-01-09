@@ -80,6 +80,126 @@ The migration is idempotent and can be run multiple times safely.
     # Get all ZIPs associated with a specific FITS file
     zips = get_zips_for_fits(fits_id=1)
 
+Background Job Processing
+-------------------------
+
+Starting with version 1.6.0, RPP supports background job processing using Celery and Redis. This enables browser-independent analysis - you can start an analysis, close your browser, and retrieve results later.
+
+**Architecture**:
+
+.. code-block:: text
+
+    ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+    │  Streamlit UI   │────>│   FastAPI       │────>│     Redis       │
+    │  (Frontend)     │     │   (Backend)     │     │    (Broker)     │
+    └─────────────────┘     └─────────────────┘     └────────┬────────┘
+                                     │                       │
+                                     │                       ▼
+                                     │              ┌─────────────────┐
+                                     └─────────────>│  Celery Worker  │
+                                                    │  (Background)   │
+                                                    └─────────────────┘
+
+**Setup**:
+
+1.  **Install Redis**:
+
+    .. code-block:: bash
+    
+        # Ubuntu/Debian
+        sudo apt-get install redis-server
+        sudo systemctl enable redis-server
+        sudo systemctl start redis-server
+        
+        # Verify
+        redis-cli ping  # Should return PONG
+
+2.  **Start Celery Worker**:
+
+    .. code-block:: bash
+    
+        # Manual start
+        celery -A celery_app worker --loglevel=info --concurrency=2
+        
+        # Or use management script (starts everything)
+        ./manage_streamlit.sh start
+
+**Using Background Jobs**:
+
+1.  Enable "Run analyses in background" in the sidebar's "Background Jobs" section
+2.  Upload a FITS file and configure parameters
+3.  The job will be submitted to the server
+4.  You can close your browser - the job continues running
+5.  Return later and check the "Background Jobs" section for results
+
+**API Endpoints**:
+
+.. code-block:: text
+
+    POST /api/jobs/submit          - Submit a new job
+    GET  /api/jobs/{id}/status     - Get job status and progress
+    GET  /api/jobs/{id}/events     - Get detailed progress events
+    GET  /api/jobs                 - List user's jobs
+    DELETE /api/jobs/{id}          - Cancel a pending job
+    GET  /api/jobs/health          - Check worker availability
+
+**Job Types**:
+
+*   ``plate_solve``: Astrometric plate solving via Astrometry.net
+*   ``photometry``: Full detection and photometry pipeline
+*   ``transient_detection``: Transient candidate search (planned)
+
+**Programmatic Job Submission**:
+
+.. code-block:: python
+
+    from pages.api_client import ApiClient
+    
+    client = ApiClient("http://localhost:8000")
+    
+    # Submit a photometry job
+    result = client.submit_job(
+        username="alice",
+        password="secret",
+        job_type="photometry",
+        fits_file_id=123,  # ID from uploaded FITS file
+        params={
+            "fwhm": 3.5,
+            "threshold": 5.0,
+            "detection_mask": 50,
+        },
+    )
+    
+    job_id = result["job_id"]
+    print(f"Job submitted: #{job_id}")
+    
+    # Poll for status
+    import time
+    while True:
+        status = client.get_job_status("alice", "secret", job_id)
+        print(f"Status: {status['status']}")
+        if status["status"] in ("succeeded", "failed"):
+            break
+        time.sleep(5)
+
+**Management Commands**:
+
+.. code-block:: bash
+
+    # Check all service status
+    ./manage_streamlit.sh status
+    
+    # View Celery worker logs
+    ./manage_streamlit.sh logs celery
+    
+    # Restart all services
+    ./manage_streamlit.sh restart
+    
+    # Manage Redis
+    ./manage_streamlit.sh redis start
+    ./manage_streamlit.sh redis stop
+    ./manage_streamlit.sh redis status
+
 Transient Detection (Beta)
 -----------------------
 

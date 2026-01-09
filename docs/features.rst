@@ -25,6 +25,34 @@ User Authentication & Multi-User Support
    - Query functions to retrieve analysis history
    - Safe migration scripts for database schema updates
 
+
+Background Job Processing
+-------------------------
+
+**Browser-Independent Analysis**:
+   - Run analyses on the server without keeping browser open
+   - Celery task queue with Redis broker for reliable job execution
+   - Jobs continue running even if browser is closed or network disconnects
+   - Automatic job recovery and status tracking
+
+**Job Management**:
+   - Submit jobs via REST API or Streamlit UI
+   - Real-time progress tracking with detailed event logging
+   - View running, completed, and failed jobs
+   - Cancel pending or running jobs
+   - Job results stored in database for later retrieval
+
+**Progress Reporting**:
+   - Unified progress interface for UI and background execution
+   - Progress events stored in database with timestamps
+   - Support for info, warning, success, and error messages
+   - Frontend polls for updates to display progress
+
+**Supported Job Types**:
+   - ``plate_solve``: Astrometric plate solving
+   - ``photometry``: Source detection and photometry pipeline
+   - ``transient_detection``: Transient candidate search (planned)
+
 Advanced Image Processing
 ------------------------
 

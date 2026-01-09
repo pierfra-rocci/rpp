@@ -8,6 +8,30 @@ Version 1.6.0 (Current)
 
 **Released: January 9, 2026**
 
+**Background Job Processing (New)**
+
+*   **Celery Integration**: Added Celery task queue with Redis broker for background job processing
+*   **Browser Independence**: Analyses can now run on the server independently of the browser session
+*   **Progress Tracking**: Real-time job progress stored in database with event logging
+*   **Job Management API**: New REST endpoints for job submission, status, events, listing, and cancellation:
+    
+    - ``POST /api/jobs/submit``: Submit a new background job
+    - ``GET /api/jobs/{id}/status``: Get job status and progress
+    - ``GET /api/jobs/{id}/events``: Get detailed progress events
+    - ``GET /api/jobs``: List user's jobs with optional status filter
+    - ``DELETE /api/jobs/{id}``: Cancel a pending job
+    - ``GET /api/jobs/health``: Check Celery worker availability
+
+*   **Frontend Integration**: New "Background Jobs" panel in sidebar with:
+    
+    - Worker availability indicator
+    - "Run in background" toggle for analyses
+    - Running jobs monitor with cancel buttons
+    - Recent jobs list with status icons
+
+*   **Progress Reporter Abstraction**: New ``src/progress.py`` module decouples pipeline functions from Streamlit UI
+*   **Updated Management Scripts**: ``manage_streamlit.sh`` and ``run_all_linux.sh`` now manage Celery workers and Redis
+
 **Storage & Data Organization**
 
 *   **New FITS Storage Location**: Moved FITS file storage from ``data/fits/`` (inside project) to ``rpp_data/fits/`` (at parent level, same as ``rpp_results/``)
