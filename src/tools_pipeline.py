@@ -924,7 +924,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     Add calibrated magnitudes for both aperture and PSF.
     Handle cases where only one method is available.
     Dynamically handles different aperture radius suffixes.
-    Filters out sources with magnitude errors > 2.
+    Filters out sources with magnitude errors > 1.5.
 
     Parameters
     ----------
@@ -955,7 +955,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     -----
     - If instrumental magnitude error doesn't exist, it's computed from flux
     - Handles multiple aperture radii dynamically
-    - Removes sources with magnitude errors > 2 (unreliable photometry)
+    - Removes sources with magnitude errors > 1.5 (unreliable photometry)
     """
     if final_table is None or len(final_table) == 0:
         return final_table
@@ -1033,17 +1033,18 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
 
     final_table["id"] = final_table["id"].astype("Int64")
 
-    # Filter out sources with magnitude errors > 2 (unreliable photometry)
+    # Filter out sources with magnitude errors > 1.5 (unreliable photometry)
+    # Use abs() to handle occasional negative errors from numerical issues
     initial_count = len(final_table)
     mag_err_cols = [col for col in final_table.columns if "mag_err" in col]
 
     if mag_err_cols:
-        # Create mask: keep rows where ALL magnitude errors are <= 2 (or NaN)
+        # Create mask: keep rows where ALL magnitude errors are <= 1.5 (or NaN)
         keep_mask = np.ones(len(final_table), dtype=bool)
         for col in mag_err_cols:
-            col_values = final_table[col]
-            # Keep if error <= 2 or is NaN (missing data is ok)
-            col_mask = (col_values <= 2) | pd.isna(col_values)
+            col_values = np.abs(final_table[col])  # Use absolute values
+            # Keep if error <= 1.5 or is NaN (missing data is ok)
+            col_mask = (col_values <= 1.5) | pd.isna(col_values)
             keep_mask &= col_mask
 
         final_table = final_table[keep_mask].reset_index(drop=True)
@@ -1052,7 +1053,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         if removed_count > 0:
             import streamlit as st
 
-            st.info(f"Removed {removed_count} sources with magnitude error > 2")
+            st.info(f"Removed {removed_count} sources with magnitude error > 1.5")
 
     return final_table
 
