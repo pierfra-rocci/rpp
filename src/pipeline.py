@@ -799,7 +799,22 @@ def detection_and_photometry(
                         phot_result[aperture_sum_col] - total_bkg
                     )
 
-                # Step 4: Store background information for reference
+                # Step 4: Calculate error of background-corrected flux
+                # Error propagation: sigma_net^2 = sigma_ap^2 + (A_ap/A_ann)^2 * sigma_ann_sum^2
+                if "aperture_sum_err" in bkg_result.colnames:
+                    aperture_err_col = f"aperture_sum_err{radius_suffix}"
+                    if aperture_err_col in phot_result.colnames:
+                        bkg_sum_err = bkg_result["aperture_sum_err"]
+                        bkg_scale_factor = aperture_area / annulus_area
+                        
+                        bkg_sub_err = bkg_sum_err * bkg_scale_factor
+                        ap_err = phot_result[aperture_err_col]
+                        
+                        # Add errors in quadrature
+                        net_err = np.sqrt(ap_err**2 + bkg_sub_err**2)
+                        phot_result[f"aperture_sum_bkg_corr_err{radius_suffix}"] = net_err
+
+                # Step 5: Store background information for reference
                 phot_result[f"background{radius_suffix}"] = total_bkg
                 phot_result[f"background_per_pixel{radius_suffix}"] = bkg_per_pixel
 
@@ -822,50 +837,58 @@ def detection_and_photometry(
             aperture_sum_col = f"aperture_sum{radius_suffix}"
             aperture_err_col = f"aperture_sum_err{radius_suffix}"
             bkg_corr_col = f"aperture_sum_bkg_corr{radius_suffix}"
+            bkg_corr_err_col = f"aperture_sum_bkg_corr_err{radius_suffix}"
 
             if (
                 aperture_sum_col in phot_table.colnames
                 and aperture_err_col in phot_table.colnames
             ):
-                # Use background-corrected flux for S/N if available (more accurate)
+                # Use background-corrected flux and error for S/N if available (more accurate)
                 if bkg_corr_col in phot_table.colnames:
                     # Use background-corrected flux for S/N calculation
                     flux_for_snr = phot_table[bkg_corr_col]
-                    # For negative/zero bkg-corrected flux, fall back to raw flux
-                    use_raw = flux_for_snr <= 0
-                    flux_for_snr = np.where(
-                        use_raw, phot_table[aperture_sum_col], flux_for_snr
-                    )
+                    
+                    # Select the best error estimate
+                    if bkg_corr_err_col in phot_table.colnames:
+                        err_for_snr = phot_table[bkg_corr_err_col]
+                    else:
+                        err_for_snr = phot_table[aperture_err_col]
                 else:
                     # Fall back to raw flux if bkg-corrected not available
                     flux_for_snr = phot_table[aperture_sum_col]
+                    err_for_snr = phot_table[aperture_err_col]
 
                 # SNR calculation (no rounding to preserve precision)
                 # Formula: S/N = flux / flux_error
                 # Uses background-corrected flux when available for better accuracy
-                phot_table[f"snr{radius_suffix}"] = (
-                    flux_for_snr / phot_table[aperture_err_col]
-                )
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    phot_table[f"snr{radius_suffix}"] = (
+                        flux_for_snr / err_for_snr
+                    )
 
                 # Calculate magnitude error directly from flux and flux_err
                 # Formula: σ_mag = 1.0857 × (σ_flux / flux)
-                # Derivation: From mag = -2.5 × log10(flux), using error propagation:
-                #   σ_mag = |d(mag)/d(flux)| × σ_flux = (2.5/ln(10)) × (σ_flux/flux)
-                #   where 2.5/ln(10) ≈ 1.0857
-                m_err = (
-                    1.0857 * phot_table[aperture_err_col] / phot_table[aperture_sum_col]
-                )
-                phot_table[f"aperture_mag_err{radius_suffix}"] = m_err
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    m_err = (
+                        1.0857 * err_for_snr / flux_for_snr
+                    )
+                    # For negative/zero flux, mag error is undefined (set to NaN)
+                    m_err[flux_for_snr <= 0] = np.nan
+                    phot_table[f"aperture_mag_err{radius_suffix}"] = m_err
 
                 # Add quality flag based on S/N
                 snr_values = phot_table[f"snr{radius_suffix}"]
                 quality_flag = np.where(
                     snr_values < 3, "poor", np.where(snr_values < 5, "marginal", "good")
                 )
+                # Handle NaN S/N
+                quality_flag[np.isnan(snr_values)] = "poor"
                 phot_table[f"quality_flag{radius_suffix}"] = quality_flag
 
                 # Instrumental magnitude for raw aperture sum
-                instrumental_mags = -2.5 * np.log10(phot_table[aperture_sum_col])
+                # Handle non-positive raw flux (rare but possible)
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    instrumental_mags = -2.5 * np.log10(phot_table[aperture_sum_col])
                 phot_table[f"instrumental_mag{radius_suffix}"] = instrumental_mags
 
                 # If background-corrected flux is available, calculate its magnitude

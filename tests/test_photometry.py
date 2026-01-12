@@ -56,16 +56,16 @@ class TestSNRCalculations:
         assert_allclose(expected_snr, [1000.0 / 15.0, 500.0 / 10.0], rtol=1e-10)
 
     def test_snr_with_negative_background_correction(self):
-        """Test S/N falls back to raw flux when bkg-corrected is negative."""
-        raw_flux = np.array([100.0, 50.0])
-        bkg_corrected_flux = np.array([80.0, -10.0])  # Second is negative
+        """Test S/N calculation with negative background-corrected flux."""
+        # raw_flux is irrelevant for the new logic if bkg_corrected is available
+        bkg_corrected_flux = np.array([80.0, -10.0])
         flux_err = np.array([10.0, 5.0])
 
-        # Should fall back to raw flux when bkg_corrected <= 0
-        flux_for_snr = np.where(bkg_corrected_flux <= 0, raw_flux, bkg_corrected_flux)
-        expected_snr = flux_for_snr / flux_err
+        # S/N should be negative for the second source
+        expected_snr = np.array([8.0, -2.0])
+        calculated_snr = bkg_corrected_flux / flux_err
 
-        assert_allclose(expected_snr, [8.0, 10.0], rtol=1e-10)
+        assert_allclose(calculated_snr, expected_snr, rtol=1e-10)
 
     def test_snr_high_precision(self):
         """Test that S/N is not rounded (preserves precision)."""
