@@ -189,7 +189,6 @@ pathspec==0.12.1
 patsy==1.0.2
 pefile==2023.2.7
 pexpect==4.9.0
--e git+https://github.com/pierfra-rocci/rpp.git@ed0fce2a88552e765f9251121dd0ae8ad8c40bc4#egg=pfr
 photutils==2.3.0
 pillow==11.1.0
 platformdirs==4.3.6
