@@ -5,6 +5,7 @@ import os
 import cv2
 from astropy.io import fits
 import tensorflow as tf
+from tensorflow.keras.layers import LeakyReLU
 from astropy.visualization import ZScaleInterval
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
@@ -22,7 +23,8 @@ class ASTA:
         model_path (str): Path to the pre-trained model file.
         """
         self.model = tf.keras.models.load_model(model_path, custom_objects={'dice_BCE_loss': self.dice_BCE_loss,
-                                                                            'dice_coeff': self.dice_coeff})
+                                                                            'dice_coeff': self.dice_coeff,
+                                                                            'LeakyReLU': LeakyReLU})
 
     def zscale_image(self, image_data):
         """
