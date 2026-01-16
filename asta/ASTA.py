@@ -50,7 +50,8 @@ class ASTA:
         Returns:
         numpy.ndarray: Mask with small objects removed.
         """
-        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask,
+                                                                        connectivity=8)
         new_mask = np.zeros_like(mask)
         for i in range(1, num_labels):
             if stats[i, cv2.CC_STAT_AREA] >= min_size:
@@ -203,7 +204,8 @@ class ASTA:
         """
         # Dilate the trail mask to get the surrounding region
         kernel = np.ones((dilation_size, dilation_size), np.uint8)
-        dilated_mask = cv2.dilate(trail_mask.astype(np.uint8), kernel, iterations=1)
+        dilated_mask = cv2.dilate(trail_mask.astype(np.uint8), kernel,
+                                  iterations=1)
         local_background_mask = (dilated_mask > 0) & (trail_mask == 0)
         local_background_pixels = image_data[local_background_mask]
         return local_background_pixels
@@ -275,7 +277,8 @@ class ASTA:
         batch_patches = []
         batch_indices = []
         for i in range(0, full_field_image_standardized.shape[0], patch_size):
-            for j in range(0, full_field_image_standardized.shape[1], patch_size):
+            for j in range(0, full_field_image_standardized.shape[1],
+                           patch_size):
                 image_patch = full_field_image_standardized[i:i + patch_size, j:j + patch_size]
                 batch_patches.append(image_patch)
                 batch_indices.append((i, j))
@@ -300,7 +303,8 @@ class ASTA:
         if time_processing:
             times["prediction"] = time.time() - start_prediction_time
 
-        full_predicted_mask_threshold = self.apply_threshold(full_predicted_mask, unet_threshold)
+        full_predicted_mask_threshold = self.apply_threshold(full_predicted_mask,
+                                                             unet_threshold)
         binary_image = full_predicted_mask_threshold.astype(np.uint8)
 
         if time_processing:
@@ -325,10 +329,13 @@ class ASTA:
         if time_processing:
             start_contour_time = time.time()
 
-        binary_image = self.connect_trails(binary_image.astype(np.uint8), kernel_size=3)
-        binary_image = self.remove_small_objects(binary_image, min_size=min_size)
+        binary_image = self.connect_trails(binary_image.astype(np.uint8),
+                                           kernel_size=3)
+        binary_image = self.remove_small_objects(binary_image,
+                                                 min_size=min_size)
 
-        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)
 
         results = {
             "Image": [], "FieldID": [], "ImageRA": [], "ImageDEC": [], "ImageFlag": [], "Date": [],
@@ -340,12 +347,14 @@ class ASTA:
         for contour in contours:
             contour_area = cv2.contourArea(contour)
             if contour_area < area_threshold:
-                cv2.drawContours(binary_image, [contour], -1, 0, thickness=cv2.FILLED)
+                cv2.drawContours(binary_image, [contour], -1, 0,
+                                 thickness=cv2.FILLED)
                 continue
 
             mask = np.zeros_like(binary_image, dtype=np.uint8)
             cv2.drawContours(mask, [contour], -1, 1, thickness=cv2.FILLED)
-            lines = cv2.HoughLinesP(mask, 1, np.pi / 180, threshold=50, minLineLength=100, maxLineGap=10)
+            lines = cv2.HoughLinesP(mask, 1, np.pi / 180, threshold=50,
+                                    minLineLength=100, maxLineGap=10)
 
             if lines is not None:
                 lines = lines[:, 0, :]
@@ -366,9 +375,11 @@ class ASTA:
                     cluster_mask = np.zeros_like(mask, dtype=np.uint8)
                     for line in cluster_lines:
                         x1, y1, x2, y2 = line
-                        cv2.line(cluster_mask, (x1, y1), (x2, y2), 1, thickness=1)
+                        cv2.line(cluster_mask, (x1, y1), (x2, y2), 1,
+                                 thickness=1)
 
-                    cluster_contours, _ = cv2.findContours(cluster_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    cluster_contours, _ = cv2.findContours(cluster_mask,
+                                                           cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                     for cl_contour in cluster_contours:
                         cl_area = cv2.contourArea(cl_contour)
                         if cl_area < area_threshold:
@@ -440,7 +451,8 @@ class ASTA:
                             results["Width"].append(width)
 
         results_df = pd.DataFrame.from_dict(results)
-        binary_image = self.remove_small_objects(binary_image, min_size=min_size)
+        binary_image = self.remove_small_objects(binary_image,
+                                                 min_size=min_size)
 
         if time_processing:
             times["contour_analysis"] = time.time() - start_contour_time
@@ -474,18 +486,21 @@ class ASTA:
         elif base_filename.endswith('.fits'):
             base_filename = base_filename[:-5]
 
-        csv_filename = os.path.join(csv_output_dir, f"{base_filename}_results.csv")
+        csv_filename = os.path.join(csv_output_dir,
+                                    f"{base_filename}_results.csv")
         results_df.to_csv(csv_filename, index=False)
         print(f"Results saved to {csv_filename}")
 
         if save_mask and mask_image is not None:
-            mask_filename = os.path.join(image_output_dir, f"{base_filename}_mask.png")
+            mask_filename = os.path.join(image_output_dir,
+                                         f"{base_filename}_mask.png")
             mask_image_uint8 = (mask_image * 255).astype(np.uint8)
             cv2.imwrite(mask_filename, mask_image_uint8)
             print(f"Mask image saved to {mask_filename}")
 
         if save_predicted_mask and predicted_mask is not None:
-            predicted_mask_filename = os.path.join(image_output_dir, f"{base_filename}_predicted_mask.png")
+            predicted_mask_filename = os.path.join(image_output_dir,
+                                                   f"{base_filename}_predicted_mask.png")
             predicted_mask_uint8 = (predicted_mask * 255).astype(np.uint8)
             cv2.imwrite(predicted_mask_filename, predicted_mask_uint8)
             print(f"Predicted mask image saved to {predicted_mask_filename}")
@@ -525,7 +540,8 @@ if __name__ == "__main__":
             processor.save_results(
                 df, base_filename, args.csv_output_dir, args.image_output_dir,
                 save_mask=args.save_mask, mask_image=binary_img,
-                save_predicted_mask=args.save_predicted_mask, predicted_mask=predicted_mask
+                save_predicted_mask=args.save_predicted_mask,
+                predicted_mask=predicted_mask
             )
     else:
         print(f"FITS file {args.fits_file_path} does not exist.")
