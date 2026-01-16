@@ -1,6 +1,5 @@
 from sklearn.cluster import DBSCAN
 from scipy.spatial.distance import pdist, squareform
-from scipy.ndimage import binary_dilation
 import numpy as np
 import os
 import cv2
@@ -12,6 +11,7 @@ from astropy.coordinates import SkyCoord
 import pandas as pd
 import argparse
 import time
+
 
 class ASTA:
     def __init__(self, model_path):
