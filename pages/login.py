@@ -68,7 +68,7 @@ def validate_password(password):
 
 
 if not st.session_state.logged_in:
-    st.title("**RAPAS Photometry Pipeline** *[UNDER DEVELOPMENT BE CAREFUL!]*")
+    st.title("**RAPAS Photometry Pipeline** *[UNDER DEVELOPMENT]*")
     st.markdown("")
     st.markdown(
         "_Report feedback and bugs to_ : "

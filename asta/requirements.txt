@@ -1,0 +1,9 @@
+
+scikit-learn
+scipy
+numpy
+opencv-python-headless
+astropy
+tensorflow
+pandas
+argparse
