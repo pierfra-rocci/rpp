@@ -182,6 +182,151 @@ def make_border_mask(
     return mask.astype(dtype)
 
 
+def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
+    """
+    Detect and mask satellite trails or airplane trails using ASTRiDE library.
+    
+    This function uses the ASTRiDE library to detect linear streaks (satellite/airplane trails)
+    in astronomical images and creates a boolean mask to exclude these regions from analysis.
+    
+    Parameters
+    ----------
+    image_data : numpy.ndarray
+        2D array of the image data
+    header : dict or astropy.io.fits.Header
+        FITS header containing image metadata
+    temp_fits_path : str, optional
+        Temporary path to save the image as FITS file for ASTRiDE processing.
+        If None, a temporary file will be created and cleaned up.
+        
+    Returns
+    -------
+    numpy.ndarray
+        Boolean mask where True indicates satellite trail pixels that should be masked
+    
+    Notes
+    -----
+    - Uses ASTRiDE library for streak detection
+    - Creates a temporary FITS file for processing
+    - The mask includes a buffer around detected streaks to ensure complete exclusion
+    - Returns an empty mask (all False) if ASTRiDE detection fails
+    """
+    try:
+        import tempfile
+        import os
+        from astropy.io import fits
+        import astride.detect
+        
+        # Create temporary FITS file if not provided
+        if temp_fits_path is None:
+            temp_dir = tempfile.mkdtemp()
+            temp_fits_path = os.path.join(temp_dir, "temp_image.fits")
+            cleanup_temp = True
+        else:
+            cleanup_temp = False
+            
+        try:
+            # Save image data to temporary FITS file
+            hdu = fits.PrimaryHDU(image_data)
+            # Copy relevant header information
+            for key, value in header.items():
+                try:
+                    hdu.header[key] = value
+                except Exception:
+                    pass
+            hdu.writeto(temp_fits_path, overwrite=True)
+            
+            st.info("Detecting satellite trails using ASTRiDE...")
+            
+            # Create ASTRiDE streak detector
+            # Use conservative parameters to avoid false positives
+            streak_detector = astride.detect.Streak(
+                temp_fits_path,
+                remove_bkg='constant',  # Use constant background for simplicity
+                bkg_box_size=50,
+                contour_threshold=3.0,  # Higher threshold to reduce false positives
+                min_points=15,  # Require more points for a valid streak
+                shape_cut=0.2,
+                area_cut=25.0,  # Larger area cut
+                radius_dev_cut=0.5,
+                connectivity_angle=3.0,
+                fully_connected='high'
+            )
+            
+            # Run streak detection
+            streak_detector.detect()
+            
+            # Create mask from detected streaks
+            mask = np.zeros_like(image_data, dtype=bool)
+            
+            if streak_detector.streaks and len(streak_detector.streaks) > 0:
+                st.info(f"Found {len(streak_detector.streaks)} satellite trails")
+                
+                # Create mask by drawing lines along the detected streaks
+                # Use a buffer around each streak to ensure complete masking
+                buffer_size = 5  # pixels buffer around each streak
+                
+                for streak in streak_detector.streaks:
+                    x_coords = streak['x'].astype(int)
+                    y_coords = streak['y'].astype(int)
+                    
+                    # Draw the streak line on the mask
+                    for i in range(len(x_coords) - 1):
+                        x1, y1 = x_coords[i], y_coords[i]
+                        x2, y2 = x_coords[i + 1], y_coords[i + 1]
+                        
+                        # Draw line between points (Bresenham's line algorithm)
+                        dx = abs(x2 - x1)
+                        dy = abs(y2 - y1)
+                        sx = 1 if x1 < x2 else -1
+                        sy = 1 if y1 < y2 else -1
+                        err = dx - dy
+                        
+                        while True:
+                            # Mark the pixel and surrounding buffer
+                            for bx in range(-buffer_size, buffer_size + 1):
+                                for by in range(-buffer_size, buffer_size + 1):
+                                    nx, ny = x1 + bx, y1 + by
+                                    if (0 <= nx < mask.shape[1] and 
+                                        0 <= ny < mask.shape[0]):
+                                        mask[ny, nx] = True
+                            
+                            if x1 == x2 and y1 == y2:
+                                break
+                            
+                            e2 = 2 * err
+                            if e2 > -dy:
+                                err -= dy
+                                x1 += sx
+                            if e2 < dx:
+                                err += dx
+                                y1 += sy
+            else:
+                st.info("No satellite trails detected")
+                
+            return mask
+            
+        except Exception as e:
+            st.warning(f"Error in satellite trail detection: {e}")
+            return np.zeros_like(image_data, dtype=bool)
+        finally:
+            # Clean up temporary file if we created it
+            if cleanup_temp and os.path.exists(temp_fits_path):
+                try:
+                    os.remove(temp_fits_path)
+                    if os.path.exists(os.path.dirname(temp_fits_path)):
+                        os.rmdir(os.path.dirname(temp_fits_path))
+                except:
+                    pass
+                    
+    except ImportError:
+        st.warning("ASTRiDE library not available. Satellite trail detection disabled.")
+        return np.zeros_like(image_data, dtype=bool)
+    except Exception as e:
+        st.warning(f"Unexpected error in satellite trail detection: {e}")
+        return np.zeros_like(image_data, dtype=bool)
+
+
 def airmass(
     _header: Dict, observatory: Optional[Dict] = None, return_details: bool = False
 ) -> Union[float, Tuple[float, Dict]]:
@@ -579,6 +724,12 @@ def detection_and_photometry(
     except Exception:
         cr_mask = np.zeros_like(border_mask, dtype=bool)
 
+    # satellite trail mask using ASTRiDE (True = masked)
+    try:
+        satellite_mask = detect_and_mask_satellite_trails(image_data, science_header)
+    except Exception:
+        satellite_mask = np.zeros_like(border_mask, dtype=bool)
+
     # normalize to boolean and ensure compatible shape
     def _to_bool_mask(arr, ref_shape):
         if arr is None:
@@ -597,6 +748,11 @@ def detection_and_photometry(
     final_mask = np.logical_or(
         _to_bool_mask(border_mask, image_data.shape[:2]),
         _to_bool_mask(cr_mask, image_data.shape[:2]),
+    )
+    # Add satellite trail mask to the final mask
+    final_mask = np.logical_or(
+        final_mask,
+        _to_bool_mask(satellite_mask, image_data.shape[:2])
     )
     mask = final_mask
 
