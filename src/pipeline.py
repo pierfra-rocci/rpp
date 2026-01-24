@@ -250,7 +250,7 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
                 area_cut=20.0,  # Larger area cut
                 radius_dev_cut=0.5,
                 connectivity_angle=3.0,
-                fully_connected='medium'
+                fully_connected='low'
             )
             
             # Run streak detection
