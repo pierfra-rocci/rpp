@@ -543,7 +543,7 @@ def detection_and_photometry(
     daofind = None
 
     try:
-        w, wcs_error, log_msgs = safe_wcs_create(science_header)
+        w, wcs_error, _ = safe_wcs_create(science_header)
         if w is None:
             st.error(f"Error creating WCS in detection_and_photometry: {wcs_error}")
             st.error(
