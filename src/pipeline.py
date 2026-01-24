@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 
 import astroscrappy
 from astropy.wcs import WCS
-from astropy.stats import sigma_clip
 from astropy.stats import sigma_clipped_stats
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from astropy.time import Time
@@ -17,7 +16,8 @@ import astropy.units as u
 
 from photutils.utils import calc_total_error
 from photutils.detection import DAOStarFinder
-from photutils.aperture import CircularAperture, CircularAnnulus, aperture_photometry
+from photutils.aperture import (CircularAperture, CircularAnnulus,
+                                aperture_photometry)
 
 from src.tools_pipeline import safe_wcs_create, estimate_background
 from src.utils import ensure_output_directory
