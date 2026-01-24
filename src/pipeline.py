@@ -242,7 +242,7 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
             # Use conservative parameters to avoid false positives
             streak_detector = astride.detect.Streak(
                 temp_fits_path,
-                remove_bkg='map',  # Use constant background for simplicity
+                remove_bkg='constant',  # Use constant background for simplicity
                 bkg_box_size=50,
                 contour_threshold=3.0,  # Higher threshold to reduce false positives
                 min_points=15,  # Require more points for a valid streak
@@ -250,7 +250,7 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
                 area_cut=25.0,  # Larger area cut
                 radius_dev_cut=0.5,
                 connectivity_angle=3.0,
-                fully_connected='high'
+                fully_connected='low'
             )
             
             # Run streak detection
