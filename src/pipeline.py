@@ -244,7 +244,7 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
                 temp_fits_path,
                 remove_bkg='constant',  # Use constant background for simplicity
                 bkg_box_size=50,
-                contour_threshold=3.0,  # Higher threshold to reduce false positives
+                contour_threshold=1.5,  # Higher threshold to reduce false positives
                 min_points=15,  # Require more points for a valid streak
                 shape_cut=0.2,
                 area_cut=25.0,  # Larger area cut

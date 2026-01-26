@@ -67,6 +67,9 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
                     hdu.header[key] = value
                 except Exception:
                     pass
+            
+            # Fix header issues before saving
+            hdu.verify('silentfix')
             hdu.writeto(temp_fits_path, overwrite=True)
             
             print("Detecting satellite trails using ASTRiDE...")
@@ -77,7 +80,7 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
                 temp_fits_path,
                 remove_bkg='constant',  # Use constant background for simplicity
                 bkg_box_size=50,
-                contour_threshold=3.0,  # Higher threshold to reduce false positives
+                contour_threshold=1.0,  # Higher threshold to reduce false positives
                 min_points=15,  # Require more points for a valid streak
                 shape_cut=0.2,
                 area_cut=25.0,  # Larger area cut
@@ -224,7 +227,7 @@ def visualize_results(image_data, mask, output_plot_path=None):
     
     # Image with mask overlay
     ax3.imshow(image_data, origin='lower', cmap='viridis')
-    ax3.imshow(mask, origin='lower', cmap='red', alpha=0.5)
+    ax3.imshow(mask, origin='lower', cmap='viridis', alpha=0.5)
     ax3.set_title('Image with Mask Overlay')
     
     plt.tight_layout()
