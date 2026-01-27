@@ -156,7 +156,7 @@ def find_candidates(
     mask=None,
     filter_cat=None,
     filter_name=None,
-    mag_limit="<19",
+    mag_limit="<20.0",
     detect_thresh=2.0,
 ):
     """Find transient candidates in the given image around the specified object.
@@ -208,31 +208,6 @@ def find_candidates(
         st.warning("No objects found in the image.")
         return []
 
-    # # Perform classical circular aperture photometry with proper error estimation
-    # # Use aperture radius of ~1.3 * FWHM for optimal signal-to-noise ratio
-    # aperture_radius = 1.3 * fwhm
-    # flux, flux_err, _ = sep.sum_circle(
-    #     image_sub,         # background-subtracted image
-    #     obj['x'], obj['y'],  # object centroids
-    #     aperture_radius,   # aperture radius in pixels
-    #     err=bkg.globalrms,  # use global RMS for error estimation
-    #     gain=gain          # camera gain for Poisson noise
-    # )
-
-    # # Calculate magnitudes from aperture flux with proper error propagation
-    # if zero_point_value is None:
-    #     st.warning("Zero point is None - using instrumental magnitudes only")
-    #     zero_point_value = 0.0
-
-    # mag = np.round(-2.5*np.log10(np.abs(flux)) + zero_point_value, 2)
-    # # Propagate flux errors to magnitude errors using standard formula
-    # mag_err = np.round(2.5 / np.log(10) * flux_err / np.abs(flux), 3)
-
-    # # Add photometry results to object table
-    # obj = np.lib.recfunctions.append_fields(
-    #     obj, ['flux_aper', 'flux_aper_err', 'mag_calib', 'mag_calib_err'],
-    #     [flux, flux_err, mag, mag_err], usemask=False)
-
     st.info(f"Found {len(obj)} objects in the image.")
 
     # Add RA, Dec coordinates to the obj table using WCS
@@ -251,7 +226,7 @@ def find_candidates(
 
         # Cross-match using spherical matching (10 arcsec radius)
         match_radius = 10 / 3600  # 10 arcsec in degrees
-        oidx, pidx, dist = stdpipe_astrometry.spherical_match(
+        oidx, pidx, _ = stdpipe_astrometry.spherical_match(
             obj["ra"], obj["dec"], phot_ra, phot_dec, match_radius
         )
 
@@ -396,7 +371,7 @@ def find_candidates(
 
     # Remove candidates with low S/N (S/N < 5, i.e., mag_err > 0.217)
     # S/N ≈ 1.0857 / mag_err for Poisson noise
-    min_snr = 5.0
+    min_snr = 10.0
     max_mag_err = 1.0857 / min_snr  # ~0.217 mag
     good_snr = candidates["mag_calib_err"] < max_mag_err
     n_low_snr = len(candidates) - np.sum(good_snr)
@@ -413,7 +388,7 @@ def find_candidates(
             st.warning(
                 "⚠️ Too many candidates found (>50). Please refine your search criteria."
             )
-            st.warning("(⚠️ Possibly due to a crowded field or filter band calibration)")
+            st.warning("(⚠️ Possibly due to a crowded field, filter band or bad S/N)")
 
     st.info(
         "Generating cutouts and retrieving template images for the first 11 candidates..."
