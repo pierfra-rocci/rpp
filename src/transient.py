@@ -371,7 +371,7 @@ def find_candidates(
 
     # Remove candidates with low S/N (S/N < 5, i.e., mag_err > 0.217)
     # S/N ≈ 1.0857 / mag_err for Poisson noise
-    min_snr = 10.0
+    min_snr = 20.0
     max_mag_err = 1.0857 / min_snr  # ~0.217 mag
     good_snr = candidates["mag_calib_err"] < max_mag_err
     n_low_snr = len(candidates) - np.sum(good_snr)
