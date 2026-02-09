@@ -3,38 +3,6 @@
 
 This tutorial guides you through a typical analysis session, from launching the backend to downloading your results.
 
-## 0. Launch the Application
-
-**Backend:**
-
-- *FastAPI backend (recommended):*
-    - Activate your virtual environment:
-        ```powershell
-        .venv\Scripts\Activate.ps1
-        ```
-    - Start the backend:
-        ```powershell
-        python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
-        ```
-    - Or use the provided batch file for Windows:
-        ```powershell
-        run_all_cmd.bat
-        ```
-- *Legacy backend (Flask):*
-    ```powershell
-    python backend.py
-    ```
-
-**Frontend:**
-
-In a new terminal (with the virtual environment activated):
-```powershell
-streamlit run frontend.py
-# OR
-streamlit run pages/app.py
-```
-Visit the URL printed by Streamlit (usually http://localhost:8501).
-
 ## 1. Login or Register
 
 Create an account or log in. You can also run in anonymous mode if the backend is not configured.
