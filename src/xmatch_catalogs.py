@@ -1387,4 +1387,129 @@ def enhance_catalog(
                 f"INFO: Removed {removed} sources with snr_2.0 in [0, -1, -2]"
             )
 
+    # Reorganize columns to group related photometry columns together
+    def get_column_order():
+        """Generate the desired column order with photometry columns grouped together."""
+        column_order = []
+        
+        # Start with basic identification and position columns
+        basic_cols = ["xcenter", "ycenter", "ra", "dec", "catalog_source_id"]
+        column_order.extend([col for col in basic_cols if col in enhanced_table.columns])
+        
+        # Add aperture photometry columns (magnitudes, errors, SNR) grouped together
+        aperture_cols = []
+        # Only select aperture_mag columns that don't contain "err" to avoid including error columns
+        aperture_mag_cols = [col for col in enhanced_table.columns if col.startswith("aperture_mag_") and "err" not in col]
+        
+        # Sort aperture columns by radius for consistent ordering
+        aperture_mag_cols.sort()
+        
+        # Group aperture magnitudes with their corresponding errors and SNR
+        for mag_col in aperture_mag_cols:
+            aperture_cols.append(mag_col)
+            # Find corresponding error column
+            radius_suffix = mag_col.replace("aperture_mag_", "")
+            err_col = f"aperture_mag_err_{radius_suffix}"
+            if err_col in enhanced_table.columns:
+                aperture_cols.append(err_col)
+            # Find corresponding SNR column - handle both underscore and dot formats
+            snr_col_underscore = f"snr{radius_suffix}"
+            snr_col_dot = f"snr{radius_suffix.replace('_', '.')}"
+            snr_col = None
+            if snr_col_underscore in enhanced_table.columns:
+                snr_col = snr_col_underscore
+            elif snr_col_dot in enhanced_table.columns:
+                snr_col = snr_col_dot
+            if snr_col is not None:
+                aperture_cols.append(snr_col)
+        
+        column_order.extend(aperture_cols)
+        
+        # Add PSF photometry columns (magnitudes, errors, SNR) grouped together
+        psf_cols = []
+        if "psf_mag" in enhanced_table.columns:
+            psf_cols.append("psf_mag")
+        if "psf_mag_err" in enhanced_table.columns:
+            psf_cols.append("psf_mag_err")
+        if "snr" in enhanced_table.columns:
+            psf_cols.append("snr")
+        
+        column_order.extend(psf_cols)
+        
+        # Add calibration-related columns
+        calib_cols = ["calib_star", "zero_point", "zero_point_std", "airmass"]
+        column_order.extend([col for col in calib_cols if col in enhanced_table.columns])
+        
+        # Add catalog cross-match columns
+        catalog_cols = [
+            "astrocolibri_name", "astrocolibri_type", "astrocolibri_classification",
+            "simbad_main_id", "simbad_otype", "simbad_B", "simbad_V",
+            "skybot_NAME", "skybot_OBJECT_TYPE", "skybot_MAGV", "skybot_epoch",
+            "aavso_Name", "aavso_Type", "aavso_Period",
+            "qso_name", "qso_redshift", "qso_Rmag",
+            "pc10_name", "pc10_type", "pc10_Gmag", "pc10_GBPmag", "pc10_GRPmag",
+            "catalog_matches"
+        ]
+        column_order.extend([col for col in catalog_cols if col in enhanced_table.columns])
+        
+        # Add GAIA-related columns
+        gaia_cols = [col for col in enhanced_table.columns if col.startswith("gaia_")]
+        column_order.extend(gaia_cols)
+        
+        # Add any remaining columns not explicitly ordered
+        remaining_cols = [col for col in enhanced_table.columns if col not in column_order]
+        column_order.extend(remaining_cols)
+        
+        return column_order
+    
+    # Apply the new column order
+    try:
+        column_order = get_column_order()
+        enhanced_table = enhanced_table[column_order]
+        log_messages.append("INFO: Reorganized table columns for better readability")
+    except Exception as e:
+        log_messages.append(f"WARNING: Could not reorganize columns: {e}")
+
+    # Round numeric columns to 2 decimal places for better readability
+    def round_numeric_columns():
+        """Round magnitude, error, and SNR columns to 2 decimal places."""
+        columns_rounded = 0
+        
+        # Round all aperture magnitude columns
+        aperture_mag_cols = [col for col in enhanced_table.columns if col.startswith("aperture_mag_") and "err" not in col]
+        for col in aperture_mag_cols:
+            if col in enhanced_table.columns and pd.api.types.is_numeric_dtype(enhanced_table[col]):
+                enhanced_table[col] = enhanced_table[col].round(2)
+                columns_rounded += 1
+        
+        # Round all aperture magnitude error columns
+        aperture_err_cols = [col for col in enhanced_table.columns if col.startswith("aperture_mag_err_")]
+        for col in aperture_err_cols:
+            if col in enhanced_table.columns and pd.api.types.is_numeric_dtype(enhanced_table[col]):
+                enhanced_table[col] = enhanced_table[col].round(2)
+                columns_rounded += 1
+        
+        # Round PSF magnitude and error columns
+        psf_mag_cols = ["psf_mag", "psf_mag_err"]
+        for col in psf_mag_cols:
+            if col in enhanced_table.columns and pd.api.types.is_numeric_dtype(enhanced_table[col]):
+                enhanced_table[col] = enhanced_table[col].round(2)
+                columns_rounded += 1
+        
+        # Round all SNR columns
+        snr_cols = [col for col in enhanced_table.columns if col.startswith("snr")]
+        for col in snr_cols:
+            if col in enhanced_table.columns and pd.api.types.is_numeric_dtype(enhanced_table[col]):
+                enhanced_table[col] = enhanced_table[col].round(2)
+                columns_rounded += 1
+        
+        return columns_rounded
+    
+    try:
+        rounded_count = round_numeric_columns()
+        if rounded_count > 0:
+            log_messages.append(f"INFO: Rounded {rounded_count} numeric columns to 2 decimal places")
+    except Exception as e:
+        log_messages.append(f"WARNING: Could not round numeric columns: {e}")
+
     return enhanced_table, log_messages
