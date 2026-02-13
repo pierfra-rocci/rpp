@@ -316,7 +316,7 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
                     os.remove(temp_fits_path)
                     if os.path.exists(os.path.dirname(temp_fits_path)):
                         os.rmdir(os.path.dirname(temp_fits_path))
-                except:
+                except Exception:
                     pass
                     
     except ImportError:
@@ -564,7 +564,7 @@ def fwhm_fit(
         sources = daofind(_img, mask=mask)
         if sources is None:
             st.warning("No sources found !")
-            return None, None
+            return None, clipped_std
 
         flux = sources["flux"]
         median_flux = np.mean(flux)
@@ -789,6 +789,8 @@ def detection_and_photometry(
     if fwhm_estimate is None:
         st.warning("Failed to estimate FWHM. Using the initial estimate.")
         fwhm_estimate = mean_fwhm_pixel
+    if clipped_std is None:
+        _, _, clipped_std = sigma_clipped_stats(image_sub, sigma=3.0)
 
     daofind = DAOStarFinder(
         fwhm=1.5 * fwhm_estimate, threshold=(threshold_sigma + 0.5) * clipped_std
@@ -1175,31 +1177,81 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
         valid = np.isfinite(_matched_table[instrumental_mag_col]) & np.isfinite(
             _matched_table[filter_band]
         )
+        matched_table = _matched_table.loc[valid].copy()
 
-        zero_points = (
-            _matched_table[filter_band][valid]
-            - _matched_table[instrumental_mag_col][valid]
+        if len(matched_table) == 0:
+            st.warning("No valid matched sources for zero point calculation.")
+            return None, None, None
+
+        # Iteratively remove sources with large calibrated magnitude deltas
+        max_iterations = 10
+        reached_max_iterations = True
+        for iteration in range(max_iterations):
+            zero_points = (
+                matched_table[filter_band] - matched_table[instrumental_mag_col]
+            )
+
+            # Use MAD (Median Absolute Deviation) for robust outlier removal
+            median_zp = np.median(zero_points)
+            mad = np.median(np.abs(zero_points - median_zp))
+
+            # Threshold: typically 3-5 * MAD for outlier removal
+            # Using 3.5 as a conservative threshold (equivalent to ~2.7σ for normal distribution)
+            mad_threshold = 3.5
+            if mad == 0:
+                outlier_mask = np.ones_like(zero_points, dtype=bool)
+            else:
+                outlier_mask = np.abs(zero_points - median_zp) <= mad_threshold * mad
+
+            clipped_zero_points = zero_points[outlier_mask]
+
+            if len(clipped_zero_points) == 0:
+                st.warning("No valid sources after MAD clipping for zero point.")
+                return None, None, None
+
+            zero_point_value = np.median(clipped_zero_points)
+            zero_point_std = np.std(clipped_zero_points)
+
+            if np.ma.is_masked(zero_point_value) or np.isnan(zero_point_value):
+                zero_point_value = float("nan")
+            if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
+                zero_point_std = float("nan")
+
+            if np.isnan(zero_point_value):
+                st.warning("Zero point calculation returned NaN.")
+                return None, None, None
+
+            deltas = matched_table[filter_band] - (
+                matched_table[instrumental_mag_col] + zero_point_value
+            )
+            within_mask = np.abs(deltas) <= 1.0
+
+            if within_mask.all():
+                reached_max_iterations = False
+                break
+
+            matched_table = matched_table.loc[within_mask].copy()
+
+            if len(matched_table) == 0:
+                st.warning(
+                    "All matched sources removed by calibrated magnitude filtering."
+                )
+                return None, None, None
+
+        if reached_max_iterations:
+            st.warning(
+                "Reached max iterations while filtering zero point; "
+                "using last computed value."
+            )
+
+        _matched_table = matched_table
+
+        _matched_table["zero_point"] = (
+            _matched_table[filter_band] - _matched_table[instrumental_mag_col]
         )
-        _matched_table["zero_point"] = zero_points
-        _matched_table["zero_point_error"] = np.std(zero_points)
-
-        # Use MAD (Median Absolute Deviation) for robust outlier removal
-        median_zp = np.median(zero_points)
-        mad = np.median(np.abs(zero_points - median_zp))
-
-        # Threshold: typically 3-5 * MAD for outlier removal
-        # Using 3.5 as a conservative threshold (equivalent to ~2.7σ for normal distribution)
-        mad_threshold = 3.5
-        outlier_mask = np.abs(zero_points - median_zp) <= mad_threshold * mad
-        clipped_zero_points = zero_points[outlier_mask]
-
-        zero_point_value = np.median(clipped_zero_points)
-        zero_point_std = np.std(clipped_zero_points)
-
-        if np.ma.is_masked(zero_point_value) or np.isnan(zero_point_value):
-            zero_point_value = float("nan")
-        if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
-            zero_point_std = float("nan")
+        _matched_table["zero_point_error"] = np.std(
+            _matched_table["zero_point"]
+        )
 
         if not isinstance(_phot_table, pd.DataFrame):
             _phot_table = _phot_table.to_pandas()
