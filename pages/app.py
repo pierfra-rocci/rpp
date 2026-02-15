@@ -397,6 +397,12 @@ if st.session_state.logged_in:
         "_Report feedback and bugs to_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)"
     )
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("**License:** MIT")
+st.sidebar.markdown(
+    "**GDPR:** By using this application, you agree to the processing of your data under GDPR."
+)
+
 ###########################################################################
 
 # Persistent uploader: keep uploaded file bytes across reruns until cleared

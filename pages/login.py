@@ -284,6 +284,12 @@ if not st.session_state.logged_in:
         if st.sidebar.button("Cancel Recovery"):
             st.session_state.recovery_step = 0
             st.rerun()
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("**License:** MIT")
+    st.sidebar.markdown(
+        "**GDPR:** By using this application, you agree to the processing of your data under GDPR."
+    )
 else:
     st.success(f"Welcome, {st.session_state.username}! Redirecting to the app...")
     st.sidebar.caption(st.session_state.backend_status_message)
