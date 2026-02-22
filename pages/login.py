@@ -285,11 +285,14 @@ if not st.session_state.logged_in:
             st.session_state.recovery_step = 0
             st.rerun()
 
+    # Sidebar footer banner
     st.sidebar.markdown("---")
-    st.sidebar.markdown("**License:** MIT")
     st.sidebar.markdown(
-        "**GDPR:** By using this application, you agree to the processing of your data under GDPR."
-    )
+            "[MIT LICENSE](https://opensource.org/licenses/MIT)")
+    st.sidebar.markdown(
+            "By using this app, you agree to GDPR data "
+            "processing for account and analysis data. For more details, see our [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
+        )
 else:
     st.success(f"Welcome, {st.session_state.username}! Redirecting to the app...")
     st.sidebar.caption(st.session_state.backend_status_message)

@@ -397,11 +397,14 @@ if st.session_state.logged_in:
         "_Report feedback and bugs to_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)"
     )
 
+# Sidebar footer banner
 st.sidebar.markdown("---")
-st.sidebar.markdown("**License:** MIT")
 st.sidebar.markdown(
-    "**GDPR:** By using this application, you agree to the processing of your data under GDPR."
-)
+        "[MIT LICENSE](https://opensource.org/licenses/MIT)")
+st.sidebar.markdown(
+        "By using this app, you agree to GDPR data "
+        "processing for account and analysis data. For more details, see our [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
+    )
 
 ###########################################################################
 
