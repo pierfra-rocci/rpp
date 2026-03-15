@@ -28,6 +28,7 @@ from src.tools_app import (
     cleanup_temp_files,
     try_gaia_server,
 )
+from src.header_utils import select_science_header, copy_header_or_none
 
 # Local Application Imports
 from src.tools_pipeline import (
@@ -597,8 +598,13 @@ if science_file is not None:
                 "forced by user" if force_plate_solve else "no valid WCS found"
             )
             with st.spinner("Running astrometry check and plate solving..."):
-                wcs_obj, science_header, log_messages, error = solve_with_astrometrynet(
+                original_science_header = science_header
+                wcs_obj, solved_header, log_messages, error = solve_with_astrometrynet(
                     science_file_path
+                )
+                science_header = select_science_header(
+                    original_science_header,
+                    solved_header,
                 )
                 handle_log_messages(log_messages)
                 if error:
@@ -1006,10 +1012,12 @@ if science_file is not None:
             st.write(f"Using default airmass: {air:.2f}")
 
         image_to_process = science_data
-        header_to_process = science_header.copy()
+        header_to_process = copy_header_or_none(science_header)
 
         # Ensure RA/DEC are in the header for catalog queries
-        if "RA" not in header_to_process or "DEC" not in header_to_process:
+        if header_to_process is not None and (
+            "RA" not in header_to_process or "DEC" not in header_to_process
+        ):
             # Try to get from session state (validated coordinates)
             if "valid_ra" in st.session_state and "valid_dec" in st.session_state:
                 header_to_process["RA"] = st.session_state["valid_ra"]

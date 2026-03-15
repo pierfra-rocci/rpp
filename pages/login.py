@@ -198,101 +198,139 @@ if not st.session_state.logged_in:
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("## Password Recovery")
+    
+    # Initialize recovery form fields in session state for persistence
+    if "recovery_email_value" not in st.session_state:
+        st.session_state.recovery_email_value = ""
+    if "recovery_code_value" not in st.session_state:
+        st.session_state.recovery_code_value = ""
+    if "recovery_new_pw_value" not in st.session_state:
+        st.session_state.recovery_new_pw_value = ""
+    
+    # Email input always visible
     recovery_email = st.sidebar.text_input(
         "Email",
+        value=st.session_state.recovery_email_value,
         key="recovery_email",
+        on_change=lambda: st.session_state.update({"recovery_email_value": st.session_state.recovery_email}),
     )
-
+    
+    # Step 0: Initial recovery request
     if st.session_state.recovery_step == 0:
-        if st.sidebar.button("Send Request"):
-            if recovery_email:
-                if st.session_state.backend_mode == "api":
-                    client = ApiClient(st.session_state.api_base_url)
-                    try:
-                        message = client.request_password_recovery(recovery_email)
-                    except ApiError as exc:
-                        st.error(f"API error: {exc.message}")
-                    else:
-                        st.session_state.recovery_step = 1
-                        st.success(message)
-                else:
-                    try:
-                        resp = requests.post(
-                            (f"{st.session_state.legacy_backend_url}/recover_request"),
-                            data={"email": recovery_email},
-                        )
-                        if resp.status_code == 200:
-                            st.session_state.recovery_step = 1
-                            st.success("Recovery code sent to your email.")
-                        else:
-                            st.error(resp.text)
-                    except requests.exceptions.RequestException as e:
-                        st.error(f"Connection error: Backend unreachable. {e}")
-            else:
-                st.warning("Please enter your email.")
-
-    elif st.session_state.recovery_step == 1:
-        code = st.sidebar.text_input(
-            "Enter Recovery Code",
-            key="recovery_code",
-        )
-        new_password = st.sidebar.text_input(
-            "New Password",
-            type="password",
-            key="recovery_new_pw",
-        )
-        if st.sidebar.button("Reset Password"):
-            if recovery_email and code and new_password:
-                is_valid, error_message = validate_password(new_password)
-                if not is_valid:
-                    st.warning(error_message)
-                else:
+        col1, col2 = st.sidebar.columns([1, 1])
+        with col1:
+            if st.button("Send Request"):
+                if recovery_email:
                     if st.session_state.backend_mode == "api":
                         client = ApiClient(st.session_state.api_base_url)
                         try:
-                            message = client.confirm_password_recovery(
-                                email=recovery_email,
-                                code=code,
-                                new_password=new_password,
-                            )
+                            message = client.request_password_recovery(recovery_email)
                         except ApiError as exc:
                             st.error(f"API error: {exc.message}")
                         else:
+                            st.session_state.recovery_step = 1
                             st.success(message)
-                            st.session_state.recovery_step = 0
+                            st.rerun()
                     else:
                         try:
                             resp = requests.post(
-                                f"{st.session_state.legacy_backend_url}"
-                                "/recover_confirm",
-                                data={
-                                    "email": recovery_email,
-                                    "code": code,
-                                    "new_password": new_password,
-                                },
+                                f"{st.session_state.legacy_backend_url}/recover_request",
+                                data={"email": recovery_email},
                             )
                             if resp.status_code == 200:
-                                st.success("Password updated. You can now log in.")
-                                st.session_state.recovery_step = 0
+                                st.session_state.recovery_step = 1
+                                st.success("Recovery code sent to your email.")
+                                st.rerun()
                             else:
                                 st.error(resp.text)
                         except requests.exceptions.RequestException as e:
                             st.error(f"Connection error: Backend unreachable. {e}")
-            else:
-                st.warning("Please enter all fields.")
-
-        if st.sidebar.button("Cancel Recovery"):
-            st.session_state.recovery_step = 0
-            st.rerun()
+                else:
+                    st.warning("Please enter your email.")
+    
+    # Step 1: Confirmation with code and new password
+    elif st.session_state.recovery_step == 1:
+        st.sidebar.info("Enter the recovery code sent to your email and set a new password.")
+        
+        code = st.sidebar.text_input(
+            "Enter Recovery Code",
+            value=st.session_state.recovery_code_value,
+            key="recovery_code",
+            on_change=lambda: st.session_state.update({"recovery_code_value": st.session_state.recovery_code}),
+        )
+        new_password = st.sidebar.text_input(
+            "New Password",
+            type="password",
+            value=st.session_state.recovery_new_pw_value,
+            key="recovery_new_pw",
+            on_change=lambda: st.session_state.update({"recovery_new_pw_value": st.session_state.recovery_new_pw}),
+        )
+        
+        col1, col2 = st.sidebar.columns([1, 1])
+        with col1:
+            if st.button("Reset Password"):
+                if recovery_email and code and new_password:
+                    is_valid, error_message = validate_password(new_password)
+                    if not is_valid:
+                        st.warning(error_message)
+                    else:
+                        if st.session_state.backend_mode == "api":
+                            client = ApiClient(st.session_state.api_base_url)
+                            try:
+                                message = client.confirm_password_recovery(
+                                    email=recovery_email,
+                                    code=code,
+                                    new_password=new_password,
+                                )
+                            except ApiError as exc:
+                                st.error(f"API error: {exc.message}")
+                            else:
+                                st.success(message)
+                                st.session_state.recovery_step = 0
+                                st.session_state.recovery_email_value = ""
+                                st.session_state.recovery_code_value = ""
+                                st.session_state.recovery_new_pw_value = ""
+                                st.rerun()
+                        else:
+                            try:
+                                resp = requests.post(
+                                    f"{st.session_state.legacy_backend_url}/recover_confirm",
+                                    data={
+                                        "email": recovery_email,
+                                        "code": code,
+                                        "new_password": new_password,
+                                    },
+                                )
+                                if resp.status_code == 200:
+                                    st.success("Password updated. You can now log in.")
+                                    st.session_state.recovery_step = 0
+                                    st.session_state.recovery_email_value = ""
+                                    st.session_state.recovery_code_value = ""
+                                    st.session_state.recovery_new_pw_value = ""
+                                    st.rerun()
+                                else:
+                                    st.error(resp.text)
+                            except requests.exceptions.RequestException as e:
+                                st.error(f"Connection error: Backend unreachable. {e}")
+                else:
+                    st.warning("Please enter all fields.")
+        
+        with col2:
+            if st.button("Cancel"):
+                st.session_state.recovery_step = 0
+                st.session_state.recovery_email_value = ""
+                st.session_state.recovery_code_value = ""
+                st.session_state.recovery_new_pw_value = ""
+                st.rerun()
 
     # Sidebar footer banner
     st.sidebar.markdown("---")
     st.sidebar.markdown(
-            "[MIT LICENSE](https://opensource.org/licenses/MIT)")
+        "[MIT LICENSE](https://opensource.org/licenses/MIT)")
     st.sidebar.markdown(
-            "By using this app, you agree to GDPR data "
-            "processing for account and analysis data. For more details, see our [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
-        )
+        "By using this app, you agree to GDPR data "
+        "processing for account and analysis data. For more details, see our [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
+    )
 else:
     st.success(f"Welcome, {st.session_state.username}! Redirecting to the app...")
     st.sidebar.caption(st.session_state.backend_status_message)

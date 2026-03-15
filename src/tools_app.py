@@ -648,8 +648,7 @@ def display_archived_files_browser(output_dir):
     """
     Display a file browser for archived ZIP files in the user's results directory.
     This function creates a secure file browser that only allows access to ZIP files
-    within the specified output directory. Also automatically cleans up old files
-    (except .json) that are older than 1 month.
+    within the specified output directory.
 
     Parameters
     ----------
@@ -666,26 +665,6 @@ def display_archived_files_browser(output_dir):
         return
 
     try:
-        # Automatically clean old files (excluding .json files)
-        cutoff_date = datetime.now() - pd.Timedelta(days=30)
-        deleted_count = 0
-
-        for item in os.listdir(output_dir):
-            item_path = os.path.join(output_dir, item)
-            if os.path.isfile(item_path):
-                # Skip .json files from cleanup
-                if item.lower().endswith(".json"):
-                    continue
-
-                try:
-                    mod_time = datetime.fromtimestamp(os.path.getmtime(item_path))
-                    if mod_time < cutoff_date:
-                        os.remove(item_path)
-                        deleted_count += 1
-                except Exception:
-                    # Silently continue if file can't be deleted
-                    pass
-
         # Collect only ZIP files
         zip_files = []
         for item in os.listdir(output_dir):
@@ -711,17 +690,12 @@ def display_archived_files_browser(output_dir):
 
         if not zip_files:
             st.info("No ZIP archives found.")
-            if deleted_count > 0:
-                st.caption(f"Auto-cleaned {deleted_count} old files.")
             return
 
         # Sort files by modification time (newest first)
         zip_files.sort(key=lambda x: x["modified"], reverse=True)
 
         st.write(f"**📦 {len(zip_files)} ZIP Archive(s)**")
-
-        if deleted_count > 0:
-            st.caption(f"Auto-cleaned {deleted_count} old files.")
 
         # Compact display with download buttons
         for file_info in zip_files:
@@ -767,7 +741,7 @@ def display_archived_files_browser(output_dir):
                     st.error(f"Error: {str(e)[:15]}...")
 
     except Exception as e:
-        st.error(f"Error accessing results directory: {str(e)}")
+        st.error(f"Error accessing results directory: {str(e)}") 
 
 
 def plot_magnitude_distribution(final_table, log_buffer=None):
