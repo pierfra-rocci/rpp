@@ -1,7 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*.db
 *$py.class
 
 # C extensions
@@ -179,9 +178,11 @@ node_modules/**
 RPP-win32-x64/**
 setup_database.py
 add_user.py
-users.db
 dev_test/**
 dev_test
 src/test_wcs.py
 encode_pass.py
 stdpipe_tutorial.ipynb
+.pytest_cache/
+__pycache__/
+.github/
