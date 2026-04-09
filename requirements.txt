@@ -61,6 +61,7 @@ pyarrow==21.0.0
 pycparser==3.0
 pydantic==2.11.3
 pydantic_core==2.33.1
+email-validator==2.3.0
 pydeck==0.9.1
 pyerfa==2.0.1.5
 pyFFTW==0.15.0
@@ -75,7 +76,7 @@ regions==0.10
 reproject==0.14.1
 requests==2.32.3
 rpds-py==0.30.0
--e git+https://voparis-gitlab.obspm.fr/RAPAS/rpp.git@717719567df108a4685cce13d17510d3cf096033#egg=RPP
+-e .
 scikit-image==0.25.2
 scipy==1.15.2
 SecretStorage==3.5.0

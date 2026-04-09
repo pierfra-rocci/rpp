@@ -1,26 +1,29 @@
 Examples
 ========
 
-This page provides examples of using the RAPAS Photometry Pipeline for various astronomical analysis tasks.
+This page provides practical examples of using RAPAS Photometry Pipeline for
+common workflows. The examples below are aligned with the current Streamlit UI
+and the dual-backend architecture.
 
 Basic Photometry Example
----------------------
+------------------------
 
 This example demonstrates how to perform basic photometry on a single FITS image:
 
 1. Log in to the application.
-2. Upload a science image using the sidebar uploader.
-3. Configure parameters in the sidebar (e.g., Seeing=3.0, Threshold=3.0 sigma, Border Mask=25).
-4. Click "Run Zero Point Calibration".
+2. Upload a science image using the main uploader.
+3. Configure parameters in the sidebar such as seeing, threshold, border mask,
+    filter band, and optional Astrometry Check.
+4. Click **Start Analysis Pipeline**.
 5. Review the results (plots, tables, Aladin viewer).
-6. Download the results using the "Download All Results (ZIP)" button.
+6. Download the results using the ZIP download controls.
 
 .. image:: _static/basic_example.png
    :width: 100%
    :alt: Basic photometry example (Needs update if UI changed)
 
 Variable Star Analysis
--------------------
+----------------------
 
 This example shows how to analyze a variable star using RPP outputs:
 
@@ -124,18 +127,19 @@ This example shows how to analyze a variable star using RPP outputs:
 
 
 Asteroids and Moving Objects
--------------------------
+----------------------------
 
 This example demonstrates how to identify potential moving objects:
 
 1. Upload an image suspected to contain solar system objects.
-2. Run the analysis ("Run Zero Point Calibration"). The pipeline automatically queries SkyBoT.
+2. Run the analysis with **Start Analysis Pipeline**. The pipeline
+    automatically queries SkyBoT.
 3. Review the "Matched Objects Summary" table or the full catalog (`*_catalog.csv`).
 4. Look for sources with "SkyBoT" listed in the `catalog_matches` column.
 5. The `skybot_NAME` column will contain the identified object's designation.
 
 Tutorial: Complete Photometry Workflow
------------------------------------
+--------------------------------------
 
 This step-by-step tutorial covers a complete workflow:
 
@@ -148,11 +152,12 @@ This step-by-step tutorial covers a complete workflow:
 2. **Login & Configuration**
    * Launch the frontend (`streamlit run frontend.py`) and log in.
    * Upload your science image.
-   * Configure Observatory, Process Options (CRR, Astrometry+), Analysis Parameters, Photometry Parameters, and Astro-Colibri key in the sidebar.
+    * Configure observatory values, analysis parameters, transient options, and
+      the Astro-Colibri key in the sidebar.
    * Click "Save Configuration" to store settings.
 
 3. **Run Pipeline**
-   * Click "Run Zero Point Calibration".
+    * Click **Start Analysis Pipeline**.
    * Monitor progress messages in the main panel.
 
 4. **Analysis & Review**
@@ -166,52 +171,45 @@ This step-by-step tutorial covers a complete workflow:
    * Use the `*_catalog.csv` file for your scientific analysis.
 
 Advanced: Scripting with RPP Functions
------------------------------------
+--------------------------------------
 
-While RPP is primarily a web app, some core functions from `pages/app.py` and `tools.py` can potentially be used in standalone Python scripts if dependencies are managed correctly.
+While RPP is primarily a web app, some core functions from ``src/`` can be
+used in standalone Python scripts if dependencies are managed correctly.
 
 .. warning::
-   Directly calling Streamlit-cached functions or functions relying heavily on `st.session_state` or `st.` calls outside the Streamlit environment might not work as expected or require significant adaptation.
+     Directly calling Streamlit-cached functions or functions relying heavily on
+     ``st.session_state`` or other ``streamlit`` UI calls outside the Streamlit
+     environment may not work as expected and may require adaptation.
 
 .. code-block:: python
 
-   # Example of potentially using some RPP functions in a script
-   # NOTE: This requires careful dependency management and adaptation.
-   # Functions relying on Streamlit state or UI elements will fail.
+     from astropy.io import fits
 
-   import numpy as np
-   from astropy.io import fits
-   from astropy.table import Table
-   # Adjust imports based on actual file structure and needs
-   from src.tools import safe_wcs_create, extract_pixel_scale
-   from src.pipeline import airmass, fwhm_fit, make_border_mask, detection_and_photometry, calculate_zero_point
-   from src.utils_common import estimate_background
-   from src.xmatch_catalogs import cross_match_with_gaia, enhance_catalog
+     from src.header_utils import select_science_header
+     from src.tools_pipeline import extract_pixel_scale, safe_wcs_create
 
-   # --- Configuration (Mimic Streamlit inputs) ---
-   fits_filepath = 'my_image.fits'
-   output_dir = 'script_results'
-   # Analysis Params
-   seeing_arcsec = 3.0
-   threshold_sigma = 3.0
-   detection_mask_px = 25
-   # Gaia Params
-   gaia_band = 'phot_g_mean_mag'
-   gaia_max_mag = 20.0
-Examples
-========
+     file_path = "my_image.fits"
 
-This page contains a compact set of examples and a very small, self-contained
-Python example that shows how to call core library functions. The production
-app is a Streamlit frontend backed by a Flask backend; the example below is
-meant to be runnable in a simple development environment (with appropriate
-dependencies and a FITS file if you want real results).
+     with fits.open(file_path) as hdul:
+             image_data = hdul[0].data
+             header = hdul[0].header
 
-Notes and next steps
+     wcs_obj, wcs_error, log_messages = safe_wcs_create(header)
+     pixel_scale_arcsec, pixel_scale_source = extract_pixel_scale(header)
+
+     print("WCS OK:", wcs_obj is not None)
+     print("WCS error:", wcs_error)
+     print("Pixel scale:", pixel_scale_arcsec, pixel_scale_source)
+     print("Log messages:")
+     for message in log_messages:
+             print(" -", message)
+
+Notes and Next Steps
 --------------------
 
-- The repository includes higher-level examples in the `doc` folder. Use the
-  `installation` and `usage` pages to set up your environment and run the
-  frontend/backend stack.
-- For batch/advanced workflows refer to the longer script examples that
-  demonstrate combining multiple catalogs and plotting light curves.
+- Use :doc:`installation` and :doc:`usage` to set up the frontend/backend
+    stack before trying the UI examples.
+- Use the generated ``*_catalog.csv`` and log files for downstream scientific
+    workflows such as light-curve building or object triage.
+- When scripting with internal functions, prefer modules under ``src/`` and
+    avoid directly depending on Streamlit page code.

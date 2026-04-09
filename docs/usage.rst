@@ -2,7 +2,9 @@
 Usage Guide
 ===========
 
-This page shows the minimal steps to run the project locally and use the main features, matching the modern workflow (FastAPI or legacy backend) described in the README and TUTORIAL.
+This page shows the minimal steps to run the project locally and use the main
+features, matching the current Streamlit interface and the dual-backend
+workflow used by the application.
 
 Quick Start (Development)
 -------------------------
@@ -19,7 +21,7 @@ Quick Start (Development)
       python3 -m venv .venv
       source .venv/bin/activate
 
-2. **Install requirements**
+2. **Install the project**
 
    .. code-block:: powershell
 
@@ -45,6 +47,9 @@ Quick Start (Development)
 
         python backend.py
 
+   The frontend probes the FastAPI backend first and falls back to the legacy
+   backend if the API is not reachable.
+
 4. **Start the frontend (Streamlit)**
 
    .. code-block:: powershell
@@ -57,25 +62,61 @@ Quick Start (Development)
 
       streamlit run pages/app.py
 
-   Visit the URL printed by Streamlit (usually http://localhost:8501).
+   Visit the URL printed by Streamlit, usually ``http://localhost:8501``.
 
+5. **Login and configure the session**
+
+   - Register or log in.
+   - On the FastAPI backend, the app supports password recovery and per-user
+     saved configuration.
+   - Set observatory values and analysis parameters in the sidebar before the
+     scientific run.
+
+6. **Upload the FITS file and start processing**
+
+   - Uploading a FITS file only stages it in the interface.
+   - The FITS file is actually loaded, the header and WCS are checked, and
+     astrometry is run only after you click **Start Analysis Pipeline**.
+   - If **Astrometry Check** is enabled, the app forces a new plate-solving
+     attempt even when a valid WCS already exists.
+
+7. **Review outputs**
+
+   - Download the ZIP archive with catalogs, plots, logs, and optional WCS
+     products.
+   - When astrometry succeeds, the updated FITS file is also stored using the
+     backend data layout.
 
 Production Deployment
 ---------------------
 
-For production, you can use a WSGI/ASGI server (e.g., uvicorn, gunicorn, waitress) to run the backend. See the README for details. The frontend is always launched with Streamlit.
+For production, you can use an ASGI/WSGI server to run the backend. The
+frontend is always launched with Streamlit.
 
+Useful environment variables:
+
+- ``RPP_API_URL``: override the FastAPI base URL used by the frontend.
+- ``RPP_LEGACY_URL``: override the legacy backend URL.
+- SMTP settings are required if you want password recovery emails to work.
 
 Logging and Troubleshooting
---------------------------
+---------------------------
 
-- Backend logs are printed to the console. Check for database initialization messages about the `users` and `recovery_codes` tables.
-- If email-based features fail, confirm SMTP environment variables (`SMTP_SERVER`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS_ENCODED`) are set.
-- For astrometry/plate solving features, ensure external dependencies (like Astrometry.net indices) are installed and available on PATH.
-
+- Backend logs are printed to the console. Check for database initialization
+  messages about the database schema and startup.
+- If email-based features fail, confirm SMTP settings are configured,
+  especially ``SMTP_SERVER``, ``SMTP_PORT``, ``SMTP_USER``, and
+  ``SMTP_PASS_ENCODED``.
+- For astrometry or plate solving, ensure external dependencies such as
+  Astrometry.net indices and ``solve-field`` are installed and available on
+  ``PATH``.
+- External catalog services such as GAIA, SIMBAD, SkyBoT, and Astro-Colibri
+  may time out or return partial results. In many cases the pipeline continues
+  and records warnings in the log instead of stopping completely.
 
 Next Steps
 ----------
 
 - See :doc:`examples` for a minimal Python example.
-- See :doc:`installation` for more details about optional dependencies and advanced setup.
+- See :doc:`installation` for more details about optional dependencies and
+  advanced setup.

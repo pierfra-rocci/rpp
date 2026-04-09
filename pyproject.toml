@@ -55,6 +55,7 @@ dependencies = [
     # API/Data validation
     "pydantic==2.11.3",
     "pydantic_core==2.33.1",
+    "email-validator==2.3.0",
     "annotated-types==0.7.0",
     
     # HTTP/Requests
@@ -125,7 +126,7 @@ packages = ["src", "api", "pages"]
 
 [tool.black]
 line-length = 88
-target-version = ["py39"]
+target-version = ["py312"]
 include = '\.pyi?$'
 
 [tool.pytest.ini_options]

@@ -1,65 +1,53 @@
 Advanced Features
-===============
+=================
 
-
-This section covers advanced features and specialized use cases for RAPAS Photometry Pipeline. The application supports both FastAPI (recommended) and legacy Flask backends for all advanced workflows.
+This section collects the current advanced and developer-oriented workflows in
+RAPAS Photometry Pipeline.
 
 Database Tracking System
 ------------------------
 
-Starting with version 1.6.0, RPP includes a comprehensive database tracking system for analysis results. This enables users to track their analysis history and the relationships between input FITS files and output ZIP archives.
+RPP stores analysis-history metadata in SQLite so uploaded FITS files and
+generated ZIP archives can be tracked per user.
 
-**Database Schema**:
-
-The tracking system uses three interconnected tables:
+The tracking layer uses three linked tables:
 
 .. code-block:: text
 
-    ┌─────────────────────┐
-    │ wcs_fits_files      │
-    ├─────────────────────┤
-    │ id (PK)             │
-    │ user_id (FK→users)  │
-    │ original_filename   │  ← Original uploaded filename
-    │ stored_filename     │  ← Filename in rpp_data/fits/
-    │ has_wcs             │  ← True if WCS-solved
-    │ created_at          │
-    └─────────────────────┘
-             │
-             │ (1:N)
-             ▼
-    ┌─────────────────────┐     ┌─────────────────────┐
-    │ wcs_fits_zip_assoc  │     │ zip_archives        │
-    ├─────────────────────┤     ├─────────────────────┤
-    │ id (PK)             │     │ id (PK)             │
-    │ wcs_fits_id (FK)────┼────>│ user_id (FK→users)  │
-    │ zip_archive_id (FK) │<────┼─archive_filename    │
-    │ created_at          │     │ stored_relpath      │
-    └─────────────────────┘     │ created_at          │
-                                └─────────────────────┘
+    wcs_fits_files
+        Uploaded or generated FITS records tied to a user
 
-**Key Features**:
+    zip_archives
+        Result ZIP archives tied to a user
 
-*   **One FITS → Many ZIPs**: A single FITS file can be associated with multiple analysis runs (different parameters, filters, etc.)
-*   **User Isolation**: Each user's data is completely isolated from other users
-*   **Automatic Recording**: Analysis results are automatically recorded when processing completes
-*   **Upsert Behavior**: Re-processing the same file updates existing records rather than creating duplicates
+    wcs_fits_zip_assoc
+        Association table linking one FITS record to one or more ZIP results
 
-**Migrating Existing Databases**:
+This supports:
 
-If you have an existing production database, use the migration script to add the new tables:
+- One FITS file associated with multiple processing runs
+- Per-user isolation of stored files and metadata
+- Automatic recording after successful result creation
+- Safe re-use of existing records when the same stored filename or archive is encountered again
+
+Migrating Existing Databases
+----------------------------
+
+If you are upgrading an older deployment, use the migration scripts in
+``scripts/``.
 
 .. code-block:: bash
 
-    # Creates a timestamped backup before migrating
     python scripts/migrate_add_wcs_zip_tables.py --db-path /path/to/users.db
-    
-    # Skip backup (not recommended for production)
-    python scripts/migrate_add_wcs_zip_tables.py --skip-backup
+    python scripts/migrate_legacy_db.py
 
-The migration is idempotent and can be run multiple times safely.
+The tracking-table migration creates a backup unless told otherwise and is
+designed to be rerunnable.
 
-**Querying Analysis History**:
+Inspecting Analysis History
+---------------------------
+
+The helper functions in ``src/db_tracking.py`` expose the recorded history:
 
 .. code-block:: python
 
@@ -68,328 +56,79 @@ The migration is idempotent and can be run multiple times safely.
         get_zip_archives_for_user,
         get_zips_for_fits,
     )
-    
-    # Get all WCS-solved FITS files for a user
+
     fits_files = get_fits_files_for_user("alice")
-    for f in fits_files:
-        print(f"Original: {f['original_filename']} → Stored: {f['stored_filename']}")
-    
-    # Get all ZIP archives for a user
     archives = get_zip_archives_for_user("alice")
-    
-    # Get all ZIPs associated with a specific FITS file
-    zips = get_zips_for_fits(fits_id=1)
+    related_zips = get_zips_for_fits(wcs_fits_id=1)
 
-Transient Detection (Beta)
------------------------
+Transient Detection
+-------------------
 
-The transient detection module enables automated search for new sources and variable objects in your astronomical images through comparison with reference survey templates.
+The transient workflow is optional and runs after the main photometry and
+catalog-enhancement steps.
 
-**How It Works**:
+Current behavior:
 
-1.  **Reference Survey Selection**: The pipeline automatically selects appropriate reference surveys based on your observation location:
-    *   **Northern Hemisphere** (latitude > 0°): Uses PanSTARRS1 survey with g, r, i, z, y filter bands
-    *   **Southern Hemisphere** (latitude < 0°): Uses SkyMapper survey with g, r, i filter bands
+- The user enables it from the **Transient Candidates** sidebar section.
+- The reference filter is selected in the UI.
+- The code chooses PanSTARRS or SkyMapper based on field declination.
+- Additional filtering removes known sources and Solar System objects.
+- SkyBoT filtering is handled explicitly in ``src/transient.py`` with a 120-second timeout.
 
-2.  **Template Comparison**: Using `stdpipe` image subtraction capabilities, your observation is compared against high-quality reference templates from the selected survey.
+This workflow should be treated as best-effort. Reference data, remote catalog
+services, and transient filtering may degrade gracefully when an external
+dependency is unavailable.
 
-3.  **Candidate Identification**: Sources detected in the subtracted image represent potential transient candidates (new sources, variable objects, or anomalies).
+Astrometric Workflows
+---------------------
 
-4.  **Candidate Filtering**: Detected candidates are automatically cross-matched against known catalog sources to remove false positives:
-    *   Filtered against GAIA DR3 for stellar objects
-    *   Filtered against SIMBAD for known objects
-    *   Filtered against SkyBoT for solar system objects
-    *   Filtered against AAVSO VSX for variable stars
+RPP supports several WCS-related paths:
 
-5.  **Classification**: Remaining candidates are flagged as potential transients with quality metrics indicating confidence level.
+- Validation and reuse of an existing WCS already present in the header
+- Forced astrometry checks from the sidebar when the user wants a fresh solve attempt
+- Local blind solving through Astrometry.net and ``stdpipe``
+- Optional refinement workflows when the local toolchain is available
 
-**Using the Transient Finder**:
-
-*   Enable "Enable Transient Finder" in the sidebar under "Transient Candidates"
-*   The reference survey and filter band are automatically selected based on your image coordinates
-*   Transient candidates appear in the results catalog with a `transient_flag` column
-*   Additional details include subtraction SNR, position offset from known sources, and magnitude estimate
-
-**Interpreting Results**:
-
-*   Candidates with high subtraction SNR are more likely to be genuine transients
-*   Position matching helps identify whether a detection is truly new or a catalog miss
-*   Review magnitude estimates and color information from cross-matching
-*   Check the processing log for details on template selection and subtraction parameters
+If a new forced solve fails but the file already had a valid WCS, the frontend
+falls back to that valid solution so the rest of the pipeline can continue.
 
 PSF Photometry
-------------
+--------------
 
-While aperture photometry works well for isolated stars, PSF (Point Spread Function) photometry, performed automatically by RPP using `photutils`, offers advantages for:
+PSF photometry complements the aperture measurements and is useful when:
 
-*   Crowded fields where stars overlap.
-*   Faint sources where aperture photometry is noise-limited.
-*   Achieving potentially higher precision by modeling the star's profile.
+- sources are crowded,
+- aperture measurements become unstable, or
+- a PSF-based comparison is desirable.
 
-The application performs these steps:
+The pipeline builds an empirical PSF model from suitable stars and then reports
+PSF-derived fluxes and magnitudes alongside the aperture results when the fit is
+successful.
 
-1.  **PSF Model Construction**: Builds an empirical PSF model (`EPSF`) from bright, isolated stars detected in the image using `photutils.psf.EPSFBuilder`. The model is saved as `*_psf.fits`.
-2.  **PSF Fitting**: This model is then fitted to all detected sources using `photutils.psf.IterativePSFPhotometry` to measure their flux.
-
-Results from both aperture and PSF photometry are included in the final catalog (`aperture_calib_mag`, `psf_calib_mag` if calculated) for comparison.
-
-To optimize PSF photometry:
-
-*   Ensure your **Seeing** estimate in the sidebar is reasonably accurate, as it influences the initial detection and PSF extraction box size.
-*   Review the PSF model visualization in the results panel for quality (e.g., check for asymmetry or contamination).
-
-.. code-block:: python
-
-    # Example: Inspect the saved PSF model
-    from astropy.io import fits
-    import matplotlib.pyplot as plt
-    from astropy.visualization import simple_norm
-
-    # Load the PSF model (adjust filename as needed)
-    psf_filename = 'rppyour_image_base_name_psf.fits'
-    try:
-        psf_data = fits.getdata(psf_filename)
-
-        # Plot it
-        norm = simple_norm(psf_data, 'log', percent=99.)
-        plt.figure(figsize=(8, 8))
-        plt.imshow(psf_data, origin='lower', cmap='viridis', norm=norm)
-        plt.colorbar(label='Normalized Intensity (log scale)')
-        plt.title('Empirical PSF Model')
-        plt.show()
-    except FileNotFoundError:
-        print(f"PSF file not found: {psf_filename}")
-    except Exception as e:
-        print(f"Error loading or plotting PSF: {e}")
-
-
-Working with Time-Series Data
----------------------------
-
-For variable stars, asteroids, or other time-variable objects, you can process multiple images taken over time and combine the results:
-
-1.  Process each image individually through the RPP application, ensuring consistent analysis parameters.
-2.  Download the results ZIP archive for each processed image.
-3.  Extract the `*_catalog.csv` and `*_header.txt` files for each observation.
-4.  Use a script (like the one in `examples.rst`) to:
-    *   Read each catalog.
-    *   Extract the observation time (e.g., `DATE-OBS` from the header file).
-    *   Identify your target star(s) in each catalog (e.g., by matching coordinates).
-    *   Extract the magnitude (`aperture_calib_mag` or `psf_calib_mag`) and its error.
-    *   Combine the time-magnitude pairs to create and plot a light curve.
-
-Differential Photometry
+Custom Post-Processing
 ----------------------
 
-For high-precision relative photometry, especially useful for detecting small variations:
+The generated CSV catalogs and ZIP archives can be reused in external scripts or
+notebooks for tasks such as:
 
-1.  Process your image with RPP to get a calibrated catalog (`*_catalog.csv`).
-2.  Identify your target star in the catalog.
-3.  Select several (e.g., 3-10) suitable comparison stars:
-    *   They should be close in brightness to your target.
-    *   They should be nearby on the detector to minimize spatial variations.
-    *   They should be confirmed as non-variable (check `catalog_matches` or `aavso_Name` columns; avoid stars flagged by AAVSO or SIMBAD as variable).
-    *   They should have good SNR and low magnitude errors.
-4.  Calculate the differential magnitude using a script.
+- light-curve construction,
+- differential photometry,
+- cross-run source aggregation,
+- custom filtering, or
+- publication-ready plotting.
 
-Example workflow snippet:
+For most programmatic entry points, prefer the modules summarized in
+``api_reference.rst`` and the concrete pipeline helpers under ``src/``.
 
-.. code-block:: python
-
-    import pandas as pd
-    import numpy as np
-
-    # Load the calibrated catalog
-    catalog_file = 'rppyour_image_base_name_catalog.csv'
-    catalog = pd.read_csv(catalog_file)
-
-    # --- Identify Target and Potential Comparison Stars ---
-    # Example: Target identified by its index in the DataFrame
-    target_idx = 42 # Replace with your target star index or find via coordinates
-
-    if target_idx not in catalog.index:
-        print(f"Target index {target_idx} not found in catalog.")
-        exit()
-
-    target_mag = catalog.loc[target_idx, 'aperture_calib_mag'] # Or psf_calib_mag
-
-    # Find potential comparison stars:
-    # - Within 1 magnitude of the target
-    # - Not the target itself
-    # - Not known variables (checking AAVSO name as example)
-    # - Having valid magnitude values
-    potential_comps = catalog[
-        (np.abs(catalog['aperture_calib_mag'] - target_mag) < 1.0) &
-        (catalog.index != target_idx) &
-        (catalog['aavso_Name'].isna()) & # Example: Exclude known AAVSO variables
-        (catalog['aperture_calib_mag'].notna())
-    ].copy()
-
-    # Optional: Add proximity filter (calculate distance from target)
-    # potential_comps['distance_pix'] = np.sqrt(
-    #    (potential_comps['xcenter'] - catalog.loc[target_idx, 'xcenter'])**2 +
-    #    (potential_comps['ycenter'] - catalog.loc[target_idx, 'ycenter'])**2
-    # )
-    # potential_comps = potential_comps[potential_comps['distance_pix'] < 500] # Example: within 500 pixels
-
-    # Select top N comparison stars with lowest magnitude error
-    # Estimate magnitude error from flux error (if available)
-    if 'aperture_sum' in catalog.columns and 'aperture_sum_err' in catalog.columns:
-         flux = potential_comps['aperture_sum']
-         flux_err = potential_comps['aperture_sum_err']
-         # Avoid division by zero or invalid values
-         valid_err = (flux > 0) & (flux_err.notna())
-         potential_comps.loc[valid_err, 'mag_err_est'] = 1.0857 * (flux_err[valid_err] / flux[valid_err])
-         potential_comps.loc[~valid_err, 'mag_err_est'] = np.inf
-    else:
-        potential_comps['mag_err_est'] = np.inf # Cannot sort by error
-
-    # Sort by estimated error and select the best N (e.g., 5)
-    comp_stars = potential_comps.nsmallest(5, 'mag_err_est')
-
-    if len(comp_stars) < 1:
-        print("Not enough suitable comparison stars found.")
-        exit()
-
-    print(f"Using {len(comp_stars)} comparison stars.")
-
-    # --- Calculate Differential Magnitude ---
-    # Calculate the average instrumental magnitude of the comparison stars
-    # It's often better to average fluxes, then convert back to magnitude
-    comp_instrumental_mags = comp_stars['instrumental_mag'] # Use instrumental mag before ZP/airmass
-    comp_flux_sum = np.sum(10**(-0.4 * comp_instrumental_mags))
-    mean_comp_instrumental_mag = -2.5 * np.log10(comp_flux_sum / len(comp_stars))
-
-    # Differential magnitude (Target Instrumental Mag - Mean Comparison Instrumental Mag)
-    target_instrumental_mag = catalog.loc[target_idx, 'instrumental_mag']
-    diff_mag = target_instrumental_mag - mean_comp_instrumental_mag
-
-    print(f"Target Instrumental Mag: {target_instrumental_mag:.4f}")
-    print(f"Mean Comparison Instrumental Mag: {mean_comp_instrumental_mag:.4f}")
-    print(f"Differential Magnitude: {diff_mag:.4f}")
-
-    # This differential magnitude is less sensitive to transparency variations
-    # and airmass changes than the direct calibrated magnitude.
-
-
-Custom Pipeline Integration
--------------------------
-
-While RPP provides an integrated web UI, its outputs can be used as inputs for larger, custom analysis pipelines:
-
-1.  **Process Images**: Use the RPP web application to process your FITS images individually or in batches.
-2.  **Collect Outputs**: Download the results ZIP archives containing the calibrated catalogs (`*_catalog.csv`), logs, and other metadata.
-3.  **Ingest Catalogs**: Write custom Python scripts (using `pandas`, `astropy`, etc.) to read these CSV catalogs.
-4.  **Perform Further Analysis**: Implement specialized analysis not covered by PFR, such as:
-    *   Detailed light curve modeling (e.g., using `gatspy`, `lightkurve`).
-    *   Asteroid astrometry refinement and orbit determination.
-    *   Stacking results from multiple observations.
-    *   Generating publication-quality plots.
-    *   Cross-matching with specialized or private catalogs.
-
-Example integration concept:
-
-.. code-block:: python
-
-    import pandas as pd
-    import glob
-    import os
-
-    # Directory where RPP results ZIPs were extracted
-    # Results are stored in rpp_results/, WCS-solved FITS in rpp_data/fits/
-    rpp_output_dir = 'path/to/extracted/rpp_results'
-    rpp_fits_dir = 'path/to/rpp_data/fits'  # WCS-solved FITS files
-
-    all_catalogs = []
-    catalog_files = glob.glob(os.path.join(rpp_output_dir, '*_catalog.csv'))
-
-    for cat_file in catalog_files:
-        try:
-            df = pd.read_csv(cat_file)
-            # Add identifier based on filename
-            df['source_image_base'] = os.path.basename(cat_file).replace('_catalog.csv', '')
-            # Extract observation time from corresponding header file (add logic here)
-            # df['obs_jd'] = ...
-            all_catalogs.append(df)
-        except Exception as e:
-            print(f"Error reading {cat_file}: {e}")
-
-    if all_catalogs:
-        # Combine all catalogs into a single master DataFrame
-        master_catalog = pd.concat(all_catalogs, ignore_index=True)
-        print(f"Combined {len(master_catalog)} rows from {len(all_catalogs)} catalogs.")
-
-        # --- Perform custom analysis on master_catalog ---
-        # Example: Find all detections of a specific object across images
-        # target_coords = (123.456, 45.678)
-        # matched_target = master_catalog[
-        #    (np.abs(master_catalog['ra'] - target_coords[0]) < tolerance) &
-        #    (np.abs(master_catalog['dec'] - target_coords[1]) < tolerance)
-        # ]
-        # print(matched_target[['source_image_base', 'aperture_calib_mag']])
-        #
-        # Example: Save the combined catalog
-        # master_catalog.to_csv('combined_rpp_catalog.csv', index=False)
-    else:
-        print("No catalogs found or loaded.")
-
-
-Advanced Visualization
+Standalone Utilities
 --------------------
 
-PFR output catalogs (`*_catalog.csv`) can be visualized using advanced Python libraries like `matplotlib`, `seaborn`, or `plotly` for deeper insights.
+The ``scripts/`` directory contains maintenance or utility scripts that are not
+part of the normal Streamlit button flow:
 
-Example using `matplotlib` for a density scatter plot:
+- ``migrate_add_wcs_zip_tables.py``
+- ``migrate_legacy_db.py``
+- ``satellite_trail_detector.py``
 
-.. code-block:: python
-
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import numpy as np
-    from scipy.stats import gaussian_kde
-
-    # Load catalog
-    catalog_file = 'rppyour_image_base_name_catalog.csv'
-    catalog = pd.read_csv(catalog_file)
-
-    # Filter out invalid magnitudes if necessary
-    catalog = catalog[catalog['aperture_calib_mag'].notna()]
-
-    if catalog.empty:
-        print("No valid data for plotting.")
-        exit()
-
-    # Create density scatter plot of magnitude vs. position (X)
-    x = catalog['xcenter']
-    y = catalog['aperture_calib_mag'] # Use calibrated magnitude
-
-    # Calculate point density
-    try:
-        xy = np.vstack([x,y])
-        z = gaussian_kde(xy)(xy)
-        # Sort points by density, so dense points don't overplot sparse ones
-        idx = z.argsort()
-        x, y, z = x[idx], y[idx], z[idx]
-    except np.linalg.LinAlgError:
-        print("Could not calculate density (singular matrix). Plotting without density.")
-        z = None # Fallback: plot without density coloring
-
-    # Set up plot
-    fig, ax = plt.subplots(figsize=(10, 7))
-
-    # Scatter plot
-    scatter = ax.scatter(x, y, c=z, s=10, edgecolor='', cmap='viridis', alpha=0.7)
-
-    ax.set_xlabel('X Position (pixels)')
-    ax.set_ylabel('Calibrated Magnitude')
-    ax.set_title('Magnitude vs. X Position (Density Colored)')
-    ax.grid(True, alpha=0.3)
-    ax.invert_yaxis() # Magnitudes: fainter is larger number
-
-    if z is not None:
-        cbar = fig.colorbar(scatter)
-        cbar.set_label('Point Density')
-
-    plt.tight_layout()
-    plt.savefig('magnitude_vs_x_density.png', dpi=150)
-    print("Density plot saved to magnitude_vs_x_density.png")
+These are intended for administration, migration, or offline workflows rather
+than day-to-day frontend use.

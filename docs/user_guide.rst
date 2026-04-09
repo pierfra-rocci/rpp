@@ -1,144 +1,142 @@
 User Guide
-=========
+==========
 
-**Current Version: 1.5.3 (January 2026)**
-
+This guide describes the current end-user workflow for RAPAS Photometry
+Pipeline. The application uses a staged interface: uploading a FITS file only
+prepares it for analysis, and the scientific processing starts only after you
+click **Start Analysis**.
 
 Getting Started
 ---------------
 
-RAPAS Photometry Pipeline (RPP) provides a streamlined workflow for astronomical image analysis through a user-friendly web interface. This guide walks you through the complete process from login and image upload to final photometric catalog generation with multi-catalog cross-matching.
+Before opening the Streamlit app, start at least one backend:
 
-**Prerequisites:** Ensure the backend server is running before launching the frontend. You can use either:
-
-- FastAPI backend (recommended):
-   - `python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000`
-   - Or use `run_all_cmd.bat` (Windows)
-- Legacy Flask backend:
-   - `python backend.py`
+- FastAPI backend (recommended): ``python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000``
+- Legacy backend (compatibility mode): ``python backend.py``
 
 Then launch the frontend:
-- `streamlit run frontend.py` or `streamlit run pages/app.py`
 
-Access the URL (e.g., http://localhost:8501) and log in or register.
+- ``streamlit run frontend.py``
+- or ``streamlit run pages/app.py``
+
+The login page probes the available backends automatically. If the FastAPI
+backend is reachable it is preferred; otherwise the frontend falls back to the
+legacy backend.
 
 Application Layout
------------------
+------------------
 
-.. image:: _static/app_layout.png
-   :width: 700px
-   :alt: Application Layout
+The interface is divided into two main areas:
 
-The interface is divided into two main sections:
+- Sidebar for account actions, observatory settings, analysis parameters, transient options, API key input, settings save, and archived-result browsing
+- Main panel for FITS upload, image preview, processing progress, tables, plots, logs, and downloads
 
-* **Left Sidebar**: Contains user authentication, file uploader, processing options (Astrometry refinement, Cosmic Ray Removal), observatory settings, analysis parameters (Seeing, Threshold, Mask), photometry parameters (Gaia band/limit), Astro-Colibri API key input, configuration saving, archived results browser, and logout controls.
-* **Main Panel**: Displays the uploaded image with dual visualization (ZScale and Histogram Equalization), processing status, results (plots, tables), interactive visualizations (Aladin Lite), ESA Sky links, and download options.
+Step 1: Sign In
+---------------
 
-Step 1: Login & Upload
+1. Open the login page.
+2. Register a new account or log in with an existing one.
+3. Use password recovery if needed. Recovery codes are emailed when SMTP is configured.
+
+Step 2: Upload a FITS File
+--------------------------
+
+1. Select a science FITS file in the main upload area.
+2. After upload, the file is staged and marked as ready.
+3. At this stage the app does not yet run FITS loading, astrometry checks, or photometry.
+
+Step 3: Configure Parameters
+----------------------------
+
+Use the sidebar to review or change:
+
+- Observatory name, latitude, longitude, and elevation
+- Estimated seeing, detection threshold, and border mask size
+- Calibration filter band and maximum calibration magnitude
+- **Astrometry check** to force solving or refining the WCS workflow
+- **Transient Candidates** options to enable the transient finder and choose a reference filter
+- Optional Astro-Colibri UID key
+
+If observatory metadata are present in the FITS header, the application may use
+them to prefill the observatory fields.
+
+Step 4: Start Analysis
 ----------------------
-1. Authenticate using the login page or register a new account.
-2. Once logged in, use the file uploader:
-   * **Science Image** (required): Your astronomical image in FITS format (.fits, .fit, .fts, .fits.gz).
 
-Step 2: Configure Processing
---------------------------
-Set up your analysis using the sidebar options:
+1. Click **Start Analysis**.
+2. The pipeline then performs the full scientific workflow.
 
-1.  **Observatory Data**: Input or verify the observatory's name, latitude, longitude, and elevation. The application accepts both comma and dot decimal separators for coordinates. Observatory information can be automatically extracted from FITS headers if available.
+Depending on the file and selected options, this can include:
 
-2.  **Analysis Parameters**:
-    *   **Estimated Seeing (FWHM, arcsec)**: Initial atmospheric seeing estimate (1.0-6.0 arcsec).
-    *   **Detection Threshold (sigma)**: Sigma level above background for source detection (0.5-4.5).
-    *   **Border Mask Size (pixels)**: Pixels to ignore around the image edge (0-200).
-    *   **Calibration Filter Band**: Gaia photometric band for calibration (G, BP, RP, or synthetic bands).
-    *   **Max Calibration Mag**: Faintest magnitude limit for calibration stars (15.0-21.0).
-    *   **Refine Astrometry**: Enable WCS refinement using `stdpipe` and Gaia DR3.
-    *   **Remove Cosmic Rays**: Enable cosmic ray removal using `astroscrappy` with configurable parameters.
+- FITS loading and header validation
+- WCS validation and optional local plate solving
+- Source detection and FWHM estimation
+- Aperture photometry and PSF photometry
+- GAIA-based zero-point calibration
+- Catalog enhancement through external services
+- Optional transient-candidate search
+- Packaging of outputs into downloadable files
 
-3.  **API Keys**: Enter your Astro-Colibri UID key for transient event cross-matching (optional).
-
-Step 3: Image Processing
------------------------
-1. Upload your FITS file using the file uploader.
-2. The application will automatically:
-   * Load and display the image with dual visualization
-   * Extract observatory information from FITS header if available
-   * Display image statistics and coordinate information
-   * Calculate airmass based on observation time and location
-
-3. If WCS information is missing, the application will attempt plate solving using Astrometry.net (via stdpipe).
-4. You can optionally force re-solving even if WCS exists.
-
-Step 4: Run Photometric Calibration
-----------------------------------
-1. Click the "Photometric Calibration" button to start the pipeline.
-2. The processing includes:
-   * Optional cosmic ray removal using L.A.Cosmic algorithm (if enabled)
-   * Background estimation and 2D noise mapping with SExtractor algorithm
-   * Source detection using DAOStarFinder with configurable threshold
-   * FWHM (seeing) estimation and refinement from stellar profiles
-   * Multi-aperture photometry (1.1×, 1.3× FWHM with local background subtraction)
-   * Background-corrected S/N calculation for accurate flux ratios
-   * Empirical PSF model construction and PSF photometry with Gaussian fallback
-   * Quality flag assignment: 'good' (S/N≥5), 'marginal' (3≤S/N<5), 'poor' (S/N<3)
-   * Optional WCS refinement using stdpipe and Astrometry.net/GAIA DR3
-   * Cross-matching with GAIA DR3 for photometric calibration and zero-point determination
-   * Atmospheric extinction correction using calculated airmass
-   * Complete error propagation including zero-point uncertainty: σ_mag_calib = √(σ_mag_inst² + σ_zp²)
-
-Step 5: Catalog Enhancement
---------------------------
-After photometric calibration, the pipeline automatically cross-matches detected sources with:
-
-* **Gaia DR3**: For photometric calibration and stellar properties
-* **SIMBAD**: For object identification and classification
-* **SkyBoT**: For solar system object detection
-* **AAVSO VSX**: For variable star identification
-* **Astro-Colibri**: For transient event matching (requires API key)
-* **VizieR Milliquas**: For quasar identification
-
-Step 6: Results and Visualization
---------------------------------
-The application provides comprehensive results including:
-
-1. **Interactive Aladin Lite Viewer**: Explore detected sources overlaid on sky survey images
-2. **Magnitude Distribution Plots**: Histograms and error analysis for both aperture and PSF photometry
-3. **Photometry Catalog**: Complete source catalog with multi-aperture measurements
-4. **Processing Logs**: Detailed execution logs with timestamps
-5. **ESA Sky Links**: Direct links to external sky survey viewers
-
-Step 7: Download Results
------------------------
-Use the "Download Results (ZIP)" button to download a complete archive containing:
-
-* **Photometry catalog** (CSV format with all measurements)
-* **Processing logs** (detailed execution history)
-* **Plots and visualizations** (PNG format)
-* **FITS headers** (original and WCS-solved headers)
-* **Background models** (FITS format if generated)
-* **PSF models** (FITS format if generated)
-
-Configuration Management
------------------------
-* **Save Configuration**: Store current analysis parameters, observatory settings, and API keys
-* **Archived Results**: Browse and download previous analysis results
-* **Auto-cleanup**: Old files are automatically cleaned up (30-day retention)
-
-Advanced Features
-----------------
-* **Header Fixing**: Automatic correction of common FITS header issues
-* **Multi-extension FITS**: Support for complex FITS file formats
-* **Quality Filtering**: Robust filtering for reliable photometric calibration
-* **Rate Limiting**: Automatic throttling of catalog queries
-* **Error Recovery**: Graceful handling of network timeouts and service unavailability
-
-Troubleshooting Tips
+Astrometry Behavior
 -------------------
-* Ensure Astrometry.net (via stdpipe) is installed and accessible for plate solving
-* Check internet connectivity for catalog queries
-* Verify FITS file format and header completeness
-* Use manual coordinate entry if header coordinates are missing
-* Adjust detection parameters for crowded or sparse fields
-* Monitor processing logs for detailed error information
 
-Refer to the Troubleshooting section for common issues and solutions.
+- If a valid WCS is already present, the application can continue with that solution.
+- If WCS is missing or the user enables **Astrometry check**, the app attempts local plate solving.
+- If forced solving fails but an existing WCS is still valid, the pipeline falls back to the existing WCS rather than stopping the whole run.
+
+Catalog Enhancement
+-------------------
+
+After photometry, the catalog can be enriched with matches from services such
+as:
+
+- GAIA DR3
+- SIMBAD
+- SkyBoT
+- AAVSO VSX
+- Milliquas
+- Astro-Colibri, when an API key is provided
+
+These services are best-effort integrations. Timeouts, empty responses, or
+temporary network failures are reported in the logs and warnings, and the
+pipeline continues whenever partial results are still usable.
+
+Transient Candidates
+--------------------
+
+If enabled, the transient workflow runs after the main photometry and catalog
+steps. It uses reference-survey data and then applies additional filtering,
+including Solar System object rejection through SkyBoT.
+
+Survey selection is based on the field declination in the current code path:
+
+- Northern fields use PanSTARRS references
+- Southern fields use SkyMapper references
+
+Results and Downloads
+---------------------
+
+The main panel can show:
+
+- Image previews and diagnostic plots
+- Source and calibration tables
+- Processing logs
+- Interactive Aladin views
+- Download buttons for result archives
+
+Result ZIP archives typically contain the generated catalogs, logs, plots, and
+other analysis products created during the run.
+
+Saved Settings and Archives
+---------------------------
+
+- Use **Save Settings** to persist observatory and analysis parameters when the API backend is active.
+- Use the archived-results area to review previously stored FITS uploads and ZIP outputs tied to your account.
+
+Practical Tips
+--------------
+
+- Check the logs first when a catalog or network-backed enrichment step is missing.
+- Install Astrometry.net locally if you want reliable blind solving for files without WCS.
+- Treat remote-service enrichments and transient screening as optional enhancements, not guaranteed steps.
+- If a field is crowded or sparse, adjust the seeing and detection threshold before rerunning the pipeline.

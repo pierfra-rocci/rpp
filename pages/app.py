@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 # Third-Party Imports
 import streamlit as st
+import streamlit.components.v1 as components
 import requests  # type: ignore[import]
 import numpy as np
 import pandas as pd
@@ -88,6 +89,8 @@ if "backend_initialized" not in st.session_state:
     st.session_state.backend_initialized = False
 if "api_mode" not in st.session_state:
     st.session_state.api_mode = False
+if "run_analysis_pipeline" not in st.session_state:
+    st.session_state.run_analysis_pipeline = False
 if "backend_mode" not in st.session_state:
     st.session_state.backend_mode = "legacy"
 if "api_base_url" not in st.session_state:
@@ -111,11 +114,67 @@ if not st.session_state.backend_initialized:
     st.session_state.backend_initialized = True
 
 
+# ---------------------------------------------------------------------------
+# Matomo Analytics Injection
+# ---------------------------------------------------------------------------
+# We inject the Matomo tracking script via a zero-height hidden iframe.
+# Streamlit strips <script> tags from st.markdown(), so components.html()
+# is the reliable cross-version workaround. Matomo handles cross-frame
+# tracking natively, so page views and link clicks are recorded correctly.
+
+def inject_matomo_tracking(site_id: str = "83",
+                           matomo_url: str = "https://analytics.obspm.fr/"):
+    """
+    Inject the Matomo JS tracker into the Streamlit page.
+
+    Parameters
+    ----------
+    site_id   : Your Matomo site ID (string, e.g. "83").
+    matomo_url: Base URL of your Matomo instance (trailing slash required).
+    """
+    tracking_code = f"""
+    <script>
+        var _paq = window._paq = window._paq || [];
+        /* Custom dimensions or goals can be pushed here before trackPageView */
+        _paq.push(['trackPageView']);
+        _paq.push(['enableLinkTracking']);
+        (function() {{
+            var u = "{matomo_url}";
+            _paq.push(['setTrackerUrl', u + 'matomo.php']);
+            _paq.push(['setSiteId', '{site_id}']);
+            var d = document,
+                g = d.createElement('script'),
+                s = d.getElementsByTagName('script')[0];
+            g.async = true;
+            g.src = u + 'matomo.js';
+            s.parentNode.insertBefore(g, s);
+        }})();
+    </script>
+    """
+    # height=0 and scrolling=False make the iframe completely invisible.
+    # The script still executes and fires the tracking beacon.
+    components.html(tracking_code, height=0, scrolling=False)
+
+
 st.set_page_config(
     page_title="RAPAS Photometry Pipeline", page_icon=":sparkles:", layout="centered"
 )
 
 initialize_session_state()
+
+# Initialize session state for photometry pipeline button
+if "run_photometry_pipeline" not in st.session_state:
+    st.session_state.run_photometry_pipeline = False
+
+# Redirect to login if not authenticated
+if not st.session_state.logged_in:
+    st.warning("You must log in to access this page.")
+    st.switch_page("pages/login.py")
+
+# Fire the tracker once per session after successful login
+if "matomo_injected" not in st.session_state:
+    inject_matomo_tracking(site_id="83", matomo_url="https://analytics.obspm.fr/")
+    st.session_state.matomo_injected = True
 
 # Custom CSS to control plot display size
 st.markdown(
@@ -139,11 +198,6 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
-
-# Redirect to login if not authenticated
-if not st.session_state.logged_in:
-    st.warning("You must log in to access this page.")
-    st.switch_page("pages/login.py")
 
 # Add application version to the sidebar
 st.title(":sparkles: **RAPAS Photometry Pipeline**")
@@ -404,7 +458,7 @@ st.sidebar.markdown(
         "[MIT LICENSE](https://opensource.org/licenses/MIT)")
 st.sidebar.markdown(
         "By using this app, you agree to GDPR data "
-        "processing for account and analysis data. For more details, see our [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
+        "processing for account and analysis data. For more details, see the [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
     )
 
 ###########################################################################
@@ -452,6 +506,27 @@ st.session_state.observatory_data = {
     "elevation": st.session_state.observatory_elevation,
 }
 
+# Add button to start the analysis (appears right after image upload)
+if science_file is not None:
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button(
+            "▶️ Start Analysis",
+            key="start_analysis_button",
+            use_container_width=True,
+            help="Click to start processing: FITS loading, astrometry check, photometry, zero-point calibration, and catalog cross-matching."
+        ):
+            st.session_state.run_analysis_pipeline = True
+else:
+    st.info("Please upload a FITS image file to begin.")
+
+if science_file is not None and not st.session_state.run_analysis_pipeline:
+    st.info(
+        f"File '{science_file.name}' is ready. Click 'Start Analysis "
+        "Pipeline' to begin loading and processing."
+    )
+
 catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 username = st.session_state.get("username", "anonymous")
 output_dir = ensure_output_directory(directory=f"{username}_results")
@@ -460,7 +535,7 @@ st.session_state["output_dir"] = output_dir
 if st.session_state.get("final_phot_table") is not None:
     provide_download_buttons(output_dir)
     zip_filename, zip_path = zip_results_on_exit(science_file, output_dir)
-    
+
     # Record in database if ZIP was created and we have a stored FITS file
     if zip_filename and st.session_state.get("stored_fits_filename"):
         try:
@@ -476,8 +551,8 @@ if st.session_state.get("final_phot_table") is not None:
             # Don't fail the app if database tracking fails
             print(f"Warning: Could not record analysis in database: {db_error}")
 
-
-if science_file is not None:
+# Run the full analysis pipeline only if the button was clicked
+if st.session_state.run_analysis_pipeline and science_file is not None:
     suffix = os.path.splitext(science_file.name)[1]
 
     # Get the system temp directory
@@ -502,7 +577,7 @@ if science_file is not None:
     st.session_state["base_filename"] = base_filename
     st.session_state["log_buffer"] = initialize_log(science_file.name)
 
-if science_file is not None:
+if st.session_state.run_analysis_pipeline and science_file is not None:
     with st.spinner("Loading FITS data..."):
         raw_data, science_header = load_fits_data(science_file)
         science_data = raw_data
@@ -560,7 +635,9 @@ if science_file is not None:
     wcs_obj, wcs_error, log_messages = safe_wcs_create(science_header)
     handle_log_messages(log_messages)
     # Initialize force_plate_solve as False by default
-    force_plate_solve = st.session_state.get("astrometry_check", False)
+    force_plate_solve = st.session_state.analysis_parameters.get(
+        "astrometry_check", False
+    )
 
     # Initialize use_astrometry to track if we ran plate solving
     use_astrometry = False
@@ -1565,6 +1642,9 @@ if science_file is not None:
                 st.warning(
                     "Could not determine coordinates from image header. Cannot display ESASky or Aladin Viewer."
                 )
+            
+            # Reset the button flag at the end of successful pipeline execution
+            st.session_state.run_analysis_pipeline = False
 else:
     # Try connecting to GAIA server at startup
     try_gaia_server()

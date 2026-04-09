@@ -6,74 +6,26 @@ RAPAS Photometry Pipeline (RPP)
    :align: right
    :alt: RAPAS Photometry Pipeline logo
 
-**RAPAS Photometry Pipeline (RPP) v1.5.3** is a comprehensive web-based astronomical photometry system built with Streamlit and Python 3.12. It provides an end-to-end solution for processing astronomical images, performing precise photometry, and cross-matching results with major astronomical catalogs.
+RAPAS Photometry Pipeline (RPP) is a Streamlit-based astronomical photometry
+application with a FastAPI backend and a legacy compatibility backend. It is
+designed for FITS-based image analysis, photometric calibration, catalog
+cross-matching, transient screening, and result archiving.
 
-The pipeline is designed for both amateur and professional astronomers, offering a user-friendly interface while maintaining the rigor and precision required for scientific analysis.
+The documentation in this section reflects the current application workflow:
+upload a FITS file, review settings, click **Start Analysis**, and then inspect
+or download the generated results.
 
-Key Features
------------
+Highlights
+----------
 
-**Complete Photometry Pipeline**:
-   - Multi-aperture photometry with optimized radii (1.1×, 1.3× FWHM)
-   - Empirical PSF model construction and PSF photometry with Gaussian fallback
-   - Robust background estimation with SExtractor algorithm
-   - Automatic source detection using DAOStarFinder with configurable thresholds
-   - FWHM estimation through Gaussian fitting of stellar profiles
-   - Background-corrected S/N calculation for accurate flux ratios
-   - Comprehensive error propagation with zero-point uncertainty
-   - Quality flags: 'good' (S/N≥5), 'marginal' (3≤S/N<5), 'poor' (S/N<3)
-
-**Advanced Astrometric Solutions**:
-   - Local plate solving using Astrometry.net via stdpipe for blind astrometric solving
-   - WCS refinement using SCAMP and GAIA DR3 catalog
-   - Automatic WCS header validation and fixing
-   - Support for multiple coordinate reference frames
-   - Force re-solve option for existing WCS solutions
-
-**Comprehensive Photometric Calibration**:
-   - Photometric calibration against Gaia DR3 catalog
-   - Robust zero-point calculation with sigma clipping and outlier rejection
-   - Atmospheric extinction correction based on airmass calculation
-   - Zero-point error propagation in calibrated magnitudes: ``σ_mag_calib = √(σ_mag_inst² + σ_zp²)``
-   - Quality filtering for reliable calibration stars
-   - Support for multiple Gaia photometric bands and synthetic photometry
-
-**Multi-Catalog Cross-matching**:
-   - Gaia DR3 for stellar properties, proper motions, and calibration
-   - SIMBAD for object identification and classification
-   - Astro-Colibri for transient event correlation and alerts
-   - SkyBoT for solar system object detection
-   - AAVSO VSX for variable star identification
-   - VizieR Milliquas for quasar and AGN identification
-   - 10 Parsec Catalog for nearby star identification
-
-**Transient Detection (Beta)**:
-   - Automated transient candidate search using image subtraction
-   - Hemisphere-aware survey selection (PanSTARRS north, SkyMapper south)
-   - Multi-filter template comparison and candidate identification
-   - Automatic filtering against GAIA, SIMBAD, SkyBoT, and VSX catalogs
-   - Confidence-scored candidate visualization and classification
-
-**Advanced Image Processing**:
-   - Cosmic ray removal using L.A.Cosmic algorithm (astroscrappy) - enabled by default
-   - Support for multi-extension FITS files, data cubes, and RGB images
-   - Multiple visualization modes (ZScale, histogram equalization)
-   - Automatic FITS header validation and fixing
-   - Quality filtering and automated source assessment
-
-**User-Friendly Interface**:
-   - Web-based interface accessible through any modern browser
-   - Real-time processing progress and status updates
-   - Comprehensive error handling and user feedback
-   - Multi-user support with individual accounts and workspaces
-   - Configuration persistence across sessions
-
-**Data Management**:
-   - Automated result archiving and organization
-   - ZIP package generation for easy data distribution
-   - User-specific workspaces with automatic cleanup
-   - Detailed processing logs with timestamps
-   - Comprehensive output file generation
+- Streamlit frontend with backend auto-detection and fallback support
+- FITS upload staging before any scientific processing starts
+- Local WCS validation and optional Astrometry.net solving/refinement
+- Aperture and PSF photometry with propagated uncertainties
+- Catalog enhancement with GAIA, SIMBAD, SkyBoT, VSX, Milliquas, and optional Astro-Colibri
+- Optional transient candidate workflow with PanSTARRS or SkyMapper references
+- SQLite-backed user settings, FITS tracking, and result archive tracking
+- ZIP export of catalogs, logs, plots, and generated intermediate products
 
 .. toctree::
    :maxdepth: 2
@@ -93,131 +45,74 @@ Key Features
 Quick Start
 -----------
 
-1. **Install dependencies**: Python 3.12+, Astrometry.net, and (optionally) SCAMP
-2. **Start the backend**:
-    - *FastAPI (recommended):*
-       - Activate your virtual environment
-       - `python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000`
-       - Or use `run_all_cmd.bat` for one-click launch (Windows)
-    - *Legacy Flask backend:*
-       - `python backend.py`
-3. **Start the frontend**: `streamlit run frontend.py` or `streamlit run pages/app.py`
-4. **Login/Register**: Create an account or log in (or use anonymous mode)
-5. **Configure observatory**: Set location and parameters in the sidebar
-6. **Upload FITS file**: Use the main area uploader
-7. **Run analysis**: Adjust parameters and run the pipeline
-8. **Download results**: ZIP archive with catalogs, logs, plots, and models
+1. Install dependencies with ``pip install -e .``.
+2. Start the FastAPI backend with ``python -m uvicorn api.main:app --reload --host 127.0.0.1 --port 8000``.
+3. If needed, start the legacy backend with ``python backend.py``.
+4. Start the frontend with ``streamlit run frontend.py`` or ``streamlit run pages/app.py``.
+5. Log in, upload a FITS file, configure parameters in the sidebar, and click **Start Analysis**.
+6. Review the plots, tables, and logs, then download the ZIP archive or revisit archived results later.
 
 
 System Architecture
 -------------------
 
 **Frontend (Streamlit):**
-   - Modern web interface for user interaction and visualization
-   - Real-time progress, session state, and configuration management
-   - File upload, results display, and download options
+   - Main UI in ``pages/app.py`` with login flow in ``pages/login.py``
+   - Staged upload flow with explicit processing start
+   - Result display, archive browsing, and settings persistence
 
 **Backend:**
-   - *FastAPI (recommended):* Modern REST API for user management, config, and file handling
-   - *Legacy Flask backend:* Supported for compatibility
-   - Multi-user support, authentication, and persistent configuration
+   - *FastAPI (recommended):* Authentication, config persistence, and FITS storage routes
+   - *Legacy backend:* Kept for compatibility with older workflows
+   - SQLite-backed user, configuration, and file metadata storage
 
 **Processing Pipeline:**
-   - Modular, robust, and configurable for different observation types
-   - Error handling, logging, and recovery
-   - Integration with Astrometry.net (via stdpipe), SCAMP, and major catalogs
+   - FITS loading, header checks, WCS validation, photometry, and catalog enrichment
+   - Optional plate solving, refinement, and transient candidate search
+   - Graceful handling of remote-service timeouts and partial-result returns
 
 **External Integration:**
-   - Astrometry.net (local plate solving)
-   - SCAMP (astrometric refinement)
-   - Gaia, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, Astro-Colibri
-   - Aladin Lite (interactive sky visualization)
+   - Astrometry.net and optional SCAMP for astrometric workflows
+   - GAIA, SIMBAD, SkyBoT, VSX, Milliquas, and Astro-Colibri services
+   - Aladin Lite for interactive sky visualization
 
 
 
 Supported Data Formats
+----------------------
 
----------------------
-
-   - FITS (.fits, .fit, .fts, .fits.gz)
-
-   - Multi-extension FITS (MEF)
-
-   - Data cubes (first plane is used)
-
-   - RGB astronomical images (first color channel is used)
-
+- FITS (``.fits``, ``.fit``, ``.fts``, ``.fits.gz``)
+- Multi-extension FITS (MEF)
+- Data cubes, using the first science plane when needed
+- RGB-like FITS content, using the first channel when needed
 
 
 Use Cases
-
 ---------
 
-
-
 **Research**:
-
-   - High-precision photometry for variable star studies
-
-   - Asteroid and comet light curve analysis
-
-   - Transient event follow-up and characterization
-
-   - Coordinate system calibration
-
-   - Multi-epoch analysis support
-
-
+   - Variable-star photometry and monitoring
+   - Calibrated field-source catalog generation
+   - WCS validation and improvement for uploaded images
+   - Transient screening and Solar System object rejection
 
 **Survey Work**:
-
-   - Large-scale source catalog generation
-
-   - Cross-identification with existing catalogs
-
-   - Quality assessment and filtering
-
-   - Transient detection and classification
-
-
+   - Reproducible source extraction and catalog enrichment
+   - Batch inspection of archived analysis products
+   - Cross-identification against multiple public catalogs
 
 **Educational Use**:
-
-   - Teaching astronomical data analysis techniques
-
-   - Demonstrating photometric principles
-
-   - Hands-on experience with professional tools
-
-   - Research project development
+   - Demonstrating practical photometry workflows
+   - Teaching FITS handling, calibration, and WCS concepts
+   - Exploring catalog cross-matching and result validation
 
 
+Operational Notes
+-----------------
 
-Performance Characteristics
-
---------------------------
-
-
-
-**Processing Speed**:
-
-   - Typical 2K×2K image: 2-5 minutes complete analysis
-
-   - Multi-aperture photometry with background modeling
-
-   - Efficient memory management for large files
-
-   - Streamlit caching for improved performance
-
-
-
-**Accuracy**:
-
-   - Sub-arcsecond astrometric precision with plate solving
-
-   - Millimagnitude photometric precision with proper calibration
-
-   - Robust error propagation and uncertainty estimation
+- Performance depends strongly on image size, WCS quality, and whether local astrometry tools are available.
+- Remote catalog queries can be slow or unavailable; when possible, the application continues with partial results and reports the degraded step in the logs.
+- Plate solving and transient workflows depend on optional local and remote services and should be treated as best-effort enhancements rather than hard requirements.
 
 
 

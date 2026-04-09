@@ -14,7 +14,7 @@ import astropy.units as u
 from astroquery.gaia import Gaia
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
-from astroquery.imcce import Skybot
+from astroquery.imcce import Skybot, conf as imcce_conf
 
 from src.tools_pipeline import URL
 from src.utils import safe_catalog_query
@@ -987,6 +987,7 @@ def enhance_catalog(
                     ra=field_center_ra, dec=field_center_dec, unit=u.deg
                 )
 
+                imcce_conf.timeout = 120
                 skybot_result = Skybot.cone_search(
                     field_coord, sr_value * u.deg, obs_time
                 )

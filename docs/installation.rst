@@ -2,16 +2,18 @@
 Installation Guide
 ==================
 
-This page lists quick, copyable steps to set up the project locally on Windows (PowerShell) and Unix (bash). It covers both FastAPI (recommended) and legacy backend options. External tools (Astrometry.net, SCAMP) are optional for advanced features.
-
+This page lists quick, copyable steps to set up the project locally on Windows
+(PowerShell) and Unix (bash). It covers both FastAPI (recommended) and legacy
+backend options. External tools such as Astrometry.net and SCAMP remain
+optional for advanced features.
 
 Minimum Requirements
 --------------------
 
-- Python 3.12 (exactly) - required for verified dependency compatibility
+- Python 3.12, recommended for verified dependency compatibility
 - pip (latest version recommended)
-- 2-3 GB free disk space (more recommended for large image sets and temporary processing files)
-
+- At least 5 GB free disk space, with more recommended for large image sets and
+  temporary processing files
 
 Quick Install (PowerShell)
 -------------------------
@@ -35,18 +37,20 @@ Quick Install (bash)
    source .venv/bin/activate
    pip install -e .
 
-
 Optional External Tools
 ----------------------
 
-- Astrometry.net: required for blind plate solving (solve-field). Install via package manager or from source and ensure `solve-field` is on PATH.
-- SCAMP: optional, for astrometric refinement.
-
+- Astrometry.net: required for blind plate solving. Ensure ``solve-field`` is
+  installed and available on ``PATH``.
+- SCAMP: optional, for astrometric refinement workflows.
+- ASTRiDE: optional, only needed if you want to experiment with the standalone
+  satellite trail masking helper in ``scripts/satellite_trail_detector.py``.
 
 Environment Variables
 ---------------------
 
-Set SMTP credentials if you want the app to send emails (password can be base64-encoded in `SMTP_PASS_ENCODED`):
+Set SMTP credentials if you want the app to send password recovery emails.
+Frontend/backend URLs may also be overridden when needed.
 
 .. code-block:: powershell
 
@@ -54,7 +58,8 @@ Set SMTP credentials if you want the app to send emails (password can be base64-
    $env:SMTP_PORT = '587'
    $env:SMTP_USER = 'you@example.com'
    $env:SMTP_PASS_ENCODED = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes('your-app-password'))
-
+   $env:RPP_API_URL = 'http://localhost:8000'
+   $env:RPP_LEGACY_URL = 'http://localhost:5000'
 
 Verification
 ------------
@@ -73,11 +78,22 @@ After installation, verify Python dependencies and start the app:
    # Start frontend:
    streamlit run frontend.py
 
-If you plan to use plate solving, verify `solve-field --help` works and download index files appropriate for your typical field scale.
+If you plan to use plate solving, verify ``solve-field --help`` works and
+download index files appropriate for your typical field scale.
 
+Once the frontend is open:
+
+- upload a FITS file,
+- review the observatory and analysis parameters,
+- then click **Start Analysis Pipeline**.
+
+Uploading the file alone does not start the scientific processing phase.
 
 Support
 -------
 
-- See :doc:`usage` and :doc:`examples` for simple run instructions and a minimal Python example.
+- See :doc:`usage` and :doc:`examples` for simple run instructions and a
+  minimal Python example.
 - For Astrometry.net and SCAMP installation follow their project pages.
+- For schema upgrades or legacy database migration, see the scripts in
+  ``scripts/``.

@@ -50,7 +50,7 @@ def _try_source_detection(
                         sources,
                         image,
                         fwhm=fwhm_est,
-                        aper=1.0,  # Aperture radius in FWHM units
+                        aper=1,  # Aperture radius in FWHM units
                         bkgann=[2.0, 3.0],  # Background annulus in FWHM units
                         verbose=False,
                         sn=5.0,  # Minimum S/N
@@ -71,6 +71,243 @@ def _try_source_detection(
             except Exception as e:
                 st.write(f"Detection failed with FWHM={fwhm_est} : {e}")
                 continue
+    return None
+
+
+def get_adaptive_min_sources(image_shape):
+    """Calculate minimum sources based on image size
+    
+    Larger images can have fewer sources per area and still provide
+    good plate solving constraints. This function adapts the minimum
+    source requirement based on image dimensions.
+    """
+    height, width = image_shape
+    image_area = height * width
+
+    if image_area > 10_000_000:  # Large images (>10MP)
+        return max(30, min(50, int(image_area / 200_000)))
+    elif image_area > 1_000_000:  # Medium images (1-10MP)
+        return max(20, min(30, int(image_area / 50_000)))
+    else:  # Small images (<1MP)
+        return max(10, min(25, int(image_area / 20_000)))
+
+
+def estimate_pixel_scale_robust(header, image_shape):
+    """Robust pixel scale estimation with multiple methods and validation
+    
+    This function tries multiple methods to estimate pixel scale and returns
+    the most reliable estimate found. Methods are tried in order of preference.
+    """
+    methods = []
+
+    # Method 1: Direct header keywords
+    for key in ["PIXSCALE", "PIXSIZE", "SECPIX"]:
+        if key in header:
+            try:
+                scale = float(header[key])
+                if 0.1 <= scale <= 30.0:  # Reasonable range
+                    methods.append(("header_" + key, scale))
+            except Exception as e:
+                pass
+
+    # Method 2: Focal length + pixel size
+    try:
+        focal_length = None
+        pixel_size = None
+        for f_key in ["FOCALLEN", "FOCAL", "FOCLEN", "FL"]:
+            if f_key in header:
+                focal_length = float(header[f_key])
+                break
+        for p_key in ["PIXELSIZE", "PIXSIZE", "XPIXSZ", "YPIXSZ"]:
+            if p_key in header:
+                pixel_size = float(header[p_key])
+                break
+        if focal_length and pixel_size:
+            scale = 206 * pixel_size / focal_length
+            if 0.1 <= scale <= 30.0:
+                methods.append(("focal_length", scale))
+    except Exception as e:
+        pass
+
+    # Method 3: CD matrix
+    try:
+        cd_values = [header.get(f"CD{i}_{j}", 0) for i in [1,2] for j in [1,2]]
+        if any(x != 0 for x in cd_values):
+            cd11, cd12, cd21, cd22 = cd_values
+            det = abs(cd11 * cd22 - cd12 * cd21)
+            scale = 3600 * np.sqrt(det)
+            if 0.1 <= scale <= 30.0:
+                methods.append(("cd_matrix", scale))
+    except Exception as e:
+        pass
+
+    # Method 4: Image size heuristic
+    try:
+        height, width = image_shape
+        # Typical pixel scales for different image sizes
+        if max(height, width) > 5000:  # Large images
+            methods.append(("size_heuristic", 1.5))
+        elif max(height, width) > 2000:  # Medium images
+            methods.append(("size_heuristic", 2.5))
+        else:  # Small images
+            methods.append(("size_heuristic", 4.0))
+    except Exception as e:
+        pass
+
+    # Select best estimate
+    if methods:
+        # Prefer header direct values, then calculated, then heuristics
+        preferred_order = ["header_", "focal_length", "cd_matrix", "size_heuristic"]
+        for pref in preferred_order:
+            for method, scale in methods:
+                if method.startswith(pref):
+                    return scale
+
+        # Fallback to first valid method
+        return methods[0][1]
+
+    return None  # No estimate found
+
+
+def solve_with_enhanced_strategy(sources, header, image_data):
+    """Multi-stage plate solving with progressive constraints
+    
+    This function implements a multi-stage approach to plate solving:
+    1. Broad search with minimal constraints
+    2. Narrow search with better pixel scale constraints
+    3. Targeted search with RA/DEC hints if available
+    """
+    log_messages = []
+    
+    # Get pixel scale estimate for constraints
+    pixel_scale = estimate_pixel_scale_robust(header, image_data.shape)
+    
+    # Stage 1: Broad search with minimal constraints
+    kwargs_broad = {
+        "order": 3,
+        "scale_lower": 0.5,
+        "scale_upper": 15.0,
+        "scale_units": "arcsecperpix",
+        "radius": 10.0,  # 10 degree radius
+        "verbose": True
+    }
+    log_messages.append("INFO: Trying broad plate solving (wide constraints)")
+    
+    # Stage 2: Narrow search with better constraints
+    kwargs_narrow = kwargs_broad.copy()
+    if pixel_scale:
+        kwargs_narrow.update({
+            "scale_lower": pixel_scale * 0.7,
+            "scale_upper": pixel_scale * 1.3,
+            "radius": 5.0  # 5 degree radius
+        })
+        log_messages.append(f"INFO: Using pixel scale estimate: {pixel_scale:.2f} arcsec/pixel")
+    else:
+        log_messages.append("INFO: No pixel scale estimate available, using broad range")
+
+    # Stage 3: Targeted search with RA/DEC hint
+    kwargs_targeted = kwargs_narrow.copy()
+    if header and "RA" in header and "DEC" in header:
+        try:
+            ra_hint = float(header["RA"])
+            dec_hint = float(header["DEC"])
+            if 0 <= ra_hint <= 360 and -90 <= dec_hint <= 90:
+                kwargs_targeted.update({
+                    "center_ra": ra_hint,
+                    "center_dec": dec_hint,
+                    "radius": 2.0  # 2 degree radius
+                })
+                log_messages.append(
+                    f"INFO: Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}"
+                )
+        except Exception:
+            log_messages.append("WARNING: Could not parse RA/DEC from header")
+
+    # Try stages in order
+    for stage_name, kwargs in [
+        ("broad", kwargs_broad),
+        ("narrow", kwargs_narrow),
+        ("targeted", kwargs_targeted)
+    ]:
+        try:
+            log_messages.append(f"INFO: Trying {stage_name} plate solving")
+            solved_wcs = astrometry.blind_match_objects(sources, **kwargs)
+            if solved_wcs is not None:
+                log_messages.append(f"SUCCESS: {stage_name} solving successful")
+                return solved_wcs, log_messages
+        except Exception as e:
+            log_messages.append(f"WARNING: {stage_name} solving failed: {e}")
+
+    log_messages.append("ERROR: All plate solving stages failed")
+    return None, log_messages
+
+
+def _try_source_detection_improved(image, header, min_sources=10):
+    """Progressive parameter grid with adaptive thresholds
+    This improved version tries a more strategic sequence of parameters
+    that starts with the most likely values first, then progressively
+    tries more aggressive parameters.
+    """
+    # Start with most likely parameters first
+    parameter_grid = [
+        # (FWHM, threshold, description)
+        (3.5, 2.0, "Standard parameters"),
+        (4.0, 1.5, "Slightly more sensitive"),
+        (3.0, 1.5, "Tighter FWHM, lower threshold"),
+        (2.5, 1.0, "More aggressive"),
+        (2.0, 0.8, "Very aggressive"),
+        (4.5, 1.8, "Larger FWHM"),
+        (5.0, 1.5, "Large FWHM, lower threshold"),
+        (2.8, 1.2, "Medium aggressive"),
+    ]
+
+    for fwhm_est, thresh, desc in parameter_grid:
+        try:
+            st.info(f"Trying {desc}: thresh={thresh}, FWHM={fwhm_est}")
+            
+            # Get gain value
+            if header.get("GAIN"):
+                gain = header.get("GAIN")
+            else:
+                gain = 65635 / np.max(image)
+
+            sources = photometry.get_objects_sextractor(
+                image,
+                thresh=thresh,
+                aper=1.5 * fwhm_est,
+                gain=gain,
+                edge=10,
+                bg_size=64,
+            )
+
+            if sources is not None and len(sources) >= min_sources:
+                # Measure objects
+                sources = photometry.measure_objects(
+                    sources,
+                    image,
+                    fwhm=fwhm_est,
+                    aper=1,
+                    bkgann=[2.0, 3.0],
+                    verbose=False,
+                    sn=5.0,
+                )
+
+                if sources is not None and len(sources) >= min_sources:
+                    st.success(
+                        f"Found {len(sources)} sources with "
+                        f"thresh={thresh}, FWHM={fwhm_est}"
+                    )
+                    return sources
+
+            if sources is not None:
+                st.write(
+                    f"Found {len(sources)} sources (need at least {min_sources})"
+                )
+
+        except Exception as e:
+            st.write(f"Detection failed with FWHM={fwhm_est} : {e}")
+            continue
+
     return None
 
 
@@ -129,27 +366,16 @@ def solve_with_astrometrynet(file_path):
                 "INFO: No valid WCS found in header. Proceeding with blind solve"
             )
 
-        # Try standard detection parameters first
-        sources = _try_source_detection(
+        # Use adaptive minimum sources based on image size
+        adaptive_min_sources = get_adaptive_min_sources(image_data.shape)
+        log_messages.append(f"INFO: Using adaptive minimum sources: {adaptive_min_sources}")
+
+        # Try improved detection with progressive parameter grid
+        sources = _try_source_detection_improved(
             image_data,
             header,
-            fwhm_estimates=[3.5, 4.0, 5.0],
-            threshold_multi=[2.0, 1.5],
-            min_sources=50,
+            min_sources=adaptive_min_sources
         )
-
-        # If that fails, try more aggressive parameters
-        if sources is None:
-            log_messages.append(
-                "WARNING: Standard detection failed. Trying more aggressive parameters"
-            )
-            sources = _try_source_detection(
-                image_data,
-                header,
-                fwhm_estimates=[2.0, 2.5, 3.0],
-                threshold_multi=[1.0, 0.5],
-                min_sources=25,
-            )
 
         if sources is None or len(sources) < 5:
             error_message = "Failed to detect sufficient sources for plate solving."
@@ -169,89 +395,17 @@ def solve_with_astrometrynet(file_path):
             f"SUCCESS: Ready for plate solving with {len(sources)} sources"
         )
 
-        # Get pixel scale estimate
-        pixel_scale_estimate = None
-        if header:
-            # Try to get pixel scale from various header keywords
-            for key in ["PIXSCALE", "PIXSIZE", "SECPIX"]:
-                if key in header:
-                    log_messages.append(f"INFO: Found pixel scale in header: {key}")
-                    pixel_scale_estimate = float(header[key])
-                    break
-
-            # If still not found, try FOCALLEN + pixel size calculation
-            if pixel_scale_estimate is None:
-                try:
-                    focal_length = None
-                    pixel_size = None
-
-                    # Check for focal length keywords
-                    for focal_key in ["FOCALLEN", "FOCAL", "FOCLEN", "FL"]:
-                        if focal_key in header:
-                            focal_length = float(header[focal_key])
-                            log_messages.append(
-                                f"INFO: Found focal length: {focal_length} mm from {focal_key}"
-                            )
-                            break
-
-                    # Check for pixel size keywords (in microns)
-                    for pixel_key in [
-                        "PIXELSIZE",
-                        "PIXSIZE",
-                        "XPIXSZ",
-                        "YPIXSZ",
-                        "PIXELMICRONS",
-                    ]:
-                        if pixel_key in header:
-                            pixel_size = float(header[pixel_key])
-                            log_messages.append(
-                                f"INFO: Found pixel size: {pixel_size} microns from {pixel_key}"
-                            )
-                            break
-
-                    # Calculate pixel scale using the formula from the guide scope reference
-                    if focal_length is not None and pixel_size is not None:
-                        pixel_scale_estimate = 206 * pixel_size / focal_length
-
-                        # Sanity check - typical astronomical pixel scales
-                        if not (0.1 <= pixel_scale_estimate <= 30.0):
-                            log_messages.append(
-                                f"WARNING: Unusual pixel scale calculated: {pixel_scale_estimate:.2f} arcsec/pixel"
-                            )
-                        else:
-                            log_messages.append(
-                                f"SUCCESS: Pixel scale calculated from focal length and pixel size: {pixel_scale_estimate:.2f} arcsec/pixel"
-                            )
-                    elif focal_length is not None:
-                        log_messages.append(
-                            f"WARNING: Found focal length ({focal_length} mm) but no pixel size in header"
-                        )
-                    elif pixel_size is not None:
-                        log_messages.append(
-                            f"WARNING: Found pixel size ({pixel_size} µm) but no focal length in header"
-                        )
-
-                except Exception as e:
-                    log_messages.append(
-                        f"WARNING: Error calculating pixel scale from focal length/pixel size: {e}"
-                    )
-                    pass
-
-            # If not found, try to calculate from CD matrix
-            if pixel_scale_estimate is None:
-                try:
-                    cd_values = [
-                        header.get(f"CD{i}_{j}", 0) for i in [1, 2] for j in [1, 2]
-                    ]
-                    if any(x != 0 for x in cd_values):
-                        cd11, cd12, cd21, cd22 = cd_values
-                        det = abs(cd11 * cd22 - cd12 * cd21)
-                        pixel_scale_estimate = 3600 * np.sqrt(det)
-                        log_messages.append(
-                            "INFO: Calculated pixel scale from CD matrix"
-                        )
-                except Exception:
-                    pass
+        # Get pixel scale estimate using improved method
+        pixel_scale_estimate = estimate_pixel_scale_robust(header, image_data.shape)
+        
+        if pixel_scale_estimate is not None:
+            log_messages.append(
+                f"INFO: Using pixel scale estimate: {pixel_scale_estimate:.2f} arcsec/pixel"
+            )
+        else:
+            log_messages.append(
+                "INFO: No pixel scale estimate available, using broad range"
+            )
 
         # Prepare parameters for stdpipe blind_match_objects
         kwargs = {
@@ -264,52 +418,15 @@ def solve_with_astrometrynet(file_path):
             "verbose": True,
         }
 
-        # Add pixel scale constraints if available
-        if pixel_scale_estimate and pixel_scale_estimate > 0:
-            scale_low = pixel_scale_estimate * 0.8
-            scale_high = pixel_scale_estimate * 1.2
-            kwargs.update(
-                {
-                    "scale_lower": scale_low,
-                    "scale_upper": scale_high,
-                    "scale_units": "arcsecperpix",
-                }
-            )
-            log_messages.append(
-                f"INFO: Using pixel scale estimate: {pixel_scale_estimate:.2f} arcsec/pixel"
-            )
-        else:
-            # Use broad scale range if no estimate available
-            kwargs.update(
-                {"scale_lower": 0.1, "scale_upper": 10.0, "scale_units": "arcsecperpix"}
-            )
-            log_messages.append(
-                "INFO: No pixel scale estimate available, using broad range"
-            )
-
-        # Add RA/DEC hint if available
-        if header and "RA" in header and "DEC" in header:
-            try:
-                ra_hint = float(header["RA"])
-                dec_hint = float(header["DEC"])
-                if 0 <= ra_hint <= 360 and -90 <= dec_hint <= 90:
-                    kwargs.update(
-                        {
-                            "center_ra": ra_hint,
-                            "center_dec": dec_hint,
-                            "radius": 0.95,  # 5 degree search radius
-                        }
-                    )
-                    log_messages.append(
-                        f"INFO: Using RA/DEC hint: {ra_hint:.3f}, {dec_hint:.3f}"
-                    )
-            except Exception:
-                log_messages.append("WARNING: Could not parse RA/DEC from header")
+        # Note: Pixel scale constraints and RA/DEC hints are now handled
+        # in the solve_with_enhanced_strategy function
 
         try:
-            # Call stdpipe's blind_match_objects function
-            # We pass 'sources' directly as it is an Astropy Table compatible with stdpipe
-            solved_wcs = astrometry.blind_match_objects(sources, **kwargs)
+            # Use enhanced multi-stage plate solving strategy
+            solved_wcs, stage_messages = solve_with_enhanced_strategy(
+                sources, header, image_data
+            )
+            log_messages.extend(stage_messages)
 
             if solved_wcs is not None:
                 log_messages.append("SUCCESS: Plate solving successful")

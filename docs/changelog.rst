@@ -3,6 +3,33 @@ Changelog
 
 This document records all notable changes to RAPAS Photometry Pipeline.
 
+Version 1.7.0 (Unreleased)
+--------------------------
+
+**Application Workflow & Stability**
+
+*   **Explicit Start Gate**: Uploading a FITS file now stages it in the Streamlit UI without immediately triggering FITS loading, WCS checks, or photometry. Scientific processing starts only after clicking **Start Analysis**.
+*   **Astrometry Toggle Fix**: The frontend now reads the astrometry option from the persisted analysis settings, so the sidebar toggle consistently controls forced astrometry checks.
+*   **Safer Astrometry Fallback**: The upload/start workflow no longer passes an unset temporary file path into the astrometry step during the pre-start phase.
+
+**Catalog & Network Handling**
+
+*   **SkyBoT Timeout Adjustment**: SkyBoT queries in both catalog enhancement and transient filtering now use a 120-second timeout instead of the previous 300-second default.
+*   **Graceful Remote-Service Behavior**: User-facing documentation and workflow descriptions were aligned with the existing behavior of continuing with partial results when optional remote services are slow, empty, or unavailable.
+
+**Packaging & Environment**
+
+*   **Missing Dependency Fix**: Added ``email-validator`` to project dependencies so FastAPI schema imports using ``EmailStr`` work in a clean environment.
+*   **Local Editable Install**: Updated ``requirements.txt`` to install the local checkout with ``-e .`` instead of pointing back to a remote repository URL.
+*   **Frontend Entry Point**: Added ``run_frontend.py`` so the configured ``pfr`` script entry point resolves correctly.
+*   **Tooling Target Update**: Updated Black configuration to target Python 3.12.
+
+**Documentation Refresh**
+
+*   Updated ``README.md`` and ``docs/TUTORIAL.md`` to reflect the staged upload workflow, backend auto-detection, account features, maintenance scripts, astrometry fallback behavior, and partial-result handling.
+*   Updated the main Sphinx pages including ``installation.rst``, ``usage.rst``, ``troubleshooting.rst``, ``features.rst``, ``examples.rst``, ``api_reference.rst``, ``user_guide.rst``, ``advanced_features.rst``, ``api.rst``, and ``index.rst``.
+*   Replaced outdated terminology such as old start-button labels and stale API/module references with the current code paths and workflow names.
+
 Version 1.6.0 (Current)
 -----------------------
 

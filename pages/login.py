@@ -126,10 +126,10 @@ if not st.session_state.logged_in:
                         "password": password,
                         "base_url": st.session_state.api_base_url,
                     }
-                    st.session_state.backend_status_message = (
-                        "Using API backend"
-                    )
-                    st.success(message)
+                    # st.session_state.backend_status_message = (
+                    #     "Using API backend"
+                    # )
+                    # st.success(message)
                     st.rerun()
             else:
                 legacy_url = st.session_state.legacy_backend_url
@@ -142,9 +142,9 @@ if not st.session_state.logged_in:
                         st.session_state.logged_in = True
                         st.session_state.username = username
                         st.session_state.backend_mode = "legacy"
-                        st.session_state.backend_status_message = (
-                            "Using legacy backend"
-                        )
+                        # st.session_state.backend_status_message = (
+                        #     "Using legacy backend"
+                        # )
                         st.rerun()
                     else:
                         st.error(response.text)
@@ -329,7 +329,7 @@ if not st.session_state.logged_in:
         "[MIT LICENSE](https://opensource.org/licenses/MIT)")
     st.sidebar.markdown(
         "By using this app, you agree to GDPR data "
-        "processing for account and analysis data. For more details, see our [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
+        "processing for account and analysis data. For more details, see the [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
     )
 else:
     st.success(f"Welcome, {st.session_state.username}! Redirecting to the app...")

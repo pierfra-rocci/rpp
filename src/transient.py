@@ -10,7 +10,7 @@ import numpy as np
 import streamlit as st
 from astropy.table import Table
 from astropy.time import Time
-from astroquery.imcce import Skybot
+from astroquery.imcce import Skybot, conf as imcce_conf
 
 from src.tools_pipeline import fix_header
 
@@ -74,6 +74,7 @@ def filter_skybot_candidates(
             obs_time = Time(obs_time)
 
         # Query SkyBoT for Solar System objects in the field
+        imcce_conf.timeout = 120
         skybot_results = Skybot.cone_search(
             SkyCoord(ra0, dec0, unit="deg"), (sr0 + 2.0 * sr) * u.deg, obs_time
         )
@@ -157,7 +158,7 @@ def find_candidates(
     filter_cat=None,
     filter_name=None,
     mag_limit="<20.0",
-    detect_thresh=2.0,
+    detect_thresh=2.5,
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters

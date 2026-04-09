@@ -1,6 +1,8 @@
 Features
 ========
 
+The sections below summarize the currently implemented user-facing and
+developer-facing capabilities of RAPAS Photometry Pipeline.
 
 User Authentication & Multi-User Support
 ----------------------------------------
@@ -9,6 +11,7 @@ User Authentication & Multi-User Support
    - User registration and login system via FastAPI (recommended) or legacy Flask backend
    - Password hashing with secure storage in SQLite or SQL database
    - Password recovery via email (requires SMTP configuration)
+   - Automatic frontend fallback from FastAPI to the legacy backend when needed
    - Individual user workspaces with isolated data storage
    - Session management with automatic logout options
 
@@ -16,7 +19,7 @@ User Authentication & Multi-User Support
    - User-specific settings stored in backend database
    - Observatory parameters, analysis settings, and API keys
    - Automatic loading of saved configurations on login
-   - Local and remote configuration synchronization
+   - Configuration persistence when the API backend is active
 
 **Analysis History Tracking**:
    - Database tracking of all WCS-solved FITS files per user
@@ -24,6 +27,12 @@ User Authentication & Multi-User Support
    - Many-to-many linking between FITS files and result archives
    - Query functions to retrieve analysis history
    - Safe migration scripts for database schema updates
+
+**Backend Modes**:
+   - FastAPI backend available through ``api/main.py``
+   - Legacy backend remains supported for compatibility
+   - Frontend probing logic implemented in ``pages/api_client.py``
+   - Backend URLs can be overridden with ``RPP_API_URL`` and ``RPP_LEGACY_URL``
 
 Advanced Image Processing
 ------------------------
@@ -34,6 +43,7 @@ Advanced Image Processing
    - Data cubes with automatic 2D plane extraction
    - RGB astronomical images (uses first color channel)
    - Automatic header validation and fixing
+   - Upload staging in the UI before the scientific processing phase starts
 
 **Header Processing**:
    - Automatic WCS keyword validation and correction
@@ -65,6 +75,7 @@ Astrometric Solutions
    - Automatic source detection using photutils
    - Scale estimation from focal length and pixel size
    - Solution validation and coordinate range checking
+   - Forced re-solve option when the user enables Astrometry Check
 
 **WCS Refinement**:
    - SCAMP integration for high-precision astrometry
@@ -78,7 +89,7 @@ Astrometric Solutions
    - SIP distortion correction handling
    - Coordinate transformation validation
    - Edge case handling for problematic coordinates
-   - Force re-solve option for existing solutions
+   - Fallback to original WCS when forced solving fails and a valid WCS already exists
 
 Source Detection & Photometry
 -----------------------------
@@ -179,6 +190,7 @@ Multi-Catalog Cross-Matching
    - Magnitude predictions and orbital elements
    - Time-dependent position calculations
    - Integration with observation timestamps
+   - Graceful handling of timeout or network failures during catalog access
 
 **Variable Star Catalog (AAVSO VSX)**:
    - Variable star identification and classification
@@ -209,6 +221,7 @@ Transient Detection (Beta)
    - Integration with PanSTARRS (Northern) and SkyMapper (Southern) surveys
    - Template image retrieval and masking
    - Candidate visualization with cutouts (Science, Template, Difference)
+   - Additional SkyBoT filtering for Solar System object rejection
 
 Data Visualization & Analysis
 -----------------------------
@@ -250,6 +263,7 @@ User Interface & Workflow
    - Interactive parameter adjustment with immediate feedback
    - Organized sidebar with collapsible sections
    - Mobile-friendly responsive layout
+   - Dedicated Start Analysis action after FITS upload and parameter review
 
 **Configuration Management**:
    - Persistent parameter storage across sessions
@@ -264,6 +278,7 @@ User Interface & Workflow
    - Temporary file handling with automatic cleanup
    - Archive browser for previous results
    - Batch download options for result sets
+   - User-scoped storage paths under ``rpp_data/fits/`` and ``rpp_results/``
 
 **Error Handling**:
    - Comprehensive error messages with recovery suggestions
@@ -271,6 +286,17 @@ User Interface & Workflow
    - Automatic fallback options for common failure modes
    - Detailed logging for troubleshooting
    - User-friendly error reporting
+
+Developer Utilities and Scripts
+-------------------------------
+
+**Database Migration Utilities**:
+   - ``scripts/migrate_add_wcs_zip_tables.py`` for 1.6.0 tracking tables
+   - ``scripts/migrate_legacy_db.py`` for legacy SQLite migration to the API schema
+
+**Standalone Processing Utilities**:
+   - ``scripts/satellite_trail_detector.py`` for experimental satellite trail masking
+   - Script utilities are documented as separate helpers, not as integrated GUI features
 
 Output Generation & Export
 --------------------------
