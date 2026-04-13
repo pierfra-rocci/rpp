@@ -290,6 +290,23 @@ with st.sidebar.expander("⚙️ Parameters", expanded=False):
         step=0.5,
         help=("Source detection threshold in units of background standard deviation."),
     )
+    _fwhm_rf = st.slider(
+        "FWHM Radius Factor",
+        min_value=0.5,
+        max_value=2.0,
+        value=float(st.session_state.analysis_parameters.get("fwhm_radius_factor", 1.5)),
+        step=0.1,
+        help=(
+            "Multiplier applied to the measured FWHM to set the photometry aperture "
+            "radius. Values 1.1 and 1.3 are reserved for internal fixed apertures."
+        ),
+    )
+    if _fwhm_rf in (1.1, 1.3):
+        st.warning(
+            "FWHM radius factor 1.1 and 1.3 are reserved for existing fixed apertures. "
+            "Please choose a different value."
+        )
+    st.session_state.analysis_parameters["fwhm_radius_factor"] = _fwhm_rf
     st.session_state.analysis_parameters["detection_mask"] = st.number_input(
         "Border Mask (pixels)",
         min_value=0,
@@ -1142,6 +1159,9 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                     threshold_sigma = st.session_state.analysis_parameters[
                         "threshold_sigma"
                     ]
+                    fwhm_radius_factor = st.session_state.analysis_parameters.get(
+                        "fwhm_radius_factor", 1.5
+                    )
                     detection_mask = st.session_state.analysis_parameters[
                         "detection_mask"
                     ]
@@ -1156,6 +1176,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                         mean_fwhm_pixel,
                         threshold_sigma,
                         detection_mask,
+                        fwhm_radius_factor,
                     )
 
                     if isinstance(result, tuple) and len(result) == 8:
@@ -1227,6 +1248,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                     matched_table,
                                     filter_band,
                                     air,
+                                    fwhm_radius_factor,
                                 )
                             )
 
@@ -1657,6 +1679,7 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     # Get parameters from session state
     seeing = st.session_state.analysis_parameters["seeing"]
     threshold_sigma = st.session_state.analysis_parameters["threshold_sigma"]
+    fwhm_radius_factor = st.session_state.analysis_parameters.get("fwhm_radius_factor", 1.5)
     detection_mask = st.session_state.analysis_parameters["detection_mask"]
     filter_band = st.session_state.analysis_parameters["filter_band"]
     filter_max_mag = st.session_state.analysis_parameters["filter_max_mag"]
