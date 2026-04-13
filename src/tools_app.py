@@ -945,6 +945,7 @@ def initialize_session_state():
     default_analysis_params = {
         "seeing": 3.0,
         "threshold_sigma": 3.0,
+        "fwhm_radius_factor": 1.5,
         "detection_mask": 10,
         "filter_band": "phot_g_mean_mag",
         "filter_max_mag": 20.0,
