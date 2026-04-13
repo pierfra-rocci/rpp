@@ -51,7 +51,7 @@ Step 3: Configure Parameters
 Use the sidebar to review or change:
 
 - Observatory name, latitude, longitude, and elevation
-- Estimated seeing, detection threshold, and border mask size
+- Estimated seeing, detection threshold, FWHM radius factor, and border mask size
 - Calibration filter band and maximum calibration magnitude
 - **Astrometry check** to force solving or refining the WCS workflow
 - **Transient Candidates** options to enable the transient finder and choose a reference filter

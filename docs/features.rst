@@ -109,8 +109,10 @@ Source Detection & Photometry
    - Seeing estimation from stellar profiles
 
 **Multi-Aperture Photometry**:
-   - Two primary aperture radii: 1.1× and 1.3× FWHM (optimized for most use cases)
-   - Circular apertures with local background estimation using annular regions
+   - Two fixed aperture radii: 1.1× and 1.3× FWHM (optimized for most use cases)
+   - User-configurable third aperture (FWHM Radius Factor, 0.5–2.0× FWHM, default 1.5×); values 1.1 and 1.3 collapse back to two apertures without duplication
+   - All three apertures produce the same set of output columns: flux, background-corrected flux, S/N, instrumental magnitude, calibrated magnitude, magnitude error, and quality flag
+   - Column naming follows ``aperture_mag_X_X`` / ``snr_X_X`` / ``aperture_mag_err_X_X`` / ``quality_flag_X_X`` (e.g. ``_1_1``, ``_1_3``, ``_1_5``)
    - Per-aperture background-corrected and raw flux measurements
    - Signal-to-noise ratio (S/N) calculation using background-corrected flux
    - Magnitude error calculation: ``σ_mag = 1.0857 × (σ_flux / flux)``

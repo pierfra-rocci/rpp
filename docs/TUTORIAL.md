@@ -35,6 +35,7 @@ In the sidebar, adjust:
 
 - **Estimated Seeing (FWHM)**: Initial guess in arcseconds
 - **Detection Threshold**: Sigma threshold for source detection
+- **FWHM Radius Factor**: Multiplier for the user-defined aperture radius (0.5 – 2.0). Values 1.1 and 1.3 are reserved for the two fixed apertures and cannot be selected without a warning.
 - **Border Mask**: Pixels to exclude at the image edge
 - **Calibration Filter Band**: Choose the photometric band for calibration
 - **Max Calibration Mag**: Faintest magnitude for calibration stars
@@ -62,7 +63,7 @@ The following steps are performed:
 
 1. **Background & Noise Estimation**
 2. **Source Detection & Cosmic Ray Removal**
-3. **Photometry**: Multi-aperture and PSF photometry, S/N and error calculation, quality flag assignment
+3. **Photometry**: Multi-aperture (up to 3 apertures) and PSF photometry, S/N and error calculation, quality flag assignment
 4. **Astrometric Refinement** (if enabled)
 5. **Photometric Calibration**: Cross-match with catalogs for zero-point
 6. **Multi-Catalog Cross-Matching**: GAIA DR3, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, 10 Parsec, Astro-Colibri
@@ -76,7 +77,7 @@ tries to restore and continue with the original WCS when possible.
 
 After processing, download the ZIP archive containing:
 
-- `*_catalog.csv` / `.vot`: Source catalog with photometry, errors, flags, and cross-matches
+- `*_catalog.csv` / `.vot`: Source catalog with photometry, errors, flags, and cross-matches. Each aperture produces its own set of columns: `aperture_mag_X_X`, `aperture_mag_err_X_X`, `snr_X_X`, `quality_flag_X_X` (fixed apertures: `_1_1`, `_1_3`; user-defined aperture: e.g. `_1_5` for FWHM Radius Factor = 1.5)
 - `*_background.fits`: 2D background and RMS maps
 - `*_psf.fits`: Empirical PSF model
 - `*_wcs_header.txt`: Astrometric solution header
