@@ -6,7 +6,7 @@ A comprehensive astronomical photometry pipeline built with Streamlit, featuring
 
 ### 🔭 Core Photometry
 
-- **Multi-aperture photometry**: Automatic aperture photometry with multiple radii (1.1×, 1.3× FWHM)
+- **Multi-aperture photometry**: Automatic aperture photometry with two fixed radii (1.1×, 1.3× FWHM) plus a fully-computed user-defined third aperture (configurable via FWHM Radius Factor)
 - **PSF photometry**: Effective Point Spread Function (ePSF) modeling.
 - **Background estimation**: Advanced 2D background modeling with SExtractor algorithm
 - **Source detection**: DAOStarFinder and Sep with configurable detection thresholds
@@ -186,6 +186,7 @@ Main API routes currently exposed by `api/main.py` include:
 
 - **Estimated Seeing (FWHM)**: Initial estimate in arcseconds
 - **Detection Threshold**: Source detection sigma threshold
+- **FWHM Radius Factor**: Multiplier applied to the measured FWHM for the user-defined aperture radius (0.5 – 2.0; values 1.1 and 1.3 are reserved for the two fixed apertures)
 - **Border Mask**: Pixel border exclusion size
 - **Filter Band**: GAIA or synthetic magnitude band for calibration
 - **Max Calibration Mag**: Faintest magnitude for calibration stars
@@ -323,6 +324,13 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - **Catalog Query Robustness**:
   - SkyBoT timeout was reduced from 300 seconds to 120 seconds in both catalog enhancement and transient filtering
   - Remote catalog failures and timeouts are documented as partial-result conditions rather than full-pipeline failures where possible
+- **New FWHM Radius Factor Parameter**:
+  - A configurable aperture radius multiplier (0.5 – 2.0 × FWHM) is now fully implemented as a third photometric aperture
+  - The pipeline computes flux, S/N, magnitude, magnitude error, and quality flag for this aperture alongside the two fixed ones
+  - Output catalog columns follow the same naming convention: `aperture_mag_X_X`, `aperture_mag_err_X_X`, `snr_X_X`, `quality_flag_X_X` (e.g. `_1_5` for a factor of 1.5)
+  - The zero point is applied to the third aperture in the same calibration pass as the fixed apertures
+  - Values 1.1 and 1.3 are reserved for the existing fixed apertures; selecting them collapses back to two apertures without duplication
+  - The value is saved in the per-user configuration and persists across sessions
 - **Packaging and Runtime Fixes**:
   - Added `email-validator` so FastAPI schemas using `EmailStr` work in a clean environment
   - Replaced the self-referential remote editable install in `requirements.txt` with `-e .`

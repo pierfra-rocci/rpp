@@ -617,7 +617,8 @@ def fwhm_fit(
 
 
 def detection_and_photometry(
-    image_data, science_header, mean_fwhm_pixel, threshold_sigma, detection_mask
+    image_data, science_header, mean_fwhm_pixel, threshold_sigma, detection_mask,
+    fwhm_radius_factor: float = 1.5,
 ):
     """
     Perform a complete photometry workflow on an astronomical image.
@@ -806,6 +807,9 @@ def detection_and_photometry(
 
     # Create multiple circular apertures with different radii
     aperture_radii = [1.1, 1.3]
+    _rf = round(float(fwhm_radius_factor), 1)
+    if _rf not in aperture_radii:
+        aperture_radii.append(_rf)
     apertures = [
         CircularAperture(positions, r=radius * fwhm_estimate)
         for radius in aperture_radii
@@ -1121,7 +1125,7 @@ def show_subtracted_image(image_sub):
     plt.close(fig)
 
 
-def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
+def calculate_zero_point(_phot_table, _matched_table, filter_band, air, fwhm_radius_factor: float = 1.5):
     """
     Calculate photometric zero point from matched sources with GAIA.
 
@@ -1161,6 +1165,9 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air):
     try:
         # Define aperture radii (should match the ones used in detection_and_photometry)
         aperture_radii = [1.1, 1.3]
+        _rf = round(float(fwhm_radius_factor), 1)
+        if _rf not in aperture_radii:
+            aperture_radii.append(_rf)
 
         # Use the first aperture radius as the default for zero point calculation
         default_radius = aperture_radii[0]
