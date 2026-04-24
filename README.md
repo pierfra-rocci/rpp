@@ -188,8 +188,7 @@ Main API routes currently exposed by `api/main.py` include:
 - **Detection Threshold**: Source detection sigma threshold
 - **FWHM Radius Factor**: Multiplier applied to the measured FWHM for the user-defined aperture radius (0.5 – 2.0; values 1.1 and 1.3 are reserved for the two fixed apertures)
 - **Border Mask**: Pixel border exclusion size
-- **Filter Band**: GAIA or synthetic magnitude band for calibration
-- **Max Calibration Mag**: Faintest magnitude for calibration stars
+- **Filter Band**: GAIA or synthetic magnitude band for calibration (maximum calibration magnitude is fixed at 21, the GAIA limit)
 - **Astrometry Check**: Toggle to force a plate solve/WCS refinement
 
 If **Astrometry Check** is enabled, the app forces a fresh plate-solving attempt
@@ -199,6 +198,10 @@ to fall back to the original WCS solution when available.
 ### Output Files
 
 - **Photometry Catalog**: CSV and VOTable with multi-aperture and PSF photometry
+  including the legacy column names (for example `psf_mag`,
+  `aperture_mag_1_5`) plus filter-prefixed aliases derived from the selected
+  calibration band (for example `rapasg_psf_mag`,
+  `rapasg_aperture_mag_1_5`)
 - **Background Model**: 2D background and RMS maps (FITS)
 - **PSF Model**: Empirical PSF (FITS)
 - **WCS Header**: Astrometric solution (TXT)
@@ -310,9 +313,22 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - Check the generated log file to see which catalog steps completed, timed out,
   or were skipped.
 
-## Recent changes / Changelog (last update: 2026-04-09)
+## Recent changes / Changelog (last update: 2026-04-21)
 
-### Current Development Version (1.7.0)
+### Current Release (1.7.3)
+
+- **Pre-final release**: Internal consolidation of changes from 1.7.2 in preparation for the stable release.
+- **Photometry catalog aliases**: exported calibrated magnitude columns now also include filter-prefixed aliases derived from the selected calibration band in `GAIA_BANDS` (for example `rapasg_psf_mag`, `rapasbp_aperture_mag_1_5`) while keeping the legacy column names for compatibility.
+
+### Version 1.7.2
+
+- **Sexagesimal Coordinate Display**:
+  - Target RA and DEC are now shown in both decimal degrees and sexagesimal format (HH:MM:SS / ±DD:MM:SS) in the Statistics section
+  - The same dual format is recorded in the processing log
+- **Magnitude Error Plot — Logarithmic Scale**:
+  - The Y-axis of the "Magnitude Error vs Magnitude" scatter plot is now displayed on a logarithmic scale for better readability over a wide dynamic range
+
+### Version 1.7.0
 
 - **Staged Start-Analysis Workflow**:
   - FITS upload now stages the file in the UI without immediately starting FITS loading, WCS checks, or photometry
@@ -339,7 +355,7 @@ Firefox may have compatibility issues with Aladin Lite v3 due to WebAssembly loa
 - **Documentation Refresh**:
   - Updated the README, tutorial, user guide, API docs, and core Sphinx pages to match the current backend behavior, staged upload flow, storage model, and troubleshooting guidance
 
-### Previous Release (1.6.0)
+### Version 1.6.0
 
 - **New Storage Structure**:
   - FITS file storage moved from `data/fits/` to `rpp_data/fits/` (same level as `rpp_results/`)
