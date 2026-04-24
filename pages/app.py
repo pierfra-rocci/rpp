@@ -34,11 +34,12 @@ from src.header_utils import select_science_header, copy_header_or_none
 # Local Application Imports
 from src.tools_pipeline import (
     GAIA_BANDS,
-    FILTER_DICT,
     extract_coordinates,
     extract_pixel_scale,
     safe_wcs_create,
     add_calibrated_magnitudes,
+    drop_legacy_magnitude_columns,
+    get_filter_prefix,
     merge_photometry_catalogs,
     clean_photometry_table,
 )
@@ -209,11 +210,19 @@ st.caption(st.session_state.backend_status_message)
 
 # Added: Quick Start Tutorial link (now displayed in an expander)
 with st.expander("📘 Quick Start Tutorial"):
-    try:
-        with open(os.path.join("docs", "TUTORIAL.md"), "r", encoding="utf-8") as f:
-            st.markdown(f.read(), unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.warning("TUTORIAL.md not found. It should be in the `doc` folder.")
+    tab_en, tab_fr = st.tabs(["🇬🇧 English", "🇫🇷 Français"])
+    with tab_en:
+        try:
+            with open(os.path.join("docs", "TUTORIAL.md"), "r", encoding="utf-8") as f:
+                st.markdown(f.read(), unsafe_allow_html=True)
+        except FileNotFoundError:
+            st.warning("TUTORIAL.md not found. It should be in the `docs` folder.")
+    with tab_fr:
+        try:
+            with open(os.path.join("docs", "TUTORIAL_FR.md"), "r", encoding="utf-8") as f:
+                st.markdown(f.read(), unsafe_allow_html=True)
+        except FileNotFoundError:
+            st.warning("TUTORIAL_FR.md not found. It should be in the `docs` folder.")
 
 st.sidebar.markdown(f"**Version:** _{version}_")
 st.sidebar.caption(st.session_state.backend_status_message)
@@ -272,7 +281,7 @@ with st.sidebar.expander("🔭 Observatory", expanded=False):
 
 with st.sidebar.expander("⚙️ Parameters", expanded=False):
     st.session_state.analysis_parameters["seeing"] = st.slider(
-        "Estimated Seeing (arcsec)",
+        "Estimated FWHM (arcsec)",
         min_value=1.0,
         max_value=6.0,
         value=st.session_state.analysis_parameters["seeing"],
@@ -281,14 +290,6 @@ with st.sidebar.expander("⚙️ Parameters", expanded=False):
             "Initial guess for the Full Width at Half Maximum of stars in "
             "arcseconds. Will be refined."
         ),
-    )
-    st.session_state.analysis_parameters["threshold_sigma"] = st.slider(
-        "Detection Threshold (sigma)",
-        min_value=1.0,
-        max_value=6.0,
-        value=st.session_state.analysis_parameters["threshold_sigma"],
-        step=0.5,
-        help=("Source detection threshold in units of background standard deviation."),
     )
     _fwhm_rf = st.slider(
         "FWHM Radius Factor",
@@ -301,12 +302,20 @@ with st.sidebar.expander("⚙️ Parameters", expanded=False):
             "radius. Values 1.1 and 1.3 are reserved for internal fixed apertures."
         ),
     )
+    st.session_state.analysis_parameters["fwhm_radius_factor"] = _fwhm_rf
     if _fwhm_rf in (1.1, 1.3):
         st.warning(
             "FWHM radius factor 1.1 and 1.3 are reserved for existing fixed apertures. "
             "Please choose a different value."
         )
-    st.session_state.analysis_parameters["fwhm_radius_factor"] = _fwhm_rf
+    st.session_state.analysis_parameters["threshold_sigma"] = st.slider(
+        "Detection Threshold (sigma)",
+        min_value=1.0,
+        max_value=6.0,
+        value=st.session_state.analysis_parameters["threshold_sigma"],
+        step=0.5,
+        help=("Source detection threshold in units of background standard deviation."),
+    )
     st.session_state.analysis_parameters["detection_mask"] = st.number_input(
         "Border Mask (pixels)",
         min_value=0,
@@ -348,14 +357,7 @@ with st.sidebar.expander("⚙️ Parameters", expanded=False):
         selected_field = current_field
 
     st.session_state.analysis_parameters["filter_band"] = selected_field
-    st.session_state.analysis_parameters["filter_max_mag"] = st.slider(
-        "Max Calibration Mag",
-        min_value=15.0,
-        max_value=21.0,
-        value=st.session_state.analysis_parameters["filter_max_mag"],
-        step=0.5,
-        help="Faintest magnitude to use for calibration stars.",
-    )
+    st.session_state.analysis_parameters["filter_max_mag"] = 21.0
     st.session_state.analysis_parameters["astrometry_check"] = st.toggle(
         "Astrometry check",
         value=st.session_state.analysis_parameters["astrometry_check"],
@@ -625,8 +627,10 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
     if filter_raw is None:
         filter_raw = "Unknown"
 
-    # Map the raw filter name to standardized GAIA band using FILTER_DICT
-    filter_mapped = FILTER_DICT.get(filter_raw.lower(), filter_raw)
+    # Map the raw filter name to standardized GAIA band using GAIA_BANDS.
+    # Normalize by lowercasing and removing spaces so "RAPAS G" matches "RapasG".
+    gaia_band_dict = {label.lower().replace(" ", ""): field for label, field in GAIA_BANDS}
+    filter_mapped = gaia_band_dict.get(filter_raw.lower().replace(" ", ""), filter_raw)
 
     # Get the current selected filter band from analysis parameters
     selected_filter = st.session_state.analysis_parameters["filter_band"]
@@ -634,12 +638,11 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
     # Check if they match (comparing the mapped value)
     if filter_mapped != selected_filter and filter_raw != "Unknown":
         st.warning(
-            f"⚠️ Filter in FITS header ({filter_raw}) maps to '{filter_mapped}' "
-            f"but selected filter is '{selected_filter}'. Consider updating your selection."
+            f"WARNING: Filter in FITS header ({filter_raw}) maps to '{filter_mapped}'."
         )
         write_to_log(
             st.session_state.log_buffer,
-            f"Filter mismatch: Header={filter_raw} (→{filter_mapped}), Selected={selected_filter}",
+            f"WARNING: Filter mismatch: Header={filter_raw} (→{filter_mapped}), Selected={selected_filter}",
             level="WARNING"
         )
     else:
@@ -973,18 +976,26 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
             f"Final pixel scale: {pixel_size_arcsec:.2f} arcsec/pixel ({pixel_scale_source})",
         )
         seeing = st.session_state.analysis_parameters["seeing"]
-        st.write("Mean FWHM (pixels): ", f"{mean_fwhm_pixel:.2f}")
+        st.write("Estimated FWHM (pixels): ", f"{mean_fwhm_pixel:.2f}")
         write_to_log(
             log_buffer,
-            f"Final seeing FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
+            f"Final Estimated FWHM: {seeing:.2f} arcsec ({mean_fwhm_pixel:.2f} pixels)",
         )
 
         ra_val, dec_val, coord_source = extract_coordinates(science_header)
         if ra_val is not None and dec_val is not None:
-            st.write(f"RA={round(ra_val, 4)}°\nDEC={round(dec_val, 4)}°")
+            from astropy.coordinates import SkyCoord
+            import astropy.units as u
+            coord = SkyCoord(ra=ra_val, dec=dec_val, unit="deg")
+            ra_sex = coord.ra.to_string(unit=u.hour, sep=":", precision=2, pad=True)
+            dec_sex = coord.dec.to_string(sep=":", precision=1, alwayssign=True, pad=True)
+            st.write(
+                f"RA={round(ra_val, 4)}° ({ra_sex})\n"
+                f"DEC={round(dec_val, 4)}° ({dec_sex})"
+            )
             write_to_log(
                 log_buffer,
-                f"Target coordinates: RA={ra_val}°, DEC={dec_val}° ({coord_source})",
+                f"Target coordinates: RA={ra_val}° ({ra_sex}), DEC={dec_val}° ({dec_sex}) ({coord_source})",
             )
             ra_missing = dec_missing = False
             ra_val = dec_val = None  # Add this line
@@ -1166,9 +1177,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                         "detection_mask"
                     ]
                     filter_band = st.session_state.analysis_parameters["filter_band"]
-                    filter_max_mag = st.session_state.analysis_parameters[
-                        "filter_max_mag"
-                    ]
+                    filter_max_mag = 21.0
 
                     result = detection_and_photometry(
                         image_to_process,
@@ -1287,6 +1296,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                             final_table,
                                             zero_point=zero_point_value,
                                             airmass=air,
+                                            filter_band=filter_band,
                                         )
 
                                         # Add metadata
@@ -1302,9 +1312,13 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                         )
                                         handle_log_messages(log_messages)
 
-                                        # Save to session state
+                                        display_table = drop_legacy_magnitude_columns(
+                                            final_table.copy(), filter_band
+                                        )
+
+                                        # Save user-facing table to session state
                                         st.session_state["final_phot_table"] = (
-                                            final_table
+                                            display_table
                                         )
                                         st.success(
                                             f"Catalog includes {len(final_table)} sources (with PSF photometry)."
@@ -1321,6 +1335,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                             final_table,
                                             zero_point=zero_point_value,
                                             airmass=air,
+                                            filter_band=filter_band,
                                         )
 
                                         # Add metadata
@@ -1336,9 +1351,13 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                         )
                                         handle_log_messages(log_messages)
 
-                                        # Save to session state
+                                        display_table = drop_legacy_magnitude_columns(
+                                            final_table.copy(), filter_band
+                                        )
+
+                                        # Save user-facing table to session state
                                         st.session_state["final_phot_table"] = (
-                                            final_table
+                                            display_table
                                         )
                                         st.success(
                                             f"Catalog includes {len(final_table)} sources (aperture photometry only)."
@@ -1351,7 +1370,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                     st.code(traceback.format_exc())
 
                                 st.subheader("Final Photometry Catalog")
-                                st.dataframe(final_table.head(10))
+                                st.dataframe(display_table.head(10))
 
                                 st.success(
                                     f"Catalog includes {len(final_table)} sources."
@@ -1360,7 +1379,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                 st.subheader("Magnitude Distribution (Aperture & PSF)")
 
                                 fig_mag = plot_magnitude_distribution(
-                                    final_table, log_buffer
+                                    display_table, log_buffer
                                 )
                                 st.pyplot(fig_mag)
 
@@ -1453,8 +1472,12 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                     )
 
                                 # Call the new function here
+                                final_table_export = drop_legacy_magnitude_columns(
+                                    final_table.copy(), filter_band
+                                )
+                                st.session_state["final_phot_table"] = final_table_export
                                 success_messages, error_messages = save_catalog_files(
-                                    final_table, base_filename, output_dir
+                                    final_table_export, base_filename, output_dir
                                 )
                                 for msg in success_messages:
                                     st.success(msg)
@@ -1550,16 +1573,35 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                     # Create a DataFrame from the candidates
                                     import pandas as pd
 
+                                    transient_filter_band = (
+                                        st.session_state.analysis_parameters.get(
+                                            "filter_band"
+                                        )
+                                    )
+                                    transient_filter_prefix = get_filter_prefix(
+                                        transient_filter_band
+                                    )
+                                    transient_mag_col = (
+                                        f"{transient_filter_prefix}_psf_mag"
+                                        if transient_filter_prefix
+                                        else "psf_mag"
+                                    )
+                                    transient_mag_err_col = (
+                                        f"{transient_filter_prefix}_psf_mag_err"
+                                        if transient_filter_prefix
+                                        else "psf_mag_err"
+                                    )
+
                                     candidates_df = pd.DataFrame(
                                         {
                                             "ID": range(1, len(candidates) + 1),
                                             "RA (deg)": [c["ra"] for c in candidates],
                                             "DEC (deg)": [c["dec"] for c in candidates],
-                                            "Mag": [
+                                            transient_mag_col: [
                                                 c.get("mag_calib", None)
                                                 for c in candidates
                                             ],
-                                            "Mag_err": [
+                                            transient_mag_err_col: [
                                                 c.get("mag_calib_err", None)
                                                 for c in candidates
                                             ],
@@ -1606,6 +1648,9 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                             final_table=final_phot_table,
                             ra_center=ra_center,
                             dec_center=dec_center,
+                            filter_band=st.session_state.analysis_parameters.get(
+                                "filter_band"
+                            ),
                             id_cols=[
                                 "id",
                                 "simbad_main_id",
@@ -1682,7 +1727,7 @@ if "log_buffer" in st.session_state and st.session_state["log_buffer"] is not No
     fwhm_radius_factor = st.session_state.analysis_parameters.get("fwhm_radius_factor", 1.5)
     detection_mask = st.session_state.analysis_parameters["detection_mask"]
     filter_band = st.session_state.analysis_parameters["filter_band"]
-    filter_max_mag = st.session_state.analysis_parameters["filter_max_mag"]
+    filter_max_mag = 21.0
 
     write_to_log(
         log_buffer, f"Elevation: {st.session_state.observatory_data['elevation']} m"

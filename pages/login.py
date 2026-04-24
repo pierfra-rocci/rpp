@@ -198,7 +198,7 @@ if not st.session_state.logged_in:
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("## Password Recovery")
-    
+
     # Initialize recovery form fields in session state for persistence
     if "recovery_email_value" not in st.session_state:
         st.session_state.recovery_email_value = ""
@@ -206,7 +206,7 @@ if not st.session_state.logged_in:
         st.session_state.recovery_code_value = ""
     if "recovery_new_pw_value" not in st.session_state:
         st.session_state.recovery_new_pw_value = ""
-    
+
     # Email input always visible
     recovery_email = st.sidebar.text_input(
         "Email",
