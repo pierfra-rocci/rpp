@@ -30,6 +30,8 @@ import numpy as np
 import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
+from src.tools_pipeline import add_calibrated_magnitudes, drop_legacy_magnitude_columns
+
 
 class TestSNRCalculations:
     """Test Signal-to-Noise Ratio calculations."""
@@ -306,6 +308,262 @@ class TestRealisticScenarios:
         # Quality should be 'marginal'
         quality = "good" if snr >= 5 else ("marginal" if snr >= 3 else "poor")
         assert quality == "marginal"
+
+
+class TestFWHMRadiusFactor:
+    """
+    Regression tests for the configurable fwhm_radius_factor aperture.
+
+    These tests validate the safe-append logic that inserts a third aperture
+    radius into aperture_radii = [1.1, 1.3] without duplicating reserved values.
+    They work at the column-naming / formula level to avoid requiring a real image.
+    """
+
+    # ------------------------------------------------------------------
+    # Helper: replicate the safe-append logic from pipeline.py
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _build_radii(fwhm_radius_factor: float) -> list:
+        aperture_radii = [1.1, 1.3]
+        _rf = round(float(fwhm_radius_factor), 1)
+        if _rf not in aperture_radii:
+            aperture_radii.append(_rf)
+        return aperture_radii
+
+    @staticmethod
+    def _suffix(radius: float) -> str:
+        return f"_{str(radius).replace('.', '_')}"
+
+    # ------------------------------------------------------------------
+    # Tests
+    # ------------------------------------------------------------------
+
+    def test_default_aperture_radii(self):
+        """Default value 1.5 produces exactly 3 radii including 1.1 and 1.3."""
+        radii = self._build_radii(1.5)
+        assert radii == [1.1, 1.3, 1.5]
+
+    def test_custom_aperture_radius_added(self):
+        """An arbitrary value not in the fixed set is appended."""
+        radii = self._build_radii(1.7)
+        assert 1.7 in radii
+        assert len(radii) == 3
+
+    def test_reserved_radius_1_1_not_duplicated(self):
+        """fwhm_radius_factor=1.1 is a reserved value; list stays at 2 entries."""
+        radii = self._build_radii(1.1)
+        assert radii == [1.1, 1.3]
+        assert len(radii) == 2
+
+    def test_reserved_radius_1_3_not_duplicated(self):
+        """fwhm_radius_factor=1.3 is a reserved value; list stays at 2 entries."""
+        radii = self._build_radii(1.3)
+        assert radii == [1.1, 1.3]
+        assert len(radii) == 2
+
+    def test_float_precision_rounding(self):
+        """Floating-point values are rounded to 1 decimal place for clean labels."""
+        # 1.50000001 should be treated as 1.5
+        radii = self._build_radii(1.50000001)
+        assert 1.5 in radii
+        suffix = self._suffix(1.5)
+        assert suffix == "_1_5"
+
+    def test_column_naming_convention(self):
+        """Verify column names follow the underscore-dot substitution convention."""
+        for factor, expected_suffix in [(1.5, "_1_5"), (0.8, "_0_8"), (2.0, "_2_0")]:
+            radii = self._build_radii(factor)
+            suffix = self._suffix(radii[-1])
+            assert suffix == expected_suffix
+
+    def test_third_aperture_columns_in_simulated_table(self):
+        """
+        Simulate the column production loop from detection_and_photometry and
+        verify that a custom aperture radius produces the expected columns.
+        """
+        import pandas as pd
+
+        fwhm = 5.0
+        n_sources = 10
+        rng = np.random.default_rng(42)
+        flux = rng.uniform(500, 5000, n_sources)
+        flux_err = rng.uniform(10, 100, n_sources)
+
+        radii = self._build_radii(1.5)
+        table = {}
+        for radius in radii:
+            suffix = self._suffix(radius)
+            table[f"aperture_sum{suffix}"] = flux
+            table[f"aperture_sum_err{suffix}"] = flux_err
+            table[f"snr{suffix}"] = flux / flux_err
+            table[f"aperture_mag_err{suffix}"] = 1.0857 * flux_err / flux
+            table[f"instrumental_mag{suffix}"] = -2.5 * np.log10(flux)
+            quality = np.where(
+                flux / flux_err < 3, "poor",
+                np.where(flux / flux_err < 5, "marginal", "good"),
+            )
+            table[f"quality_flag{suffix}"] = quality
+
+        df = pd.DataFrame(table)
+
+        # All three apertures must be present
+        for r in [1.1, 1.3, 1.5]:
+            s = self._suffix(r)
+            assert f"aperture_sum{s}" in df.columns
+            assert f"snr{s}" in df.columns
+            assert f"aperture_mag_err{s}" in df.columns
+            assert f"instrumental_mag{s}" in df.columns
+            assert f"quality_flag{s}" in df.columns
+
+    def test_zero_point_applied_to_third_aperture(self):
+        """
+        Simulate calculate_zero_point's calibrated-magnitude loop and verify
+        that fwhm_radius_factor=1.5 produces aperture_mag_1_5 in the table.
+        """
+        import pandas as pd
+
+        zero_point = 22.5
+        fwhm_radius_factor = 1.5
+        aperture_radii = self._build_radii(fwhm_radius_factor)
+
+        # Build a minimal phot_table with instrumental_mag columns for all radii
+        n = 20
+        rng = np.random.default_rng(7)
+        phot_table = {}
+        for r in aperture_radii:
+            s = self._suffix(r)
+            phot_table[f"instrumental_mag{s}"] = rng.uniform(-12, -8, n)
+        df = pd.DataFrame(phot_table)
+
+        # Apply the same loop as calculate_zero_point
+        for radius in aperture_radii:
+            s = self._suffix(radius)
+            inst_col = f"instrumental_mag{s}"
+            mag_col = f"aperture_mag{s}"
+            if inst_col in df.columns:
+                df[mag_col] = df[inst_col] + zero_point
+
+        assert "aperture_mag_1_5" in df.columns
+        assert "aperture_mag_1_1" in df.columns
+        assert "aperture_mag_1_3" in df.columns
+        assert_allclose(
+            df["aperture_mag_1_5"].values,
+            df["instrumental_mag_1_5"].values + zero_point,
+        )
+
+
+class TestPrefixedMagnitudeAliases:
+    """Test backward-compatible prefixed aliases for calibrated magnitude columns."""
+
+    def test_add_calibrated_magnitudes_keeps_legacy_and_adds_prefixed_aliases(self):
+        """Selected GAIA band should add prefixed aliases without removing legacy names."""
+        import pandas as pd
+
+        df = pd.DataFrame(
+            {
+                "id": [1, 2],
+                "instrumental_mag_1_5": [-10.0, -9.5],
+                "aperture_sum_1_5": [1000.0, 900.0],
+                "aperture_sum_err_1_5": [10.0, 12.0],
+                "psf_instrumental_mag": [-10.2, -9.8],
+                "psf_mag_err": [0.02, 0.03],
+            }
+        )
+
+        out = add_calibrated_magnitudes(
+            df,
+            zero_point=22.5,
+            airmass=1.2,
+            filter_band="phot_g_mean_mag",
+        )
+
+        assert "psf_mag" in out.columns
+        assert "psf_mag_err" in out.columns
+        assert "aperture_mag_1_5" in out.columns
+        assert "aperture_mag_err_1_5" in out.columns
+
+        assert "rapasg_psf_mag" in out.columns
+        assert "rapasg_psf_mag_err" in out.columns
+        assert "rapasg_psf_instrumental_mag" in out.columns
+        assert "rapasg_aperture_mag_1_5" in out.columns
+        assert "rapasg_aperture_mag_err_1_5" in out.columns
+        assert "rapasg_instrumental_mag_1_5" in out.columns
+
+        assert_allclose(out["rapasg_psf_mag"].values, out["psf_mag"].values)
+        assert_allclose(
+            out["rapasg_psf_mag_err"].values,
+            out["psf_mag_err"].values,
+        )
+        assert_allclose(
+            out["rapasg_aperture_mag_1_5"].values,
+            out["aperture_mag_1_5"].values,
+        )
+        assert_allclose(
+            out["rapasg_aperture_mag_err_1_5"].values,
+            out["aperture_mag_err_1_5"].values,
+        )
+
+    def test_add_calibrated_magnitudes_skips_aliases_for_unknown_filter(self):
+        """Unknown calibration filters should leave the legacy columns unchanged only."""
+        import pandas as pd
+
+        df = pd.DataFrame(
+            {
+                "id": [1],
+                "instrumental_mag_1_5": [-10.0],
+                "aperture_sum_1_5": [1000.0],
+                "aperture_sum_err_1_5": [10.0],
+                "psf_instrumental_mag": [-10.2],
+                "psf_mag_err": [0.02],
+            }
+        )
+
+        out = add_calibrated_magnitudes(
+            df,
+            zero_point=22.5,
+            airmass=1.2,
+            filter_band="unknown_band",
+        )
+
+        assert "psf_mag" in out.columns
+        assert "aperture_mag_1_5" in out.columns
+        assert not any(col.startswith("unknown_band_") for col in out.columns)
+
+    def test_drop_legacy_magnitude_columns_keeps_only_prefixed_export_columns(self):
+        """User-facing export table should drop legacy magnitude columns when aliases exist."""
+        import pandas as pd
+
+        df = pd.DataFrame(
+            {
+                "id": [1],
+                "psf_mag": [12.3],
+                "psf_mag_err": [0.02],
+                "psf_instrumental_mag": [-10.2],
+                "aperture_mag_1_5": [12.4],
+                "aperture_mag_err_1_5": [0.03],
+                "instrumental_mag_1_5": [-10.1],
+                "rapasg_psf_mag": [12.3],
+                "rapasg_psf_mag_err": [0.02],
+                "rapasg_psf_instrumental_mag": [-10.2],
+                "rapasg_aperture_mag_1_5": [12.4],
+                "rapasg_aperture_mag_err_1_5": [0.03],
+                "rapasg_instrumental_mag_1_5": [-10.1],
+                "snr_1_5": [50.0],
+            }
+        )
+
+        out = drop_legacy_magnitude_columns(df, filter_band="phot_g_mean_mag")
+
+        assert "rapasg_psf_mag" in out.columns
+        assert "rapasg_aperture_mag_1_5" in out.columns
+        assert "snr_1_5" in out.columns
+
+        assert "psf_mag" not in out.columns
+        assert "psf_mag_err" not in out.columns
+        assert "psf_instrumental_mag" not in out.columns
+        assert "aperture_mag_1_5" not in out.columns
+        assert "aperture_mag_err_1_5" not in out.columns
+        assert "instrumental_mag_1_5" not in out.columns
 
 
 if __name__ == "__main__":
