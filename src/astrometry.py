@@ -13,65 +13,65 @@ from stdpipe import catalogs
 from stdpipe import pipeline as stdpipe_pipeline
 
 
-def _try_source_detection(
-    image, header, fwhm_estimates, threshold_multi, min_sources=10
-):
-    """Helper function to try different detection parameters.
-    Refactored to use stdpipe (SExtractor/SEP + photutils measurement)
-    """
-    # We iterate through parameters to find a good set
-    for fwhm_est in fwhm_estimates:
-        for thresh in threshold_multi:
-            try:
-                st.info(f"Trying detection with thresh={thresh}, FWHM={fwhm_est}")
+# def _try_source_detection(
+#     image, header, fwhm_estimates, threshold_multi, min_sources=10
+# ):
+#     """Helper function to try different detection parameters.
+#     Refactored to use stdpipe (SExtractor/SEP + photutils measurement)
+#     """
+#     # We iterate through parameters to find a good set
+#     for fwhm_est in fwhm_estimates:
+#         for thresh in threshold_multi:
+#             try:
+#                 st.info(f"Trying detection with thresh={thresh}, FWHM={fwhm_est}")
 
-                # 1. Detect objects using SExtractor/SEP via stdpipe
-                # get_objects_sextractor handles background estimation internally
-                # but we pass the background-subtracted image 'image_sub'.
-                # 'thresh' corresponds to the detection threshold (sigma).
-                if header.get("GAIN"):
-                    gain = header.get("GAIN")
-                else:
-                    gain = 65635 / np.max(image)
+#                 # 1. Detect objects using SExtractor/SEP via stdpipe
+#                 # get_objects_sextractor handles background estimation internally
+#                 # but we pass the background-subtracted image 'image_sub'.
+#                 # 'thresh' corresponds to the detection threshold (sigma).
+#                 if header.get("GAIN"):
+#                     gain = header.get("GAIN")
+#                 else:
+#                     gain = 65635 / np.max(image)
 
-                sources = photometry.get_objects_sextractor(
-                    image,
-                    thresh=thresh,
-                    aper=1.5 * fwhm_est,
-                    gain=gain,
-                    edge=10,
-                    bg_size=64,
-                )
+#                 sources = photometry.get_objects_sextractor(
+#                     image,
+#                     thresh=thresh,
+#                     aper=1.5 * fwhm_est,
+#                     gain=gain,
+#                     edge=10,
+#                     bg_size=64,
+#                 )
 
-                if sources is not None and len(sources) >= min_sources:
-                    # 2. Measure objects using photutils via stdpipe
-                    # This refines the photometry and measurements
-                    sources = photometry.measure_objects(
-                        sources,
-                        image,
-                        fwhm=fwhm_est,
-                        aper=1,  # Aperture radius in FWHM units
-                        bkgann=[2.0, 3.0],  # Background annulus in FWHM units
-                        verbose=False,
-                        sn=5.0,  # Minimum S/N
-                    )
+#                 if sources is not None and len(sources) >= min_sources:
+#                     # 2. Measure objects using photutils via stdpipe
+#                     # This refines the photometry and measurements
+#                     sources = photometry.measure_objects(
+#                         sources,
+#                         image,
+#                         fwhm=fwhm_est,
+#                         aper=1,  # Aperture radius in FWHM units
+#                         bkgann=[2.0, 3.0],  # Background annulus in FWHM units
+#                         verbose=False,
+#                         sn=5.0,  # Minimum S/N
+#                     )
 
-                    if sources is not None and len(sources) >= min_sources:
-                        st.success(
-                            f"Found {len(sources)} sources with "
-                            f"thresh={thresh}, FWHM={fwhm_est}"
-                        )
-                        return sources
+#                     if sources is not None and len(sources) >= min_sources:
+#                         st.success(
+#                             f"Found {len(sources)} sources with "
+#                             f"thresh={thresh}, FWHM={fwhm_est}"
+#                         )
+#                         return sources
 
-                if sources is not None:
-                    st.write(
-                        f"Found {len(sources)} sources (need at least {min_sources})"
-                    )
+#                 if sources is not None:
+#                     st.write(
+#                         f"Found {len(sources)} sources (need at least {min_sources})"
+#                     )
 
-            except Exception as e:
-                st.write(f"Detection failed with FWHM={fwhm_est} : {e}")
-                continue
-    return None
+#             except Exception as e:
+#                 st.write(f"Detection failed with FWHM={fwhm_est} : {e}")
+#                 continue
+#     return None
 
 
 def get_adaptive_min_sources(image_shape):
@@ -107,7 +107,7 @@ def estimate_pixel_scale_robust(header, image_shape):
                 scale = float(header[key])
                 if 0.1 <= scale <= 30.0:  # Reasonable range
                     methods.append(("header_" + key, scale))
-            except Exception as e:
+            except Exception:
                 pass
 
     # Method 2: Focal length + pixel size
@@ -126,7 +126,7 @@ def estimate_pixel_scale_robust(header, image_shape):
             scale = 206 * pixel_size / focal_length
             if 0.1 <= scale <= 30.0:
                 methods.append(("focal_length", scale))
-    except Exception as e:
+    except Exception:
         pass
 
     # Method 3: CD matrix
@@ -138,7 +138,7 @@ def estimate_pixel_scale_robust(header, image_shape):
             scale = 3600 * np.sqrt(det)
             if 0.1 <= scale <= 30.0:
                 methods.append(("cd_matrix", scale))
-    except Exception as e:
+    except Exception:
         pass
 
     # Method 4: Image size heuristic
@@ -151,7 +151,7 @@ def estimate_pixel_scale_robust(header, image_shape):
             methods.append(("size_heuristic", 2.5))
         else:  # Small images
             methods.append(("size_heuristic", 4.0))
-    except Exception as e:
+    except Exception:
         pass
 
     # Select best estimate
@@ -251,14 +251,14 @@ def _try_source_detection_improved(image, header, min_sources=10):
     # Start with most likely parameters first
     parameter_grid = [
         # (FWHM, threshold, description)
-        (3.5, 2.0, "Standard parameters"),
-        (4.0, 1.5, "Slightly more sensitive"),
-        (3.0, 1.5, "Tighter FWHM, lower threshold"),
-        (2.5, 1.0, "More aggressive"),
-        (2.0, 0.8, "Very aggressive"),
-        (4.5, 1.8, "Larger FWHM"),
-        (5.0, 1.5, "Large FWHM, lower threshold"),
-        (2.8, 1.2, "Medium aggressive"),
+        (3.5, 3.0, "Standard parameters"),
+        (3.5, 2.0, "Slightly more sensitive"),
+        (3.0, 2.0, "Tighter FWHM, lower threshold"),
+        (2.5, 1.5, "More aggressive"),
+        (2.0, 1.0, "Very aggressive"),
+        (4.0, 2.0, "Large FWHM"),
+        (4.0, 1.5, "Large FWHM, lower threshold"),
+        (2.8, 1.3, "Medium aggressive"),
     ]
 
     for fwhm_est, thresh, desc in parameter_grid:

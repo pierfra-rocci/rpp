@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 import astroscrappy
 from astropy.wcs import WCS
-from astropy.stats import sigma_clipped_stats
+from astropy.stats import sigma_clipped_stats, sigma_clip
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from astropy.time import Time
 from photutils.psf import fit_fwhm
@@ -583,7 +583,7 @@ def fwhm_fit(
             st.error(msg)
             raise ValueError(msg)
 
-        # Randomly sample 1000 sources if more than 1000 are available
+        # Randomly sample 1250 sources if more than 1250 are available
         if len(filtered_sources) > 1000:
             indices = np.random.choice(len(filtered_sources), size=1000, replace=False)
             filtered_sources = filtered_sources[indices]
@@ -1169,8 +1169,10 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air, fwhm_rad
         if _rf not in aperture_radii:
             aperture_radii.append(_rf)
 
-        # Use the first aperture radius as the default for zero point calculation
-        default_radius = aperture_radii[0]
+        # Use the 1.3 aperture as the default for zero point calculation.
+        # This preserves support for computing additional aperture magnitudes
+        # while anchoring the ZP fit to the requested calibration aperture.
+        default_radius = 1.3
         radius_suffix = f"_{str(default_radius).replace('.', '_')}"
         instrumental_mag_col = f"instrumental_mag{radius_suffix}"
 
@@ -1190,75 +1192,72 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air, fwhm_rad
             st.warning("No valid matched sources for zero point calculation.")
             return None, None, None
 
-        # Iteratively remove sources with large calibrated magnitude deltas
-        max_iterations = 10
-        reached_max_iterations = True
-        for iteration in range(max_iterations):
-            zero_points = (
-                matched_table[filter_band] - matched_table[instrumental_mag_col]
-            )
+        # Robust zero-point estimation using iterative sigma clipping.
+        # Uses median as centre and MAD-based scale, iterating until convergence.
+        # The same clip mask is applied to matched_table so the downstream plots
+        # and the ZP value are always derived from the identical set of stars.
+        zero_points_raw = (
+            matched_table[filter_band] - matched_table[instrumental_mag_col]
+        ).values
+        clipped = sigma_clip(
+            zero_points_raw, sigma=3.0, maxiters=10,
+            cenfunc="median", stdfunc="mad_std"
+        )
 
-            # Use MAD (Median Absolute Deviation) for robust outlier removal
-            median_zp = np.median(zero_points)
-            mad = np.median(np.abs(zero_points - median_zp))
+        # np.ma.getmaskarray returns a proper boolean array even when sigma_clip
+        # clips nothing and the mask is the nomask singleton.
+        keep_mask = ~np.ma.getmaskarray(clipped)
+        if not keep_mask.any():
+            st.warning("All matched sources removed by sigma clipping for zero point.")
+            return None, None, None
 
-            # Threshold: typically 3-5 * MAD for outlier removal
-            # Using 3.5 as a conservative threshold (equivalent to ~2.7σ for normal distribution)
-            mad_threshold = 3.5
-            if mad == 0:
-                outlier_mask = np.ones_like(zero_points, dtype=bool)
-            else:
-                outlier_mask = np.abs(zero_points - median_zp) <= mad_threshold * mad
+        # Restrict matched_table to the accepted calibration stars so that the
+        # same rows drive the ZP value, the column assignments, and the plots.
+        matched_table = matched_table.iloc[keep_mask].copy()
+        zero_points_clean = clipped.compressed()  # unmasked values only
 
-            clipped_zero_points = zero_points[outlier_mask]
-
-            if len(clipped_zero_points) == 0:
-                st.warning("No valid sources after MAD clipping for zero point.")
-                return None, None, None
-
-            zero_point_value = np.median(clipped_zero_points)
-            zero_point_std = np.std(clipped_zero_points)
-
-            if np.ma.is_masked(zero_point_value) or np.isnan(zero_point_value):
-                zero_point_value = float("nan")
-            if np.ma.is_masked(zero_point_std) or np.isnan(zero_point_std):
-                zero_point_std = float("nan")
-
-            if np.isnan(zero_point_value):
-                st.warning("Zero point calculation returned NaN.")
-                return None, None, None
-
-            deltas = matched_table[filter_band] - (
-                matched_table[instrumental_mag_col] + zero_point_value
-            )
-            within_mask = np.abs(deltas) <= 1.0
-
-            if within_mask.all():
-                reached_max_iterations = False
-                break
-
-            matched_table = matched_table.loc[within_mask].copy()
-
-            if len(matched_table) == 0:
-                st.warning(
-                    "All matched sources removed by calibrated magnitude filtering."
-                )
-                return None, None, None
-
-        if reached_max_iterations:
+        # Apply an additional strict hard-cut on absolute residuals.
+        # This keeps only calibrators within +/- 0.5 mag from the ZP centre.
+        residual_limit_mag = 0.5
+        zp_center = float(np.median(zero_points_clean))
+        strict_keep = np.abs(zero_points_clean - zp_center) <= residual_limit_mag
+        if not strict_keep.any():
             st.warning(
-                "Reached max iterations while filtering zero point; "
-                "using last computed value."
+                "All matched sources removed by strict residual filtering "
+                f"(|residual| <= {residual_limit_mag:.1f} mag)."
             )
+            return None, None, None
+
+        matched_table = matched_table.iloc[strict_keep].copy()
+        zero_points_clean = zero_points_clean[strict_keep]
+
+        zero_point_value = float(np.median(zero_points_clean))
+        n_cal = len(zero_points_clean)
+        # Dispersion of calibrator residuals (informative, stored in the table)
+        if n_cal > 1:
+            zero_point_scatter = float(np.std(zero_points_clean, ddof=1))
+        else:
+            zero_point_scatter = 0.0
+        # Formal uncertainty on the ZP estimator: scatter / sqrt(N)
+        zero_point_std = zero_point_scatter / np.sqrt(n_cal)
+
+        if np.isnan(zero_point_value):
+            st.warning("Zero point calculation returned NaN.")
+            return None, None, None
+
+        st.info(
+            f"Sigma-clipping + strict residual cut (|residual| <= {residual_limit_mag:.1f} mag) "
+            f"kept {n_cal} / {len(zero_points_raw)} calibration stars "
+            f"(scatter = {zero_point_scatter:.3f} mag)."
+        )
 
         _matched_table = matched_table
 
         _matched_table["zero_point"] = (
             _matched_table[filter_band] - _matched_table[instrumental_mag_col]
         )
-        _matched_table["zero_point_error"] = np.std(
-            _matched_table["zero_point"]
-        )
+        # Store calibrator scatter (not the formal ZP uncertainty) in the table
+        _matched_table["zero_point_error"] = zero_point_scatter
 
         if not isinstance(_phot_table, pd.DataFrame):
             _phot_table = _phot_table.to_pandas()
@@ -1269,6 +1268,10 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air, fwhm_rad
         for col in old_columns:
             if col in _phot_table.columns:
                 _phot_table.drop(columns=[col], inplace=True)
+
+        # Pin the default aperture suffix now, before the loops below overwrite
+        # radius_suffix with the last element of aperture_radii.
+        default_radius_suffix = radius_suffix
 
         # Add calibrated magnitudes for all aperture radii
         for radius in aperture_radii:
@@ -1296,8 +1299,8 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air, fwhm_rad
 
         fig, (ax, ax_resid) = plt.subplots(1, 2, figsize=(14, 6), dpi=100)
 
-        # Use the default aperture radius for plotting
-        aperture_mag_col = f"aperture_mag{radius_suffix}"
+        # Use the default aperture radius for plotting (pinned before the loops)
+        aperture_mag_col = f"aperture_mag{default_radius_suffix}"
 
         # Check if the aperture_mag column exists before calculating residuals
         if aperture_mag_col not in _matched_table.columns:
@@ -1397,9 +1400,9 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air, fwhm_rad
         zp_mean = zero_point_value
         residuals = mag_cat - (mag_inst + zp_mean)
 
-        # Look for error column matching the aperture radius (fix column naming)
-        # Use underscore format to match actual column names (e.g., aperture_mag_err_1_1)
-        aperture_err_col = f"aperture_mag_err{radius_suffix}"
+        # Always use the fixed 1.3× aperture error for the residuals plot,
+        # regardless of the user-defined FWHM radius factor.
+        aperture_err_col = "aperture_mag_err_1_3"
         if aperture_err_col in _matched_table.columns:
             aperture_mag_err = _matched_table[aperture_err_col].values
         elif "aperture_mag_err" in _matched_table.columns:
@@ -1431,7 +1434,9 @@ def calculate_zero_point(_phot_table, _matched_table, filter_band, air, fwhm_rad
         st.pyplot(fig)
 
         st.success(
-            f"Calculated Zero Point: {zero_point_value:.2f} ± {zero_point_std:.2f}"
+            f"Calculated Zero Point: {zero_point_value:.2f} "
+            f"± {zero_point_std:.3f} (formal uncertainty, N={n_cal}), "
+            f"calibrator scatter = {zero_point_scatter:.3f} mag"
         )
 
         try:

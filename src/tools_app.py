@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 
 # Local Application Imports
-from src.tools_pipeline import fix_header
+from src.tools_pipeline import fix_header, get_filter_prefix
 from src.utils import write_to_log, ensure_output_directory
 
 warnings.filterwarnings("ignore")
@@ -251,6 +251,7 @@ def display_catalog_in_aladin(
     id_cols: list[str] = ["simbad_main_id", "aavso_Name"],
     fallback_id_prefix: str = "Source",
     survey: str = "CDS/P/DSS2/color",
+    filter_band: str | None = None,
 ) -> None:
     """
     Display a DataFrame catalog in an embedded Aladin Lite interactive sky viewer.
@@ -309,6 +310,15 @@ def display_catalog_in_aladin(
         )
         return
 
+    filter_prefix = get_filter_prefix(filter_band)
+    if filter_prefix:
+        prefixed_mag_col = f"{filter_prefix}_{mag_col}"
+        prefixed_alt_mag_col = f"{filter_prefix}_{alt_mag_col}"
+        if prefixed_mag_col in final_table.columns:
+            mag_col = prefixed_mag_col
+        if prefixed_alt_mag_col in final_table.columns:
+            alt_mag_col = prefixed_alt_mag_col
+
     catalog_sources = []
     required_cols = {ra_col, dec_col}
     optional_cols = {mag_col, alt_mag_col, catalog_col}.union(set(id_cols))
@@ -339,11 +349,20 @@ def display_catalog_in_aladin(
 
             # Get aperture magnitude (try multiple aperture columns)
             # Exclude error columns (which contain "err" anywhere in the name)
+            aperture_mag_prefix = (
+                f"{filter_prefix}_aperture_mag_" if filter_prefix else "aperture_mag_"
+            )
             aperture_mag_cols = [
                 col
                 for col in final_table.columns
-                if col.startswith("aperture_mag_") and "err" not in col
+                if col.startswith(aperture_mag_prefix) and "err" not in col
             ]
+            if not aperture_mag_cols:
+                aperture_mag_cols = [
+                    col
+                    for col in final_table.columns
+                    if col.startswith("aperture_mag_") and "err" not in col
+                ]
             for ap_col in aperture_mag_cols:
                 if ap_col in final_table.columns:
                     val = final_table.loc[idx, ap_col]
@@ -762,27 +781,51 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     """
     fig_mag, (ax_mag, ax_err) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
 
+    filter_band = st.session_state.get("analysis_parameters", {}).get("filter_band")
+    filter_prefix = get_filter_prefix(filter_band)
+
     # Dynamically find available aperture magnitude columns
     # Exclude error columns (which contain "err" anywhere in the name)
+    aperture_mag_prefix = (
+        f"{filter_prefix}_aperture_mag_" if filter_prefix else "aperture_mag_"
+    )
     aperture_mag_cols = [
         col
         for col in final_table.columns
-        if col.startswith("aperture_mag_") and "err" not in col
+        if col.startswith(aperture_mag_prefix) and "err" not in col
     ]
+    if not aperture_mag_cols:
+        aperture_mag_cols = [
+            col
+            for col in final_table.columns
+            if col.startswith("aperture_mag_") and "err" not in col
+        ]
     aperture_mag_col = aperture_mag_cols[0] if aperture_mag_cols else None
 
     # Construct the error column name: aperture_mag_1.1 -> aperture_mag_err_1.1
     if aperture_mag_col:
         # Extract the radius suffix (e.g., "1.1" from "aperture_mag_1.1")
-        radius_suffix = aperture_mag_col.replace("aperture_mag_", "")
-        aperture_err_col = f"aperture_mag_err_{radius_suffix}"
+        radius_suffix = aperture_mag_col.replace(aperture_mag_prefix, "", 1)
+        aperture_err_col = f"{aperture_mag_prefix.replace('aperture_mag_', 'aperture_mag_err_')}{radius_suffix}"
+        if aperture_err_col not in final_table.columns:
+            aperture_err_col = f"aperture_mag_err_{radius_suffix}"
     else:
         aperture_err_col = None
 
     has_aperture = (
         aperture_mag_col is not None and aperture_mag_col in final_table.columns
     )
-    has_psf = "psf_mag" in final_table.columns
+    psf_mag_col = (
+        f"{filter_prefix}_psf_mag"
+        if filter_prefix and f"{filter_prefix}_psf_mag" in final_table.columns
+        else "psf_mag"
+    )
+    psf_mag_err_col = (
+        f"{filter_prefix}_psf_mag_err"
+        if filter_prefix and f"{filter_prefix}_psf_mag_err" in final_table.columns
+        else "psf_mag_err"
+    )
+    has_psf = psf_mag_col in final_table.columns
 
     if not has_aperture and not has_psf:
         # Create empty plots with message
@@ -809,7 +852,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     if has_aperture:
         mag_values.extend(final_table[aperture_mag_col].dropna().tolist())
     if has_psf:
-        mag_values.extend(final_table["psf_mag"].dropna().tolist())
+        mag_values.extend(final_table[psf_mag_col].dropna().tolist())
 
     if mag_values:
         bins = np.linspace(min(mag_values), max(mag_values), 40)
@@ -820,7 +863,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     if has_aperture:
         # Extract aperture radius from column name for label
         aperture_label = (
-            aperture_mag_col.replace("aperture_mag_", "")
+            aperture_mag_col.split("aperture_mag_", 1)[1]
             if aperture_mag_col
             else "unknown"
         )
@@ -833,7 +876,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
         )
     if has_psf:
         ax_mag.hist(
-            final_table["psf_mag"].dropna(),
+            final_table[psf_mag_col].dropna(),
             bins=bins,
             alpha=0.6,
             label="PSF Calib Mag",
@@ -849,7 +892,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     # Scatter plot of magnitude vs error (right panel)
     if has_aperture and aperture_err_col and aperture_err_col in final_table.columns:
         aperture_label = (
-            aperture_mag_col.replace("aperture_mag_", "")
+            aperture_mag_col.split("aperture_mag_", 1)[1]
             if aperture_mag_col
             else "unknown"
         )
@@ -861,10 +904,10 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
             color="tab:blue",
             s=18,
         )
-    if has_psf and "psf_mag_err" in final_table.columns:
+    if has_psf and psf_mag_err_col in final_table.columns:
         ax_err.scatter(
-            final_table["psf_mag"],
-            final_table["psf_mag_err"],
+            final_table[psf_mag_col],
+            final_table[psf_mag_err_col],
             alpha=0.7,
             label="PSF",
             color="tab:orange",
@@ -874,6 +917,7 @@ def plot_magnitude_distribution(final_table, log_buffer=None):
     ax_err.set_xlabel("Calibrated Magnitude")
     ax_err.set_ylabel("Magnitude Error")
     ax_err.set_title("Magnitude Error vs Magnitude")
+    ax_err.set_yscale("log")
     ax_err.legend()
     ax_err.grid(True, alpha=0.3)
 
@@ -948,7 +992,7 @@ def initialize_session_state():
         "fwhm_radius_factor": 1.5,
         "detection_mask": 10,
         "filter_band": "phot_g_mean_mag",
-        "filter_max_mag": 20.0,
+        "filter_max_mag": 21.0,
         "astrometry_check": True,
         "force_plate_solve": False,
         "run_transient_finder": False,
@@ -1002,7 +1046,6 @@ def initialize_session_state():
             "astrometry_check",
             "force_plate_solve",
             "filter_band",
-            "filter_max_mag",
             "run_transient_finder",
             "transient_survey",
             "transient_filter",

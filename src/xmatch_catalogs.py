@@ -14,7 +14,7 @@ import astropy.units as u
 from astroquery.gaia import Gaia
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
-from astroquery.imcce import Skybot, conf as imcce_conf
+from astroquery.imcce import Skybot
 
 from src.tools_pipeline import URL
 from src.utils import safe_catalog_query
@@ -236,54 +236,195 @@ def cross_match_with_gaia(
 
         else:
             # For GAIA bands, use GAIA DR3 with synthetic photometry
-            # Set Gaia data release
+            # Try Vizier first, then fall back to direct GAIA query
             Gaia.MAIN_GAIA_TABLE = "gaiadr3.gaia_source"
 
-            try:
-                job = Gaia.cone_search(center_coord, radius=radius_query)
-                catalog_table = job.get_results()
-
+            gaia_radius_query_deg = min(radius_query_deg, 0.3)
+            if gaia_radius_query_deg < radius_query_deg:
                 log_messages.append(
-                    f"INFO: Retrieved {len(catalog_table) if catalog_table is not None else 0} sources from Gaia"
+                    "INFO: Gaia query radius reduced from "
+                    f"{radius_query_deg:.3f} deg to {gaia_radius_query_deg:.3f} deg "
+                    "to keep TAP requests manageable."
                 )
 
-                # Different query strategies based on filter band
-                if (
-                    filter_band
-                    not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]
-                    and catalog_table is not None
-                    and len(catalog_table) > 0
-                ):
-                    # Create a comma-separated list of source_ids (limit to 1000)
-                    max_sources = min(len(catalog_table), 1000)
-                    source_ids = list(catalog_table["source_id"][:max_sources])
-                    source_ids_str = ",".join(str(id) for id in source_ids)
-                    # Query synthetic photometry just for these specific sources
-                    synth_query = f"""
-                    SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
-                    r_jkc_mag, i_jkc_mag, u_sdss_mag, g_sdss_mag, r_sdss_mag,
-                    i_sdss_mag, z_sdss_mag
-                    FROM gaiadr3.synthetic_photometry_gspc
-                    WHERE source_id IN ({source_ids_str})
+            catalog_table = None
+            
+            # First, try VizieR
+            try:
+                log_messages.append(
+                    "INFO: Attempting Gaia DR3 query via VizieR with a reduced column set."
+                )
+                gaia_vizier = Vizier(
+                    columns=[
+                        "Source",
+                        "DR3Name",
+                        "RA_ICRS",
+                        "DE_ICRS",
+                        "Gmag",
+                        "BPmag",
+                        "RPmag",
+                        "BP-RP",
+                        "VarFlag",
+                        "+_r",
+                    ]
+                )
+                gaia_vizier.ROW_LIMIT = -1
+                vizier_result = gaia_vizier.query_region(
+                    center_coord,
+                    radius=gaia_radius_query_deg * u.deg,
+                    catalog="I/355/gaiadr3",
+                )
+
+                if vizier_result and len(vizier_result) > 0:
+                    catalog_table = vizier_result[0]
+                    rename_map = {
+                        "Source": "source_id",
+                        "DR3Name": "designation",
+                        "RA_ICRS": "ra",
+                        "DE_ICRS": "dec",
+                        "Gmag": "phot_g_mean_mag",
+                        "BPmag": "phot_bp_mean_mag",
+                        "RPmag": "phot_rp_mean_mag",
+                        "BP-RP": "bp_rp",
+                        "VarFlag": "phot_variable_flag",
+                    }
+                    for old_name, new_name in rename_map.items():
+                        if (
+                            old_name in catalog_table.colnames
+                            and new_name not in catalog_table.colnames
+                        ):
+                            catalog_table.rename_column(old_name, new_name)
+
+                    log_messages.append(
+                        f"INFO: Retrieved {len(catalog_table)} Gaia sources from VizieR"
+                    )
+
+                    # Query synthetic photometry if needed
+                    if (
+                        filter_band
+                        not in [
+                            "phot_g_mean_mag",
+                            "phot_bp_mean_mag",
+                            "phot_rp_mean_mag",
+                        ]
+                        and catalog_table is not None
+                        and len(catalog_table) > 0
+                        and "source_id" in catalog_table.colnames
+                    ):
+                        max_sources = min(len(catalog_table), 1000)
+                        source_ids = list(catalog_table["source_id"][:max_sources])
+                        source_ids_str = ",".join(str(id) for id in source_ids)
+                        synth_query = f"""
+                        SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
+                        r_jkc_mag, i_jkc_mag, u_sdss_mag, g_sdss_mag, r_sdss_mag,
+                        i_sdss_mag, z_sdss_mag
+                        FROM gaiadr3.synthetic_photometry_gspc
+                        WHERE source_id IN ({source_ids_str})
+                        """
+                        synth_job = Gaia.launch_job(query=synth_query)
+                        synth_table = synth_job.get_results()
+
+                        if synth_table is not None and len(synth_table) > 0:
+                            log_messages.append(
+                                f"INFO: Retrieved {len(synth_table)} synthetic photometry entries from VizieR path"
+                            )
+                            catalog_table = join(
+                                catalog_table,
+                                synth_table,
+                                keys="source_id",
+                                join_type="right",
+                            )
+                else:
+                    log_messages.append(
+                        "INFO: Gaia VizieR query returned no results."
+                    )
+            except Exception as vizier_error:
+                log_messages.append(f"WARNING: Gaia VizieR query failed: {vizier_error}")
+                log_messages.append(
+                    "INFO: Will try direct GAIA TAP query as fallback."
+                )
+
+            # If VizieR failed or returned no results, try direct GAIA query
+            if catalog_table is None or len(catalog_table) == 0:
+                try:
+                    log_messages.append(
+                        "INFO: Attempting direct GAIA DR3 query via TAP."
+                    )
+                    gaia_query = f"""
+                    SELECT
+                        source_id,
+                        designation,
+                        ra,
+                        dec,
+                        phot_variable_flag,
+                        bp_rp,
+                        phot_g_mean_mag,
+                        phot_bp_mean_mag,
+                        phot_rp_mean_mag
+                    FROM gaiadr3.gaia_source
+                    WHERE 1 = CONTAINS(
+                        POINT('ICRS', ra, dec),
+                        CIRCLE(
+                            'ICRS',
+                            {center_coord.ra.deg},
+                            {center_coord.dec.deg},
+                            {gaia_radius_query_deg}
+                        )
+                    )
+                    ORDER BY DISTANCE(
+                        POINT('ICRS', ra, dec),
+                        POINT('ICRS', {center_coord.ra.deg}, {center_coord.dec.deg})
+                    ) ASC
                     """
-                    synth_job = Gaia.launch_job(query=synth_query)
-                    synth_table = synth_job.get_results()
+                    job = Gaia.launch_job(query=gaia_query)
+                    catalog_table = job.get_results()
 
-                    # Join the two tables
-                    if synth_table is not None and len(synth_table) > 0:
-                        log_messages.append(
-                            f"INFO: Retrieved {len(synth_table)} synthetic photometry entries"
-                        )
-                        catalog_table = join(
-                            catalog_table,
-                            synth_table,
-                            keys="source_id",
-                            join_type="right",
-                        )
+                    log_messages.append(
+                        "INFO: Retrieved "
+                        f"{len(catalog_table) if catalog_table is not None else 0} "
+                        "sources from direct GAIA TAP query"
+                    )
 
-            except Exception as cone_error:
-                log_messages.append(f"WARNING: Gaia query failed: {cone_error}")
-                return None, log_messages
+                    # Different query strategies based on filter band
+                    if (
+                        filter_band
+                        not in ["phot_g_mean_mag", "phot_bp_mean_mag", "phot_rp_mean_mag"]
+                        and catalog_table is not None
+                        and len(catalog_table) > 0
+                    ):
+                        # Create a comma-separated list of source_ids (limit to 1000)
+                        max_sources = min(len(catalog_table), 1000)
+                        source_ids = list(catalog_table["source_id"][:max_sources])
+                        source_ids_str = ",".join(str(id) for id in source_ids)
+                        # Query synthetic photometry just for these specific sources
+                        synth_query = f"""
+                        SELECT source_id, c_star, u_jkc_mag, v_jkc_mag, b_jkc_mag,
+                        r_jkc_mag, i_jkc_mag, u_sdss_mag, g_sdss_mag, r_sdss_mag,
+                        i_sdss_mag, z_sdss_mag
+                        FROM gaiadr3.synthetic_photometry_gspc
+                        WHERE source_id IN ({source_ids_str})
+                        """
+                        synth_job = Gaia.launch_job(query=synth_query)
+                        synth_table = synth_job.get_results()
+
+                        # Join the two tables
+                        if synth_table is not None and len(synth_table) > 0:
+                            log_messages.append(
+                                f"INFO: Retrieved {len(synth_table)} synthetic photometry entries from direct GAIA path"
+                            )
+                            catalog_table = join(
+                                catalog_table,
+                                synth_table,
+                                keys="source_id",
+                                join_type="right",
+                            )
+
+                except Exception as cone_error:
+                    log_messages.append(f"WARNING: Direct GAIA TAP query failed: {cone_error}")
+                    log_messages.append(
+                        "ERROR: Both VizieR and direct GAIA queries failed."
+                    )
+                    return None, log_messages
     except KeyError as ke:
         return None, [f"ERROR: Missing header keyword: {ke}"]
     except Exception as e:
@@ -696,7 +837,7 @@ def enhance_catalog(
                 elif "DATE" in header:
                     observation_date = header["DATE"]
 
-            # Set time range to ±28 days from observation date or current date
+            # Set time range to ±60 days from observation date or current date
             if observation_date:
                 try:
                     base_date = datetime.fromisoformat(
@@ -707,8 +848,8 @@ def enhance_catalog(
             else:
                 base_date = datetime.now()
 
-            date_min = (base_date - timedelta(days=28)).isoformat()
-            date_max = (base_date + timedelta(days=28)).isoformat()
+            date_min = (base_date - timedelta(days=60)).isoformat()
+            date_max = (base_date + timedelta(days=60)).isoformat()
 
             body = {
                 "uid": api_key,
@@ -982,15 +1123,34 @@ def enhance_catalog(
                 enhanced_table["skybot_OBJECT_TYPE"] = None
                 enhanced_table["skybot_MAGV"] = None
 
-                # Use Skybot cone search from astroquery
+                # Use Skybot cone search via direct HTTP request.
+                # astroquery 0.4.10 hardcodes the stale vo.imcce.fr URL which
+                # is no longer reachable; the service moved to ssp.imcce.fr.
                 field_coord = SkyCoord(
                     ra=field_center_ra, dec=field_center_dec, unit=u.deg
                 )
 
-                imcce_conf.timeout = 120
-                skybot_result = Skybot.cone_search(
-                    field_coord, sr_value * u.deg, obs_time
+                _SKYBOT_URL = "https://ssp.imcce.fr/webservices/skybot/api/conesearch.php"
+                _skybot_payload = {
+                    "-ra": field_coord.ra.deg,
+                    "-dec": field_coord.dec.deg,
+                    "-rd": min(float(sr_value), 10.0),
+                    "-ep": str(obs_time.jd),
+                    "-loc": "500",
+                    "-filter": 120,
+                    "-objFilter": "111",
+                    "-refsys": "EQJ2000",
+                    "-output": "all",
+                    "-mime": "text",
+                }
+                _skybot_resp = requests.get(
+                    _SKYBOT_URL, params=_skybot_payload, timeout=120
                 )
+                if _skybot_resp.status_code == 204 or not _skybot_resp.text.strip():
+                    skybot_result = None
+                else:
+                    Skybot._get_raw_response = False
+                    skybot_result = Skybot._parse_result(_skybot_resp)
 
                 if skybot_result is None or len(skybot_result) == 0:
                     log_messages.append(
@@ -1471,37 +1631,37 @@ def enhance_catalog(
     except Exception as e:
         log_messages.append(f"WARNING: Could not reorganize columns: {e}")
 
-    # Round numeric columns to 2 decimal places for better readability
+    # Round numeric columns to 3 decimal places for better readability
     def round_numeric_columns():
-        """Round magnitude, error, and SNR columns to 2 decimal places."""
+        """Round magnitude, error, and SNR columns to 3 decimal places."""
         columns_rounded = 0
         
         # Round all aperture magnitude columns
         aperture_mag_cols = [col for col in enhanced_table.columns if col.startswith("aperture_mag_") and "err" not in col]
         for col in aperture_mag_cols:
             if col in enhanced_table.columns and pd.api.types.is_numeric_dtype(enhanced_table[col]):
-                enhanced_table[col] = enhanced_table[col].round(2)
+                enhanced_table[col] = enhanced_table[col].round(3)
                 columns_rounded += 1
         
         # Round all aperture magnitude error columns
         aperture_err_cols = [col for col in enhanced_table.columns if col.startswith("aperture_mag_err_")]
         for col in aperture_err_cols:
             if col in enhanced_table.columns and pd.api.types.is_numeric_dtype(enhanced_table[col]):
-                enhanced_table[col] = enhanced_table[col].round(2)
+                enhanced_table[col] = enhanced_table[col].round(3)
                 columns_rounded += 1
         
         # Round PSF magnitude and error columns
         psf_mag_cols = ["psf_mag", "psf_mag_err"]
         for col in psf_mag_cols:
             if col in enhanced_table.columns and pd.api.types.is_numeric_dtype(enhanced_table[col]):
-                enhanced_table[col] = enhanced_table[col].round(2)
+                enhanced_table[col] = enhanced_table[col].round(3)
                 columns_rounded += 1
         
         # Round all SNR columns
         snr_cols = [col for col in enhanced_table.columns if col.startswith("snr")]
         for col in snr_cols:
             if col in enhanced_table.columns and pd.api.types.is_numeric_dtype(enhanced_table[col]):
-                enhanced_table[col] = enhanced_table[col].round(2)
+                enhanced_table[col] = enhanced_table[col].round(3)
                 columns_rounded += 1
         
         return columns_rounded
@@ -1509,7 +1669,7 @@ def enhance_catalog(
     try:
         rounded_count = round_numeric_columns()
         if rounded_count > 0:
-            log_messages.append(f"INFO: Rounded {rounded_count} numeric columns to 2 decimal places")
+            log_messages.append(f"INFO: Rounded {rounded_count} numeric columns to 3 decimal places")
     except Exception as e:
         log_messages.append(f"WARNING: Could not round numeric columns: {e}")
 

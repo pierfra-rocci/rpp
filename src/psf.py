@@ -363,7 +363,7 @@ def perform_psf_photometry(
                 f"point-like sources ({size_min:.2f}–{size_max:.2f} px)"
             )
         else:
-            st.write("  ⓘ No FWHM data available; size filtering skipped")
+            st.write("  ⓘ size filtering skipped")
 
         # ========== SHAPE/ELLIPTICITY FILTERING ==========
         # Reject blends and optical defects using roundness and axis ratio
@@ -864,8 +864,52 @@ def perform_psf_photometry(
         if abs(offset_x) > 0.5 or abs(offset_y) > 0.5:
             st.warning(
                 f"⚠ PSF peak is offset from center by ({offset_x:.2f}, {offset_y:.2f}) pixels. "
-                f"This may cause photometry errors."
+                f"Attempting sub-pixel re-centering..."
             )
+            # Non-destructive re-centering: shift a copy of epsf_data so the peak
+            # aligns with the array center. Uses scipy.ndimage.shift (cubic spline,
+            # order=3) which is already available through the astropy dependency.
+            # Shift is computed in oversampled pixels. We only adopt the result if
+            # it actually reduces the offset; otherwise the original is kept.
+            try:
+                from scipy.ndimage import shift as _ndimage_shift
+
+                # Shift needed in oversampled-pixel coordinates
+                shift_y_os = psf_center_y - peak_y
+                shift_x_os = psf_center_x - peak_x
+                epsf_data_centered = _ndimage_shift(
+                    epsf_data,
+                    [shift_y_os, shift_x_os],
+                    order=3,
+                    mode="constant",
+                    cval=0.0,
+                )
+                new_peak_y, new_peak_x = np.unravel_index(
+                    np.argmax(epsf_data_centered), epsf_data_centered.shape
+                )
+                new_offset_x = (new_peak_x - psf_center_x) / oversamp
+                new_offset_y = (new_peak_y - psf_center_y) / oversamp
+                improved = abs(new_offset_x) <= abs(offset_x) and abs(new_offset_y) <= abs(offset_y)
+                if improved:
+                    epsf_data = epsf_data_centered
+                    # Recreate psf_for_phot from the re-centered data
+                    try:
+                        psf_for_phot = ImagePSF(epsf_data, oversampling=oversamp)
+                    except Exception:
+                        pass  # Keep the previously created psf_for_phot
+                    st.write(
+                        f"✓ PSF re-centered: new peak offset "
+                        f"({new_offset_x:.2f}, {new_offset_y:.2f}) px "
+                        f"(was ({offset_x:.2f}, {offset_y:.2f}) px)"
+                    )
+                else:
+                    st.write(
+                        "ⓘ Re-centering did not improve alignment "
+                        f"(new offset: ({new_offset_x:.2f}, {new_offset_y:.2f}) px); "
+                        "keeping original PSF."
+                    )
+            except Exception as _recenter_err:
+                st.warning(f"PSF re-centering skipped: {_recenter_err}. Keeping original PSF.")
         else:
             st.write(
                 f"✓ PSF peak offset from center: ({offset_x:.2f}, {offset_y:.2f}) pixels (acceptable)"

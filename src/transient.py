@@ -10,7 +10,8 @@ import numpy as np
 import streamlit as st
 from astropy.table import Table
 from astropy.time import Time
-from astroquery.imcce import Skybot, conf as imcce_conf
+from astroquery.imcce import Skybot
+from src.tools_pipeline import get_prefixed_photometry_column
 
 from src.tools_pipeline import fix_header
 
@@ -73,11 +74,31 @@ def filter_skybot_candidates(
         if not isinstance(obs_time, Time):
             obs_time = Time(obs_time)
 
-        # Query SkyBoT for Solar System objects in the field
-        imcce_conf.timeout = 120
-        skybot_results = Skybot.cone_search(
-            SkyCoord(ra0, dec0, unit="deg"), (sr0 + 2.0 * sr) * u.deg, obs_time
-        )
+        # Query SkyBoT for Solar System objects in the field.
+        # Direct HTTP request to the current IMCCE endpoint: astroquery 0.4.10
+        # hardcodes the stale vo.imcce.fr URL which is no longer reachable;
+        # the service has migrated to ssp.imcce.fr.
+        import requests as _requests
+        _SKYBOT_URL = "https://ssp.imcce.fr/webservices/skybot/api/conesearch.php"
+        _skybot_rad = min(float(sr0 + 2.0 * sr), 10.0)
+        _skybot_payload = {
+            "-ra": ra0,
+            "-dec": dec0,
+            "-rd": _skybot_rad,
+            "-ep": str(obs_time.jd),
+            "-loc": "500",
+            "-filter": 120,
+            "-objFilter": "111",
+            "-refsys": "EQJ2000",
+            "-output": "all",
+            "-mime": "text",
+        }
+        _skybot_resp = _requests.get(_SKYBOT_URL, params=_skybot_payload, timeout=120)
+        if _skybot_resp.status_code == 204 or not _skybot_resp.text.strip():
+            skybot_results = None
+        else:
+            Skybot._get_raw_response = False
+            skybot_results = Skybot._parse_result(_skybot_resp)
 
         if skybot_results is None or len(skybot_results) == 0:
             st.write("✓ SkyBoT: No Solar System objects found in field")
@@ -158,7 +179,7 @@ def find_candidates(
     filter_cat=None,
     filter_name=None,
     mag_limit="<20.0",
-    detect_thresh=2.5,
+    detect_thresh=3.0,
 ):
     """Find transient candidates in the given image around the specified object.
     Parameters
@@ -237,9 +258,28 @@ def find_candidates(
             # Keep only matched objects
             obj = obj[oidx]
 
+            psf_mag_col = get_prefixed_photometry_column("psf_mag", filter_cat)
+            if psf_mag_col not in photometry_table.columns:
+                psf_mag_col = "psf_mag"
+
+            psf_mag_err_col = get_prefixed_photometry_column(
+                "psf_mag_err", filter_cat
+            )
+            if psf_mag_err_col not in photometry_table.columns:
+                psf_mag_err_col = "psf_mag_err"
+
+            if (
+                psf_mag_col not in photometry_table.columns
+                or psf_mag_err_col not in photometry_table.columns
+            ):
+                st.warning(
+                    "PSF magnitude columns not found in photometry table for transient filtering"
+                )
+                return []
+
             # Get PSF magnitudes from photometry_table for matched sources
-            psf_mag = np.array(photometry_table["psf_mag"][pidx])
-            psf_mag_err = np.array(photometry_table["psf_mag_err"][pidx])
+            psf_mag = np.array(photometry_table[psf_mag_col][pidx])
+            psf_mag_err = np.array(photometry_table[psf_mag_err_col][pidx])
 
             # Add PSF photometry as mag_calib (reference magnitude for transients)
             obj = np.lib.recfunctions.append_fields(
@@ -392,11 +432,12 @@ def find_candidates(
             st.warning("(⚠️ Possibly due to a crowded field, filter band or bad S/N)")
 
     st.info(
-        "Generating cutouts and retrieving template images for the first 11 candidates..."
+        "Generating cutouts and retrieving template images for the first 20 candidates (best S/N first)..."
     )
-    sorted_indices = np.argsort(candidates["mag_calib"])[::-1]
+    # Sort by best S/N: smallest mag_calib_err = highest S/N (S/N ≈ 1.0857 / mag_err)
+    sorted_indices = np.argsort(candidates["mag_calib_err"])
     sorted_candidates = candidates[sorted_indices]
-    for _, cand in list(enumerate(sorted_candidates))[:11]:
+    for _, cand in list(enumerate(sorted_candidates))[:20]:
         # Convert row to dict for stdpipe compatibility
         cand_dict = {col: cand[col] for col in cand.colnames}
         # Create the cutout from image based on the candidate

@@ -26,9 +26,9 @@ FIGURE_SIZES = {
 URL = "https://astro-colibri.science/"
 
 GAIA_BANDS = [
-    ("G", "phot_g_mean_mag"),
-    ("BP", "phot_bp_mean_mag"),
-    ("RP", "phot_rp_mean_mag"),
+    ("Rapas G", "phot_g_mean_mag"),
+    ("Rapas Bp", "phot_bp_mean_mag"),
+    ("Rapas Rp", "phot_rp_mean_mag"),
     ("U", "u_jkc_mag"),
     ("V", "v_jkc_mag"),
     ("B", "b_jkc_mag"),
@@ -40,6 +40,90 @@ GAIA_BANDS = [
     ("i", "imag"),
     ("z", "zmag"),
 ]
+
+
+def get_filter_prefix(filter_band: str | None) -> str | None:
+    """Return a normalized column prefix for the selected calibration filter.
+
+    Parameters
+    ----------
+    filter_band : str or None
+        Internal calibration filter name, e.g. ``phot_g_mean_mag``.
+
+    Returns
+    -------
+    str or None
+        Lowercase prefix such as ``rapasg`` or ``rapasbp``. Returns None when
+        the filter is missing or unknown.
+    """
+    if not filter_band:
+        return None
+
+    for label, field in GAIA_BANDS:
+        if field == filter_band:
+            return label.strip().lower().replace(" ", "")
+
+    return None
+
+
+def get_prefixed_photometry_column(column_name: str, filter_band: str | None) -> str | None:
+    """Return the prefixed photometry column name for the selected filter.
+
+    Parameters
+    ----------
+    column_name : str
+        Legacy photometry column name such as ``psf_mag``.
+    filter_band : str or None
+        Selected calibration filter band.
+
+    Returns
+    -------
+    str or None
+        Prefixed column name such as ``rapasg_psf_mag`` or None when no
+        matching filter prefix exists.
+    """
+    filter_prefix = get_filter_prefix(filter_band)
+    if not filter_prefix:
+        return None
+    return f"{filter_prefix}_{column_name}"
+
+
+def drop_legacy_magnitude_columns(final_table, filter_band=None):
+    """Remove legacy magnitude columns when prefixed aliases are available.
+
+    This keeps internal processing free to use the legacy names while allowing
+    the exported and user-facing table to expose only the filter-prefixed
+    magnitude columns.
+    """
+    if final_table is None or len(final_table) == 0:
+        return final_table
+
+    filter_prefix = get_filter_prefix(filter_band)
+    if not filter_prefix:
+        return final_table
+
+    cols_to_drop = []
+    for col in list(final_table.columns):
+        is_legacy_mag_col = (
+            col == "psf_mag"
+            or col == "psf_mag_err"
+            or col == "psf_instrumental_mag"
+            or col.startswith("aperture_mag_")
+            or col.startswith("aperture_mag_err_")
+            or col.startswith("instrumental_mag_bkg_corr_")
+            or col.startswith("instrumental_mag_")
+        )
+        if not is_legacy_mag_col:
+            continue
+
+        prefixed_col = f"{filter_prefix}_{col}"
+        if prefixed_col in final_table.columns:
+            cols_to_drop.append(col)
+
+    if cols_to_drop:
+        final_table = final_table.drop(columns=cols_to_drop)
+
+    return final_table
 
 # Expanded filter dictionary to handle many common filter name variations
 FILTER_DICT = {
@@ -919,7 +1003,7 @@ def merge_photometry_catalogs(aperture_table, psf_table, tolerance_pixels=1.0):
     return final_table, log_messages
 
 
-def add_calibrated_magnitudes(final_table, zero_point, airmass):
+def add_calibrated_magnitudes(final_table, zero_point, airmass, filter_band=None):
     """
     Add calibrated magnitudes for both aperture and PSF.
     Handle cases where only one method is available.
@@ -934,6 +1018,9 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         Photometric zero point
     airmass : float
         Airmass value
+    filter_band : str, optional
+        Selected calibration filter band used to create prefixed alias columns
+        such as ``rapasg_psf_mag`` while preserving the existing column names.
 
     Returns
     -------
@@ -959,6 +1046,8 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     """
     if final_table is None or len(final_table) == 0:
         return final_table
+
+    filter_prefix = get_filter_prefix(filter_band)
 
     # Helper to compute aperture magnitude for a given radius label
     def _compute_aperture_mag_for_radius(tbl, radius_label):
@@ -1009,6 +1098,31 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
             final_table["psf_instrumental_mag"] + zero_point  # - 0.09 * airmass
         )
 
+    if filter_prefix:
+        alias_map = {}
+        for col in list(final_table.columns):
+            alias_name = None
+            if col == "psf_mag":
+                alias_name = f"{filter_prefix}_psf_mag"
+            elif col == "psf_mag_err":
+                alias_name = f"{filter_prefix}_psf_mag_err"
+            elif col == "psf_instrumental_mag":
+                alias_name = f"{filter_prefix}_psf_instrumental_mag"
+            elif col.startswith("aperture_mag_err_"):
+                alias_name = f"{filter_prefix}_{col}"
+            elif col.startswith("aperture_mag_"):
+                alias_name = f"{filter_prefix}_{col}"
+            elif col.startswith("instrumental_mag_bkg_corr_"):
+                alias_name = f"{filter_prefix}_{col}"
+            elif col.startswith("instrumental_mag_"):
+                alias_name = f"{filter_prefix}_{col}"
+
+            if alias_name and alias_name not in final_table.columns:
+                alias_map[alias_name] = final_table[col]
+
+        if alias_map:
+            final_table = final_table.assign(**alias_map)
+
     # remove columns from a list (these are intermediate columns that may exist)
     cols_to_remove = [
         "sky_center.ra",
@@ -1039,12 +1153,12 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
     mag_err_cols = [col for col in final_table.columns if "mag_err" in col]
 
     if mag_err_cols:
-        # Create mask: keep rows where ALL magnitude errors are <= 1.5 (or NaN)
+        # Create mask: keep rows where ALL magnitude errors are < 1. (or NaN)
         keep_mask = np.ones(len(final_table), dtype=bool)
         for col in mag_err_cols:
             col_values = np.abs(final_table[col])  # Use absolute values
-            # Keep if error <= 1.5 or is NaN (missing data is ok)
-            col_mask = (col_values <= 1.5) | pd.isna(col_values)
+            # Keep if error < 1. or is NaN (missing data is ok)
+            col_mask = (col_values < 1.) | pd.isna(col_values)
             keep_mask &= col_mask
 
         final_table = final_table[keep_mask].reset_index(drop=True)
@@ -1053,7 +1167,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass):
         if removed_count > 0:
             import streamlit as st
 
-            st.info(f"Removed {removed_count} sources with magnitude error > 1.5")
+            st.info(f"Removed {removed_count} sources with magnitude error >= 1.")
 
     return final_table
 
