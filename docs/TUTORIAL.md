@@ -5,15 +5,14 @@ This tutorial guides you through a typical analysis session, from launching the 
 
 ## 1. Login or Register
 
-Create an account or log in. The app will try the FastAPI backend first and fall
-back to the legacy backend if the API is not reachable.
+Create an account or log in.
 
 Account features currently available:
 
 - Registration with password validation
 - Login with stored credentials
 - Password recovery by email with a 6-digit recovery code
-- Per-user saved configuration when using the API backend
+- Per-user saved configuration
 
 ## 2. Upload a FITS File
 
@@ -37,8 +36,7 @@ In the sidebar, adjust:
 - **Detection Threshold**: Sigma threshold for source detection
 - **FWHM Radius Factor**: Multiplier for the user-defined aperture radius (0.5 – 2.0). Values 1.1 and 1.3 are reserved for the two fixed apertures and cannot be selected without a warning.
 - **Border Mask**: Pixels to exclude at the image edge
-- **Calibration Filter Band**: Choose the photometric band for calibration
-- **Max Calibration Mag**: Faintest magnitude for calibration stars
+- **Calibration Filter Band**: Choose the photometric band for calibration (e.g. g, r, i)
 - **Astrometry Check**: Enable to force plate solving/WCS refinement
 
 *Cosmic ray removal is always performed automatically using the L.A.Cosmic algorithm (astroscrappy).*
@@ -47,7 +45,7 @@ In the sidebar, adjust:
 
 Enter your Astro-Colibri API key in the sidebar to enable real-time transient alerts and variable source cross-matching.
 
-## 6. (Optional) Transient Candidates (Beta)
+## 6. (Optional) Transient Candidates
 
 Expand the "Transient Candidates" section in the sidebar:
 
@@ -77,7 +75,7 @@ tries to restore and continue with the original WCS when possible.
 
 After processing, download the ZIP archive containing:
 
-- `*_catalog.csv` / `.vot`: Source catalog with photometry, errors, flags, and cross-matches. Each aperture produces its own set of columns: `aperture_mag_X_X`, `aperture_mag_err_X_X`, `snr_X_X`, `quality_flag_X_X` (fixed apertures: `_1_1`, `_1_3`; user-defined aperture: e.g. `_1_5` for FWHM Radius Factor = 1.5)
+- `*_catalog.csv` / `.vot`: Source catalog with photometry, errors, flags, and cross-matches. Each aperture produces its own set of columns: `aperture_mag_X_X`, `aperture_mag_err_X_X`, `snr_X_X`, `quality_flag_X_X` (fixed apertures: `_1_1`, `_1_3`; user-defined aperture: e.g. `_1_5` for FWHM Radius Factor = 1.5). The catalog also keeps the legacy names and adds filter-prefixed aliases derived from the selected calibration band, for example `rapasg_psf_mag` or `rapasg_aperture_mag_1_5`.
 - `*_background.fits`: 2D background and RMS maps
 - `*_psf.fits`: Empirical PSF model
 - `*_wcs_header.txt`: Astrometric solution header
@@ -122,3 +120,15 @@ partial results and records warnings in the log.
 ## Support
 
 If you encounter issues, check the log file. For bugs or feedback, contact `rpp_support@saf-astronomie.fr`.
+
+---
+
+## Recent changes (version 1.7.3)
+
+- **Pre-final release**: Internal consolidation in preparation for the stable release.
+- **Photometry catalog aliases**: calibrated magnitude columns in exported catalogs now also include filter-prefixed aliases based on the selected calibration band while keeping the previous column names for compatibility.
+
+### Version 1.7.2
+
+- **Sexagesimal coordinates**: the Statistics section now displays target RA and DEC in both decimal degrees and sexagesimal format (HH:MM:SS / ±DD:MM:SS). The same dual format is recorded in the log.
+- **Magnitude error plot**: the Y-axis of the "Magnitude Error vs Magnitude" scatter panel uses a logarithmic scale, making it easier to read photometric precision across the full magnitude range.

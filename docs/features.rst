@@ -112,7 +112,11 @@ Source Detection & Photometry
    - Two fixed aperture radii: 1.1× and 1.3× FWHM (optimized for most use cases)
    - User-configurable third aperture (FWHM Radius Factor, 0.5–2.0× FWHM, default 1.5×); values 1.1 and 1.3 collapse back to two apertures without duplication
    - All three apertures produce the same set of output columns: flux, background-corrected flux, S/N, instrumental magnitude, calibrated magnitude, magnitude error, and quality flag
-   - Column naming follows ``aperture_mag_X_X`` / ``snr_X_X`` / ``aperture_mag_err_X_X`` / ``quality_flag_X_X`` (e.g. ``_1_1``, ``_1_3``, ``_1_5``)
+    - Column naming follows ``aperture_mag_X_X`` / ``snr_X_X`` / ``aperture_mag_err_X_X`` / ``quality_flag_X_X`` (e.g. ``_1_1``, ``_1_3``, ``_1_5``)
+    - Exported calibrated magnitude columns also include filter-prefixed aliases
+       derived from the selected calibration band in ``GAIA_BANDS`` (for example
+       ``rapasg_psf_mag`` or ``rapasg_aperture_mag_1_5``) while preserving the
+       legacy column names
    - Per-aperture background-corrected and raw flux measurements
    - Signal-to-noise ratio (S/N) calculation using background-corrected flux
    - Magnitude error calculation: ``σ_mag = 1.0857 × (σ_flux / flux)``
@@ -222,7 +226,8 @@ Transient Detection (Beta)
    - Image subtraction and catalog filtering
    - Integration with PanSTARRS (Northern) and SkyMapper (Southern) surveys
    - Template image retrieval and masking
-   - Candidate visualization with cutouts (Science, Template, Difference)
+   - Candidate visualization with cutouts (Science, Template) for the top 20
+     candidates sorted by best signal-to-noise ratio
    - Additional SkyBoT filtering for Solar System object rejection
 
 Data Visualization & Analysis
@@ -266,6 +271,15 @@ User Interface & Workflow
    - Organized sidebar with collapsible sections
    - Mobile-friendly responsive layout
    - Dedicated Start Analysis action after FITS upload and parameter review
+
+**Statistics Display**:
+   - Target RA and DEC shown in both decimal degrees and sexagesimal format
+     (HH:MM:SS / ±DD:MM:SS) in the Statistics section
+   - Dual coordinate format also recorded in the processing log file
+
+**Photometric Visualization**:
+   - "Magnitude Error vs Magnitude" scatter plot uses a logarithmic Y-axis for
+     better readability across a wide dynamic range of photometric precision
 
 **Configuration Management**:
    - Persistent parameter storage across sessions

@@ -78,6 +78,14 @@ Useful Functions
    Load image data and headers from a FITS file with robust handling for empty,
    invalid, multi-extension, or multi-dimensional FITS content.
 
+``src.tools_app.update_observatory_from_fits_header(header)``
+   Extract observatory metadata (name, latitude, longitude, elevation) from a
+   FITS header and update the Streamlit session state observatory fields.
+
+``src.tools_app.display_archived_files_browser(api_client)``
+   Render the archived FITS file and ZIP result browser in the Streamlit
+   sidebar. Queries the backend for the current user's stored files.
+
 ``src.tools_pipeline.safe_wcs_create(header)``
    Attempt to build a WCS object from a FITS header while returning structured
    error information and log messages.
@@ -88,6 +96,19 @@ Useful Functions
 
 ``src.pipeline.make_border_mask(image, border=50, invert=True, dtype=bool)``
    Build a border mask for detection workflows.
+
+``src.pipeline.fwhm_fit(image, objects, pixel_scale)``
+   Estimate the FWHM of the stellar PSF by fitting Gaussian profiles to
+   detected sources and averaging the results with sigma clipping.
+
+``src.pipeline.detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None)``
+   Detect satellite trails in an image using ASTRiDE and return a boolean mask
+   with trail pixels set to True. Returns an empty mask when ASTRiDE is
+   unavailable or no trails are found.
+
+``src.pipeline.show_subtracted_image(image_sub)``
+   Display the residual image produced by the transient-detection image
+   subtraction step inside the Streamlit interface.
 
 ``src.astrometry.solve_with_astrometrynet(file_path)``
    Run local astrometric solving with the configured Astrometry.net/stdpipe

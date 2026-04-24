@@ -3,8 +3,39 @@ Changelog
 
 This document records all notable changes to RAPAS Photometry Pipeline.
 
-Version 1.7.0 (Unreleased)
---------------------------
+Version 1.7.3 (Pre-final)
+-------------------------
+
+**Released: April 21, 2026**
+
+*   **Version bump to pre-final**: Internal consolidation of changes from 1.7.2
+    in preparation for the final stable release.
+*   **Photometry catalog aliases**: Exported calibrated magnitude columns now
+    also include filter-prefixed aliases derived from the selected calibration
+    band in ``GAIA_BANDS`` (for example ``rapasg_psf_mag``), while preserving
+    the legacy column names for compatibility.
+*   ``release`` flag in ``src/__version__.py`` remains ``False`` until the
+    final stable tag is cut.
+
+Version 1.7.2
+-------------
+
+**Released: April 20, 2026**
+
+**User Interface Improvements**
+
+*   **Sexagesimal Coordinate Display**: Target RA and DEC in the Statistics
+    section are now shown in both decimal degrees and sexagesimal format
+    (HH:MM:SS / ±DD:MM:SS). The same dual format is recorded in the processing
+    log.
+*   **Magnitude Error Plot — Logarithmic Scale**: The Y-axis of the "Magnitude
+    Error vs Magnitude" scatter plot is now displayed on a logarithmic scale,
+    improving readability across a wide dynamic range of photometric precision.
+
+Version 1.7.0
+-------------
+
+**Released: 2026**
 
 **Application Workflow & Stability**
 

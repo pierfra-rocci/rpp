@@ -52,7 +52,7 @@ Use the sidebar to review or change:
 
 - Observatory name, latitude, longitude, and elevation
 - Estimated seeing, detection threshold, FWHM radius factor, and border mask size
-- Calibration filter band and maximum calibration magnitude
+- Calibration filter band (the maximum calibration magnitude is fixed at 21, the GAIA catalogue limit)
 - **Astrometry check** to force solving or refining the WCS workflow
 - **Transient Candidates** options to enable the transient finder and choose a reference filter
 - Optional Astro-Colibri UID key
@@ -123,6 +123,14 @@ The main panel can show:
 - Processing logs
 - Interactive Aladin views
 - Download buttons for result archives
+
+**Statistics section**: the target field center RA and DEC are shown in both
+decimal degrees and sexagesimal format (HH:MM:SS / ±DD:MM:SS). The same dual
+format is written into the processing log file.
+
+**Magnitude Error vs Magnitude plot**: the Y-axis uses a logarithmic scale so
+that photometric precision is readable across the full magnitude range of the
+catalog.
 
 Result ZIP archives typically contain the generated catalogs, logs, plots, and
 other analysis products created during the run.
