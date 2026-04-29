@@ -64,7 +64,7 @@ from src.pipeline import (
 
 from src.astrometry import solve_with_astrometrynet
 from src.xmatch_catalogs import cross_match_with_gaia, enhance_catalog
-from src.transient import find_candidates
+from src.transient import find_candidates, plot_astrocolibri_cutouts
 
 from src.__version__ import version
 
@@ -1539,6 +1539,30 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
             if ra_center is not None and dec_center is not None:
                 # Check if we have a valid final photometry table
                 final_phot_table = st.session_state.get("final_phot_table")
+
+                # Show Astro-Colibri match cutouts (always, independent of transient finder)
+                if final_phot_table is not None and not final_phot_table.empty:
+                    with st.spinner("Generating Astro-Colibri match cutouts..."):
+                        try:
+                            plot_astrocolibri_cutouts(
+                                final_table=final_phot_table,
+                                image=science_data,
+                                header=st.session_state.get(
+                                    "calibrated_header", science_header
+                                ),
+                                output_dir=output_dir,
+                                base_filename=st.session_state.get(
+                                    "base_filename", "photometry"
+                                ),
+                                filter_name=st.session_state.analysis_parameters.get(
+                                    "transient_filter", "r"
+                                ),
+                                dec_center=dec_center,
+                            )
+                        except Exception as e:
+                            st.warning(
+                                f"Could not generate Astro-Colibri cutouts: {e}"
+                            )
 
                 # Run Transient Finder if enabled
                 if st.session_state.analysis_parameters.get("run_transient_finder"):
