@@ -470,6 +470,160 @@ def find_candidates(
     return candidates
 
 
+def plot_astrocolibri_cutouts(
+    final_table,
+    image,
+    header,
+    output_dir,
+    base_filename,
+    filter_name="r",
+    dec_center=0.0,
+):
+    """Display and save cutout images for all Astro-Colibri cross-matches.
+
+    Iterates over rows in *final_table* where ``astrocolibri_name`` is set,
+    retrieves a HiPS survey template for the position, displays the image /
+    template pair in the Streamlit app and saves a PNG to *output_dir* so it
+    is included in the final ZIP archive.
+
+    Parameters
+    ----------
+    final_table : pandas.DataFrame
+        Enhanced photometry catalog (output of ``enhance_catalog``).
+    image : numpy.ndarray
+        2-D science image array.
+    header : astropy FITS header
+        Header of the science image (must contain WCS).
+    output_dir : str
+        Directory where PNG files are saved.
+    base_filename : str
+        Prefix for output file names.
+    filter_name : str, optional
+        Survey filter to use for the HiPS template (default: ``"r"``).
+    dec_center : float, optional
+        Declination of the field centre in degrees. Used to pick the
+        hemisphere-appropriate survey (PanSTARRS north / SkyMapper south).
+    """
+    import os
+
+    if final_table is None or len(final_table) == 0:
+        return
+
+    # Select rows with an Astro-Colibri match
+    if "astrocolibri_name" not in final_table.columns:
+        return
+
+    ac_rows = final_table[final_table["astrocolibri_name"].notna()].copy()
+    if len(ac_rows) == 0:
+        return
+
+    # Pick survey based on hemisphere
+    if dec_center < 0:
+        cat_cutout = "SkyMapper/DR4/"
+    else:
+        cat_cutout = "PanSTARRS/DR1/"
+
+    header, _ = fix_header(header)
+
+    st.subheader("Astro-Colibri Match Cutouts")
+    st.info(
+        f"Displaying cutouts for {len(ac_rows)} Astro-Colibri matched source(s)."
+    )
+
+    saved_paths = []
+    for i, (_, row) in enumerate(ac_rows.iterrows()):
+        # Build a minimal dict compatible with stdpipe's get_cutout
+        ra = row.get("ra")
+        dec = row.get("dec")
+        if ra is None or dec is None or not (np.isfinite(ra) and np.isfinite(dec)):
+            continue
+
+        # Retrieve the best available magnitude / error for the title
+        mag_val = None
+        mag_err_val = None
+        for mag_col in ["psf_mag", "aperture_mag_1_3", "aperture_mag_1_1"]:
+            if mag_col in row and row[mag_col] is not None:
+                try:
+                    v = float(row[mag_col])
+                    if np.isfinite(v):
+                        mag_val = v
+                        break
+                except (TypeError, ValueError):
+                    pass
+        for err_col in ["psf_mag_err", "aperture_mag_err_1_3", "aperture_mag_err_1_1"]:
+            if err_col in row and row[err_col] is not None:
+                try:
+                    v = float(row[err_col])
+                    if np.isfinite(v):
+                        mag_err_val = v
+                        break
+                except (TypeError, ValueError):
+                    pass
+
+        name = row.get("astrocolibri_name", f"AC_{i+1}")
+        ac_type = row.get("astrocolibri_type", "")
+        ac_class = row.get("astrocolibri_classification", "")
+
+        cand_dict = {"ra": ra, "dec": dec, "x": row.get("xcenter", 0), "y": row.get("ycenter", 0)}
+
+        try:
+            cutout = cutouts.get_cutout(image, cand_dict, 25, header=header)
+        except Exception as e:
+            st.warning(f"Could not create cutout for {name}: {e}")
+            continue
+
+        try:
+            cutout["template"] = templates.get_hips_image(
+                cat_cutout + filter_name,
+                header=cutout.get("header"),
+                get_header=False,
+            )
+        except Exception as e:
+            st.warning(f"Could not retrieve HiPS template for {name}: {e}")
+            cutout["template"] = None
+
+        # Build a descriptive title
+        title_parts = [str(name)]
+        if ac_type:
+            title_parts.append(str(ac_type))
+        if ac_class:
+            title_parts.append(str(ac_class))
+        if mag_val is not None:
+            mag_str = f"mag={mag_val:.2f}"
+            if mag_err_val is not None:
+                mag_str += f" ± {mag_err_val:.3f}"
+            title_parts.append(mag_str)
+        title = " | ".join(title_parts)
+
+        fig = plot_cutout(
+            cutout,
+            planes=["image", "template"],
+            qq=[1, 99],
+            stretch="linear",
+            title=title,
+        )
+        st.pyplot(fig)
+
+        # Save PNG to output_dir so it ends up in the ZIP
+        try:
+            safe_name = "".join(c if c.isalnum() or c in "_-" else "_" for c in str(name))
+            png_filename = f"{base_filename}_astrocolibri_{i+1:02d}_{safe_name}.png"
+            png_path = os.path.join(output_dir, png_filename)
+            fig.savefig(png_path, dpi=100, bbox_inches="tight")
+            saved_paths.append(png_path)
+        except Exception as e:
+            st.warning(f"Could not save Astro-Colibri cutout PNG: {e}")
+
+        plt.close(fig)
+
+    if saved_paths:
+        st.success(
+            f"Saved {len(saved_paths)} Astro-Colibri cutout image(s) to the results archive."
+        )
+
+    return saved_paths
+
+
 def plot_cutout(
     cutout,
     planes=["image", "template"],
