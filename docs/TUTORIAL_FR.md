@@ -1,56 +1,45 @@
 # Tutoriel pas à pas – Pipeline de Photométrie RAPAS
 
-Ce tutoriel vous guide à travers une session d'analyse typique, du lancement du backend jusqu'au téléchargement des résultats.
+Ce tutoriel vous guide à travers une session d'analyse typique.
 
-## 1. Connexion ou Création de Compte
-
-Créez un compte ou connectez-vous.
-
-Fonctionnalités de compte disponibles :
-
-- Inscription avec validation du mot de passe
-- Connexion avec les identifiants enregistrés
-- Récupération du mot de passe par e-mail avec un code à 6 chiffres
-- Sauvegarde de la configuration par utilisateur
-
-## 2. Charger un Fichier FITS
+## 1. Charger un Fichier FITS
 
 Dans la zone principale, utilisez l'outil de chargement pour sélectionner votre image FITS. Extensions supportées : `.fits`, `.fit`, `.fts`, `.fits.gz`, `.fts.gz`.
 
 Le chargement du fichier ne fait que le mettre en attente dans l'interface. Le fichier FITS est chargé et vérifié uniquement après avoir cliqué sur le bouton **Start Analysis Pipeline**.
 
-## 3. Configurer l'Observatoire
+## 2. Configurer l'Observatoire
 
 Dans la barre latérale (section **🔭 Observatory**), renseignez les informations de l'observatoire :
 
 - **Name** : ex. « Backyard Observatory »
 - **Latitude**, **Longitude**, **Elevation** : En degrés décimaux / mètres. Ces valeurs peuvent être remplies automatiquement depuis l'en-tête FITS — vérifiez-les.
 
-## 4. Définir les Paramètres d'Analyse
+## 3. Définir les Paramètres d'Analyse
 
 Dans la barre latérale (section **⚙️ Parameters**), ajustez :
 
-- **Estimated Seeing (FWHM)** : Estimation initiale en secondes d'arc
+- **Estimated FWHM** : Estimation initiale en secondes d'arc
 - **Detection Threshold** : Seuil sigma pour la détection des sources
 - **FWHM Radius Factor** : Multiplicateur pour l'ouverture définie par l'utilisateur (0,5 – 2,0). Les valeurs 1,1 et 1,3 sont réservées aux deux ouvertures fixes.
 - **Border Mask** : Pixels à exclure en bordure d'image
 - **Filter Band** : Bande photométrique pour la calibration (ex. g, r, i)
-- **Astrometry Check** : Activer pour forcer la résolution de plaque / le raffinement WCS
+- **Astrometry Check** : Activer pour forcer la solution astrométrique et l'ajustement de la WCS
 
 *La suppression des rayons cosmiques est toujours effectuée automatiquement via l'algorithme L.A.Cosmic (astroscrappy).*
 
-## 5. (Optionnel) Clé API Astro-Colibri
+## 4. (Optionnel) Clé API Astro-Colibri
 
-Entrez votre clé API dans la section **🔑 Astro-Colibri** de la barre latérale (**UID Key**) pour activer les alertes de transitoires en temps réel et le croisement avec les sources variables.
+Entrez votre clé API dans la section **🔑 Astro-Colibri** de la barre latérale (**UID Key**) pour activer le croisement avec les sources transitoires.
 
-## 6. (Optionnel) Candidats Transitoires
+## 5. (Optionnel) Candidats Transitoires
 
 Développez la section **Transient Candidates** dans la barre latérale :
 
 - **Enable Transient Finder** : Lance la détection par soustraction d'image avec un relevé de référence (PanSTARRS1 au nord, SkyMapper au sud).
 - **Reference Filter** : Sélectionnez la bande pour la comparaison avec le gabarit.
 
-## 7. Lancer l'Analyse
+## 6. Lancer l'Analyse
 
 Cliquez sur **▶️ Start Analysis** pour démarrer. À ce moment, l'application charge le fichier FITS, vérifie l'en-tête et le WCS, puis exécute le pipeline.
 
@@ -64,9 +53,9 @@ Les étapes réalisées sont :
 6. **Croisement multi-catalogues** : GAIA DR3, SIMBAD, SkyBoT, AAVSO VSX, Milliquas, Catalogue 10 pc, Astro-Colibri
 7. **Détection de transitoires** (si activée)
 
-Si **Astrometry Check** est activé, l'application force une nouvelle résolution de plaque même si un WCS valide est déjà présent. En cas d'échec, elle tente de rétablir et de continuer avec le WCS original si disponible.
+Si **Astrometry Check** est activé, l'application force une nouvelle solution même si un WCS valide est déjà présent. En cas d'échec, elle tente de rétablir et de continuer avec le WCS original si disponible.
 
-## 8. Télécharger et Interpréter les Résultats
+## 7. Télécharger et Interpréter les Résultats
 
 Après le traitement, téléchargez l'archive ZIP contenant :
 
@@ -116,15 +105,3 @@ Les coordonnées du centre du champ sont affichées dans la section **Statistiqu
 ## Support
 
 En cas de problème, consultez le fichier journal. Pour les bugs ou les retours, contactez `rpp_support@saf-astronomie.fr`.
-
----
-
-## Dernières modifications (version 1.7.3)
-
-- **Version pré-finale** : consolidation interne en préparation de la version stable.
-- **Alias de colonnes photométriques** : les catalogues exportés ajoutent maintenant des alias préfixés par la bande de calibration sélectionnée tout en conservant les anciens noms de colonnes pour la compatibilité.
-
-### Version 1.7.2
-
-- **Coordonnées sexagésimales** : les coordonnées RA et DEC de la cible sont maintenant affichées en degrés décimaux et en format sexagésimal (HH:MM:SS / ±DD:MM:SS). Le même format est enregistré dans le journal.
-- **Graphique des erreurs de magnitude** : l'axe Y du panneau « Magnitude Error vs Magnitude » utilise une échelle logarithmique pour mieux lire la précision photométrique sur toute la plage de magnitudes.

@@ -1,38 +1,27 @@
 
 # Step-by-Step Photometry Tutorial
 
-This tutorial guides you through a typical analysis session, from launching the backend to downloading your results.
+This tutorial guides you through a typical analysis session.
 
-## 1. Login or Register
-
-Create an account or log in.
-
-Account features currently available:
-
-- Registration with password validation
-- Login with stored credentials
-- Password recovery by email with a 6-digit recovery code
-- Per-user saved configuration
-
-## 2. Upload a FITS File
+## 1. Upload a FITS File
 
 In the main area, use the file uploader to select your FITS image. Supported extensions: `.fits`, `.fit`, `.fts`, `.fits.gz`, `.fts.gz`.
 
 Uploading the file only stages it in the interface. The FITS file is loaded and
 checked only after you click the Start Analysis button.
 
-## 3. Configure Observatory
+## 2. Configure Observatory
 
 In the sidebar, set your observatory details:
 
 - **Name**: e.g., "Backyard Observatory"
 - **Latitude, Longitude, Elevation**: Decimal degrees/meters. These may be auto-filled from the FITS header, but always verify.
 
-## 4. Set Analysis Parameters
+## 3. Set Analysis Parameters
 
 In the sidebar, adjust:
 
-- **Estimated Seeing (FWHM)**: Initial guess in arcseconds
+- **Estimated FWHM**: Initial guess in arcseconds
 - **Detection Threshold**: Sigma threshold for source detection
 - **FWHM Radius Factor**: Multiplier for the user-defined aperture radius (0.5 – 2.0). Values 1.1 and 1.3 are reserved for the two fixed apertures and cannot be selected without a warning.
 - **Border Mask**: Pixels to exclude at the image edge
@@ -41,18 +30,18 @@ In the sidebar, adjust:
 
 *Cosmic ray removal is always performed automatically using the L.A.Cosmic algorithm (astroscrappy).*
 
-## 5. (Optional) Astro-Colibri API Key
+## 4. (Optional) Astro-Colibri API Key
 
-Enter your Astro-Colibri API key in the sidebar to enable real-time transient alerts and variable source cross-matching.
+Enter your Astro-Colibri API key in the sidebar to enable transient and variable source cross-matching.
 
-## 6. (Optional) Transient Candidates
+## 5. (Optional) Transient Candidates
 
 Expand the "Transient Candidates" section in the sidebar:
 
 - **Enable Transient Finder**: Activates transient detection using image subtraction against reference surveys (PanSTARRS1 for north, SkyMapper for south).
 - **Reference Filter**: Select the filter band for template comparison.
 
-## 7. Run the Analysis
+## 6. Run the Analysis
 
 Click **Start Analysis Pipeline** to begin processing. At that point the app loads
 the FITS file, checks the header and WCS, and then runs the pipeline.
@@ -71,7 +60,7 @@ If **Astrometry Check** is enabled, the app forces a new plate-solving attempt
 even when a valid WCS is already present. If that forced solve fails, the app
 tries to restore and continue with the original WCS when possible.
 
-## 8. Download and Interpret Results
+## 7. Download and Interpret Results
 
 After processing, download the ZIP archive containing:
 
@@ -121,14 +110,3 @@ partial results and records warnings in the log.
 
 If you encounter issues, check the log file. For bugs or feedback, contact `rpp_support@saf-astronomie.fr`.
 
----
-
-## Recent changes (version 1.7.3)
-
-- **Pre-final release**: Internal consolidation in preparation for the stable release.
-- **Photometry catalog aliases**: calibrated magnitude columns in exported catalogs now also include filter-prefixed aliases based on the selected calibration band while keeping the previous column names for compatibility.
-
-### Version 1.7.2
-
-- **Sexagesimal coordinates**: the Statistics section now displays target RA and DEC in both decimal degrees and sexagesimal format (HH:MM:SS / ±DD:MM:SS). The same dual format is recorded in the log.
-- **Magnitude error plot**: the Y-axis of the "Magnitude Error vs Magnitude" scatter panel uses a logarithmic scale, making it easier to read photometric precision across the full magnitude range.
