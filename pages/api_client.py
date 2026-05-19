@@ -13,6 +13,38 @@ DEFAULT_LEGACY_URL = os.getenv("RPP_LEGACY_URL", "http://localhost:5000")
 _REQUEST_TIMEOUT = 15
 
 
+def _build_backend_info(
+    mode: str,
+    api_url: str,
+    legacy_url: str,
+    message: str,
+) -> Dict[str, str]:
+    """Return the normalized backend selection payload."""
+    return {
+        "mode": mode,
+        "api_base_url": api_url,
+        "legacy_backend_url": legacy_url,
+        "message": message,
+    }
+
+
+def _legacy_backend_reachable(legacy_url: str, timeout: float) -> bool:
+    """Best-effort probe for the legacy Flask backend.
+
+    The legacy service has no dedicated health route. A GET on the POST-only
+    /login endpoint should normally return 405 when the server is alive.
+    """
+    try:
+        response = requests.get(
+            f"{legacy_url}/login",
+            timeout=timeout,
+            allow_redirects=False,
+        )
+    except requests.RequestException:
+        return False
+    return response.status_code in {200, 400, 401, 405}
+
+
 class ApiError(Exception):
     """Raised when the API returns an error response."""
 
@@ -180,18 +212,50 @@ def detect_backend(timeout: float = 2.0) -> Dict[str, str]:
     try:
         response = requests.get(health_url, timeout=timeout)
         if response.ok:
-            return {
-                "mode": "api",
-                "api_base_url": api_url,
-                "legacy_backend_url": legacy_url,
-                "message": "Using API backend",
-            }
-    except requests.RequestException:
-        pass
+            return _build_backend_info(
+                mode="api",
+                api_url=api_url,
+                legacy_url=legacy_url,
+                message="API backend",
+            )
 
-    return {
-        "mode": "legacy",
-        "api_base_url": api_url,
-        "legacy_backend_url": legacy_url,
-        "message": ("API backend not reachable. Using legacy server"),
-    }
+        if _legacy_backend_reachable(legacy_url, timeout):
+            return _build_backend_info(
+                mode="legacy",
+                api_url=api_url,
+                legacy_url=legacy_url,
+                message=(
+                    "API backend unhealthy "
+                    f"(GET /health returned {response.status_code}). "
+                    "Legacy server"
+                ),
+            )
+
+        return _build_backend_info(
+            mode="unavailable",
+            api_url=api_url,
+            legacy_url=legacy_url,
+            message=(
+                "API backend reachable but unhealthy "
+                f"(GET /health returned {response.status_code}). "
+                "Legacy backend not detected."
+            ),
+        )
+    except requests.RequestException as exc:
+        if _legacy_backend_reachable(legacy_url, timeout):
+            return _build_backend_info(
+                mode="legacy",
+                api_url=api_url,
+                legacy_url=legacy_url,
+                message="API backend not reachable. Legacy server",
+            )
+
+        return _build_backend_info(
+            mode="unavailable",
+            api_url=api_url,
+            legacy_url=legacy_url,
+            message=(
+                "No backend available. "
+                f"API probe failed: {exc}. Legacy backend not detected."
+            ),
+        )

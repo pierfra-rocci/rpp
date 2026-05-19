@@ -7,71 +7,19 @@ from astropy.wcs import WCS
 from astropy.io import fits
 
 # stdpipe imports
-from stdpipe import astrometry
-from stdpipe import photometry
-from stdpipe import catalogs
-from stdpipe import pipeline as stdpipe_pipeline
+STDPIPE_IMPORT_ERROR = None
 
-
-# def _try_source_detection(
-#     image, header, fwhm_estimates, threshold_multi, min_sources=10
-# ):
-#     """Helper function to try different detection parameters.
-#     Refactored to use stdpipe (SExtractor/SEP + photutils measurement)
-#     """
-#     # We iterate through parameters to find a good set
-#     for fwhm_est in fwhm_estimates:
-#         for thresh in threshold_multi:
-#             try:
-#                 st.info(f"Trying detection with thresh={thresh}, FWHM={fwhm_est}")
-
-#                 # 1. Detect objects using SExtractor/SEP via stdpipe
-#                 # get_objects_sextractor handles background estimation internally
-#                 # but we pass the background-subtracted image 'image_sub'.
-#                 # 'thresh' corresponds to the detection threshold (sigma).
-#                 if header.get("GAIN"):
-#                     gain = header.get("GAIN")
-#                 else:
-#                     gain = 65635 / np.max(image)
-
-#                 sources = photometry.get_objects_sextractor(
-#                     image,
-#                     thresh=thresh,
-#                     aper=1.5 * fwhm_est,
-#                     gain=gain,
-#                     edge=10,
-#                     bg_size=64,
-#                 )
-
-#                 if sources is not None and len(sources) >= min_sources:
-#                     # 2. Measure objects using photutils via stdpipe
-#                     # This refines the photometry and measurements
-#                     sources = photometry.measure_objects(
-#                         sources,
-#                         image,
-#                         fwhm=fwhm_est,
-#                         aper=1,  # Aperture radius in FWHM units
-#                         bkgann=[2.0, 3.0],  # Background annulus in FWHM units
-#                         verbose=False,
-#                         sn=5.0,  # Minimum S/N
-#                     )
-
-#                     if sources is not None and len(sources) >= min_sources:
-#                         st.success(
-#                             f"Found {len(sources)} sources with "
-#                             f"thresh={thresh}, FWHM={fwhm_est}"
-#                         )
-#                         return sources
-
-#                 if sources is not None:
-#                     st.write(
-#                         f"Found {len(sources)} sources (need at least {min_sources})"
-#                     )
-
-#             except Exception as e:
-#                 st.write(f"Detection failed with FWHM={fwhm_est} : {e}")
-#                 continue
-#     return None
+try:
+    from stdpipe import astrometry
+    from stdpipe import photometry
+    from stdpipe import catalogs
+    from stdpipe import pipeline as stdpipe_pipeline
+except ModuleNotFoundError as exc:
+    astrometry = None
+    photometry = None
+    catalogs = None
+    stdpipe_pipeline = None
+    STDPIPE_IMPORT_ERROR = exc
 
 
 def get_adaptive_min_sources(image_shape):
@@ -263,8 +211,6 @@ def _try_source_detection_improved(image, header, min_sources=10):
 
     for fwhm_est, thresh, desc in parameter_grid:
         try:
-            st.info(f"Trying {desc}: thresh={thresh}, FWHM={fwhm_est}")
-            
             # Get gain value
             if header.get("GAIN"):
                 gain = header.get("GAIN")
@@ -343,6 +289,15 @@ def solve_with_astrometrynet(file_path):
     Uses stdpipe.astrometry.blind_match_objects for cleaner interface.
     """
     log_messages = []
+    if STDPIPE_IMPORT_ERROR is not None:
+        error_message = (
+            "Astrometry dependencies are not available: "
+            f"{STDPIPE_IMPORT_ERROR}. Install setuptools==71.0.0 "
+            "so pkg_resources remains available for sip_tpv/stdpipe."
+        )
+        log_messages.append(f"ERROR: {error_message}")
+        return None, None, log_messages, error_message
+
     try:
         if not os.path.exists(file_path):
             return None, None, log_messages, f"File {file_path} does not exist"

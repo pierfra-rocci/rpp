@@ -7,9 +7,7 @@ in the database from the Streamlit frontend.
 
 from __future__ import annotations
 
-import os
 import sqlite3
-from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
 

@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 st.set_page_config(
     page_title="RAPAS Photometry Pipeline - Login",
     page_icon=":sparkles:",
-    layout="wide",
+    layout="centered",
 )
 
 # Use session state to track login status - Keep these basic initializations
@@ -68,159 +68,202 @@ def validate_password(password):
 
 
 if not st.session_state.logged_in:
-    st.title("**RAPAS Photometry Pipeline**")
-    st.markdown("")
-    st.markdown(
-        "_Report feedback and bugs to_ : "
-        "[rpp_support](mailto:rpp_support@saf-astronomie.fr)"
+    st.title(":sparkles: RAPAS Photometry Pipeline")
+    st.caption(st.session_state.backend_status_message)
+
+    with st.expander("👋 First time here ?"):
+        guide_en, guide_fr = st.tabs(["🇬🇧 English", "🇫🇷 Français"])
+        with guide_en:
+            st.markdown(
+                """
+**Welcome to RAPAS — the RAPAS Photometry Pipeline!**
+
+Here is what you need to get started:
+
+1. **Create an account** — go to the *Sign Up* tab below and register with a username, password, and email.
+2. **Login** — use your credentials in the *Login* tab.
+3. **Upload a FITS image** — images must be **16-bit or 32-bit** (8-bit images are not supported).
+4. **Configure your observatory** — fill in your site coordinates in the *Observatory Data* panel.
+5. **Set analysis parameters** — adjust detection and photometry settings in the *Analysis Parameters* panel.
+6. **Run the pipeline** — click **▶️ Start Analysis** and download your results as a ZIP archive.
+
+Need help or want to report a bug? Contact [rpp_support](mailto:rpp_support@saf-astronomie.fr).
+"""
+            )
+        with guide_fr:
+            st.markdown(
+                """
+**Bienvenue dans RAPAS — le pipeline de photométrie RAPAS !**
+
+Voici ce dont vous avez besoin pour commencer :
+
+1. **Créer un compte** — rendez-vous dans l'onglet *Sign Up* ci-dessous et inscrivez-vous avec un nom d'utilisateur, un mot de passe et une adresse e-mail.
+2. **Se connecter** — utilisez vos identifiants dans l'onglet *Login*.
+3. **Charger une image FITS** — les images doivent être encodées sur **16 bits ou 32 bits** (les images 8 bits ne sont pas prises en charge).
+4. **Configurer votre observatoire** — renseignez les coordonnées de votre site dans le panneau *Observatory Data*.
+5. **Régler les paramètres d'analyse** — ajustez les paramètres de détection et de photométrie dans le panneau *Analysis Parameters*.
+6. **Lancer le pipeline** — cliquez sur **▶️ Start Analysis** et téléchargez vos résultats sous forme d'archive ZIP.
+
+Besoin d'aide ou vous avez trouvé un bug ? Contactez [rpp_support](mailto:rpp_support@saf-astronomie.fr).
+"""
+            )
+
+    tab_login, tab_signup, tab_recovery = st.tabs(
+        ["🔑 Login", "📝 Sign Up", "🔓 Password Recovery"]
     )
 
-    st.sidebar.markdown("## User Credentials")
-
-    username = st.sidebar.text_input(
-        "Username",
-        value="",
-        placeholder="Enter your username",
-        help="Your registered username",
-    )
-    password = st.sidebar.text_input(
-        "Password",
-        value="",
-        type="password",
-        placeholder="Enter your password",
-        help="Your account password",
-    )
-
-    email = st.sidebar.text_input(
-        "Email",
-        value="",
-        help="Required for registration and password recovery.",
-    )
-
-    st.sidebar.caption(st.session_state.backend_status_message)
-
-    login_col, register_col = st.sidebar.columns([1, 1])
-
-    with login_col:
-        login_clicked = st.button("Login")
-    with register_col:
-        register_clicked = st.button("Sign Up")
-
-    if login_clicked:
-        if username and password:
-            if st.session_state.api_mode:
-                client = ApiClient(st.session_state.api_base_url)
-                try:
-                    message = client.login(
-                        username=username,
-                        password=password,
-                    )
-                except ApiError as exc:
-                    st.error(f"API error: {exc.message}")
-                else:
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                    st.session_state.backend_mode = "api"
-                    st.session_state.api_credentials = {
-                        "username": username,
-                        "password": password,
-                        "base_url": st.session_state.api_base_url,
-                    }
-                    # st.session_state.backend_status_message = (
-                    #     "Using API backend"
-                    # )
-                    # st.success(message)
-                    st.rerun()
-            else:
-                legacy_url = st.session_state.legacy_backend_url
-                try:
-                    response = requests.post(
-                        f"{legacy_url}/login",
-                        data={"username": username, "password": password},
-                    )
-                    if response.status_code == 200:
-                        st.session_state.logged_in = True
-                        st.session_state.username = username
-                        st.session_state.backend_mode = "legacy"
-                        # st.session_state.backend_status_message = (
-                        #     "Using legacy backend"
-                        # )
-                        st.rerun()
-                    else:
-                        st.error(response.text)
-                except requests.exceptions.RequestException as e:
-                    st.error(
-                        f"Connection error: Could not reach the backend server. {e}"
-                    )
-        else:
-            st.warning("Please enter both username and password.")
-
-    if register_clicked:
-        if username and password and email:
-            # Validate password before sending to backend
-            is_valid, error_message = validate_password(password)
-            if not is_valid:
-                st.warning(error_message)
-            else:
+    with tab_login:
+        st.subheader("Login to your account")
+        login_username = st.text_input(
+            "Username",
+            key="login_username",
+            placeholder="Enter your username",
+        )
+        login_password = st.text_input(
+            "Password",
+            key="login_password",
+            type="password",
+            placeholder="Enter your password",
+        )
+        if st.button("Login", key="login_btn", use_container_width=True):
+            if st.session_state.backend_mode == "unavailable":
+                st.error(st.session_state.backend_status_message)
+            elif login_username and login_password:
                 if st.session_state.api_mode:
                     client = ApiClient(st.session_state.api_base_url)
                     try:
-                        message = client.register(
-                            username=username,
-                            password=password,
-                            email=email,
+                        message = client.login(
+                            username=login_username,
+                            password=login_password,
                         )
                     except ApiError as exc:
                         st.error(f"API error: {exc.message}")
                     else:
-                        st.success(message)
+                        st.session_state.logged_in = True
+                        st.session_state.username = login_username
+                        st.session_state.backend_mode = "api"
+                        st.session_state.api_credentials = {
+                            "username": login_username,
+                            "password": login_password,
+                            "base_url": st.session_state.api_base_url,
+                        }
+                        st.rerun()
                 else:
                     legacy_url = st.session_state.legacy_backend_url
                     try:
                         response = requests.post(
-                            f"{legacy_url}/register",
-                            data={
-                                "username": username,
-                                "password": password,
-                                "email": email,
-                            },
+                            f"{legacy_url}/login",
+                            data={"username": login_username, "password": login_password},
                         )
-                        if response.status_code == 201:
-                            st.success(response.text)
+                        if response.status_code == 200:
+                            st.session_state.logged_in = True
+                            st.session_state.username = login_username
+                            st.session_state.backend_mode = "legacy"
+                            st.rerun()
                         else:
                             st.error(response.text)
                     except requests.exceptions.RequestException as e:
                         st.error(
                             f"Connection error: Could not reach the backend server. {e}"
                         )
-        else:
-            st.warning("Please enter username, password, and email.")
+            else:
+                st.warning("Please enter both username and password.")
 
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("## Password Recovery")
+    with tab_signup:
+        st.subheader("Create a new account")
+        st.info(
+            "Password requirements: at least 8 characters, one uppercase letter, "
+            "one lowercase letter, and one digit."
+        )
+        reg_username = st.text_input(
+            "Username",
+            key="reg_username",
+            placeholder="Choose a username",
+        )
+        reg_password = st.text_input(
+            "Password",
+            key="reg_password",
+            type="password",
+            placeholder="Choose a password",
+        )
+        reg_email = st.text_input(
+            "Email",
+            key="reg_email",
+            placeholder="your@email.com",
+            help="Used for password recovery only.",
+        )
+        if st.button("Sign Up", key="signup_btn", use_container_width=True):
+            if st.session_state.backend_mode == "unavailable":
+                st.error(st.session_state.backend_status_message)
+            elif reg_username and reg_password and reg_email:
+                is_valid, error_message = validate_password(reg_password)
+                if not is_valid:
+                    st.warning(error_message)
+                else:
+                    if st.session_state.api_mode:
+                        client = ApiClient(st.session_state.api_base_url)
+                        try:
+                            message = client.register(
+                                username=reg_username,
+                                password=reg_password,
+                                email=reg_email,
+                            )
+                        except ApiError as exc:
+                            st.error(f"API error: {exc.message}")
+                        else:
+                            st.success(message)
+                    else:
+                        legacy_url = st.session_state.legacy_backend_url
+                        try:
+                            response = requests.post(
+                                f"{legacy_url}/register",
+                                data={
+                                    "username": reg_username,
+                                    "password": reg_password,
+                                    "email": reg_email,
+                                },
+                            )
+                            if response.status_code == 201:
+                                st.success(response.text)
+                            else:
+                                st.error(response.text)
+                        except requests.exceptions.RequestException as e:
+                            st.error(
+                                f"Connection error: Could not reach the backend server. {e}"
+                            )
+            else:
+                st.warning("Please enter username, password, and email.")
 
-    # Initialize recovery form fields in session state for persistence
-    if "recovery_email_value" not in st.session_state:
-        st.session_state.recovery_email_value = ""
-    if "recovery_code_value" not in st.session_state:
-        st.session_state.recovery_code_value = ""
-    if "recovery_new_pw_value" not in st.session_state:
-        st.session_state.recovery_new_pw_value = ""
+    # ── Password Recovery tab ───────────────────────────────────────────────────────
+    with tab_recovery:
+        st.subheader("Reset your password")
 
-    # Email input always visible
-    recovery_email = st.sidebar.text_input(
-        "Email",
-        value=st.session_state.recovery_email_value,
-        key="recovery_email",
-        on_change=lambda: st.session_state.update({"recovery_email_value": st.session_state.recovery_email}),
-    )
-    
-    # Step 0: Initial recovery request
-    if st.session_state.recovery_step == 0:
-        col1, col2 = st.sidebar.columns([1, 1])
-        with col1:
-            if st.button("Send Request"):
-                if recovery_email:
+        # Initialize recovery form fields in session state for persistence
+        if "recovery_email_value" not in st.session_state:
+            st.session_state.recovery_email_value = ""
+        if "recovery_code_value" not in st.session_state:
+            st.session_state.recovery_code_value = ""
+        if "recovery_new_pw_value" not in st.session_state:
+            st.session_state.recovery_new_pw_value = ""
+
+        recovery_email = st.text_input(
+            "Registered email address",
+            value=st.session_state.recovery_email_value,
+            key="recovery_email",
+            placeholder="your@email.com",
+            on_change=lambda: st.session_state.update(
+                {"recovery_email_value": st.session_state.recovery_email}
+            ),
+        )
+
+        # Step 0: request recovery code
+        if st.session_state.recovery_step == 0:
+            if st.button(
+                "Send Recovery Code", key="send_recovery_btn", use_container_width=True
+            ):
+                if st.session_state.backend_mode == "unavailable":
+                    st.error(st.session_state.backend_status_message)
+                elif recovery_email:
                     if st.session_state.backend_mode == "api":
                         client = ApiClient(st.session_state.api_base_url)
                         try:
@@ -247,90 +290,94 @@ if not st.session_state.logged_in:
                             st.error(f"Connection error: Backend unreachable. {e}")
                 else:
                     st.warning("Please enter your email.")
-    
-    # Step 1: Confirmation with code and new password
-    elif st.session_state.recovery_step == 1:
-        st.sidebar.info("Enter the recovery code sent to your email and set a new password.")
-        
-        code = st.sidebar.text_input(
-            "Enter Recovery Code",
-            value=st.session_state.recovery_code_value,
-            key="recovery_code",
-            on_change=lambda: st.session_state.update({"recovery_code_value": st.session_state.recovery_code}),
-        )
-        new_password = st.sidebar.text_input(
-            "New Password",
-            type="password",
-            value=st.session_state.recovery_new_pw_value,
-            key="recovery_new_pw",
-            on_change=lambda: st.session_state.update({"recovery_new_pw_value": st.session_state.recovery_new_pw}),
-        )
-        
-        col1, col2 = st.sidebar.columns([1, 1])
-        with col1:
-            if st.button("Reset Password"):
-                if recovery_email and code and new_password:
-                    is_valid, error_message = validate_password(new_password)
-                    if not is_valid:
-                        st.warning(error_message)
-                    else:
-                        if st.session_state.backend_mode == "api":
-                            client = ApiClient(st.session_state.api_base_url)
-                            try:
-                                message = client.confirm_password_recovery(
-                                    email=recovery_email,
-                                    code=code,
-                                    new_password=new_password,
-                                )
-                            except ApiError as exc:
-                                st.error(f"API error: {exc.message}")
-                            else:
-                                st.success(message)
-                                st.session_state.recovery_step = 0
-                                st.session_state.recovery_email_value = ""
-                                st.session_state.recovery_code_value = ""
-                                st.session_state.recovery_new_pw_value = ""
-                                st.rerun()
+
+        # Step 1: enter code and new password
+        elif st.session_state.recovery_step == 1:
+            st.info(
+                "A recovery code has been sent to your email. "
+                "Enter it below together with your new password."
+            )
+            code = st.text_input(
+                "Recovery Code",
+                value=st.session_state.recovery_code_value,
+                key="recovery_code",
+                placeholder="6-digit code",
+                on_change=lambda: st.session_state.update(
+                    {"recovery_code_value": st.session_state.recovery_code}
+                ),
+            )
+            new_password = st.text_input(
+                "New Password",
+                type="password",
+                value=st.session_state.recovery_new_pw_value,
+                key="recovery_new_pw",
+                on_change=lambda: st.session_state.update(
+                    {"recovery_new_pw_value": st.session_state.recovery_new_pw}
+                ),
+            )
+            col_reset, col_cancel = st.columns([2, 1])
+            with col_reset:
+                if st.button(
+                    "Reset Password", key="reset_pw_btn", use_container_width=True
+                ):
+                    if st.session_state.backend_mode == "unavailable":
+                        st.error(st.session_state.backend_status_message)
+                    elif recovery_email and code and new_password:
+                        is_valid, error_message = validate_password(new_password)
+                        if not is_valid:
+                            st.warning(error_message)
                         else:
-                            try:
-                                resp = requests.post(
-                                    f"{st.session_state.legacy_backend_url}/recover_confirm",
-                                    data={
-                                        "email": recovery_email,
-                                        "code": code,
-                                        "new_password": new_password,
-                                    },
-                                )
-                                if resp.status_code == 200:
-                                    st.success("Password updated. You can now log in.")
+                            if st.session_state.backend_mode == "api":
+                                client = ApiClient(st.session_state.api_base_url)
+                                try:
+                                    message = client.confirm_password_recovery(
+                                        email=recovery_email,
+                                        code=code,
+                                        new_password=new_password,
+                                    )
+                                except ApiError as exc:
+                                    st.error(f"API error: {exc.message}")
+                                else:
+                                    st.success(message)
                                     st.session_state.recovery_step = 0
                                     st.session_state.recovery_email_value = ""
                                     st.session_state.recovery_code_value = ""
                                     st.session_state.recovery_new_pw_value = ""
                                     st.rerun()
-                                else:
-                                    st.error(resp.text)
-                            except requests.exceptions.RequestException as e:
-                                st.error(f"Connection error: Backend unreachable. {e}")
-                else:
-                    st.warning("Please enter all fields.")
-        
-        with col2:
-            if st.button("Cancel"):
-                st.session_state.recovery_step = 0
-                st.session_state.recovery_email_value = ""
-                st.session_state.recovery_code_value = ""
-                st.session_state.recovery_new_pw_value = ""
-                st.rerun()
+                            else:
+                                try:
+                                    resp = requests.post(
+                                        f"{st.session_state.legacy_backend_url}/recover_confirm",
+                                        data={
+                                            "email": recovery_email,
+                                            "code": code,
+                                            "new_password": new_password,
+                                        },
+                                    )
+                                    if resp.status_code == 200:
+                                        st.success("Password updated. You can now log in.")
+                                        st.session_state.recovery_step = 0
+                                        st.session_state.recovery_email_value = ""
+                                        st.session_state.recovery_code_value = ""
+                                        st.session_state.recovery_new_pw_value = ""
+                                        st.rerun()
+                                    else:
+                                        st.error(resp.text)
+                                except requests.exceptions.RequestException as e:
+                                    st.error(f"Connection error: Backend unreachable. {e}")
+                    else:
+                        st.warning("Please enter all fields.")
+            with col_cancel:
+                if st.button(
+                    "Cancel", key="cancel_recovery_btn", use_container_width=True
+                ):
+                    st.session_state.recovery_step = 0
+                    st.session_state.recovery_email_value = ""
+                    st.session_state.recovery_code_value = ""
+                    st.session_state.recovery_new_pw_value = ""
+                    st.rerun()
 
-    # Sidebar footer banner
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(
-        "[MIT LICENSE](https://opensource.org/licenses/MIT)")
-    st.sidebar.markdown(
-        "By using this app, you agree to GDPR data "
-        "processing for account and analysis data. For more details, see the [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
-    )
+    
 else:
     st.success(f"Welcome, {st.session_state.username}! Redirecting to the app...")
     st.sidebar.caption(st.session_state.backend_status_message)
@@ -370,9 +417,8 @@ else:
 
             if "colibri_api_key" in config:
                 st.session_state["colibri_api_key"] = config["colibri_api_key"]
-            st.info("User configuration loaded.")
         else:
-            st.info("No stored user configuration found. Using defaults.")
+            st.warning("No stored user configuration found. Using defaults.")
 
             if "analysis_parameters" not in st.session_state:
                 st.session_state["analysis_parameters"] = {}
@@ -394,4 +440,11 @@ else:
         if "observatory_data" not in st.session_state:
             st.session_state["observatory_data"] = {}
 
-    st.switch_page("pages/app.py")
+    try:
+        st.switch_page("pages/app.py")
+    except Exception:
+        st.warning(
+            "Automatic redirect is not available in this launch mode. "
+            "Open the app page directly or start the app with frontend.py."
+        )
+    st.stop()

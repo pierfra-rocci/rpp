@@ -21,6 +21,17 @@ FIGURE_SIZES = {
     "stars_grid": (10, 8),  # For grid of stars
 }
 
+PIPELINE_IMAGE_SCALE = 0.75
+PIPELINE_PLOT_MIN_HEIGHT = 320
+
+
+def get_pipeline_figure_size(base_size):
+    """Return a smaller display-only size for pipeline image figures."""
+    return (
+        2 * base_size[0] * PIPELINE_IMAGE_SCALE,
+        base_size[1] * PIPELINE_IMAGE_SCALE,
+    )
+
 
 def get_json(url: str):
     """
@@ -347,6 +358,7 @@ def zip_results_on_exit(science_file_obj, outputdir):
         if os.path.isfile(os.path.join(output_dir, f))
         and f.startswith(base_name)
         and not f.lower().endswith(".zip")
+        and not f.lower().endswith(".fits")
     ]
     if not files:
         return None, None
@@ -599,7 +611,6 @@ def save_catalog_files(final_table, catalog_name, output_dir):
 
         # Write VOTable to file
         writeto(votable, catalog_path)
-        success_messages.append(f"VOTable catalog saved as {filename}")
 
         # Also create CSV buffer for backward compatibility if needed
         csv_buffer = StringIO()
@@ -611,7 +622,7 @@ def save_catalog_files(final_table, catalog_name, output_dir):
         csv_file_path = os.path.join(output_dir, base_catalog_name)
         with open(csv_file_path, "w", encoding="utf-8") as f:
             f.write(csv_data)
-        success_messages.append(f"CSV catalog saved as {base_catalog_name}")
+        success_messages.append(f"CSV and VOT Catalogs saved")
 
     except Exception as e:
         error_messages.append(f"Error preparing VOTable download: {e}")

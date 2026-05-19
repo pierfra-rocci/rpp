@@ -8,7 +8,6 @@ from io import BytesIO
 
 # Third-Party Imports
 import streamlit as st
-import streamlit.components.v1 as components
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -175,19 +174,12 @@ def load_fits_data(_file):
 
             if len(data.shape) == 3:
                 if data.shape[0] == 3 or data.shape[0] == 4:
-                    st.info(
-                        f"Detected RGB data with shape {data.shape}. Using first color channel."
-                    )
+                    st.info("Using first color channel.")
                     data = data[0]
                 elif data.shape[2] == 3 or data.shape[2] == 4:
-                    st.info(
-                        f"Detected RGB data with shape {data.shape}. Using first color channel."
-                    )
+                    st.info("Using first color channel.")
                     data = data[:, :, 0]
                 else:
-                    st.info(
-                        f"Detected 3D data with shape {data.shape}. Using first plane."
-                    )
                     data = data[0]
             elif len(data.shape) > 3:
                 st.warning(
@@ -210,9 +202,7 @@ def load_fits_data(_file):
                             message.strip(),
                             level=level.strip(),
                         )
-                        if level.strip() == "INFO":
-                            st.info(message.strip())
-                        elif level.strip() == "WARNING":
+                        if level.strip() == "WARNING":
                             st.warning(message.strip())
 
             except Exception as fix_error:
@@ -595,10 +585,9 @@ def display_catalog_in_aladin(
 </body>
 </html>
 """
-            components.html(
+            st.iframe(
                 html_content,
                 height=600,
-                scrolling=True,
             )
 
         except Exception as e:
@@ -630,6 +619,7 @@ def provide_download_buttons(folder_path):
             if os.path.isfile(os.path.join(folder_path, f))
             and f.startswith(base_filename)
             and not f.lower().endswith(".zip")
+            and not f.lower().endswith(".fits")
         ]
         if not files:
             st.write("No files found in output directory")
@@ -708,7 +698,6 @@ def display_archived_files_browser(output_dir):
                     continue
 
         if not zip_files:
-            st.info("No ZIP archives found.")
             return
 
         # Sort files by modification time (newest first)
@@ -946,7 +935,7 @@ def handle_log_messages(log_messages):
             level=level.strip(),
         )
         if level.strip() == "INFO":
-            st.info(message.strip())
+            pass
         elif level.strip() == "WARNING":
             st.warning(message.strip())
         elif level.strip() == "ERROR":

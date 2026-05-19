@@ -2,6 +2,8 @@
 
 Ce tutoriel vous guide à travers une session d'analyse typique.
 
+> **Important** : Le pipeline nécessite des images FITS encodées sur **16 bits ou 32 bits**. Les images en 8 bits ne sont pas prises en charge et peuvent produire des résultats incorrects.
+
 ## 1. Charger un Fichier FITS
 
 Dans la zone principale, utilisez l'outil de chargement pour sélectionner votre image FITS. Extensions supportées : `.fits`, `.fit`, `.fts`, `.fits.gz`, `.fts.gz`.

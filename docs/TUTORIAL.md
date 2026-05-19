@@ -3,6 +3,8 @@
 
 This tutorial guides you through a typical analysis session.
 
+> **Important**: The pipeline requires FITS images with **16-bit or 32-bit** pixel depth. 8-bit images are not supported and may produce incorrect results.
+
 ## 1. Upload a FITS File
 
 In the main area, use the file uploader to select your FITS image. Supported extensions: `.fits`, `.fit`, `.fts`, `.fits.gz`, `.fts.gz`.

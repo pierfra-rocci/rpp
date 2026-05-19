@@ -893,7 +893,7 @@ def clean_final_table(df):
 
     removed = initial_count - len(df_clean)
     if removed > 0:
-        st.info(f"Removed {removed} rows with NaN/Inf values in critical columns")
+        st.warning(f"Removed {removed} rows with NaN/Inf values in critical columns")
 
     return df_clean
 
@@ -1147,7 +1147,7 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass, filter_band=None
 
     final_table["id"] = final_table["id"].astype("Int64")
 
-    # Filter out sources with magnitude errors > 1.5 (unreliable photometry)
+    # Filter out sources with magnitude errors > 1. (unreliable photometry)
     # Use abs() to handle occasional negative errors from numerical issues
     initial_count = len(final_table)
     mag_err_cols = [col for col in final_table.columns if "mag_err" in col]
@@ -1167,10 +1167,9 @@ def add_calibrated_magnitudes(final_table, zero_point, airmass, filter_band=None
         if removed_count > 0:
             import streamlit as st
 
-            st.info(f"Removed {removed_count} sources with magnitude error >= 1.")
+            st.warning(f"Removed {removed_count} sources with magnitude error >= 1.")
 
     return final_table
-
 
 def clean_photometry_table(df, require_magnitude=True):
     """

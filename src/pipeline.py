@@ -49,7 +49,6 @@ def mask_and_remove_cosmic_rays(image_data, header):
     except (ValueError, TypeError):
         gain = 1.0
 
-    st.info("Detecting cosmic rays using L.A.Cosmic ...")
     # Run L.A.Cosmic (pass inmask explicitly)
     try:
         res = astroscrappy.detect_cosmics(
@@ -175,9 +174,6 @@ def make_border_mask(
     inner[top : height - bottom, left : width - right] = True
 
     mask = ~inner if invert else inner
-    st.info(
-        f"Border mask created with borders (top={top}, bottom={bottom}, left={left}, right={right})"
-    )
 
     return mask.astype(dtype)
 
@@ -235,9 +231,7 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
                 except Exception:
                     pass
             hdu.writeto(temp_fits_path, overwrite=True)
-            
-            st.info("Detecting satellite trails using ASTRiDE...")
-            
+
             # Create ASTRiDE streak detector
             # Use conservative parameters to avoid false positives
             streak_detector = astride.detect.Streak(
@@ -260,8 +254,6 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
             mask = np.zeros_like(image_data, dtype=bool)
             
             if streak_detector.streaks and len(streak_detector.streaks) > 0:
-                st.info(f"Found {len(streak_detector.streaks)} satellite trails")
-                
                 # Create mask by drawing lines along the detected streaks
                 # Use a buffer around each streak to ensure complete masking
                 buffer_size = 5  # pixels buffer around each streak
@@ -302,7 +294,7 @@ def detect_and_mask_satellite_trails(image_data, header, temp_fits_path=None):
                                 err += dx
                                 y1 += sy
             else:
-                st.info("No satellite trails detected")
+                st.warning("No satellite trails detected")
                 
             return mask
             
@@ -587,7 +579,7 @@ def fwhm_fit(
         if len(filtered_sources) > 1000:
             indices = np.random.choice(len(filtered_sources), size=1000, replace=False)
             filtered_sources = filtered_sources[indices]
-            st.info("Too many sources, sampled 1000 sources for FWHM calculation")
+            st.warning("Too many sources, sampled 1000 sources for FWHM calculation")
 
         box_size = int(6 * round(fwhm))
         if box_size % 2 == 0:
@@ -830,7 +822,6 @@ def detection_and_photometry(
                 wcs_obj = w
                 if wcs_obj.pixel_n_dim > 2:
                     wcs_obj = wcs_obj.celestial
-                    st.info("Reduced WCS to 2D celestial coordinates for photometry")
             except Exception as e:
                 st.warning(f"Error creating WCS object: {e}")
                 wcs_obj = None
@@ -840,7 +831,6 @@ def detection_and_photometry(
                 wcs_obj = WCS(science_header)
                 if wcs_obj.pixel_n_dim > 2:
                     wcs_obj = wcs_obj.celestial
-                    st.info("Reduced WCS to 2D celestial coordinates for photometry")
             except Exception as e:
                 st.warning(f"Error creating WCS object: {e}")
                 wcs_obj = None
@@ -1016,7 +1006,7 @@ def detection_and_photometry(
                 epsf_instrumental_mags = -2.5 * np.log10(epsf_table["flux_fit"])
                 epsf_table["instrumental_mag"] = epsf_instrumental_mags
             else:
-                st.info(
+                st.warning(
                     "PSF photometry was not performed. Continuing with aperture photometry only."
                 )
         except Exception as e:
@@ -1041,7 +1031,6 @@ def detection_and_photometry(
 
         try:
             if wcs_obj is not None:
-                st.info("Adding RA/Dec coordinates to photometry tables...")
                 ra, dec = wcs_obj.pixel_to_world_values(
                     phot_table["xcenter"], phot_table["ycenter"]
                 )
@@ -1066,7 +1055,6 @@ def detection_and_photometry(
                 if all(
                     key in science_header for key in ["RA", "DEC", "NAXIS1", "NAXIS2"]
                 ):
-                    st.info("Using simple linear approximation for RA/DEC coordinates")
                     center_ra = science_header["RA"]
                     center_dec = science_header["DEC"]
                     width = science_header["NAXIS1"]

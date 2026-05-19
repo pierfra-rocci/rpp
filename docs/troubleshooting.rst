@@ -41,6 +41,24 @@ Installation & Setup Issues
         available.
     5.  If needed, set ``RPP_API_URL`` or ``RPP_LEGACY_URL`` to match your
         environment.
+    6.  If the FastAPI server is running but ``GET /health`` returns HTTP 500
+        after a Python or library upgrade, treat that as a backend dependency
+        problem rather than a missing legacy server. Reinstall the environment
+        from the project root with ``pip install --upgrade --force-reinstall -e .``
+        and verify that ``anyio`` was reinstalled cleanly.
+
+**Error: ``FastAPI.__call__() missing 1 required positional argument: 'send'``**
+
+*   **Problem**: The FastAPI app was started with plain Gunicorn WSGI workers,
+    for example ``gunicorn api.main:app``, so requests such as ``GET /health``
+    fail before they reach FastAPI.
+*   **Solution**:
+    1.  Start the API with Uvicorn directly: ``python -m uvicorn api.main:app --host 127.0.0.1 --port 8000``.
+    2.  Or start it with Gunicorn using the ASGI worker:
+        ``gunicorn -k uvicorn.workers.UvicornWorker api.main:app``.
+    3.  If you launch Gunicorn from the project root, the repository's
+        ``gunicorn.conf.py`` now sets ``uvicorn.workers.UvicornWorker`` by
+        default.
 
 **Error: DLL load failed while importing...** (Windows)
 

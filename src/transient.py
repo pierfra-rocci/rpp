@@ -215,8 +215,6 @@ def find_candidates(
         st.info(
             f"🌍 Northern hemisphere detected (Dec={dec_center:.2f}°). Using PanSTARRS catalog."
         )
-
-    st.info("Extracting source objects from image using SEP...")
     image = image.astype(image.dtype.newbyteorder("="))
     bkg = sep.Background(image, mask=mask, bw=64, bh=64, fw=5, fh=5)
 
@@ -230,7 +228,7 @@ def find_candidates(
         st.warning("No objects found in the image.")
         return []
 
-    st.info(f"Found {len(obj)} objects in the image.")
+    st.success(f"Found {len(obj)} objects in the image.")
 
     # Add RA, Dec coordinates to the obj table using WCS
     ra_obj, dec_obj = wcs.all_pix2world(obj["x"], obj["y"], 0)
@@ -240,7 +238,6 @@ def find_candidates(
 
     # Cross-match SEP detections with photometry_table to get PSF magnitudes
     if photometry_table is not None and len(photometry_table) > 0:
-        st.info("Cross-matching SEP detections with PSF photometry table...")
 
         # Get coordinates from photometry_table
         phot_ra = photometry_table["ra"]
@@ -253,8 +250,6 @@ def find_candidates(
         )
 
         if len(oidx) > 0:
-            st.info(f"Matched {len(oidx)} sources between SEP and PSF photometry")
-
             # Keep only matched objects
             obj = obj[oidx]
 
@@ -298,9 +293,6 @@ def find_candidates(
         return []
 
     # Query the appropriate catalog
-    st.info(
-        f"Querying {catalog} catalog for reference stars (Filter: {filter_name}, Limit: {mag_limit})..."
-    )
     try:
         cat = catalogs.get_cat_vizier(
             ra_center, dec_center, sr, catalog, filters={filter_name + "mag": mag_limit}
@@ -359,8 +351,6 @@ def find_candidates(
         st.error(traceback.format_exc())
         return []
 
-    st.info("Filtering candidates against catalog and known databases")
-
     obj = Table(obj)
     obj["flag"].name = "flags"  # Rename to 'flags' for compatibility
 
@@ -394,7 +384,6 @@ def find_candidates(
     # Now apply our own SkyBoT filtering to remove Solar System objects
     obs_time = header.get("DATE-OBS", None)
     if candidates is not None and len(candidates) > 0 and obs_time is not None:
-        st.info("Checking for Solar System objects (SkyBoT)...")
         candidates = filter_skybot_candidates(candidates, obs_time)
 
     if candidates is None:
@@ -405,9 +394,6 @@ def find_candidates(
     valid_errors = np.isfinite(candidates["mag_calib_err"])
     n_invalid = len(candidates) - np.sum(valid_errors)
     if n_invalid > 0:
-        st.info(
-            f"Removed {n_invalid} candidates with invalid magnitude errors (inf/nan)"
-        )
         candidates = candidates[valid_errors]
 
     # Remove candidates with low S/N (S/N < 5, i.e., mag_err > 0.217)
@@ -417,7 +403,7 @@ def find_candidates(
     good_snr = candidates["mag_calib_err"] < max_mag_err
     n_low_snr = len(candidates) - np.sum(good_snr)
     if n_low_snr > 0:
-        st.info(f"Removed {n_low_snr} candidates with low S/N (<{min_snr})")
+        st.warning(f"Removed {n_low_snr} candidates with low S/N (<{min_snr})")
         candidates = candidates[good_snr]
 
     st.success(
@@ -526,9 +512,6 @@ def plot_astrocolibri_cutouts(
     header, _ = fix_header(header)
 
     st.subheader("Astro-Colibri Match Cutouts")
-    st.info(
-        f"Displaying cutouts for {len(ac_rows)} Astro-Colibri matched source(s)."
-    )
 
     saved_paths = []
     for i, (_, row) in enumerate(ac_rows.iterrows()):

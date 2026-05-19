@@ -9,7 +9,6 @@ from types import SimpleNamespace
 
 # Third-Party Imports
 import streamlit as st
-import streamlit.components.v1 as components
 import requests  # type: ignore[import]
 import numpy as np
 import pandas as pd
@@ -45,9 +44,11 @@ from src.tools_pipeline import (
 )
 from src.utils import (
     FIGURE_SIZES,
+    PIPELINE_PLOT_MIN_HEIGHT,
     get_base_filename,
     ensure_output_directory,
     initialize_log,
+    get_pipeline_figure_size,
     write_to_log,
     zip_results_on_exit,
     save_header_to_txt,
@@ -119,9 +120,9 @@ if not st.session_state.backend_initialized:
 # Matomo Analytics Injection
 # ---------------------------------------------------------------------------
 # We inject the Matomo tracking script via a zero-height hidden iframe.
-# Streamlit strips <script> tags from st.markdown(), so components.html()
-# is the reliable cross-version workaround. Matomo handles cross-frame
-# tracking natively, so page views and link clicks are recorded correctly.
+# Streamlit strips <script> tags from st.markdown(), so st.iframe()
+# is the supported workaround. Matomo handles cross-frame tracking
+# natively, so page views and link clicks are recorded correctly.
 
 def inject_matomo_tracking(site_id: str = "83",
                            matomo_url: str = "https://analytics.obspm.fr/"):
@@ -152,9 +153,7 @@ def inject_matomo_tracking(site_id: str = "83",
         }})();
     </script>
     """
-    # height=0 and scrolling=False make the iframe completely invisible.
-    # The script still executes and fires the tracking beacon.
-    components.html(tracking_code, height=0, scrolling=False)
+    st.iframe(tracking_code, height=1)
 
 
 st.set_page_config(
@@ -170,7 +169,14 @@ if "run_photometry_pipeline" not in st.session_state:
 # Redirect to login if not authenticated
 if not st.session_state.logged_in:
     st.warning("You must log in to access this page.")
-    st.switch_page("pages/login.py")
+    try:
+        st.switch_page("pages/login.py")
+    except Exception:
+        st.warning(
+            "Automatic redirect is not available in this launch mode. "
+            "Open the login page directly or start the app with frontend.py."
+        )
+    st.stop()
 
 # Fire the tracker once per session after successful login
 if "matomo_injected" not in st.session_state:
@@ -179,22 +185,22 @@ if "matomo_injected" not in st.session_state:
 
 # Custom CSS to control plot display size
 st.markdown(
-    """
+    f"""
 <style>
-    .stPlot > div {
+    .stPlot > div {{
         display: flex;
         justify-content: center;
-        min-height: 400px;
-    }
-    .main .block-container {
+        min-height: {PIPELINE_PLOT_MIN_HEIGHT}px;
+    }}
+    .main .block-container {{
         max-width: 1200px;
         padding-top: 2rem;
         padding-bottom: 2rem;
-    }
-    .element-container img {
+    }}
+    .element-container img {{
         max-width: 100% !important;
         height: auto !important;
-    }
+    }}
 </style>
 """,
     unsafe_allow_html=True,
@@ -203,7 +209,7 @@ st.markdown(
 # Add application version to the sidebar
 st.title(":sparkles: **RAPAS Photometry Pipeline**")
 st.markdown(
-    "| [**RAPAS Home**](https://rapas.imcce.fr/) | [**Source**](https://github.com/pierfra-rocci/rpp) |",
+    "| [**RAPAS Home**](https://rapas.imcce.fr/) | [<img src='https://github.githubassets.com/favicons/favicon.svg' width='16' style='vertical-align:middle'/> **GitHub**](https://github.com/pierfra-rocci/rpp) |",
     unsafe_allow_html=True,
 )
 st.caption(st.session_state.backend_status_message)
@@ -227,7 +233,7 @@ with st.expander("📘 Quick Start Tutorial"):
 st.sidebar.markdown(f"**Version:** _{version}_")
 st.sidebar.caption(st.session_state.backend_status_message)
 
-with st.sidebar.expander("🔭 Observatory", expanded=False):
+with st.sidebar.expander("🔭 Observatory Data", expanded=False):
     st.session_state.observatory_name = st.text_input(
         "Observatory Name",
         value=st.session_state.observatory_name,
@@ -279,7 +285,7 @@ with st.sidebar.expander("🔭 Observatory", expanded=False):
         if elevation_input.strip():
             st.error("Please enter a valid number for elevation.")
 
-with st.sidebar.expander("⚙️ Parameters", expanded=False):
+with st.sidebar.expander("⚙️ Analysis Parameters", expanded=False):
     st.session_state.analysis_parameters["seeing"] = st.slider(
         "Estimated FWHM (arcsec)",
         min_value=1.0,
@@ -363,19 +369,12 @@ with st.sidebar.expander("⚙️ Parameters", expanded=False):
         value=st.session_state.analysis_parameters["astrometry_check"],
         help=("Attempt to plate solve and refine WCS before photometry. "),
     )
-
-with st.sidebar.expander("🔑 Astro-Colibri", expanded=False):
     st.session_state.colibri_api_key = st.text_input(
-        "UID Key",
+        "Astro-Colibri UID Key",
         value=st.session_state.get("colibri_api_key", ""),
         type="password",
-        help="key for Astro-Colibri query",
+        help="API key for Astro-Colibri query",
     )
-    st.markdown("[Get your key](https://www.astro-colibri.science)")
-
-# Add expander for the Transient Finder
-with st.sidebar.expander("Transient Candidates", expanded=False):
-    # Add a checkbox to enable/disable the transient finder
     st.session_state.analysis_parameters["run_transient_finder"] = st.checkbox(
         "Enable Transient Finder",
         value=st.session_state.analysis_parameters.get("run_transient_finder", False),
@@ -425,9 +424,11 @@ if st.sidebar.button("💾 Save Settings"):
                     password=creds["password"],
                     config=params,
                 )
-                st.sidebar.success("Settings saved via API backend.")
+                st.sidebar.success("Settings saved")
             except ApiError as exc:
                 st.sidebar.warning(f"Could not save config: {exc.message}")
+    elif mode == "unavailable":
+        st.sidebar.warning(st.session_state.get("backend_status_message"))
     else:
         legacy_url = st.session_state.get(
             "legacy_backend_url",
@@ -441,19 +442,19 @@ if st.sidebar.button("💾 Save Settings"):
             if resp.status_code != 200:
                 st.sidebar.warning(f"Could not save config to DB: {resp.text}")
             else:
-                st.sidebar.success("Settings saved via legacy backend.")
+                st.sidebar.success("Settings saved.")
         except Exception as e:  # pragma: no cover - network failure
             st.sidebar.warning(f"Could not connect to backend: {e}")
 
+with st.sidebar:
+    if st.button("🧹 Reset Analysis"):
+        clear_all_caches()
+
 # Add archived files browser to sidebar
-with st.sidebar.expander("📁 Tasks Archive", expanded=False):
+with st.sidebar.expander("📁 Archived Analysis", expanded=False):
     username = st.session_state.get("username", "anonymous")
     output_dir = ensure_output_directory(directory=f"{username}_results")
     display_archived_files_browser(output_dir)
-
-with st.sidebar:
-    if st.button("🧹 Clear Cache / Reset"):
-        clear_all_caches()
 
 # Add logout button at the top right if user is logged in
 if st.session_state.logged_in:
@@ -465,19 +466,24 @@ if st.session_state.logged_in:
         st.session_state.username = None
         st.session_state.api_credentials = None
         st.success("Logged out successfully.")
-        st.switch_page("pages/login.py")
+        try:
+            st.switch_page("pages/login.py")
+        except Exception:
+            st.warning(
+                "Automatic redirect is not available in this launch mode. "
+                "Open the login page directly or start the app with frontend.py."
+            )
+        st.stop()
     st.sidebar.markdown("---")
     st.sidebar.markdown(
-        "_Report feedback and bugs to_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)"
+        "_Need help? Contact_ : [rpp_support](mailto:rpp_support@saf-astronomie.fr)"
     )
 
 # Sidebar footer banner
-st.sidebar.markdown("---")
 st.sidebar.markdown(
         "[MIT LICENSE](https://opensource.org/licenses/MIT)")
 st.sidebar.markdown(
-        "By using this app, you agree to GDPR data "
-        "processing for account and analysis data. For more details, see the [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
+        "GDPR: for more details, see the [Privacy Policy](https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng)."
     )
 
 ###########################################################################
@@ -485,7 +491,7 @@ st.sidebar.markdown(
 # Persistent uploader: keep uploaded file bytes across reruns until cleared
 if "uploaded_bytes" not in st.session_state:
     uploaded = st.file_uploader(
-        "Upload an Image FITS file to Start",
+        "Before uploading the image, check all the parameters on the sidebar. ",
         type=["fits", "fit", "fts", "fits.gz"],
         key="science_uploader",
     )
@@ -534,17 +540,10 @@ if science_file is not None:
             "▶️ Start Analysis",
             key="start_analysis_button",
             use_container_width=True,
-            help="Click to start processing: FITS loading, astrometry check, photometry, zero-point calibration, and catalog cross-matching."
+            help="Click to start processing."
         ):
             st.session_state.run_analysis_pipeline = True
-else:
-    st.info("Please upload a FITS image file to begin.")
 
-if science_file is not None and not st.session_state.run_analysis_pipeline:
-    st.info(
-        f"File '{science_file.name}' is ready. Click 'Start Analysis "
-        "Pipeline' to begin loading and processing."
-    )
 
 catalog_name = f"{st.session_state['base_filename']}_catalog.csv"
 username = st.session_state.get("username", "anonymous")
@@ -602,7 +601,6 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
         science_data = raw_data
 
     if science_data is not None and science_header is not None:
-        st.success(f"Loaded '{science_file.name}' successfully.")
         write_to_log(
             st.session_state.log_buffer, f"Loaded FITS file: {science_file.name}"
         )
@@ -610,7 +608,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
         # Update observatory data from FITS header if available
         result = update_observatory_from_fits_header(science_header)
         if result:
-            st.info("Observatory information updated from FITS header")
+            st.success("Observatory information updated from FITS header")
             write_to_log(
                 st.session_state.log_buffer,
                 f"Observatory data updated from FITS header: {st.session_state.observatory_data}",
@@ -637,13 +635,13 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
 
     # Check if they match (comparing the mapped value)
     if filter_mapped != selected_filter and filter_raw != "Unknown":
-        st.warning(
-            f"WARNING: Filter in FITS header ({filter_raw}) maps to '{filter_mapped}'."
+        st.info(
+            f"Filter in FITS header ({filter_raw}) maps to '{filter_mapped}'."
         )
         write_to_log(
             st.session_state.log_buffer,
-            f"WARNING: Filter mismatch: Header={filter_raw} (→{filter_mapped}), Selected={selected_filter}",
-            level="WARNING"
+            f"Filter matched : Header={filter_raw} (→{filter_mapped}), Selected={selected_filter}",
+            level="INFO"
         )
     else:
         write_to_log(
@@ -665,9 +663,10 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
     # If WCS creation fails due to singular matrix, try to proceed without WCS for detection
     proceed_without_wcs = False
     if wcs_obj is None and "singular" in str(wcs_error).lower():
-        st.warning(f"WCS header has issues: {wcs_error}")
-        st.info(
-            "Will attempt source detection without WCS and then try plate solving..."
+        st.warning(
+            "WCS header has issues: "
+            f"{wcs_error}. Will attempt source detection without WCS "
+            "and then try plate solving."
         )
         proceed_without_wcs = True
     elif wcs_obj is None:
@@ -678,7 +677,10 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
         st.success("Valid WCS found.")
 
         if force_plate_solve:
-            st.info("Astrometry check enabled - will re-solve astrometry")
+            write_to_log(
+                st.session_state["log_buffer"],
+                "Astrometry check enabled - will re-solve astrometry",
+            )
             use_astrometry = True
             wcs_obj = None  # Reset to trigger plate solving
         else:
@@ -717,7 +719,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                         wcs_obj, wcs_error, _ = safe_wcs_create(original_header)
                         if wcs_obj is not None:
                             science_header = original_header
-                            st.info("Restored original WCS solution")
+                            st.success("Restored original WCS solution")
                         else:
                             proceed_without_wcs = True
                     else:
@@ -743,7 +745,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                         science_header, wcs_header_filename, output_dir
                     )
                     if wcs_header_file_path:
-                        st.info("Updated WCS header saved")
+                        st.success("Updated WCS header saved")
 
                     # Save the FITS file with updated WCS header
                     wcs_fits_path, wcs_fits_error, stored_fits_filename = save_fits_with_wcs(
@@ -756,9 +758,9 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                         username=st.session_state.get("username", "anonymous"),
                     )
                     if wcs_fits_path:
-                        st.info(f"WCS-solved FITS saved: {os.path.basename(wcs_fits_path)}")
+                        st.success("WCS-solved FITS saved "
+                        )
                         write_to_log(log_buffer, f"WCS-solved FITS saved to {wcs_fits_path}")
-                        # Store the filename for database tracking later
                         st.session_state["stored_fits_filename"] = stored_fits_filename
                         st.session_state["has_wcs"] = True
                     elif wcs_fits_error:
@@ -853,7 +855,9 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
         try:
             # Create a side-by-side plot using matplotlib subplots
             fig, (ax1, ax2) = plt.subplots(
-                1, 2, figsize=(2 * FIGURE_SIZES["medium"][0], FIGURE_SIZES["medium"][1])
+                1,
+                2,
+                figsize=get_pipeline_figure_size(FIGURE_SIZES["medium"]),
             )
 
             ax1.set_title("ZScale Visualization")
@@ -1127,14 +1131,16 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
             if "valid_ra" in st.session_state and "valid_dec" in st.session_state:
                 header_to_process["RA"] = st.session_state["valid_ra"]
                 header_to_process["DEC"] = st.session_state["valid_dec"]
-                st.info(
+                write_to_log(
+                    log_buffer,
                     f"Set header RA/DEC from validated coordinates: RA={header_to_process['RA']:.4f}°, DEC={header_to_process['DEC']:.4f}°"
                 )
             # Fallback to CRVAL1/CRVAL2 if available
             elif "CRVAL1" in header_to_process and "CRVAL2" in header_to_process:
                 header_to_process["RA"] = header_to_process["CRVAL1"]
                 header_to_process["DEC"] = header_to_process["CRVAL2"]
-                st.info(
+                write_to_log(
+                    log_buffer,
                     f"Set header RA/DEC from CRVAL: RA={header_to_process['RA']:.4f}°, DEC={header_to_process['DEC']:.4f}°"
                 )
 
@@ -1325,7 +1331,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                                         )
                                     else:
                                         # No PSF photometry - use aperture photometry only
-                                        st.info(
+                                        st.warning(
                                             "Using aperture photometry only (PSF photometry not available)."
                                         )
                                         final_table = phot_table_df.copy()
@@ -1687,7 +1693,7 @@ if st.session_state.run_analysis_pipeline and science_file is not None:
                         )
                     except Exception as e:
                         st.error(f"Error displaying Aladin viewer: {str(e)}")
-                        st.info(
+                        st.warning(
                             "Catalog data is available but cannot be displayed in interactive viewer."
                         )
 

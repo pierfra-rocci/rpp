@@ -117,8 +117,11 @@ Visit the URL printed by Streamlit (usually <http://localhost:8501>).
 ### 3. Login or Register
 
 Create an account or login with existing credentials. The frontend probes the
-FastAPI service first and falls back to the legacy backend when the API is not
-reachable. You can also run in anonymous mode if the backend is not configured.
+FastAPI service first and falls back to the legacy backend only when the API is
+unreachable and a legacy backend is detected. If the API responds with an
+internal error, the login page now reports that backend state instead of
+silently retrying ``localhost:5000``. You can also run in anonymous mode if the
+backend is not configured.
 
 ### 4. Configure Observatory
 
@@ -141,7 +144,7 @@ be available for download as a ZIP archive.
 The Streamlit frontend supports two backend modes:
 
 - **FastAPI mode**: preferred when `api/main.py` is running on `http://localhost:8000`
-- **Legacy mode**: fallback when the API is unavailable and `backend.py` is used instead
+- **Legacy mode**: fallback when the API is unavailable and `backend.py` is detected instead
 
 The frontend auto-detects the backend at startup. You can override endpoints with:
 
